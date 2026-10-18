@@ -14,41 +14,57 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Find and extract ZIP
+      - name: Extract project ZIP
         run: |
-          ZIP=$(find . -maxdepth 2 -type f -iname '*.zip' -not -path './.git/*' -print -quit)
-          if [ -z "$ZIP" ]; then
-            echo "No ZIP file found in repository."
-            exit 1
-          fi
+          ZIP=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
+          test -n "$ZIP" || { echo "Project ZIP not found"; exit 1; }
           mkdir extracted
           unzip -q "$ZIP" -d extracted
 
-      - name: Find Gradle project
+      - name: Find project and install Gradle
+        shell: bash
         run: |
-          WRAPPER=$(find extracted -type f -name gradlew -print -quit)
-          if [ -z "$WRAPPER" ]; then
-            echo "gradlew not found inside ZIP."
-            find extracted -maxdepth 4 -type f | head -80
+          SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle not found"
             exit 1
           fi
-          echo "PROJECT_DIR=$(dirname "$WRAPPER")" >> "$GITHUB_ENV"
-          chmod +x "$WRAPPER"
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          PROPS="$PROJECT_DIR/gradle/wrapper/gradle-wrapper.properties"
+          if [ ! -f "$PROPS" ]; then
+            echo "ERROR: Gradle wrapper properties not found"
+            exit 1
+          fi
+
+          URL=$(grep '^distributionUrl=' "$PROPS" | cut -d= -f2- | sed 's/\\:/:/g' | sed 's/\\//g')
+          VERSION=$(echo "$URL" | sed -E 's#.*gradle-([0-9][^-/]*)-(bin|all)\.zip.*#\1#')
+          if [ "$VERSION" = "$URL" ] || [ -z "$VERSION" ]; then
+            echo "ERROR: Cannot read Gradle version from $URL"
+            exit 1
+          fi
+
+          curl -fsSL "$URL" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "GRADLE_BIN=/tmp/gradle-$VERSION/bin/gradle" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Build APK
+      - name: Build debug APK
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ./gradlew --no-daemon assembleDebug
+        run: ${{ env.GRADLE_BIN }} --no-daemon assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: LiquidGlassFileManager-debug-apk
-          path: extracted/**/build/outputs/apk/**/*.apk
+          path: ${{ env.PROJECT_DIR }}/**/build/outputs/apk/**/*.apk
           if-no-files-found: error
