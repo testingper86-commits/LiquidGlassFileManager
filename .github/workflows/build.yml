@@ -1,11 +1,11 @@
-
-name: Build LiquidGlassFileManager APK
+name: Build LiquidGlass Offline APK
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main, master ]
     paths:
-      - '**.zip'
+      - 'LiquidGlassOffline_Merged_MusicVideo_FileManager_BUILD_READY.zip'
       - '.github/workflows/build.yml'
 
 permissions:
@@ -14,57 +14,48 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Extract project ZIP
-        run: |
-          ZIP=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
-          test -n "$ZIP" || { echo "Project ZIP not found"; exit 1; }
-          mkdir extracted
-          unzip -q "$ZIP" -d extracted
-
-      - name: Find project and install Gradle
+      - name: Verify and extract the intended merged project
         shell: bash
         run: |
+          set -euo pipefail
+          ZIP='LiquidGlassOffline_Merged_MusicVideo_FileManager_BUILD_READY.zip'
+          test -f "$ZIP" || { echo "ERROR: Required project ZIP not found: $ZIP"; exit 1; }
+          unzip -t "$ZIP"
+          mkdir -p extracted
+          unzip -q "$ZIP" -d extracted
           SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
-          if [ -z "$SETTINGS" ]; then
-            echo "ERROR: settings.gradle not found"
-            exit 1
-          fi
+          test -n "$SETTINGS" || { echo 'ERROR: settings.gradle(.kts) not found in the selected ZIP'; exit 1; }
           PROJECT_DIR=$(dirname "$SETTINGS")
+          test -f "$PROJECT_DIR/app/build.gradle.kts" -o -f "$PROJECT_DIR/app/build.gradle" || { echo "ERROR: app module build file missing under $PROJECT_DIR"; exit 1; }
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Building project from: $PROJECT_DIR"
 
-          PROPS="$PROJECT_DIR/gradle/wrapper/gradle-wrapper.properties"
-          if [ ! -f "$PROPS" ]; then
-            echo "ERROR: Gradle wrapper properties not found"
-            exit 1
-          fi
-
-          URL=$(grep '^distributionUrl=' "$PROPS" | cut -d= -f2- | sed 's/\\:/:/g' | sed 's/\\//g')
-          VERSION=$(echo "$URL" | sed -E 's#.*gradle-([0-9][^-/]*)-(bin|all)\.zip.*#\1#')
-          if [ "$VERSION" = "$URL" ] || [ -z "$VERSION" ]; then
-            echo "ERROR: Cannot read Gradle version from $URL"
-            exit 1
-          fi
-
-          curl -fsSL "$URL" -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /tmp
-          echo "GRADLE_BIN=/tmp/gradle-$VERSION/bin/gradle" >> "$GITHUB_ENV"
-
-      - uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+
+      - name: Install Gradle 8.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle-8.9-bin.zip
+          unzip -q /tmp/gradle-8.9-bin.zip -d /tmp
+          echo '/tmp/gradle-8.9/bin' >> "$GITHUB_PATH"
 
       - name: Build debug APK
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ${{ env.GRADLE_BIN }} --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: LiquidGlassFileManager-debug-apk
-          path: ${{ env.PROJECT_DIR }}/**/build/outputs/apk/**/*.apk
+          name: LiquidGlassOffline-debug-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
