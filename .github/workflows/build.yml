@@ -7,7 +7,7 @@ on:
       - main
       - master
     paths:
-      - 'LiquidGlassFileManager_Deep_Upgrade_Pass3_Fixed.zip'
+      - 'LiquidGlassFileManager_Deep_Upgrade_Pass3_Fixed2.zip'
       - '.github/workflows/build.yml'
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP='LiquidGlassFileManager_Deep_Upgrade_Pass3_Fixed.zip'
+          ZIP='LiquidGlassFileManager_Deep_Upgrade_Pass3_Fixed2.zip'
 
           if [ ! -f "$ZIP" ]; then
             echo "::error::Required project ZIP not found: $ZIP"
@@ -39,7 +39,7 @@ jobs:
           mkdir -p extracted
           unzip -q "$ZIP" -d extracted
 
-          SETTINGS="$(find extracted -type f \\( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
+          SETTINGS="$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
           if [ -z "$SETTINGS" ]; then
             echo '::error::settings.gradle(.kts) not found in ZIP'
             find extracted -maxdepth 4 -type f | head -200
