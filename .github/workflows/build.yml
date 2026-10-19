@@ -1,0 +1,93 @@
+name: Build debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compile Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="LiquidGlassFileManager_Updated_Build_Files.zip"
+          if [[ ! -f "$BUNDLE" ]]; then
+            echo "::error::Expected bundle '$BUNDLE' is missing from repository root."
+            ls -la
+            exit 1
+          fi
+          mkdir -p /tmp/liquidglass-bundle
+          unzip -o "$BUNDLE" -d /tmp/liquidglass-bundle
+          PROJECT_ZIP="/tmp/liquidglass-bundle/LiquidGlassFileManager_Fixed_Buildable.zip"
+          if [[ ! -f "$PROJECT_ZIP" ]]; then
+            echo "::error::Project ZIP was not found inside the uploaded bundle."
+            find /tmp/liquidglass-bundle -maxdepth 3 -type f -print
+            exit 1
+          fi
+          unzip -o "$PROJECT_ZIP" -d .
+          test -f settings.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/wrapper/gradle-wrapper.properties
+          test -f gradle/wrapper/gradle-wrapper.jar
+          chmod +x ./gradlew
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            **/*.gradle*
+            **/gradle-wrapper.properties
+            **/gradle/*.toml
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-35
+            build-tools;35.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo '::error::Build completed without producing a debug APK.'
+            exit 1
+          fi
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          ls -lh "$APK"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiquidGlassFileManager-debug-apk
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: error
+          retention-days: 30
+          
