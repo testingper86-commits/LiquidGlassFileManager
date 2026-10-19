@@ -3,18 +3,23 @@ name: Build debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    name: Compile Android app
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -22,31 +27,44 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      # The ubuntu-latest runner already ships the Android SDK (ANDROID_HOME). Licenses are accepted here
-      # so Gradle can fetch any missing platform or build-tools; a non-zero exit from `yes` closing the pipe is harmless.
-      - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Check project files
         run: |
+          test -f settings.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
           chmod +x ./gradlew
-          ./gradlew --no-daemon assembleDebug
 
-      - name: Verify the APK was produced
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Verify APK
+        shell: bash
         run: |
           set -euo pipefail
-          APK="$(find app/build/outputs/apk/debug -name '*.apk' -print -quit)"
-          test -n "$APK" || { echo "::error::No debug APK was produced"; exit 1; }
-          ls -l "$APK"
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo '::error::Build completed without producing a debug APK.'
+            exit 1
+          fi
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          ls -lh "$APK"
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: LiquidGlassFileManager-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 30
