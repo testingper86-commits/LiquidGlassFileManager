@@ -1,0 +1,95 @@
+name: Build LiquidGlassFileManager APK from ZIP
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: liquidglass-zip-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Extract project ZIP and build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Locate and extract Android project ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          candidates=("$GITHUB_WORKSPACE"/*.zip)
+          PROJECT_ZIP=""
+          for candidate in "${candidates[@]}"; do
+            if unzip -Z1 "$candidate" | grep -Eq '(^|/)settings\.gradle\.kts$' && \
+               unzip -Z1 "$candidate" | grep -Eq '(^|/)app/build\.gradle\.kts$'; then
+              PROJECT_ZIP="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$PROJECT_ZIP" ]]; then
+            echo '::error::No ZIP containing settings.gradle.kts and app/build.gradle.kts was found at the repository root.'
+            echo 'Upload LiquidGlassFileManager_New_Repo_Ready.zip (or the Android project ZIP) to the repository root.'
+            exit 1
+          fi
+          echo "Using archive: $(basename "$PROJECT_ZIP")"
+          mkdir -p "$RUNNER_TEMP/lgfm-project"
+          unzip -q "$PROJECT_ZIP" -d "$RUNNER_TEMP/lgfm-project"
+          PROJECT_ROOT="$RUNNER_TEMP/lgfm-project"
+          if [[ ! -f "$PROJECT_ROOT/settings.gradle.kts" ]]; then
+            mapfile -t settings_files < <(find "$RUNNER_TEMP/lgfm-project" -type f -name settings.gradle.kts -not -path '*/.gradle/*')
+            if [[ ${#settings_files[@]} -eq 0 ]]; then
+              echo '::error::ZIP was found but settings.gradle.kts was not extracted.'
+              exit 1
+            fi
+            PROJECT_ROOT="$(dirname "${settings_files[0]}")"
+          fi
+          test -f "$PROJECT_ROOT/app/build.gradle.kts"
+          # Copy project files to the checked-out repository, preserving hidden files.
+          cp -a "$PROJECT_ROOT"/. "$GITHUB_WORKSPACE"/
+          chmod +x "$GITHUB_WORKSPACE/gradlew"
+          test -f "$GITHUB_WORKSPACE/gradle/wrapper/gradle-wrapper.jar"
+          echo 'Android project extracted and validated.'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Verify APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_PATH="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [[ -z "$APK_PATH" ]]; then
+            echo '::error::Build completed without producing a debug APK.'
+            exit 1
+          fi
+          echo "Found APK: $APK_PATH"
+          ls -lh "$APK_PATH"
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiquidGlassFileManager-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
