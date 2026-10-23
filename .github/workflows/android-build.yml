@@ -22,14 +22,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check project layout
+      - name: Extract project ZIP if source is not at repository root
         shell: bash
         run: |
           set -euo pipefail
-          test -s gradlew || { echo "::error::gradlew not found at repository root. Put the project files (app/, gradlew, settings.gradle.kts ...) in the repo root, not inside a ZIP or subfolder."; exit 1; }
+
+          if [[ ! -s gradlew ]]; then
+            ARCHIVE="$(find . -maxdepth 3 -type f -iname '*.zip' -print -quit)"
+            if [[ -z "$ARCHIVE" ]]; then
+              echo "::error::gradlew is missing and no project ZIP was found. Upload the project files or a ZIP containing gradlew, settings.gradle(.kts), gradle/wrapper, and app/."
+              exit 1
+            fi
+
+            EXTRACT_DIR="$RUNNER_TEMP/liquidfiles-project"
+            mkdir -p "$EXTRACT_DIR"
+            unzip -oq "$ARCHIVE" -d "$EXTRACT_DIR"
+
+            PROJECT_ROOT=""
+            while IFS= read -r candidate; do
+              candidate_dir="$(dirname "$candidate")"
+              if [[ -s "$candidate" && ( -s "$candidate_dir/settings.gradle.kts" || -s "$candidate_dir/settings.gradle" ) ]]; then
+                PROJECT_ROOT="$candidate_dir"
+                break
+              fi
+            done < <(find "$EXTRACT_DIR" -type f -name gradlew -print)
+
+            if [[ -z "$PROJECT_ROOT" ]]; then
+              echo "::error::ZIP was extracted, but no Gradle project root containing gradlew and settings.gradle(.kts) was found."
+              find "$EXTRACT_DIR" -maxdepth 4 -type f | head -80
+              exit 1
+            fi
+
+            cp -a "$PROJECT_ROOT"/. "$GITHUB_WORKSPACE"/
+          fi
+
+          test -s gradlew
           test -s settings.gradle.kts || test -s settings.gradle
           test -s gradle/wrapper/gradle-wrapper.jar
+          test -d app
           chmod +x gradlew
+          echo "Android project root verified."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -81,4 +113,3 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
-          
