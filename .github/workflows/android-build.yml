@@ -181,9 +181,27 @@ jobs:
             APK="${{ runner.temp }}/toxifiles/toxifiles-debug.apk"
             ls -l "$APK"
             test -s "$APK"
-            adb logcat -c
-            adb install -r "$APK"
-            adb shell monkey -p com.liquidfiles.offline.debug 1
+            export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+            export PATH="$ANDROID_HOME/platform-tools:$PATH"
+            adb start-server
+            adb devices -l
+            READY=0
+            for attempt in $(seq 1 60); do
+              STATE="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
+              if [ "$STATE" = "device" ]; then READY=1; break; fi
+              sleep 2
+            done
+            test "$READY" -eq 1
+            BOOTED=0
+            for attempt in $(seq 1 60); do
+              BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r' || true)"
+              if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
+              sleep 2
+            done
+            test "$BOOTED" -eq 1
+            adb -s emulator-5554 logcat -c
+            adb -s emulator-5554 install -r "$APK"
+            adb -s emulator-5554 shell monkey -p com.liquidfiles.offline.debug 1
             sleep 12
-            adb shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline.debug'
-            if adb logcat -d | grep -q 'FATAL EXCEPTION'; then adb logcat -d; exit 1; fi
+            adb -s emulator-5554 shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline.debug'
+            if adb -s emulator-5554 logcat -d | grep -q 'FATAL EXCEPTION'; then adb -s emulator-5554 logcat -d; exit 1; fi
