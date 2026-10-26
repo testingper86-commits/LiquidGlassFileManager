@@ -1,0 +1,96 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index e4b6fd4..f361e88 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -31,4 +31,5 @@ android {
+ dependencies {
+     implementation("androidx.core:core:1.13.1")
+     implementation("androidx.documentfile:documentfile:1.0.1")
++    testImplementation("junit:junit:4.13.2")
+ }
+diff --git a/app/src/main/java/com/music/echo/offline/files/PinHash.java b/app/src/main/java/com/music/echo/offline/files/PinHash.java
+index b8df483..e44f342 100644
+--- a/app/src/main/java/com/music/echo/offline/files/PinHash.java
++++ b/app/src/main/java/com/music/echo/offline/files/PinHash.java
+@@ -1,6 +1,6 @@
+ package com.music.echo.offline.files;
+ 
+-import android.util.Base64;
++import java.util.Base64;
+ import java.security.MessageDigest;
+ import java.security.SecureRandom;
+ import javax.crypto.SecretKeyFactory;
+@@ -17,7 +17,7 @@ final class PinHash {
+         byte[] salt = new byte[SALT_BYTES];
+         new SecureRandom().nextBytes(salt);
+         byte[] hash = derive(pin, salt, ITERATIONS);
+-        return "pbkdf2$" + ITERATIONS + "$" + Base64.encodeToString(salt, Base64.NO_WRAP | Base64.NO_PADDING) + "$" + Base64.encodeToString(hash, Base64.NO_WRAP | Base64.NO_PADDING);
++        return "pbkdf2$" + ITERATIONS + "$" + Base64.getEncoder().withoutPadding().encodeToString(salt) + "$" + Base64.getEncoder().withoutPadding().encodeToString(hash);
+     }
+ 
+     static boolean verify(String pin, String stored, String legacyPrefix) {
+@@ -28,8 +28,8 @@ final class PinHash {
+                 if (parts.length != 4) return false;
+                 int iterations = Integer.parseInt(parts[1]);
+                 if (iterations < 10_000 || iterations > 1_000_000) return false;
+-                byte[] salt = Base64.decode(parts[2], Base64.NO_WRAP | Base64.NO_PADDING);
+-                byte[] expected = Base64.decode(parts[3], Base64.NO_WRAP | Base64.NO_PADDING);
++                byte[] salt = Base64.getDecoder().decode(parts[2]);
++                byte[] expected = Base64.getDecoder().decode(parts[3]);
+                 return MessageDigest.isEqual(expected, derive(pin, salt, iterations));
+             }
+             // One-time compatibility with the old fixed-prefix SHA-256 verifier.
+diff --git a/app/src/test/java/com/music/echo/offline/files/PinHashTest.java b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
+new file mode 100644
+index 0000000..22df1fb
+--- /dev/null
++++ b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
+@@ -0,0 +1,36 @@
++package com.music.echo.offline.files;
++
++import org.junit.Test;
++import static org.junit.Assert.*;
++import java.nio.charset.StandardCharsets;
++import java.security.MessageDigest;
++import java.util.Locale;
++
++public class PinHashTest {
++    @Test public void saltedHashesDifferAndVerify() {
++        String first = PinHash.create("0042");
++        String second = PinHash.create("0042");
++        assertNotEquals(first, second);
++        assertTrue(PinHash.verify("0042", first, "lgapplock:"));
++        assertFalse(PinHash.verify("0043", first, "lgapplock:"));
++    }
++
++    @Test public void migratesLegacyAppLockAndVaultHashes() throws Exception {
++        assertTrue(PinHash.verify("1234", legacy("lgapplock:", "1234"), "lgapplock:"));
++        assertTrue(PinHash.verify("9876", legacy("lgvault:", "9876"), "lgvault:"));
++        assertFalse(PinHash.verify("0000", legacy("lgvault:", "9876"), "lgvault:"));
++    }
++
++    @Test public void rejectsMalformedStoredHashes() {
++        assertFalse(PinHash.verify("1234", "pbkdf2$broken", "lgvault:"));
++        assertFalse(PinHash.verify("1234", "", "lgvault:"));
++        assertFalse(PinHash.verify("1234", null, "lgvault:"));
++    }
++
++    private static String legacy(String prefix, String pin) throws Exception {
++        byte[] digest = MessageDigest.getInstance("SHA-256").digest((prefix + pin).getBytes(StandardCharsets.UTF_8));
++        StringBuilder out = new StringBuilder();
++        for (byte b : digest) out.append(String.format(Locale.ROOT, "%02x", b));
++        return out.toString();
++    }
++}
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 7610d0b..35c8141 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -48,6 +48,7 @@ def main():
+     require('if (!allowed.contains(k)) continue;' in main_src and 'applock_on' not in main_src[main_src.index('private static java.util.Set<String> portableSettingKeys()'):main_src.index('// ---------------- LARGEST FILES')], 'settings import cannot overwrite App Lock or other non-portable security preferences')
+     pin_hash = (ROOT / 'app/src/main/java/com/music/echo/offline/files/PinHash.java').read_text()
+     require('PBKDF2WithHmacSHA256' in pin_hash and 'SecureRandom' in pin_hash and 'MessageDigest.isEqual' in pin_hash, 'PIN verifiers use salted PBKDF2 and constant-time comparison')
++    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/PinHashTest.java').is_file() and 'testImplementation(\"junit:junit:4.13.2\")' in (ROOT / 'app/build.gradle.kts').read_text(), 'PIN verifier has automated unit tests for salt, legacy migration and malformed input')
+     app_lock = (ROOT / 'app/src/main/java/com/music/echo/offline/files/AppLock.java').read_text()
+     vault = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Vault.java').read_text()
+     require('failed_attempts' in app_lock and 'blocked_until' in app_lock and 'Math.min(15 * 60_000L' in app_lock, 'App Lock applies persistent escalating PIN lockout')
