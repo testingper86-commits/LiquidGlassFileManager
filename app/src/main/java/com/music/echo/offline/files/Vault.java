@@ -169,6 +169,7 @@ final class Vault {
     }
 
     private static void encryptTree(File src, File destRoot) throws Exception {
+        FileOps.checkCancelled();
         if (java.nio.file.Files.isSymbolicLink(src.toPath())) throw new IOException("Symbolic links cannot be stored in Vault");
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
@@ -181,6 +182,7 @@ final class Vault {
     }
 
     private static void decryptTree(File src, File destRoot) throws Exception {
+        FileOps.checkCancelled();
         if (java.nio.file.Files.isSymbolicLink(src.toPath())) throw new IOException("Unexpected symbolic link in Vault");
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
@@ -195,8 +197,10 @@ final class Vault {
     static void moveIn(final MainActivity a, final List<File> src, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            FileOps.cancelRequested = false;
             int ok = 0, fail = 0;
             for (File s : src) {
+                if (FileOps.cancelRequested) { fail++; break; }
                 try {
                     File parent = s.getParentFile();
                     if (parent == null) { fail++; continue; }

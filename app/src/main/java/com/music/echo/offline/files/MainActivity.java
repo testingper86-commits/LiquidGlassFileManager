@@ -161,6 +161,8 @@ public class MainActivity extends Activity {
         busyTv.setBackground(Ui.accentPill(20));
         busyTv.setPadding(Ui.dp(18), Ui.dp(10), Ui.dp(18), Ui.dp(10));
         busyTv.setVisibility(View.GONE);
+        busyTv.setContentDescription("Operation progress. Tap to request cancellation.");
+        busyTv.setOnClickListener(v -> { FileOps.requestCancel(); LanTransfer.cancel(); Ui.toast(this, "Cancellation requested"); });
         root.addView(busyTv, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         setContentView(root);
@@ -301,7 +303,7 @@ public class MainActivity extends Activity {
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {

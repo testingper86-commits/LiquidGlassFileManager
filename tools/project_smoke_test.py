@@ -59,6 +59,8 @@ def main():
     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
     require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
     require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
+    require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
+    require('Tap to request cancellation' in main_src and 'tap to cancel' in main_src and 'LanTransfer.cancel()' in main_src, 'progress control exposes cancellation for file and LAN operations')
     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
     glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
     ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()

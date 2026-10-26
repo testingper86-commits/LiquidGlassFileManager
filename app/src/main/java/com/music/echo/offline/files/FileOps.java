@@ -22,6 +22,10 @@ import java.util.zip.ZipOutputStream;
 final class FileOps {
     interface Done { void run(String msg); }
 
+    static volatile boolean cancelRequested;
+    static void requestCancel() { cancelRequested = true; }
+    static void checkCancelled() throws IOException { if (cancelRequested) throw new IOException("Operation cancelled"); }
+
     static File unique(File dir, String name) {
         File f = new File(dir, name);
         if (!f.exists()) return f;
@@ -36,6 +40,7 @@ final class FileOps {
     }
 
     static void copy(File s, File t) throws IOException {
+        checkCancelled();
         if (java.nio.file.Files.isSymbolicLink(s.toPath())) throw new IOException("Symbolic links are not copied");
         if (s.isDirectory()) {
             if (!t.mkdirs() && !t.isDirectory()) throw new IOException("Can't create " + t.getName());
@@ -48,7 +53,7 @@ final class FileOps {
             try (InputStream in = new FileInputStream(s); OutputStream out = new FileOutputStream(t)) {
                 byte[] buf = new byte[65536];
                 int n;
-                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                while ((n = in.read(buf)) > 0) { checkCancelled(); out.write(buf, 0, n); }
             } catch (IOException copyError) { t.delete(); throw copyError; }
         }
     }
@@ -78,6 +83,7 @@ final class FileOps {
             String err = "";
             int total = src.length, idx = 0;
             for (File s : src) {
+                if (cancelRequested) { fail++; err = "Operation cancelled"; break; }
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
@@ -100,8 +106,10 @@ final class FileOps {
     static void delete(final MainActivity a, final List<File> fs, final Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            cancelRequested = false;
             int ok = 0, total = fs.size(), idx = 0;
             for (File f : fs) {
+                if (cancelRequested) break;
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = f.getName();
@@ -116,6 +124,7 @@ final class FileOps {
     static void zip(final MainActivity a, final List<File> fs, final File destDir, final Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            cancelRequested = false;
             String msg;
             File out = null;
             try {
@@ -134,6 +143,7 @@ final class FileOps {
     }
 
     private static void addZip(ZipOutputStream z, File f, String name, File skip) throws IOException {
+        checkCancelled();
         if (f.equals(skip) || java.nio.file.Files.isSymbolicLink(f.toPath())) return;
         if (f.isDirectory()) {
             File[] kids = f.listFiles();
@@ -165,6 +175,7 @@ final class FileOps {
     static void unzip(final MainActivity a, final File zip, final Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            cancelRequested = false;
             String msg;
             File dest = null;
             try {
@@ -180,6 +191,7 @@ final class FileOps {
                     if (total > 20_000) throw new IOException("Archive has too many entries");
                     Enumeration<? extends ZipEntry> en = z.entries();
                     while (en.hasMoreElements()) {
+                        checkCancelled();
                         ZipEntry e = en.nextElement();
                         idx++;
                         final int fi = idx, ft = total;
@@ -198,6 +210,7 @@ final class FileOps {
                             byte[] buf = new byte[65536];
                             int n;
                             while ((n = in.read(buf)) > 0) {
+                                checkCancelled();
                                 entryBytes += n; expanded += n;
                                 if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
                                 if (n > dest.getUsableSpace()) throw new IOException("Not enough free space to extract archive");

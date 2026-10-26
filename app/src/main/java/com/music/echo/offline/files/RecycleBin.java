@@ -49,9 +49,11 @@ final class RecycleBin {
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            FileOps.cancelRequested = false;
             int ok = 0, fail = 0;
             int total = src.size(), idx = 0;
             for (File s : src) {
+                if (FileOps.cancelRequested) { fail++; break; }
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
@@ -124,8 +126,9 @@ final class RecycleBin {
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            FileOps.cancelRequested = false;
             int ok = 0;
-            for (Item it : items) if (FileOps.deleteTree(it.wrapper)) ok++;
+            for (Item it : items) { if (FileOps.cancelRequested) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
             a.runOnUiThread(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
         });
@@ -134,9 +137,10 @@ final class RecycleBin {
     static void empty(final MainActivity a, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            FileOps.cancelRequested = false;
             File[] ws = root(a).listFiles();
             int n = ws == null ? 0 : ws.length;
-            if (ws != null) for (File w : ws) FileOps.deleteTree(w);
+            if (ws != null) for (File w : ws) { if (FileOps.cancelRequested) break; FileOps.deleteTree(w); }
             a.runOnUiThread(() -> { a.busy(false); d.run("Recycle Bin emptied (" + n + " item" + (n == 1 ? "" : "s") + ")"); });
         });
     }
