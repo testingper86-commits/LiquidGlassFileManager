@@ -31,7 +31,42 @@
          aboutScroll = new ScrollView(this);
          aboutScroll.setVerticalScrollBarEnabled(false);
          aboutScroll.setClipToPadding(false);
-@@ -637,6 +624,23 @@
+@@ -386,9 +373,8 @@
+             screens[k].setTranslationY(0);
+         }
+         View s = screens[i];
+-        s.setAlpha(0f);
+-        s.setTranslationY(Ui.dp(12));
+-        s.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(new DecelerateInterpolator()).start();
++        if (Ui.bool("reduce_motion", true)) { s.setAlpha(1f); s.setTranslationY(0f); }
++        else { s.setAlpha(0f); s.setTranslationY(Ui.dp(8)); s.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+         if (i == 0) buildHome();
+         else if (i == 1) {
+             if (filesView.cur == null) {
+@@ -405,10 +391,9 @@
+     void showOverlay(View v) {
+         overlayView = v;
+         screens[tab].setVisibility(View.GONE);
+-        v.setAlpha(0f);
+-        v.setTranslationY(Ui.dp(14));
+         v.setVisibility(View.VISIBLE);
+-        v.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(new DecelerateInterpolator()).start();
++        if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
++        else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+         nav.setVisibility(v == listView ? View.GONE : View.VISIBLE);
+     }
+ 
+@@ -481,7 +466,8 @@
+     void moveHighlight(int i) {
+         int iw = hl.getLayoutParams().width;
+         int visualIndex = i == 3 ? 1 : 0;
+-        hl.animate().translationX(visualIndex * iw).setDuration(340).setInterpolator(new OvershootInterpolator(1.0f)).start();
++        if (Ui.bool("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
++        else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
+         for (int k = 0; k < 2; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
+     }
+ 
+@@ -637,6 +623,23 @@
          card.setFocusable(true);
          card.setOnClickListener(v -> openStorageAnalyzer());
          home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
@@ -55,7 +90,7 @@
  
          // categories
          home.addView(section("Browse by type"));
-@@ -682,6 +686,65 @@
+@@ -682,6 +685,65 @@
          // Recent-files panel intentionally omitted for a cleaner, section-first home screen.
      }
  
@@ -121,7 +156,7 @@
      // ---------------- SETTINGS ----------------
      View row(int glyph, String title, String sub, View right, View.OnClickListener l) {
          LinearLayout r = new LinearLayout(this);
-@@ -836,8 +899,13 @@
+@@ -836,8 +898,13 @@
  
          if (Ui.bool("developer_options_unlocked", false)) {
              settings.addView(section("Developer options"));
@@ -136,7 +171,7 @@
              settings.addView(row(Glyphs.REFRESH, "Reset developer options", "Hide this section again", null, v -> { Ui.sp.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
          }
  
-@@ -1536,6 +1604,9 @@
+@@ -1536,6 +1603,9 @@
                  tile.setPadding(Ui.dp(12), Ui.dp(14), Ui.dp(10), Ui.dp(14));
                  LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
                  tp.setMargins(Ui.dp(4), Ui.dp(4), Ui.dp(4), Ui.dp(4));
@@ -146,6 +181,15 @@
                  FrameLayout preview = new FrameLayout(this);
                  android.graphics.drawable.GradientDrawable grad = new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, new int[]{Color.rgb(22,26,40), Color.rgb(4,6,12), Color.rgb(16,20,34)});
                  grad.setCornerRadius(Ui.dp(12));
+@@ -1562,7 +1632,7 @@
+                 if (index == Ui.theme) tile.setBackground(Ui.accentPill(20));
+                 tile.setOnClickListener(v -> {
+                     Ui.tick(v);
+-                    if (!Ui.bool("reduce_motion", false)) {
++                    if (!Ui.bool("reduce_motion", true)) {
+                         v.animate().cancel();
+                         v.setScaleX(0.975f); v.setScaleY(0.975f);
+                         v.animate().scaleX(1f).scaleY(1f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start();
 --- a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
 +++ b/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
 @@ -47,6 +47,7 @@
@@ -250,6 +294,46 @@
              }
          }
      }
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java
+@@ -220,10 +220,12 @@
+     /** Springy "liquid" press feedback; never consumes the touch so clicks still work. */
+     static void press(View v) {
+         v.setOnTouchListener((x, e) -> {
++            // The clean glass interface defaults to reduced motion; enable spring feedback only by opting out.
++            if (bool("reduce_motion", true)) return false;
+             int a = e.getActionMasked();
+-            if (a == MotionEvent.ACTION_DOWN) { playRing(x); x.animate().scaleX(0.94f).scaleY(0.94f).setDuration(80).start(); }
++            if (a == MotionEvent.ACTION_DOWN) { playRing(x); x.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start(); }
+             else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL)
+-                x.animate().scaleX(1f).scaleY(1f).setDuration(260).setInterpolator(new OvershootInterpolator(2.2f)).start();
++                x.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(new OvershootInterpolator(1.1f)).start();
+             return false;
+         });
+     }
+--- a/app/src/main/java/com/music/echo/offline/files/GlowRing.java
++++ b/app/src/main/java/com/music/echo/offline/files/GlowRing.java
+@@ -34,7 +34,7 @@
+         }
+     }
+ 
+-    public static void attach(View target) { if (target != null) state(target, true); }
++    public static void attach(View target) { if (target != null) state(target, !Ui.bool("reduce_motion", true)); }
+     public static void detach(View target) {
+         if (target == null) return;
+         State s = STATES.remove(target);
+@@ -46,6 +46,11 @@
+     }
+     public static void setActive(View target, boolean active) {
+         if (target == null) return;
++        if (Ui.bool("reduce_motion", true)) {
++            State s = state(target, false);
++            s.active = false; s.ring.setAlpha(0f); s.ring.stop(); sync(s);
++            return;
++        }
+         State s = state(target, active);
+         s.active = active;
+         sync(s);
 --- a/app/src/main/AndroidManifest.xml
 +++ b/app/src/main/AndroidManifest.xml
 @@ -2,6 +2,7 @@
