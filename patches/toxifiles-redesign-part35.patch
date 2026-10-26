@@ -1,0 +1,130 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+index 5bb5e28..703f8c0 100644
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -23,6 +23,8 @@ import android.widget.ImageView;
+ import android.widget.LinearLayout;
+ import android.widget.ListView;
+ import android.widget.ProgressBar;
++import android.widget.Spinner;
++import android.widget.ArrayAdapter;
+ import android.widget.TextView;
+ import java.io.File;
+ import java.io.FileInputStream;
+@@ -46,6 +48,7 @@ final class BrowserView extends FrameLayout {
+     boolean limit, loading;
+     List<Entry> all = new ArrayList<>(), shown = new ArrayList<>();
+     String query = "";
++    int searchTypeFilter = 0, searchSizeFilter = 0, searchDateFilter = 0;
+     final LinkedHashSet<Entry> sel = new LinkedHashSet<>();
+     boolean selecting;
+     int columns = Ui.bool("grid", false) ? 3 : 1;
+@@ -359,6 +362,7 @@ final class BrowserView extends FrameLayout {
+         String extQuery = extOnly ? query.substring(1) : null;
+         for (Entry e : all) {
+             boolean match = query.isEmpty() || (extOnly ? e.ext.equals(extQuery) : e.lname.contains(query));
++            if (match && mode == LIST && "Search".equals(listTitle)) match = matchesAdvancedFilter(e);
+             if (match) { out.add(e); if (out.size() >= cap) break; }
+         }
+         shown = out;
+@@ -374,7 +378,7 @@ final class BrowserView extends FrameLayout {
+             empty.setText("Allow access to all files\nTap here to open settings");
+             empty.setVisibility(VISIBLE);
+         } else if (shown.isEmpty()) {
+-            empty.setText(!query.isEmpty() ? "No results" : mode == DIR ? "This folder is empty" : isFavs ? "No favorites yet\nUse ⋮ on a file to add one" : "Nothing here yet");
++            empty.setText((!query.isEmpty() || (mode == LIST && "Search".equals(listTitle) && hasAdvancedFilters())) ? "No results for the current search and filters" : mode == DIR ? "This folder is empty" : isFavs ? "No favorites yet\nUse ⋮ on a file to add one" : "Nothing here yet");
+             empty.setVisibility(VISIBLE);
+         } else empty.setVisibility(GONE);
+     }
+@@ -399,7 +403,7 @@ final class BrowserView extends FrameLayout {
+                 pathTv.setText(cur.getAbsolutePath().replace(root, "Internal storage"));
+             }
+         } else {
+-            title.setText(listTitle);
++            title.setText(listTitle + ("Search".equals(listTitle) && hasAdvancedFilters() ? " • Filtered" : ""));
+             back.setVisibility(overlay ? VISIBLE : GONE);
+             pathTv.setVisibility(GONE);
+         }
+@@ -549,6 +553,7 @@ final class BrowserView extends FrameLayout {
+         if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { Ui.sp.edit().putString("default_folder", cur.getAbsolutePath()).apply(); Ui.toast(a, "Set as default: " + cur.getAbsolutePath()); });
+         add(l, r, columns > 1 ? "List view" : "Grid view", this::toggleView);
+         add(l, r, "Sort by…", this::sortDialog);
++        if (mode == LIST && "Search".equals(listTitle)) add(l, r, "Advanced search filters…", this::advancedSearchDialog);
+         add(l, r, "Select all", this::selectAll);
+         if (mode == DIR) {
+             boolean on = Ui.bool("hidden", false);
+@@ -559,6 +564,61 @@ final class BrowserView extends FrameLayout {
+         showMenu(a, "Options", l, r);
+     }
+ 
++    private Spinner filterSpinner(String[] options, int selected) {
++        Spinner spinner = new Spinner(a);
++        ArrayAdapter<String> adapter = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, options);
++        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
++        spinner.setAdapter(adapter); spinner.setSelection(selected);
++        return spinner;
++    }
++
++    void advancedSearchDialog() {
++        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL);
++        panel.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), Ui.dp(8));
++        String[] types = {"Any type", "Images", "Videos", "Audio", "Documents", "Archives", "APK packages", "Folders", "Other files"};
++        String[] sizes = {"Any size", "At least 1 MB", "At least 10 MB", "At least 100 MB"};
++        String[] dates = {"Any date", "Modified in last 7 days", "Modified in last 30 days", "Modified in last 365 days"};
++        panel.addView(Ui.tv(a, "File type", 12, Ui.SUB, true));
++        Spinner typeSpinner = filterSpinner(types, searchTypeFilter); panel.addView(typeSpinner);
++        panel.addView(Ui.tv(a, "Minimum size", 12, Ui.SUB, true));
++        Spinner sizeSpinner = filterSpinner(sizes, searchSizeFilter); panel.addView(sizeSpinner);
++        panel.addView(Ui.tv(a, "Modified date", 12, Ui.SUB, true));
++        Spinner dateSpinner = filterSpinner(dates, searchDateFilter); panel.addView(dateSpinner);
++        new AlertDialog.Builder(a).setTitle("Advanced search")
++                .setMessage("Filters apply to the indexed search results. Open a folder directly to browse files outside the global index limit.")
++                .setView(panel).setNegativeButton("Cancel", null)
++                .setNeutralButton("Reset", (d, w) -> { searchTypeFilter = searchSizeFilter = searchDateFilter = 0; applyFilter(); updateHeader(); })
++                .setPositiveButton("Apply", (d, w) -> {
++                    searchTypeFilter = typeSpinner.getSelectedItemPosition();
++                    searchSizeFilter = sizeSpinner.getSelectedItemPosition();
++                    searchDateFilter = dateSpinner.getSelectedItemPosition();
++                    applyFilter(); updateHeader();
++                }).show();
++    }
++
++    private boolean matchesAdvancedFilter(Entry e) {
++        if (searchTypeFilter != 0) {
++            boolean typeMatch;
++            switch (searchTypeFilter) {
++                case 1: typeMatch = e.kind == FileKinds.IMAGE; break;
++                case 2: typeMatch = e.kind == FileKinds.VIDEO; break;
++                case 3: typeMatch = e.kind == FileKinds.AUDIO; break;
++                case 4: typeMatch = e.kind == FileKinds.PDF || e.kind == FileKinds.DOC || e.kind == FileKinds.SHEET || e.kind == FileKinds.SLIDE || e.kind == FileKinds.TEXT; break;
++                case 5: typeMatch = e.kind == FileKinds.ARCHIVE; break;
++                case 6: typeMatch = e.kind == FileKinds.APK; break;
++                case 7: typeMatch = e.dir; break;
++                default: typeMatch = e.kind == FileKinds.OTHER; break;
++            }
++            if (!typeMatch) return false;
++        }
++        long minBytes = searchSizeFilter == 1 ? 1L * 1024 * 1024 : searchSizeFilter == 2 ? 10L * 1024 * 1024 : searchSizeFilter == 3 ? 100L * 1024 * 1024 : 0L;
++        if (minBytes > 0 && (e.dir || e.len < minBytes)) return false;
++        int days = searchDateFilter == 1 ? 7 : searchDateFilter == 2 ? 30 : searchDateFilter == 3 ? 365 : 0;
++        return days == 0 || e.mod >= System.currentTimeMillis() - days * 86_400_000L;
++    }
++
++    private boolean hasAdvancedFilters() { return searchTypeFilter != 0 || searchSizeFilter != 0 || searchDateFilter != 0; }
++
+     void sortDialog() {
+         final String[] names = {"Name (A → Z)", "Name (Z → A)", "Newest first", "Oldest first", "Largest first", "Smallest first", "Type"};
+         new AlertDialog.Builder(a).setTitle("Sort by").setItems(names, (d, w) -> {
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 99e6ebb..e404c11 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -105,6 +105,8 @@ def main():
+ 
+     require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A–B loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
+ 
++    require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
