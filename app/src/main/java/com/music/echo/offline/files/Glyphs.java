@@ -24,6 +24,27 @@ final class Glyphs {
             LOCK = 35, WIFI = 36, DATABASE = 37, ANALYTICS = 38, DOWNLOAD = 39, CLOUD = 40,
             MUSIC = 41, SUN = 42, REFRESH = 43, SETTINGS = 44;
 
+    static String label(int kind) {
+        switch (kind) {
+            case FOLDER: return "Folder"; case IMAGE: return "Image"; case VIDEO: return "Video";
+            case AUDIO: return "Audio"; case DOC: return "Document"; case ARCHIVE: return "Archive";
+            case APK: return "Android package"; case FILE: return "File"; case HOME: return "Home";
+            case FILES: return "Files"; case STAR: return "Favorite"; case TUNE: return "Filter and sort";
+            case SEARCH: return "Search"; case MORE: return "More options"; case BACK: return "Back";
+            case NEXT: return "Next"; case CLOSE: return "Close"; case CHECK: return "Select";
+            case COPY: return "Copy"; case CUT: return "Cut"; case TRASH: return "Delete";
+            case SHARE: return "Share"; case INFO: return "Information"; case FOLDER_PLUS: return "New folder";
+            case SORT: return "Sort"; case OPEN: return "Open"; case PLAY: return "Play";
+            case PAUSE: return "Pause"; case PASTE: return "Paste"; case PALETTE: return "Theme";
+            case SPARKLE: return "Appearance effects"; case VIBRATE: return "Haptic feedback";
+            case EYE: return "Visibility"; case SHIELD: return "Security"; case CLOCK: return "Recent";
+            case LOCK: return "Lock"; case WIFI: return "Wi-Fi transfer"; case DATABASE: return "Storage";
+            case ANALYTICS: return "Analysis"; case DOWNLOAD: return "Download"; case CLOUD: return "Cloud";
+            case MUSIC: return "Music"; case SUN: return "Light appearance"; case REFRESH: return "Refresh";
+            case SETTINGS: return "Settings"; default: return "Action";
+        }
+    }
+
     static Drawable get(int kind, int color) { return new G(kind, color); }
 
     static Drawable tile(int fileKind) { return new Tile(fileKind); }

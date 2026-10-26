@@ -15,7 +15,8 @@ final class Indexer {
     static final Indexer I = new Indexer();
     static final String[] CAT_NAMES = {"Images", "Videos", "Audio", "Documents", "Archives", "Apps", "Other"};
 
-    volatile boolean ready, running, dirty;
+    volatile boolean ready, running, dirty, truncated;
+    private static final int MAX_INDEX_ENTRIES = 150_000;
     long finished;
     List<Entry> all = new ArrayList<>();
     List<Entry> recent = new ArrayList<>();
@@ -45,6 +46,7 @@ final class Indexer {
         if (running) return;
         running = true;
         dirty = false;
+        truncated = false;
         new Thread(() -> {
             try {
                 tmpAll = new ArrayList<>();
@@ -73,10 +75,14 @@ final class Indexer {
     }
 
     private void scan(File dir, int depth) {
-        if (depth > 9 || tmpAll.size() > 250000) return;
+        if (depth > 9) return;
+        if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
+        try { if (java.nio.file.Files.isSymbolicLink(dir.toPath())) return; } catch (Exception ignored) { return; }
         File[] fs = dir.listFiles();
         if (fs == null) return;
         for (File f : fs) {
+            if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
+            try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue; } catch (Exception ignored) { continue; }
             String n = f.getName();
             if (n.startsWith(".")) continue;
             if (f.isDirectory()) {

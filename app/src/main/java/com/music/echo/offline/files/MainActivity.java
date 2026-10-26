@@ -534,11 +534,18 @@ public class MainActivity extends Activity {
         ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
         settingsBtn.setContentDescription("Settings");
         settingsBtn.setOnClickListener(v -> selectTab(3));
-        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
         TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
         home.addView(homeSub);
+        if (ix.ready && ix.truncated) {
+            TextView limitNotice = Ui.tv(this, "Large library: quick search and overview are limited to the first 150,000 indexed entries. Open folders directly to browse remaining files.", 12, Ui.SUB, false);
+            limitNotice.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(12));
+            limitNotice.setBackground(Ui.glass(16, false));
+            limitNotice.setContentDescription("Indexing limit notice. Some files may not appear in global search.");
+            home.addView(limitNotice, lpm(-1, -2, 16, 4, 16, 8));
+        }
 
         if (!hasAccess()) {
             LinearLayout c = new LinearLayout(this);
@@ -1124,7 +1131,7 @@ public class MainActivity extends Activity {
         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         hd.addView(Ui.tv(this, "Duplicate Files", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
         dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
 
@@ -1199,7 +1206,7 @@ public class MainActivity extends Activity {
         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         hd.addView(Ui.tv(this, "Empty Folders", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
         dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
 
@@ -1289,9 +1296,9 @@ public class MainActivity extends Activity {
         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         hd.addView(Ui.tv(this, "Vault", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        hd.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         vault.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
 
         TextView note = Ui.tv(this, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.", 12, Ui.SUB, false);
@@ -1582,7 +1589,7 @@ public class MainActivity extends Activity {
         hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         hd.addView(Ui.tv(this, "Recycle Bin", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
         TextView emptyBtn = Ui.tv(this, "Empty", 14, Ui.accent, true);
         emptyBtn.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
@@ -1792,7 +1799,7 @@ public class MainActivity extends Activity {
         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         hd.addView(Ui.tv(this, "About ToxiFiles", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
         about.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
 

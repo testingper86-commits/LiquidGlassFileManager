@@ -212,7 +212,10 @@ final class Ui {
     static ImageView iconBtn(Context c, int glyph, int color) {
         ImageView v = new ImageView(c);
         v.setImageDrawable(Glyphs.get(glyph, color));
-        v.setPadding(dp(10), dp(10), dp(10), dp(10));
+        v.setPadding(dp(12), dp(12), dp(12), dp(12));
+        v.setMinimumWidth(dp(48));
+        v.setMinimumHeight(dp(48));
+        v.setContentDescription(Glyphs.label(glyph));
         v.setScaleType(ImageView.ScaleType.FIT_CENTER);
         v.setBackground(glass(16, true));
         v.setElevation(dp(3));

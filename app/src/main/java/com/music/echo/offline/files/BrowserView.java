@@ -80,12 +80,12 @@ final class BrowserView extends FrameLayout {
         searchBtn.setOnClickListener(v -> toggleSearch());
         moreBtn = Ui.iconBtn(a, Glyphs.MORE, Ui.WHITE);
         moreBtn.setOnClickListener(v -> headerMenu());
-        header.addView(back, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        header.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
         tl.leftMargin = Ui.dp(4);
         header.addView(title, tl);
-        header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
-        header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+        header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         header.setBackground(Ui.glass(22, false));
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, Ui.dp(60));
         headerLp.setMargins(Ui.dp(12), Ui.dp(6), Ui.dp(12), Ui.dp(8));

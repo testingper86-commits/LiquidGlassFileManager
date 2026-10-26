@@ -137,7 +137,7 @@ public class ViewerActivity extends Activity {
         open.setOnClickListener(v -> FileOps.external(this, new File(paths.get(idx)), true));
         ImageView share = Ui.iconBtn(this, Glyphs.SHARE, Ui.WHITE);
         share.setOnClickListener(v -> { ArrayList<File> l = new ArrayList<>(); l.add(new File(paths.get(idx))); FileOps.share(this, l); });
-        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         bar.addView(titleTv, new LinearLayout.LayoutParams(0, -2, 1f));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
         cl.rightMargin = Ui.dp(6);
@@ -148,8 +148,8 @@ public class ViewerActivity extends Activity {
         editImageBtn.setBackground(Ui.glass(18, true));
         editImageBtn.setOnClickListener(v -> openImageEditor());
         bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, Ui.dp(36)));
-        bar.addView(open, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
-        bar.addView(share, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+        bar.addView(open, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+        bar.addView(share, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, Ui.dp(52), Gravity.TOP);
         bp.setMargins(Ui.dp(12), Ui.dp(8), Ui.dp(12), 0);
         root.addView(bar, bp);

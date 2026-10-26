@@ -58,6 +58,13 @@ def main():
     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
+    glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
+    ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
+    require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
+    require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
+    indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
+    require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
+    require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
     launcher = []
     for activity in app.findall('activity'):
         filt = activity.find('intent-filter')
