@@ -103,7 +103,7 @@ jobs:
             exit 1
           fi
           git commit -m "Flatten Android project source tree"
-          git push origin "HEAD:\${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
