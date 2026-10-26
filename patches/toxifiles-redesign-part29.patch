@@ -1,0 +1,69 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 063d55f..bf9b445 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -1538,17 +1538,29 @@ public class MainActivity extends Activity {
+ 
+     void importSafDoc(final Uri doc, final String name) {
+         busy(true);
+-        io.execute(() -> {
++        ops.execute(() -> {
++            FileOps.cancelRequested = false;
+             String msg;
++            File pending = null;
++            File dest = null;
+             try {
+-                File dest = FileOps.unique(new File(Environment.getExternalStorageDirectory(), "Download"), name);
+-                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(dest)) {
+-                    byte[] buf = new byte[65536];
+-                    int n;
+-                    while (in != null && (n = in.read(buf)) > 0) out.write(buf, 0, n);
++                File download = new File(Environment.getExternalStorageDirectory(), "Download");
++                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
++                dest = FileOps.unique(download, name);
++                pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
++                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
++                    if (in == null) throw new java.io.IOException("External storage returned no input stream");
++                    byte[] buf = new byte[65536]; int n;
++                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                 }
++                FileOps.checkCancelled();
++                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
+                 msg = "Imported to Download/" + dest.getName();
+-            } catch (Exception ex) { msg = "Import failed: " + ex.getMessage(); }
++            } catch (Exception ex) {
++                if (pending != null) pending.delete();
++                if (dest != null && dest.exists()) dest.delete();
++                msg = "Import failed: " + ex.getMessage();
++            }
+             final String m = msg;
+             runOnUiThread(() -> { busy(false); Ui.toast(this, m); afterOps(); });
+         });
+@@ -1563,8 +1575,12 @@ public class MainActivity extends Activity {
+                 for (String key : portableSettingKeys()) {
+                     if (Ui.sp.contains(key)) o.put(key, Ui.sp.getAll().get(key));
+                 }
+-                File dest = FileOps.unique(new File(Environment.getExternalStorageDirectory(), "Download"), "liquidglass_settings.json");
+-                try (OutputStream out = new FileOutputStream(dest)) { out.write(o.toString(2).getBytes()); }
++                File download = new File(Environment.getExternalStorageDirectory(), "Download");
++                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
++                File dest = FileOps.unique(download, "liquidglass_settings.json");
++                File pending = new File(download, ".toxifiles-settings-" + java.util.UUID.randomUUID() + ".part");
++                try (OutputStream out = new FileOutputStream(pending)) { out.write(o.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
++                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
+                 msg = "Saved to Download/" + dest.getName();
+                 final File fd = dest;
+                 final String exportMessage = msg;
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index d726821..52a82a0 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -64,6 +64,8 @@ def main():
+     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
+     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
+     require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
++    require('.toxifiles-import-' in main_src and 'FileOps.checkCancelled(); out.write(buf, 0, n)' in main_src and 'External storage returned no input stream' in main_src, 'SAF imports are cancellable and publish only completed files')
++    require('.toxifiles-settings-' in main_src and 'pending.renameTo(dest)' in main_src, 'settings export publishes atomically through a temporary file')
+     require('Encrypted at rest with AES-GCM' in browser and 'it does not encrypt them' not in browser, 'Vault UI accurately describes encryption at rest')
+     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
+     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
