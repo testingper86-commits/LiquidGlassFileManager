@@ -71,6 +71,12 @@ jobs:
             fi
             patch --batch --forward -p1 < "$PATCH_FILE"
           done
+          # Some legacy source archives still contain these assets even when the patch baseline does not.
+          rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
+          if grep -RniE 'sound\\.json|wave\\.json|LottieAnimationView|com\\.airbnb\\.android:lottie' app/src/main app/build.gradle.kts; then
+            echo "::error::Legacy visualizer JSON/Lottie references remain in the packaged source."
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
