@@ -39,14 +39,17 @@ final class FileOps {
         if (java.nio.file.Files.isSymbolicLink(s.toPath())) throw new IOException("Symbolic links are not copied");
         if (s.isDirectory()) {
             if (!t.mkdirs() && !t.isDirectory()) throw new IOException("Can't create " + t.getName());
-            File[] kids = s.listFiles();
-            if (kids != null) for (File k : kids) copy(k, new File(t, k.getName()));
+            try {
+                File[] kids = s.listFiles();
+                if (kids == null) throw new IOException("Can't read folder " + s.getName());
+                for (File k : kids) copy(k, new File(t, k.getName()));
+            } catch (IOException copyError) { deleteTree(t); throw copyError; }
         } else {
             try (InputStream in = new FileInputStream(s); OutputStream out = new FileOutputStream(t)) {
                 byte[] buf = new byte[65536];
                 int n;
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-            }
+            } catch (IOException copyError) { t.delete(); throw copyError; }
         }
     }
 
@@ -114,16 +117,17 @@ final class FileOps {
         a.busy(true);
         a.ops.execute(() -> {
             String msg;
+            File out = null;
             try {
                 String base = fs.size() == 1 ? fs.get(0).getName() : "Archive";
                 int i = base.lastIndexOf('.');
                 if (fs.size() == 1 && i > 0 && !fs.get(0).isDirectory()) base = base.substring(0, i);
-                File out = unique(destDir, base + ".zip");
+                out = unique(destDir, base + ".zip");
                 try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out)))) {
                     for (File f : fs) addZip(z, f, f.getName(), out);
                 }
                 msg = "Created " + out.getName();
-            } catch (Exception ex) { msg = "Zip failed: " + ex.getMessage(); }
+            } catch (Exception ex) { if (out != null) deleteTree(out); msg = "Zip failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
         });
@@ -133,7 +137,8 @@ final class FileOps {
         if (f.equals(skip) || java.nio.file.Files.isSymbolicLink(f.toPath())) return;
         if (f.isDirectory()) {
             File[] kids = f.listFiles();
-            if (kids != null) for (File k : kids) addZip(z, k, name + "/" + k.getName(), skip);
+            if (kids == null) throw new IOException("Can't read folder " + f.getName());
+            for (File k : kids) addZip(z, k, name + "/" + k.getName(), skip);
         } else {
             z.putNextEntry(new ZipEntry(name));
             try (InputStream in = new FileInputStream(f)) {
@@ -195,6 +200,7 @@ final class FileOps {
                             while ((n = in.read(buf)) > 0) {
                                 entryBytes += n; expanded += n;
                                 if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
+                                if (n > dest.getUsableSpace()) throw new IOException("Not enough free space to extract archive");
                                 out.write(buf, 0, n);
                             }
                         } catch (Exception writeError) { o.delete(); throw writeError; }

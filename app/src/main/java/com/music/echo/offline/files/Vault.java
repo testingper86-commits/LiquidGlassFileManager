@@ -173,7 +173,8 @@ final class Vault {
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
             File[] kids = src.listFiles();
-            if (kids != null) for (File k : kids) encryptTree(k, new File(destRoot, k.getName()));
+            if (kids == null) throw new IOException("Can't read folder " + src.getName());
+            for (File k : kids) encryptTree(k, new File(destRoot, k.getName()));
         } else {
             encryptFile(src, destRoot);
         }
@@ -184,7 +185,8 @@ final class Vault {
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
             File[] kids = src.listFiles();
-            if (kids != null) for (File k : kids) decryptTree(k, new File(destRoot, k.getName()));
+            if (kids == null) throw new IOException("Can't read encrypted folder " + src.getName());
+            for (File k : kids) decryptTree(k, new File(destRoot, k.getName()));
         } else {
             decryptFile(src, destRoot);
         }
