@@ -1,0 +1,117 @@
+name: ToxiFiles Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Test and assemble release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate source and XML
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/project_smoke_test.py
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('app/src/main')
+          files = [root / 'AndroidManifest.xml', *root.joinpath('res').rglob('*.xml')]
+          for path in files:
+              if path.is_file(): ET.parse(path)
+          print(f'Validated XML in {len(files)} candidate files.')
+          PY
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          test -n "$SDKMANAGER" || { echo '::error::sdkmanager not found'; exit 1; }
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Configure optional release signing
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            KEYSTORE="$RUNNER_TEMP/toxifiles-release.keystore"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            test -s "$KEYSTORE"
+            keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+            {
+              echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
+              echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+              echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+              echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=ToxiFiles-release-signed" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=ToxiFiles-release-unsigned" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release signing secrets are not all configured; the artifact will be unsigned."
+          fi
+
+      - name: Run unit tests and Android lint
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug
+
+      - name: Assemble release APK
+        run: ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Package release artifact and status
+        shell: bash
+        env:
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          cp "$APK" dist/ToxiFiles-release.apk
+          if [[ "$SIGNED" == "true" ]]; then
+            echo "This release APK was signed using the configured Android release keystore." > dist/BUILD-NOTES.txt
+          else
+            echo "This release APK is unsigned. Sign it with your own trusted release keystore before distributing it to users." > dist/BUILD-NOTES.txt
+          fi
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.signing.outputs.artifact_name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30

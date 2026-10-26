@@ -1,0 +1,69 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index f361e88..51df530 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -2,6 +2,11 @@ plugins {
+     id("com.android.application")
+ }
+ 
++val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
++val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
++val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
++val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
++
+ android {
+     namespace = "com.music.echo.offline"
+     compileSdk = 35
+@@ -10,8 +15,19 @@ android {
+         applicationId = "com.liquidfiles.offline"
+         minSdk = 26
+         targetSdk = 35
+-        versionCode = 2
+-        versionName = "1.1.0"
++        versionCode = 3
++        versionName = "1.2.0"
++    }
++
++    signingConfigs {
++        if (!releaseStorePath.isNullOrBlank()) {
++            create("release") {
++                storeFile = file(releaseStorePath)
++                storePassword = releaseStorePassword
++                keyAlias = releaseKeyAlias
++                keyPassword = releaseKeyPassword
++            }
++        }
+     }
+ 
+     buildTypes {
+@@ -19,6 +35,7 @@ android {
+             isMinifyEnabled = true
+             isShrinkResources = true
+             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
++            if (!releaseStorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+         }
+         debug { applicationIdSuffix = ".debug" }
+     }
+diff --git a/app/proguard-rules.pro b/app/proguard-rules.pro
+index f5d29fa..4592d57 100644
+--- a/app/proguard-rules.pro
++++ b/app/proguard-rules.pro
+@@ -1,2 +1 @@
+--keep class androidx.media3.** { *; }
+--dontwarn androidx.media3.**
++# No app-specific keep rules are currently required. Reintroduce narrowly scoped rules only when a reflective dependency needs them.
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 35c8141..cb8c310 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -79,6 +79,10 @@ def main():
+     indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
+     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
+     require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
++    build_gradle = (ROOT / 'app/build.gradle.kts').read_text()
++    require('versionCode = 3' in build_gradle and 'versionName = \"1.2.0\"' in build_gradle, 'application version is advanced for the security and feature release')
++    require('ANDROID_KEYSTORE_PATH' in build_gradle and 'signingConfig = signingConfigs.getByName(\"release\")' in build_gradle, 'release builds support environment-provided signing without committing keystore material')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
