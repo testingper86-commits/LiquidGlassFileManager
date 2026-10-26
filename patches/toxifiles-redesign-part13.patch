@@ -1,0 +1,198 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 585e981..faa77d5 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -17,7 +17,7 @@
+ 
+     <application
+         android:name=".files.LiquidFilesApplication"
+-        android:allowBackup="true"
++        android:allowBackup="false"
+         android:icon="@drawable/ic_liquidfiles_launcher"
+         android:label="@string/app_name"
+         android:supportsRtl="true"
+diff --git a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+index 0ed10de..207989f 100644
+--- a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
++++ b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+@@ -99,13 +99,20 @@ final class LanTransfer {
+                 String ip = localIp();
+                 l.onWaiting(ip != null ? ip : "unknown — check your Wi-Fi connection", PORT);
+ 
++                server.setSoTimeout(120_000);
+                 Socket sock = server.accept();
+                 activeSocket = sock;
++                sock.setSoTimeout(120_000);
+                 DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
+                 DataOutputStream out = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
+ 
+                 int count = in.readInt();
+                 long totalBytes = in.readLong();
++                if (count < 1 || count > 500) throw new IOException("Invalid transfer file count");
++                if (totalBytes < 0) throw new IOException("Invalid transfer size");
++                if (!destDir.exists() && !destDir.mkdirs() && !destDir.isDirectory())
++                    throw new IOException("Destination folder is unavailable");
++                if (totalBytes > destDir.getUsableSpace()) throw new IOException("Not enough free space for this transfer");
+ 
+                 final Object lock = new Object();
+                 final boolean[] decided = {false};
+@@ -113,19 +120,34 @@ final class LanTransfer {
+                 Runnable accept = () -> { synchronized (lock) { accepted[0] = true; decided[0] = true; lock.notifyAll(); } };
+                 Runnable reject = () -> { synchronized (lock) { accepted[0] = false; decided[0] = true; lock.notifyAll(); } };
+                 l.onIncoming(sock.getInetAddress().getHostAddress(), count, totalBytes, accept, reject);
+-                synchronized (lock) { while (!decided[0]) lock.wait(); }
++                synchronized (lock) {
++                    long deadline = System.currentTimeMillis() + 60_000L;
++                    while (!decided[0]) {
++                        long waitMs = deadline - System.currentTimeMillis();
++                        if (waitMs <= 0) throw new IOException("Transfer confirmation timed out");
++                        lock.wait(waitMs);
++                    }
++                }
+ 
+                 out.writeBoolean(accepted[0]);
+                 out.flush();
+                 if (!accepted[0]) { l.onError("Declined"); return; }
+ 
+-                destDir.mkdirs();
++                long remainingDeclaredBytes = totalBytes;
+                 for (int i = 0; i < count; i++) {
+-                    String name = in.readUTF();
++                    String suppliedName = in.readUTF();
++                    String name = suppliedName == null ? "" : suppliedName.replace('\\', '/');
++                    name = new File(name).getName();
++                    if (name.isEmpty() || ".".equals(name) || "..".equals(name) || name.indexOf('\0') >= 0)
++                        throw new IOException("Unsafe incoming filename rejected");
+                     long len = in.readLong();
+                     String expectHash = in.readUTF();
++                    if (len < 0 || len > remainingDeclaredBytes) throw new IOException("Invalid incoming file size");
++                    remainingDeclaredBytes -= len;
+                     l.onFileStart(i + 1, count, name);
+                     File dest = FileOps.unique(destDir, name);
++                    String rootPath = destDir.getCanonicalPath() + File.separator;
++                    if (!dest.getCanonicalPath().startsWith(rootPath)) throw new IOException("Unsafe destination path rejected");
+                     MessageDigest md = MessageDigest.getInstance("SHA-256");
+                     try (OutputStream fout = new FileOutputStream(dest)) {
+                         byte[] buf = new byte[65536];
+@@ -143,6 +165,7 @@ final class LanTransfer {
+                     out.flush();
+                     if (!ok) { dest.delete(); throw new IOException(name + " failed checksum verification"); }
+                 }
++                if (remainingDeclaredBytes != 0) throw new IOException("Transfer size did not match its header");
+                 l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
+             } catch (Exception ex) {
+                 l.onError("Receive failed: " + ex.getMessage());
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 09b08e7..70dea11 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -1445,7 +1445,9 @@ public class MainActivity extends Activity {
+             String msg;
+             try {
+                 JSONObject o = new JSONObject();
+-                for (Map.Entry<String, ?> e : Ui.sp.getAll().entrySet()) o.put(e.getKey(), e.getValue());
++                for (String key : portableSettingKeys()) {
++                    if (Ui.sp.contains(key)) o.put(key, Ui.sp.getAll().get(key));
++                }
+                 File dest = FileOps.unique(new File(Environment.getExternalStorageDirectory(), "Download"), "liquidglass_settings.json");
+                 try (OutputStream out = new FileOutputStream(dest)) { out.write(o.toString(2).getBytes()); }
+                 msg = "Saved to Download/" + dest.getName();
+@@ -1477,28 +1479,53 @@ public class MainActivity extends Activity {
+         } catch (Exception ex) { Ui.toast(this, "Can't open file picker"); }
+     }
+ 
++    private static java.util.Set<String> portableSettingKeys() {
++        return new java.util.HashSet<>(java.util.Arrays.asList(
++                "theme", "light", "haptic", "blur", "hidden", "sort", "grid",
++                "font_family", "reduce_motion", "recyclebin_days", "dev_verbose",
++                "dev_debug_toasts", "dev_logging"));
++    }
++
+     void applyImportedSettings(final Uri file) {
+         io.execute(() -> {
+             String msg;
+             try {
+-                StringBuilder sb = new StringBuilder();
+-                try (InputStream in = getContentResolver().openInputStream(file); BufferedReader r = new BufferedReader(new InputStreamReader(in))) {
+-                    String line;
+-                    while ((line = r.readLine()) != null) sb.append(line);
++                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
++                try (InputStream in = getContentResolver().openInputStream(file)) {
++                    if (in == null) throw new IOException("Unable to open settings file");
++                    byte[] buffer = new byte[8192];
++                    int n;
++                    while ((n = in.read(buffer)) != -1) {
++                        if (bytes.size() + n > 1024 * 1024) throw new IOException("Settings file exceeds the 1 MB limit");
++                        bytes.write(buffer, 0, n);
++                    }
+                 }
+-                JSONObject o = new JSONObject(sb.toString());
++                JSONObject o = new JSONObject(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
++                java.util.Set<String> allowed = portableSettingKeys();
+                 SharedPreferences.Editor ed = Ui.sp.edit();
+                 java.util.Iterator<String> keys = o.keys();
+                 while (keys.hasNext()) {
+                     String k = keys.next();
++                    if (!allowed.contains(k)) continue;
+                     Object v = o.get(k);
+-                    if (v instanceof Boolean) ed.putBoolean(k, (Boolean) v);
+-                    else if (v instanceof Integer) ed.putInt(k, (Integer) v);
+-                    else if (v instanceof Long) ed.putInt(k, (int) (long) (Long) v);
+-                    else if (v instanceof String) ed.putString(k, (String) v);
++                    if ("theme".equals(k) && v instanceof Number) {
++                        int theme = ((Number) v).intValue();
++                        if (theme >= 0 && theme <= 14) ed.putInt(k, theme);
++                    } else if ("font_family".equals(k) && v instanceof Number) {
++                        int font = ((Number) v).intValue();
++                        if (font >= 0 && font <= 3) ed.putInt(k, font);
++                    } else if ("recyclebin_days".equals(k) && v instanceof Number) {
++                        int days = ((Number) v).intValue();
++                        if (days == 7 || days == 14 || days == 30 || days == 60 || days == 90) ed.putInt(k, days);
++                    } else if (v instanceof Boolean) {
++                        ed.putBoolean(k, (Boolean) v);
++                    } else if (v instanceof String && "sort".equals(k)) {
++                        String sort = (String) v;
++                        if (sort.length() <= 32) ed.putString(k, sort);
++                    }
+                 }
+                 ed.apply();
+-                msg = "Settings restored";
++                msg = "Settings restored (security settings were not imported)";
+             } catch (Exception ex) { msg = "Import failed: " + ex.getMessage(); }
+             final String m = msg;
+             runOnUiThread(() -> {
+diff --git a/app/src/main/res/xml/file_paths.xml b/app/src/main/res/xml/file_paths.xml
+index a8a6a45..e3e1faf 100644
+--- a/app/src/main/res/xml/file_paths.xml
++++ b/app/src/main/res/xml/file_paths.xml
+@@ -1,6 +1,5 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <paths xmlns:android="http://schemas.android.com/apk/res/android">
+     <files-path name="crash_logs" path="crash-logs/" />
+-    <external-path name="external_files" path="." />
+-    <root-path name="root" path="." />
++    <external-path name="shared_storage" path="." />
+ </paths>
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 89b6084..807665d 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -32,6 +32,18 @@ def main():
+     require('android.permission.FOREGROUND_SERVICE' in perms and 'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK' in perms, 'foreground media-playback permissions declared for built-in background audio')
+     app = manifest.find('application')
+     require(app is not None, 'manifest has application node')
++    require(app.attrib.get(ANDROID + 'allowBackup') == 'false', 'Android system backup is disabled for private app state')
++    paths = ET.parse(ROOT / 'app/src/main/res/xml/file_paths.xml').getroot()
++    path_names = {node.tag for node in paths}
++    require(not any(node.tag == 'root-path' for node in paths), 'FileProvider does not expose the filesystem root')
++    require(any(node.tag == 'external-path' and node.attrib.get('path') == '.' for node in paths), 'FileProvider external access is limited to shared storage, without filesystem-root access')
++    lan = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LanTransfer.java').read_text()
++    require('Unsafe incoming filename rejected' in lan and 'getCanonicalPath().startsWith(rootPath)' in lan, 'LAN receive validates filenames and canonical destination containment')
++    require('setSoTimeout(120_000)' in lan and 'Transfer confirmation timed out' in lan, 'LAN receive has socket and consent timeouts')
++    require('Not enough free space for this transfer' in lan and 'count > 500' in lan, 'LAN receive bounds transfer metadata and checks free space')
++    main_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
++    require('portableSettingKeys()' in main_src and 'Settings file exceeds the 1 MB limit' in main_src, 'settings import is size-limited and restricted to portable preferences')
++    require('if (!allowed.contains(k)) continue;' in main_src and 'applock_on' not in main_src[main_src.index('private static java.util.Set<String> portableSettingKeys()'):main_src.index('// ---------------- LARGEST FILES')], 'settings import cannot overwrite App Lock or other non-portable security preferences')
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
