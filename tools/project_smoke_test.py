@@ -79,6 +79,10 @@ def main():
     indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
     require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
+    build_gradle = (ROOT / 'app/build.gradle.kts').read_text()
+    require('versionCode = 3' in build_gradle and 'versionName = \"1.2.0\"' in build_gradle, 'application version is advanced for the security and feature release')
+    require('ANDROID_KEYSTORE_PATH' in build_gradle and 'signingConfig = signingConfigs.getByName(\"release\")' in build_gradle, 'release builds support environment-provided signing without committing keystore material')
+
     launcher = []
     for activity in app.findall('activity'):
         filt = activity.find('intent-filter')

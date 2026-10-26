@@ -1,2 +1,1 @@
--keep class androidx.media3.** { *; }
--dontwarn androidx.media3.**
+# No app-specific keep rules are currently required. Reintroduce narrowly scoped rules only when a reflective dependency needs them.
