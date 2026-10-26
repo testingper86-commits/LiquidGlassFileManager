@@ -95,12 +95,12 @@ final class LanTransfer {
         for (int i = 0; i < 10; i++) code.append(CODE_ALPHABET.charAt(random.nextInt(CODE_ALPHABET.length())));
         return code.toString();
     }
-    private static SecretKey sessionKey(String code, byte[] salt) throws Exception {
+    static SecretKey sessionKey(String code, byte[] salt) throws Exception {
         PBEKeySpec spec = new PBEKeySpec(code.toCharArray(), salt, 200_000, 256);
         try { return new SecretKeySpec(SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded(), "AES"); }
         finally { spec.clearPassword(); }
     }
-    private static byte[] authProof(SecretKey key, byte[] salt) throws Exception {
+    static byte[] authProof(SecretKey key, byte[] salt) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256"); mac.init(new SecretKeySpec(key.getEncoded(), "HmacSHA256"));
         mac.update("ToxiFiles LAN pairing v1".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         return mac.doFinal(salt);
