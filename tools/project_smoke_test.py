@@ -103,6 +103,8 @@ def main():
     viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
     require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
 
+    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A–B loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
+
     launcher = []
     for activity in app.findall('activity'):
         filt = activity.find('intent-filter')
