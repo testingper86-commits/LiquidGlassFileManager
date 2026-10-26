@@ -1,0 +1,104 @@
+diff --git a/build.gradle.kts b/build.gradle.kts
+--- a/build.gradle.kts
++++ b/build.gradle.kts
+@@ -1,3 +1,3 @@
+ plugins {
+-    id("com.android.application") version "8.7.2" apply false
++    id("com.android.application") version "8.9.2" apply false
+ }
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -8,12 +8,12 @@
+ 
+ android {
+     namespace = "com.music.echo.offline"
+-    compileSdk = 35
++    compileSdk = 36
+ 
+     defaultConfig {
+         applicationId = "com.liquidfiles.offline"
+         minSdk = 26
+-        targetSdk = 35
++        targetSdk = 36
+         versionCode = 3
+         versionName = "1.2.0"
+     }
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -65,6 +65,7 @@
+ import androidx.documentfile.provider.DocumentFile;
+ 
+ public class MainActivity extends Activity {
++    private android.window.OnBackInvokedCallback backInvokedCallback;
+     final ExecutorService io = Executors.newFixedThreadPool(2);
+     final ExecutorService ops = Executors.newSingleThreadExecutor();
+     final Set<String> favs = new LinkedHashSet<>();
+@@ -103,6 +104,11 @@
+         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
+         setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
+         super.onCreate(b);
++        if (Build.VERSION.SDK_INT >= 33) {
++            backInvokedCallback = this::handleBackNavigation;
++            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
++                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, backInvokedCallback);
++        }
+         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
+         else registerReceiver(screenOffReceiver, screenOffFilter);
+@@ -274,10 +280,11 @@
+     }
+ 
+     @Override protected void onDestroy() {
++        if (Build.VERSION.SDK_INT >= 33 && backInvokedCallback != null) getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backInvokedCallback);
+         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
+         super.onDestroy();
+         io.shutdown();
+         ops.shutdown();
+@@ -439,12 +446,14 @@
+ 
+     void navForSelection(boolean selecting) { nav.setVisibility(selecting || overlayView == listView ? View.GONE : View.VISIBLE); }
+ 
+-    @Override public void onBackPressed() {
++    @Override public void onBackPressed() { handleBackNavigation(); }
++
++    private void handleBackNavigation() {
+         if (overlayView == listView) { listView.handleBack(); return; }
+         if (overlayView != null) { closeOverlay(); return; }
+         if (tab == 1 && filesView.handleBack()) return;
+         if (tab == 2 && favView.handleBack()) return;
+         if (tab != 0) { selectTab(0); return; }
+-        super.onBackPressed();
++        finish();
+     }
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -230,6 +230,13 @@
+     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
+             'decorative motion is reduced by default')
+     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
++    build_config = (ROOT / 'app/build.gradle.kts').read_text()
++    root_build_config = (ROOT / 'build.gradle.kts').read_text()
++    gradle_wrapper = (ROOT / 'gradle/wrapper/gradle-wrapper.properties').read_text()
++    require('compileSdk = 36' in build_config and 'targetSdk = 36' in build_config,
++            'project compiles and targets Android 16 API 36')
++    require('version "8.9.2"' in root_build_config and 'gradle-8.11.1-bin.zip' in gradle_wrapper,
++            'Android Gradle Plugin and Gradle wrapper meet Android 16 build requirements')
++    require('registerOnBackInvokedCallback' in main_activity and 'unregisterOnBackInvokedCallback' in main_activity
++            and 'private void handleBackNavigation()' in main_activity,
++            'back navigation is registered and released through the Android 13+ callback API')
+     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
+     crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
+     require('android:name=".files.LiquidFilesApplication"' in manifest and 'CrashLogger.install(this)' in crash_app,

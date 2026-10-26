@@ -94,6 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           python tools/project_smoke_test.py
+          python tools/video_lifecycle_regression_test.py
           python - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
