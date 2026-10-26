@@ -1,7 +1,7 @@
 diff --git a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
 --- a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
 +++ b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
-@@ -158,9 +158,17 @@
+@@ -158,5 +158,12 @@
              FileOps.cancelRequested = false;
              File[] ws = root(a).listFiles();
 -            int n = ws == null ? 0 : ws.length;
