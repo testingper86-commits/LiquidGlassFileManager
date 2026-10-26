@@ -2,7 +2,7 @@ diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTes
 index 33e6baf..0000000 100644
 --- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-@@ -18,6 +18,15 @@ public class LanTransferCryptoTest {
+@@ -18,4 +18,14 @@ public class LanTransferCryptoTest {
          assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
      }
  
