@@ -122,19 +122,8 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
 
-      - name: Run JVM unit tests and lint
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug
-
-      - name: Upload lint diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ToxiFiles-lint-diagnostics
-          path: |
-            app/build/reports/lint-results-debug.html
-            app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
-          if-no-files-found: warn
-          retention-days: 7
+      - name: Run JVM unit tests
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
 
       - name: Build debug APK
         run: ./gradlew --no-daemon --stacktrace assembleDebug
@@ -146,6 +135,20 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Run Android lint
+        run: ./gradlew --no-daemon --stacktrace lintDebug
+
+      - name: Upload lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToxiFiles-lint-diagnostics
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Enable KVM access
         run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; else echo "::warning::/dev/kvm unavailable"; fi
