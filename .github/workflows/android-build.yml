@@ -120,7 +120,7 @@ jobs:
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
           [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Run JVM unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
@@ -157,7 +157,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 10
         with:
-          api-level: 34
+          api-level: 36
           target: default
           arch: x86_64
           profile: pixel_2
@@ -166,7 +166,7 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+            APK="$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
             test -n "$APK"
             adb logcat -c
             adb install -r "$APK"
