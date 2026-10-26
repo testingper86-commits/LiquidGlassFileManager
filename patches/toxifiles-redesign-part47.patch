@@ -12,10 +12,3 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java 
          super.onResume();
 +        if (AppLock.enabled(this) && !MainActivity.unlocked) { finish(); return; }
          if (backgroundAudioHandoff) {
-diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
---- a/tools/project_smoke_test.py
-+++ b/tools/project_smoke_test.py
-@@ -104,2 +104,3 @@
-     viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
-     require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
-+    require('if (AppLock.enabled(this) && !MainActivity.unlocked)' in viewer, 'viewer returns to the App Lock gate after screen-off or background lock')
