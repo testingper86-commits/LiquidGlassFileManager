@@ -169,8 +169,14 @@ jobs:
           test -n "$SDKMANAGER"
           test -n "$AVDMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install emulator 'system-images;android-36;google_apis;x86_64'
-          echo no | "$AVDMANAGER" create avd --name toxifiles-api36 --package 'system-images;android-36;google_apis;x86_64' --device pixel_2 --force
+          if [[ ! -x "$SDK_ROOT/emulator/emulator" ]]; then "$SDKMANAGER" --install emulator; fi
+          if [[ ! -d "$SDK_ROOT/system-images/android-36/google_apis/x86_64" ]]; then "$SDKMANAGER" --install 'system-images;android-36;google_apis;x86_64'; fi
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          export ANDROID_SDK_HOME="$HOME/.android"
+          mkdir -p "$ANDROID_AVD_HOME"
+          "$AVDMANAGER" create avd --name toxifiles-api36 --package 'system-images;android-36;google_apis;x86_64' --device pixel_2 --path "$ANDROID_AVD_HOME/toxifiles-api36.avd" --force <<< 'no'
+          test -s "$ANDROID_AVD_HOME/toxifiles-api36.ini" || { "$AVDMANAGER" list avd; echo "::error::AVD definition was not created at $ANDROID_AVD_HOME"; exit 1; }
+          "$AVDMANAGER" list avd
           mkdir -p dist
           "$SDK_ROOT/emulator/emulator" -avd toxifiles-api36 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > "$RUNNER_TEMP/toxifiles-emulator.log" 2>&1 &
           EMULATOR_PID=$!
