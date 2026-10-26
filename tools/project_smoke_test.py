@@ -62,6 +62,7 @@ def main():
     require('origPath = \"\"' in vault and 'encrypted copies are safe' in vault, 'Vault keeps entries visible when metadata is unreadable and reports source cleanup failures')
     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
+    require('Strip GPS metadata (save copy)' in browser and 'cleaned.setAttribute(tag, null)' in browser and 'The original stays unchanged' in browser, 'image GPS stripping creates a separate copy and preserves the original')
     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
     require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
     require('.toxifiles-import-' in main_src and 'FileOps.checkCancelled(); out.write(buf, 0, n)' in main_src and 'External storage returned no input stream' in main_src, 'SAF imports are cancellable and publish only completed files')

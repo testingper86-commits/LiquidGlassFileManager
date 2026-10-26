@@ -677,6 +677,7 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Label", () -> { List<Entry> one = new ArrayList<>(); one.add(e); labelDialog(one); });
         add(l, r, "Move to Vault", () -> { List<Entry> one = new ArrayList<>(); one.add(e); vaultMove(one); });
         add(l, r, "Properties", () -> properties(e));
+        if (!e.dir && isExifImage(e.ext)) add(l, r, "Strip GPS metadata (save copy)…", () -> stripGpsMetadata(e.f));
         showMenu(a, e.name, l, r);
     }
 
@@ -748,6 +749,43 @@ final class BrowserView extends FrameLayout {
     }
 
     void unzip(File z) { FileOps.unzip(a, z, msg -> { Ui.toast(a, msg); a.afterOps(); }); }
+
+    private boolean isExifImage(String ext) {
+        return "jpg".equals(ext) || "jpeg".equals(ext) || "png".equals(ext) || "webp".equals(ext)
+                || "heic".equals(ext) || "heif".equals(ext) || "tif".equals(ext) || "tiff".equals(ext);
+    }
+
+    void stripGpsMetadata(final File source) {
+        new AlertDialog.Builder(a).setTitle("Remove GPS metadata?")
+                .setMessage("Creates a separate copy without GPS coordinates and related location tags. The original stays unchanged; camera and date metadata may remain.")
+                .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
+                    a.busy(true);
+                    a.ops.execute(() -> {
+                        FileOps.cancelRequested = false;
+                        File copy = null; String result;
+                        try {
+                            android.media.ExifInterface original = new android.media.ExifInterface(source.getAbsolutePath());
+                            String[] gpsTags = {"GPSLatitude", "GPSLatitudeRef", "GPSLongitude", "GPSLongitudeRef", "GPSAltitude", "GPSAltitudeRef", "GPSTimeStamp", "GPSDateStamp", "GPSProcessingMethod", "GPSDestBearing", "GPSDestBearingRef", "GPSDestDistance", "GPSDestDistanceRef", "GPSDestLatitude", "GPSDestLatitudeRef", "GPSDestLongitude", "GPSDestLongitudeRef", "GPSSpeed", "GPSSpeedRef", "GPSImgDirection", "GPSImgDirectionRef", "GPSMapDatum", "GPSVersionID", "GPSAreaInformation", "GPSDifferential", "GPSHPositioningError"};
+                            boolean hasGps = false;
+                            for (String tag : gpsTags) if (original.getAttribute(tag) != null) { hasGps = true; break; }
+                            if (!hasGps) throw new java.io.IOException("No GPS/location metadata was found");
+                            String name = source.getName(); int dot = name.lastIndexOf('.');
+                            String base = dot > 0 ? name.substring(0, dot) : name; String ext = dot > 0 ? name.substring(dot) : "";
+                            copy = FileOps.unique(source.getParentFile(), base + "_no_location" + ext);
+                            FileOps.copy(source, copy);
+                            android.media.ExifInterface cleaned = new android.media.ExifInterface(copy.getAbsolutePath());
+                            for (String tag : gpsTags) cleaned.setAttribute(tag, null);
+                            cleaned.saveAttributes();
+                            result = "Saved copy without GPS metadata: " + copy.getName();
+                        } catch (Exception ex) {
+                            if (copy != null) FileOps.deleteTree(copy);
+                            result = "GPS metadata removal failed: " + ex.getMessage();
+                        }
+                        final String message = result;
+                        a.runOnUiThread(() -> { a.busy(false); Ui.toast(a, message); a.afterOps(); });
+                    });
+                }).show();
+    }
 
     String propText(Entry e, String size, String hash) {
         return "Path: " + e.f.getAbsolutePath() + "\nType: " + (e.dir ? "Folder" : e.ext.isEmpty() ? "File" : e.ext.toUpperCase(Locale.ROOT) + " file")
