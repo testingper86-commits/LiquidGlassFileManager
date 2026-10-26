@@ -67,6 +67,8 @@ def main():
     require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
     require('Tap to request cancellation' in main_src and 'tap to cancel' in main_src and 'LanTransfer.cancel()' in main_src, 'progress control exposes cancellation for file and LAN operations')
     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
+    require('onUserLeaveHint()' in main_src and 'ACTION_SCREEN_OFF' in main_src and 'unlocked = false; // re-lock every time the app leaves the foreground' not in main_src, 'App Lock re-arms on actual app departure and screen-off, not every Activity pause')
+    require('if (overlayView == vaultScroll) closeOverlay()' in main_src, 'Vault overlay closes and re-locks when the user backgrounds the app')
     glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
     ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
     require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')

@@ -6,6 +6,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
@@ -89,11 +91,22 @@ public class MainActivity extends Activity {
     View overlayView;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
+    private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                unlocked = false;
+                if (overlayView == vaultScroll) closeOverlay();
+            }
+        }
+    };
 
     @Override protected void onCreate(Bundle b) {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
         super.onCreate(b);
+        IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(screenOffReceiver, screenOffFilter);
         Ui.init(this);
         String savedSafTree = getSharedPreferences("lg_storage", MODE_PRIVATE).getString("saf_tree", null);
         if (savedSafTree != null) safTree = Uri.parse(savedSafTree);
@@ -245,9 +258,12 @@ public class MainActivity extends Activity {
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
     }
 
-    @Override protected void onPause() {
-        super.onPause();
-        unlocked = false; // re-lock every time the app leaves the foreground
+    @Override protected void onPause() { super.onPause(); }
+
+    @Override protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (AppLock.enabled(this)) unlocked = false;
+        if (overlayView == vaultScroll) closeOverlay(); // Vault locks when the user leaves the app.
     }
 
     void onAccessChanged() {
@@ -259,6 +275,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         super.onDestroy();
         io.shutdown();
         ops.shutdown();
