@@ -1,0 +1,90 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+index e938c42..a07bf00 100644
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -479,13 +479,25 @@ final class BrowserView extends FrameLayout {
+         if (a.clip == null || cur == null) return;
+         final File[] src = a.clip;
+         final boolean cut = a.clipCut;
+-        FileOps.paste(a, src, cur, cut, msg -> {
++        pasteWithConflictPrompt(src, cur, cut, msg -> {
+             if (cut) a.setClip(null, false);
+             Ui.toast(a, msg);
+             a.afterOps();
+         });
+     }
+ 
++    void pasteWithConflictPrompt(final File[] src, final File destination, final boolean move, final FileOps.Done done) {
++        int conflicts = 0;
++        for (File file : src) if (!(move && destination.equals(file.getParentFile())) && new File(destination, file.getName()).exists()) conflicts++;
++        if (conflicts == 0) { FileOps.paste(a, src, destination, move, false, done); return; }
++        new AlertDialog.Builder(a).setTitle("Name conflicts")
++                .setMessage(conflicts + " item" + (conflicts == 1 ? " already exists" : "s already exist") + " in the destination. Choose how to continue.")
++                .setNegativeButton("Cancel", null)
++                .setNeutralButton("Skip existing", (dialog, which) -> FileOps.paste(a, src, destination, move, true, done))
++                .setPositiveButton("Keep both", (dialog, which) -> FileOps.paste(a, src, destination, move, false, done))
++                .show();
++    }
++
+     // ---------- menus ----------
+     static void add(List<String> l, List<Runnable> r, String s, Runnable x) { l.add(s); r.add(x); }
+ 
+@@ -632,7 +644,7 @@ final class BrowserView extends FrameLayout {
+         new AlertDialog.Builder(a).setTitle("Move to").setItems(names, (d, w) -> {
+             File dest = dirs[w];
+             if (!dest.isDirectory()) { Ui.toast(a, "That folder doesn't exist on this device"); return; }
+-            FileOps.paste(a, files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
++            pasteWithConflictPrompt(files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
+         }).show();
+     }
+ 
+diff --git a/app/src/main/java/com/music/echo/offline/files/FileOps.java b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+index 51aeb92..431b6f7 100644
+--- a/app/src/main/java/com/music/echo/offline/files/FileOps.java
++++ b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+@@ -77,9 +77,14 @@ final class FileOps {
+     }
+ 
+     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final Done d) {
++        paste(a, src, dst, move, false, d);
++    }
++
++    static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
+         a.busy(true);
+         a.ops.execute(() -> {
+-            int ok = 0, fail = 0;
++            cancelRequested = false;
++            int ok = 0, fail = 0, skipped = 0;
+             String err = "";
+             int total = src.length, idx = 0;
+             for (File s : src) {
+@@ -90,6 +95,7 @@ final class FileOps {
+                 a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
+                 try {
+                     if (move && dst.equals(s.getParentFile())) { ok++; continue; }
++                    if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
+                     if (s.isDirectory() && (dst.getCanonicalPath() + "/").startsWith(s.getCanonicalPath() + "/")) {
+                         fail++; err = "Can't put a folder inside itself"; continue;
+                     }
+@@ -98,7 +104,8 @@ final class FileOps {
+                     ok++;
+                 } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
+             }
+-            final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s") : err;
++            final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
++                    + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
+             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+         });
+     }
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 92f3fb1..3bacc35 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -73,6 +73,7 @@ def main():
+     require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
+     require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
+     require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
++    require('skipExisting' in file_ops and 'skipped > 0' in file_ops and 'Skip existing' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text() and 'Keep both' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text(), 'copy and move operations offer explicit conflict handling')
+     require('Tap to request cancellation' in main_src and 'tap to cancel' in main_src and 'LanTransfer.cancel()' in main_src, 'progress control exposes cancellation for file and LAN operations')
+     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
+     require('onUserLeaveHint()' in main_src and 'ACTION_SCREEN_OFF' in main_src and 'unlocked = false; // re-lock every time the app leaves the foreground' not in main_src, 'App Lock re-arms on actual app departure and screen-off, not every Activity pause')
