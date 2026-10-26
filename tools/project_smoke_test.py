@@ -105,6 +105,8 @@ def main():
 
     require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A–B loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
 
+    require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
+
     launcher = []
     for activity in app.findall('activity'):
         filt = activity.find('intent-filter')
