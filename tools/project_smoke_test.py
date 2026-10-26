@@ -64,6 +64,8 @@ def main():
     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
     require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
+    require('.toxifiles-import-' in main_src and 'FileOps.checkCancelled(); out.write(buf, 0, n)' in main_src and 'External storage returned no input stream' in main_src, 'SAF imports are cancellable and publish only completed files')
+    require('.toxifiles-settings-' in main_src and 'pending.renameTo(dest)' in main_src, 'settings export publishes atomically through a temporary file')
     require('Encrypted at rest with AES-GCM' in browser and 'it does not encrypt them' not in browser, 'Vault UI accurately describes encryption at rest')
     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()

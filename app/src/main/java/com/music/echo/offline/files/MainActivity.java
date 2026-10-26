@@ -1538,17 +1538,29 @@ public class MainActivity extends Activity {
 
     void importSafDoc(final Uri doc, final String name) {
         busy(true);
-        io.execute(() -> {
+        ops.execute(() -> {
+            FileOps.cancelRequested = false;
             String msg;
+            File pending = null;
+            File dest = null;
             try {
-                File dest = FileOps.unique(new File(Environment.getExternalStorageDirectory(), "Download"), name);
-                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(dest)) {
-                    byte[] buf = new byte[65536];
-                    int n;
-                    while (in != null && (n = in.read(buf)) > 0) out.write(buf, 0, n);
+                File download = new File(Environment.getExternalStorageDirectory(), "Download");
+                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
+                dest = FileOps.unique(download, name);
+                pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
+                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
+                    if (in == null) throw new java.io.IOException("External storage returned no input stream");
+                    byte[] buf = new byte[65536]; int n;
+                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
                 }
+                FileOps.checkCancelled();
+                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
                 msg = "Imported to Download/" + dest.getName();
-            } catch (Exception ex) { msg = "Import failed: " + ex.getMessage(); }
+            } catch (Exception ex) {
+                if (pending != null) pending.delete();
+                if (dest != null && dest.exists()) dest.delete();
+                msg = "Import failed: " + ex.getMessage();
+            }
             final String m = msg;
             runOnUiThread(() -> { busy(false); Ui.toast(this, m); afterOps(); });
         });
@@ -1563,8 +1575,12 @@ public class MainActivity extends Activity {
                 for (String key : portableSettingKeys()) {
                     if (Ui.sp.contains(key)) o.put(key, Ui.sp.getAll().get(key));
                 }
-                File dest = FileOps.unique(new File(Environment.getExternalStorageDirectory(), "Download"), "liquidglass_settings.json");
-                try (OutputStream out = new FileOutputStream(dest)) { out.write(o.toString(2).getBytes()); }
+                File download = new File(Environment.getExternalStorageDirectory(), "Download");
+                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
+                File dest = FileOps.unique(download, "liquidglass_settings.json");
+                File pending = new File(download, ".toxifiles-settings-" + java.util.UUID.randomUUID() + ".part");
+                try (OutputStream out = new FileOutputStream(pending)) { out.write(o.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
                 msg = "Saved to Download/" + dest.getName();
                 final File fd = dest;
                 final String exportMessage = msg;
