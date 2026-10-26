@@ -60,6 +60,17 @@ jobs:
           chmod +x gradlew
           echo "Android project root verified."
 
+      - name: Apply ToxiFiles redesign patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f patches/toxifiles-redesign.patch ]]; then
+            patch --batch --forward -p1 < patches/toxifiles-redesign.patch
+          else
+            echo '::error::ToxiFiles redesign patch missing.'
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
