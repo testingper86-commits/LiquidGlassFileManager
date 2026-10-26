@@ -1,0 +1,88 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java b/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+index 6253ea4..04c7ef6 100644
+--- a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+@@ -93,6 +93,7 @@ public class ViewerActivity extends Activity {
+     boolean destroyed;
+     boolean audioRepeat = false, audioShuffle = false, videoLoop = false;
+     int audioRepeatMode = 0; // 0 off, 1 repeat one, 2 repeat all
++    int audioLoopStartMs = -1, audioLoopEndMs = -1;
+     float audioSpeed = 1.0f, videoSpeed = 1.0f, audioVolume = 1.0f;
+     final Handler sleepHandler = new Handler(Looper.getMainLooper());
+     Runnable sleepStopper;
+@@ -1014,12 +1015,16 @@ public class ViewerActivity extends Activity {
+         modes.setPadding(0, Ui.dp(8), 0, Ui.dp(2));
+         final TextView repeat = Ui.tv(this, repeatLabel(), 12.5f, Ui.WHITE, true);
+         final TextView shuffle = Ui.tv(this, audioShuffle ? "⤨ Shuffle: On" : "⤨ Shuffle", 12.5f, Ui.WHITE, true);
++        final TextView abRepeat = Ui.tv(this, "Set A", 12.5f, Ui.WHITE, true);
+         repeat.setGravity(Gravity.CENTER);
+-        shuffle.setGravity(Gravity.CENTER);
+-        repeat.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
+-        shuffle.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
++        shuffle.setGravity(Gravity.CENTER); abRepeat.setGravity(Gravity.CENTER);
++        repeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
++        shuffle.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
++        abRepeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
+         repeat.setBackground(audioRepeatMode != 0 ? Ui.accentPill(20) : Ui.glass(20, false));
+         shuffle.setBackground(audioShuffle ? Ui.accentPill(20) : Ui.glass(20, false));
++        abRepeat.setBackground(Ui.glass(20, false));
++        abRepeat.setContentDescription("A-B loop is off. Tap to mark loop start A.");
+         repeat.setContentDescription("Repeat mode " + repeatLabel());
+         shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
+         repeat.setOnClickListener(v -> {
+@@ -1037,13 +1042,31 @@ public class ViewerActivity extends Activity {
+             shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
+             Ui.tick(v);
+         });
+-        Ui.press(repeat); Ui.press(shuffle);
++        abRepeat.setOnClickListener(v -> {
++            if (mp == null) return;
++            try {
++                int position = mp.getCurrentPosition();
++                if (audioLoopStartMs < 0) { audioLoopStartMs = position; audioLoopEndMs = -1; Ui.toast(this, "Loop start A set at " + fmt(position)); }
++                else if (audioLoopEndMs < 0) {
++                    if (position <= audioLoopStartMs + 500) { Ui.toast(this, "Set point B at least half a second after A"); return; }
++                    audioLoopEndMs = position; Ui.toast(this, "A–B loop enabled");
++                } else { audioLoopStartMs = -1; audioLoopEndMs = -1; Ui.toast(this, "A–B loop cleared"); }
++                abRepeat.setText(audioLoopStartMs < 0 ? "Set A" : audioLoopEndMs < 0 ? "Set B" : "A–B On");
++                abRepeat.setBackground(audioLoopEndMs >= 0 ? Ui.accentPill(20) : Ui.glass(20, false));
++                abRepeat.setContentDescription(audioLoopStartMs < 0 ? "A-B loop off. Tap to mark point A" : audioLoopEndMs < 0 ? "Point A set. Tap to mark point B" : "A-B loop enabled. Tap to clear loop");
++            } catch (Exception ignored) { Ui.toast(this, "A–B repeat is unavailable"); }
++            Ui.tick(v);
++        });
++        Ui.press(repeat); Ui.press(shuffle); Ui.press(abRepeat);
+         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(-2, -2);
+         modeLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
+         modes.addView(repeat, modeLp);
+         LinearLayout.LayoutParams shuffleLp = new LinearLayout.LayoutParams(-2, -2);
+         shuffleLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
+         modes.addView(shuffle, shuffleLp);
++        LinearLayout.LayoutParams abLp = new LinearLayout.LayoutParams(-2, -2);
++        abLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
++        modes.addView(abRepeat, abLp);
+         card.addView(modes, new LinearLayout.LayoutParams(-1, -2));
+ 
+         LinearLayout extras = new LinearLayout(this);
+@@ -1348,6 +1371,9 @@ public class ViewerActivity extends Activity {
+                 if (mp == null || destroyed) return;
+                 try {
+                     int p = mp.getCurrentPosition();
++                    if (audioLoopStartMs >= 0 && audioLoopEndMs > audioLoopStartMs && p >= audioLoopEndMs && mp.isPlaying()) {
++                        mp.seekTo(audioLoopStartMs); p = audioLoopStartMs;
++                    }
+                     sb.setProgress(p);
+                     int duration = mp.getDuration();
+                             time.setText(fmt(p) + " / " + fmt(duration));
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index d937459..99e6ebb 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -103,6 +103,8 @@ def main():
+     viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
+     require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
+ 
++    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A–B loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
