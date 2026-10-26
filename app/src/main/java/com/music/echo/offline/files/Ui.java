@@ -4,6 +4,9 @@ import com.music.echo.offline.R;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.view.accessibility.AccessibilityManager;
+import android.animation.ValueAnimator;
+import android.os.Build;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Typeface;
@@ -35,6 +38,7 @@ final class Ui {
     static int WHITE = 0xFFFFFFFF;
     static int SUB = Color.argb(175, 225, 230, 244);
     static boolean light = false;
+    static boolean highContrast = false;
     static int bg = Color.rgb(2, 3, 5);
     static int panelR = 10, panelG = 14, panelB = 26;
     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
@@ -45,6 +49,8 @@ final class Ui {
 
     static void init(Context c) {
         D = c.getResources().getDisplayMetrics().density;
+        AccessibilityManager am = (AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
+        highContrast = am != null && am.isHighTextContrastEnabled();
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
         // Migrate the previous default (index 0) to VantaGlass once; preserve any other saved theme.
         if (!sp.getBoolean("vantaglass_default_migrated", false)) {
@@ -60,14 +66,14 @@ final class Ui {
         if (save) sp.edit().putBoolean("light", l).apply();
         if (l) {
             WHITE = Color.rgb(18, 20, 26);
-            SUB = Color.argb(210, 70, 75, 90);
+            SUB = Color.argb(highContrast ? 255 : 210, 55, 60, 72);
             bg = Color.rgb(236, 238, 244);
             panelR = 255; panelG = 255; panelB = 255;
             hiTop = Color.argb(150, 255, 255, 255); hiBot = Color.argb(10, 255, 255, 255);
             edgeStroke = Color.argb(50, 20, 22, 30);
         } else {
             WHITE = 0xFFFFFFFF;
-            SUB = Color.argb(175, 225, 230, 244);
+            SUB = Color.argb(highContrast ? 245 : 175, 235, 240, 250);
             bg = Color.rgb(2, 3, 5);
             panelR = 5; panelG = 8; panelB = 12;
             hiTop = Color.argb(76, 255, 255, 255); hiBot = Color.argb(10, 255, 255, 255);
@@ -121,7 +127,7 @@ final class Ui {
         // Stronger "hard glass" treatment: a deeper smoked body, saturated edge bloom,
         // crisp specular highlight and two fine rims. This is a drawable-only effect and
         // intentionally does not pretend to be a real-time backdrop blur.
-        int bodyAlpha = strong ? (light ? 226 : 202) : (light ? 194 : 158);
+        int bodyAlpha = highContrast ? (strong ? 248 : 224) : (strong ? (light ? 226 : 202) : (light ? 194 : 158));
         GradientDrawable base = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{
@@ -157,8 +163,8 @@ final class Ui {
         GradientDrawable edge = new GradientDrawable();
         edge.setColor(Color.TRANSPARENT);
         edge.setCornerRadius(rad);
-        int edgeAlpha = strong ? (light ? 205 : 176) : (light ? 160 : 132);
-        edge.setStroke(Math.max(1, dp(strong ? 1.15f : 0.9f)),
+        int edgeAlpha = highContrast ? 235 : (strong ? (light ? 205 : 176) : (light ? 160 : 132));
+        edge.setStroke(Math.max(1, dp(highContrast ? (strong ? 2f : 1.5f) : (strong ? 1.15f : 0.9f))),
                 Color.argb(edgeAlpha, Color.red(edgeStroke), Color.green(edgeStroke), Color.blue(edgeStroke)));
 
         return new LayerDrawable(new Drawable[]{base, bloom, hi, innerRim, edge});
@@ -229,7 +235,7 @@ final class Ui {
     static void press(View v) {
         v.setOnTouchListener((x, e) -> {
             // The clean glass interface defaults to reduced motion; enable spring feedback only by opting out.
-            if (bool("reduce_motion", true)) return false;
+            if (bool("reduce_motion", true) || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) return false;
             int a = e.getActionMasked();
             if (a == MotionEvent.ACTION_DOWN) { playRing(x); x.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start(); }
             else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL)
