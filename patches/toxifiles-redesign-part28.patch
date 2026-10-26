@@ -1,0 +1,51 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index faa77d5..7462846 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -27,7 +27,6 @@
+         <activity
+             android:name=".files.MainActivity"
+             android:exported="true"
+-            android:screenOrientation="portrait"
+             android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 0b30b6e..063d55f 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -414,7 +414,10 @@ public class MainActivity extends Activity {
+     void showOverlay(View v) {
+         overlayView = v;
+         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+-        screens[tab].setVisibility(View.GONE);
++        if (Build.VERSION.SDK_INT >= 31 && !Ui.highContrast) {
++            screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
++        }
++        screens[tab].setVisibility(View.VISIBLE);
+         v.setVisibility(View.VISIBLE);
+         if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
+         else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+@@ -428,6 +431,7 @@ public class MainActivity extends Activity {
+         overlayView.setVisibility(View.GONE);
+         overlayView = null;
+         if (wasVault) getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
++        if (Build.VERSION.SDK_INT >= 31) screens[tab].setRenderEffect(null);
+         screens[tab].setVisibility(View.VISIBLE);
+         nav.setVisibility(View.VISIBLE);
+         if (tab == 0) buildHome();
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index ed0999a..d726821 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -90,6 +90,10 @@ def main():
+ 
+     require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
+ 
++    require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
++    manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
++    require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
