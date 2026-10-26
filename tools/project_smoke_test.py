@@ -48,6 +48,7 @@ def main():
     require('if (!allowed.contains(k)) continue;' in main_src and 'applock_on' not in main_src[main_src.index('private static java.util.Set<String> portableSettingKeys()'):main_src.index('// ---------------- LARGEST FILES')], 'settings import cannot overwrite App Lock or other non-portable security preferences')
     pin_hash = (ROOT / 'app/src/main/java/com/music/echo/offline/files/PinHash.java').read_text()
     require('PBKDF2WithHmacSHA256' in pin_hash and 'SecureRandom' in pin_hash and 'MessageDigest.isEqual' in pin_hash, 'PIN verifiers use salted PBKDF2 and constant-time comparison')
+    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/PinHashTest.java').is_file() and 'testImplementation(\"junit:junit:4.13.2\")' in (ROOT / 'app/build.gradle.kts').read_text(), 'PIN verifier has automated unit tests for salt, legacy migration and malformed input')
     app_lock = (ROOT / 'app/src/main/java/com/music/echo/offline/files/AppLock.java').read_text()
     vault = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Vault.java').read_text()
     require('failed_attempts' in app_lock and 'blocked_until' in app_lock and 'Math.min(15 * 60_000L' in app_lock, 'App Lock applies persistent escalating PIN lockout')

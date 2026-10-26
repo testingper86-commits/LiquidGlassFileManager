@@ -1,6 +1,6 @@
 package com.music.echo.offline.files;
 
-import android.util.Base64;
+import java.util.Base64;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import javax.crypto.SecretKeyFactory;
@@ -17,7 +17,7 @@ final class PinHash {
         byte[] salt = new byte[SALT_BYTES];
         new SecureRandom().nextBytes(salt);
         byte[] hash = derive(pin, salt, ITERATIONS);
-        return "pbkdf2$" + ITERATIONS + "$" + Base64.encodeToString(salt, Base64.NO_WRAP | Base64.NO_PADDING) + "$" + Base64.encodeToString(hash, Base64.NO_WRAP | Base64.NO_PADDING);
+        return "pbkdf2$" + ITERATIONS + "$" + Base64.getEncoder().withoutPadding().encodeToString(salt) + "$" + Base64.getEncoder().withoutPadding().encodeToString(hash);
     }
 
     static boolean verify(String pin, String stored, String legacyPrefix) {
@@ -28,8 +28,8 @@ final class PinHash {
                 if (parts.length != 4) return false;
                 int iterations = Integer.parseInt(parts[1]);
                 if (iterations < 10_000 || iterations > 1_000_000) return false;
-                byte[] salt = Base64.decode(parts[2], Base64.NO_WRAP | Base64.NO_PADDING);
-                byte[] expected = Base64.decode(parts[3], Base64.NO_WRAP | Base64.NO_PADDING);
+                byte[] salt = Base64.getDecoder().decode(parts[2]);
+                byte[] expected = Base64.getDecoder().decode(parts[3]);
                 return MessageDigest.isEqual(expected, derive(pin, salt, iterations));
             }
             // One-time compatibility with the old fixed-prefix SHA-256 verifier.
