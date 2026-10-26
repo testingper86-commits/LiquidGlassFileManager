@@ -55,6 +55,9 @@ def main():
     require('failed_attempts' in vault and 'blocked_until' in vault and 'Math.min(15 * 60_000L' in vault, 'Vault applies persistent escalating PIN lockout')
     require('UUID.randomUUID()' in vault and 'UUID.randomUUID()' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text(), 'Vault and Recycle Bin wrapper names avoid timestamp collisions')
     require('writeMetadata(wrapper, parent.getAbsolutePath())' in vault and 'readMetadata(meta)' in vault and 'META_FILE = \".vault_meta\"' in vault, 'Vault original-path metadata is encrypted at rest')
+    decrypt_src = vault[vault.index('private static void decryptFile'):vault.index('private static final String META_FILE')]
+    require('c.doFinal(); // throws if the GCM authentication tag is invalid' in decrypt_src and 'toxifiles-decrypt-' in decrypt_src and 'CipherInputStream' not in decrypt_src, 'Vault decrypt authenticates AES-GCM before publishing plaintext')
+    require('origPath = \"\"' in vault and 'encrypted copies are safe' in vault, 'Vault keeps entries visible when metadata is unreadable and reports source cleanup failures')
     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
