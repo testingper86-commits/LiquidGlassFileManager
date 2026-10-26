@@ -1,0 +1,73 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 7462846..9889d72 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -18,6 +18,7 @@
+     <application
+         android:name=".files.LiquidFilesApplication"
+         android:allowBackup="false"
++        android:usesCleartextTraffic="false"
+         android:icon="@drawable/ic_liquidfiles_launcher"
+         android:label="@string/app_name"
+         android:supportsRtl="true"
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 888976a..5c33b85 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -6,6 +6,7 @@ import android.Manifest;
+ import android.app.Activity;
+ import android.app.AlertDialog;
+ import android.content.Intent;
++import android.content.Context;
+ import android.content.BroadcastReceiver;
+ import android.content.IntentFilter;
+ import android.content.SharedPreferences;
+diff --git a/app/src/main/java/com/music/echo/offline/files/Ui.java b/app/src/main/java/com/music/echo/offline/files/Ui.java
+index c43f2db..5a02f7b 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java
+@@ -49,8 +49,9 @@ final class Ui {
+ 
+     static void init(Context c) {
+         D = c.getResources().getDisplayMetrics().density;
+-        AccessibilityManager am = (AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
+-        highContrast = am != null && am.isHighTextContrastEnabled();
++        // Read the platform's high-text-contrast preference without relying on a hidden or
++        // unavailable AccessibilityManager API on vendor SDK stubs.
++        highContrast = android.provider.Settings.Secure.getInt(c.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
+         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
+         // Migrate the previous default (index 0) to VantaGlass once; preserve any other saved theme.
+         if (!sp.getBoolean("vantaglass_default_migrated", false)) {
+diff --git a/app/src/main/java/com/music/echo/offline/files/Vault.java b/app/src/main/java/com/music/echo/offline/files/Vault.java
+index ebaa843..fb8054d 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Vault.java
++++ b/app/src/main/java/com/music/echo/offline/files/Vault.java
+@@ -20,6 +20,7 @@ import java.util.ArrayList;
+ import java.util.List;
+ import javax.crypto.Cipher;
+ import javax.crypto.CipherOutputStream;
++import javax.crypto.CipherInputStream;
+ import javax.crypto.KeyGenerator;
+ import javax.crypto.SecretKey;
+ import javax.crypto.spec.GCMParameterSpec;
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index dfea841..92b10e7 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -33,6 +33,7 @@ def main():
+     app = manifest.find('application')
+     require(app is not None, 'manifest has application node')
+     require(app.attrib.get(ANDROID + 'allowBackup') == 'false', 'Android system backup is disabled for private app state')
++    require(app.attrib.get(ANDROID + 'usesCleartextTraffic') == 'false', 'app manifest disables cleartext HTTP traffic')
+     paths = ET.parse(ROOT / 'app/src/main/res/xml/file_paths.xml').getroot()
+     path_names = {node.tag for node in paths}
+     require(not any(node.tag == 'root-path' for node in paths), 'FileProvider does not expose the filesystem root')
+@@ -83,7 +84,7 @@ def main():
+     ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
+     require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
+     require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
+-    require('isHighTextContrastEnabled()' in ui_src and 'highContrast ? (strong ? 248 : 224)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
++    require('high_text_contrast_enabled' in ui_src and 'highContrast ? (strong ? 248 : 224)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
+     require('ValueAnimator.areAnimatorsEnabled()' in ui_src, 'interaction motion respects Android system animation settings')
+     indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
+     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
