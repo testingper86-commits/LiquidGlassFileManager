@@ -151,18 +151,5 @@ jobs:
           heap-size: 512
           disable-animations: true
           script: |
-            # The emulator action runs this script with /bin/sh, not bash.
-            set -eu
-            mkdir -p dist
-            APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
-            test -n "$APK"
-            adb logcat -c
-            adb install -r "$APK"
-            adb shell monkey -p com.liquidfiles.offline 1
-            sleep 12
-            adb shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline'
-            if adb logcat -d | grep -q 'FATAL EXCEPTION'; then
-              adb logcat -d > dist/emulator-failure-log.txt
-              exit 1
-            fi
+            sh -c 'set -eu; mkdir -p dist; APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name "*.apk" -print -quit)"; test -n "$APK"; adb logcat -c; adb install -r "$APK"; adb shell monkey -p com.liquidfiles.offline 1; sleep 12; adb shell dumpsys activity activities | grep -E "mResumedActivity|ResumedActivity" | grep -q "com.liquidfiles.offline"; if adb logcat -d | grep -q "FATAL EXCEPTION"; then adb logcat -d > dist/emulator-failure-log.txt; exit 1; fi'
 
