@@ -117,6 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$PATH"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
           [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
