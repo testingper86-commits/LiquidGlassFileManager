@@ -1,57 +1,19 @@
-diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferSecurityTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferSecurityTest.java
-new file mode 100644
-index 0000000..0000000
---- /dev/null
-+++ b/app/src/test/java/com/music/echo/offline/files/LanTransferSecurityTest.java
-@@ -0,0 +1,51 @@
-+package com.music.echo.offline.files;
-+
-+import org.junit.Test;
-+import javax.crypto.SecretKey;
-+import java.io.IOException;
-+import java.util.Arrays;
-+import static org.junit.Assert.*;
-+
-+/** Regression coverage for LAN transfer input validation and pairing primitives. */
-+public class LanTransferSecurityTest {
-+    @Test public void rejectsPathComponentsAndControlCharacters() throws Exception {
-+        reject(null);
-+        reject("");
-+        reject(".");
-+        reject("..");
-+        reject("../escape.txt");
-+        reject("folder/file.txt");
-+        reject("folder\\file.txt");
-+        reject("line\nfeed.txt");
-+        reject("nul" + ((char) 0) + "name.txt");
-+        reject(repeat('a', 256));
-+    }
-+
-+    @Test public void acceptsPlainLeafNamesIncludingUnicode() throws Exception {
-+        assertEquals("photo.jpg", LanTransfer.validateFileName("photo.jpg"));
-+        assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
-+        assertEquals("report final (2).pdf", LanTransfer.validateFileName("report final (2).pdf"));
-+    }
-+
-+    @Test public void pairingProofDependsOnCodeAndSalt() throws Exception {
-+        byte[] salt = new byte[16];
-+        for (int i = 0; i < salt.length; i++) salt[i] = (byte) (i * 7 + 3);
-+        SecretKey first = LanTransfer.sessionKey("ABCD2345EF", salt);
-+        SecretKey same = LanTransfer.sessionKey("ABCD2345EF", salt);
-+        SecretKey wrong = LanTransfer.sessionKey("WXYZ6789GH", salt);
-+        assertArrayEquals(LanTransfer.authProof(first, salt), LanTransfer.authProof(same, salt));
-+        assertFalse(Arrays.equals(LanTransfer.authProof(first, salt), LanTransfer.authProof(wrong, salt)));
+diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+index 33e6baf..0000000 100644
+--- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
++++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+@@ -18,6 +18,15 @@ public class LanTransferCryptoTest {
+         assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
+     }
+ 
++    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
++        byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 3);
 +        byte[] otherSalt = salt.clone(); otherSalt[0] ^= 0x55;
-+        SecretKey changedSalt = LanTransfer.sessionKey("ABCD2345EF", otherSalt);
-+        assertFalse(Arrays.equals(LanTransfer.authProof(first, salt), LanTransfer.authProof(changedSalt, otherSalt)));
++        SecretKey key = LanTransfer.sessionKey("ABCD2345EF", salt);
++        SecretKey changed = LanTransfer.sessionKey("ABCD2345EF", otherSalt);
++        assertFalse(Arrays.equals(LanTransfer.authProof(key, salt), LanTransfer.authProof(changed, otherSalt)));
++        assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
++        assertRejected("nul" + ((char) 0) + "name.txt");
 +    }
 +
-+    private static void reject(String name) throws Exception {
-+        try { LanTransfer.validateFileName(name); fail("Unsafe filename accepted: " + name); }
-+        catch (IOException expected) { /* expected */ }
-+    }
-+
-+    private static String repeat(char c, int count) {
-+        char[] value = new char[count]; Arrays.fill(value, c); return new String(value);
-+    }
-+}
+     @Test public void filenamesRejectTraversalSeparatorsAndControlCharacters() throws Exception {
