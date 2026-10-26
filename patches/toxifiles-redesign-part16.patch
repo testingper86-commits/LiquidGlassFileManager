@@ -1,0 +1,220 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+index c382cae..2126cce 100644
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -80,12 +80,12 @@ final class BrowserView extends FrameLayout {
+         searchBtn.setOnClickListener(v -> toggleSearch());
+         moreBtn = Ui.iconBtn(a, Glyphs.MORE, Ui.WHITE);
+         moreBtn.setOnClickListener(v -> headerMenu());
+-        header.addView(back, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        header.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
+         tl.leftMargin = Ui.dp(4);
+         header.addView(title, tl);
+-        header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+-        header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
++        header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         header.setBackground(Ui.glass(22, false));
+         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, Ui.dp(60));
+         headerLp.setMargins(Ui.dp(12), Ui.dp(6), Ui.dp(12), Ui.dp(8));
+diff --git a/app/src/main/java/com/music/echo/offline/files/Glyphs.java b/app/src/main/java/com/music/echo/offline/files/Glyphs.java
+index ed53bf2..b186895 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Glyphs.java
++++ b/app/src/main/java/com/music/echo/offline/files/Glyphs.java
+@@ -24,6 +24,27 @@ final class Glyphs {
+             LOCK = 35, WIFI = 36, DATABASE = 37, ANALYTICS = 38, DOWNLOAD = 39, CLOUD = 40,
+             MUSIC = 41, SUN = 42, REFRESH = 43, SETTINGS = 44;
+ 
++    static String label(int kind) {
++        switch (kind) {
++            case FOLDER: return "Folder"; case IMAGE: return "Image"; case VIDEO: return "Video";
++            case AUDIO: return "Audio"; case DOC: return "Document"; case ARCHIVE: return "Archive";
++            case APK: return "Android package"; case FILE: return "File"; case HOME: return "Home";
++            case FILES: return "Files"; case STAR: return "Favorite"; case TUNE: return "Filter and sort";
++            case SEARCH: return "Search"; case MORE: return "More options"; case BACK: return "Back";
++            case NEXT: return "Next"; case CLOSE: return "Close"; case CHECK: return "Select";
++            case COPY: return "Copy"; case CUT: return "Cut"; case TRASH: return "Delete";
++            case SHARE: return "Share"; case INFO: return "Information"; case FOLDER_PLUS: return "New folder";
++            case SORT: return "Sort"; case OPEN: return "Open"; case PLAY: return "Play";
++            case PAUSE: return "Pause"; case PASTE: return "Paste"; case PALETTE: return "Theme";
++            case SPARKLE: return "Appearance effects"; case VIBRATE: return "Haptic feedback";
++            case EYE: return "Visibility"; case SHIELD: return "Security"; case CLOCK: return "Recent";
++            case LOCK: return "Lock"; case WIFI: return "Wi-Fi transfer"; case DATABASE: return "Storage";
++            case ANALYTICS: return "Analysis"; case DOWNLOAD: return "Download"; case CLOUD: return "Cloud";
++            case MUSIC: return "Music"; case SUN: return "Light appearance"; case REFRESH: return "Refresh";
++            case SETTINGS: return "Settings"; default: return "Action";
++        }
++    }
++
+     static Drawable get(int kind, int color) { return new G(kind, color); }
+ 
+     static Drawable tile(int fileKind) { return new Tile(fileKind); }
+diff --git a/app/src/main/java/com/music/echo/offline/files/Indexer.java b/app/src/main/java/com/music/echo/offline/files/Indexer.java
+index 2f02f68..e8f1503 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Indexer.java
++++ b/app/src/main/java/com/music/echo/offline/files/Indexer.java
+@@ -15,7 +15,8 @@ final class Indexer {
+     static final Indexer I = new Indexer();
+     static final String[] CAT_NAMES = {"Images", "Videos", "Audio", "Documents", "Archives", "Apps", "Other"};
+ 
+-    volatile boolean ready, running, dirty;
++    volatile boolean ready, running, dirty, truncated;
++    private static final int MAX_INDEX_ENTRIES = 150_000;
+     long finished;
+     List<Entry> all = new ArrayList<>();
+     List<Entry> recent = new ArrayList<>();
+@@ -45,6 +46,7 @@ final class Indexer {
+         if (running) return;
+         running = true;
+         dirty = false;
++        truncated = false;
+         new Thread(() -> {
+             try {
+                 tmpAll = new ArrayList<>();
+@@ -73,10 +75,14 @@ final class Indexer {
+     }
+ 
+     private void scan(File dir, int depth) {
+-        if (depth > 9 || tmpAll.size() > 250000) return;
++        if (depth > 9) return;
++        if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
++        try { if (java.nio.file.Files.isSymbolicLink(dir.toPath())) return; } catch (Exception ignored) { return; }
+         File[] fs = dir.listFiles();
+         if (fs == null) return;
+         for (File f : fs) {
++            if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
++            try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue; } catch (Exception ignored) { continue; }
+             String n = f.getName();
+             if (n.startsWith(".")) continue;
+             if (f.isDirectory()) {
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index a3427d5..3f469b1 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -534,11 +534,18 @@ public class MainActivity extends Activity {
+         ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
+         settingsBtn.setContentDescription("Settings");
+         settingsBtn.setOnClickListener(v -> selectTab(3));
+-        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
+         TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
+         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
+         home.addView(homeSub);
++        if (ix.ready && ix.truncated) {
++            TextView limitNotice = Ui.tv(this, "Large library: quick search and overview are limited to the first 150,000 indexed entries. Open folders directly to browse remaining files.", 12, Ui.SUB, false);
++            limitNotice.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(12));
++            limitNotice.setBackground(Ui.glass(16, false));
++            limitNotice.setContentDescription("Indexing limit notice. Some files may not appear in global search.");
++            home.addView(limitNotice, lpm(-1, -2, 16, 4, 16, 8));
++        }
+ 
+         if (!hasAccess()) {
+             LinearLayout c = new LinearLayout(this);
+@@ -1124,7 +1131,7 @@ public class MainActivity extends Activity {
+         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+         bk.setContentDescription("Back");
+         bk.setOnClickListener(v -> closeOverlay());
+-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         hd.addView(Ui.tv(this, "Duplicate Files", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+         dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+ 
+@@ -1199,7 +1206,7 @@ public class MainActivity extends Activity {
+         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+         bk.setContentDescription("Back");
+         bk.setOnClickListener(v -> closeOverlay());
+-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         hd.addView(Ui.tv(this, "Empty Folders", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+         dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+ 
+@@ -1289,9 +1296,9 @@ public class MainActivity extends Activity {
+         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+         bk.setContentDescription("Back");
+         bk.setOnClickListener(v -> closeOverlay());
+-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         hd.addView(Ui.tv(this, "Vault", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+-        hd.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         vault.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+ 
+         TextView note = Ui.tv(this, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.", 12, Ui.SUB, false);
+@@ -1582,7 +1589,7 @@ public class MainActivity extends Activity {
+         hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
+         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+         bk.setOnClickListener(v -> closeOverlay());
+-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         hd.addView(Ui.tv(this, "Recycle Bin", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+         TextView emptyBtn = Ui.tv(this, "Empty", 14, Ui.accent, true);
+         emptyBtn.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
+@@ -1792,7 +1799,7 @@ public class MainActivity extends Activity {
+         ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+         bk.setContentDescription("Back");
+         bk.setOnClickListener(v -> closeOverlay());
+-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         hd.addView(Ui.tv(this, "About ToxiFiles", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+         about.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+ 
+diff --git a/app/src/main/java/com/music/echo/offline/files/Ui.java b/app/src/main/java/com/music/echo/offline/files/Ui.java
+index 8182e94..fd18034 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java
+@@ -212,7 +212,10 @@ final class Ui {
+     static ImageView iconBtn(Context c, int glyph, int color) {
+         ImageView v = new ImageView(c);
+         v.setImageDrawable(Glyphs.get(glyph, color));
+-        v.setPadding(dp(10), dp(10), dp(10), dp(10));
++        v.setPadding(dp(12), dp(12), dp(12), dp(12));
++        v.setMinimumWidth(dp(48));
++        v.setMinimumHeight(dp(48));
++        v.setContentDescription(Glyphs.label(glyph));
+         v.setScaleType(ImageView.ScaleType.FIT_CENTER);
+         v.setBackground(glass(16, true));
+         v.setElevation(dp(3));
+diff --git a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java b/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+index 33d8c77..dd92991 100644
+--- a/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+@@ -137,7 +137,7 @@ public class ViewerActivity extends Activity {
+         open.setOnClickListener(v -> FileOps.external(this, new File(paths.get(idx)), true));
+         ImageView share = Ui.iconBtn(this, Glyphs.SHARE, Ui.WHITE);
+         share.setOnClickListener(v -> { ArrayList<File> l = new ArrayList<>(); l.add(new File(paths.get(idx))); FileOps.share(this, l); });
+-        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         bar.addView(titleTv, new LinearLayout.LayoutParams(0, -2, 1f));
+         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
+         cl.rightMargin = Ui.dp(6);
+@@ -148,8 +148,8 @@ public class ViewerActivity extends Activity {
+         editImageBtn.setBackground(Ui.glass(18, true));
+         editImageBtn.setOnClickListener(v -> openImageEditor());
+         bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, Ui.dp(36)));
+-        bar.addView(open, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+-        bar.addView(share, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
++        bar.addView(open, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
++        bar.addView(share, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, Ui.dp(52), Gravity.TOP);
+         bp.setMargins(Ui.dp(12), Ui.dp(8), Ui.dp(12), 0);
+         root.addView(bar, bp);
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 7f86930..ddd420b 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -58,6 +58,13 @@ def main():
+     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
+     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
+     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
++    glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
++    ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
++    require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
++    require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
++    indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
++    require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
++    require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
