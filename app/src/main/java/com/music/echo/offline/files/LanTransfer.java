@@ -50,7 +50,7 @@ final class LanTransfer {
         IncomingFile(String name, long length, String sha256) { this.name = name; this.length = length; this.sha256 = sha256; }
     }
 
-    private static String validateFileName(String name) throws IOException {
+    static String validateFileName(String name) throws IOException {
         if (name == null || name.isEmpty() || name.length() > 255 || ".".equals(name) || "..".equals(name)
                 || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) throw new IOException("Unsafe incoming filename rejected");
         for (int i = 0; i < name.length(); i++) { char c = name.charAt(i); if (c < 0x20 || c == 0x7f) throw new IOException("Filename contains control characters"); }

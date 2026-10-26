@@ -18,6 +18,20 @@ public class LanTransferCryptoTest {
         assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
     }
 
+    @Test public void filenamesRejectTraversalSeparatorsAndControlCharacters() throws Exception {
+        assertEquals("song.mp3", LanTransfer.validateFileName("song.mp3"));
+        assertRejected("../outside.txt");
+        assertRejected("folder\\outside.txt");
+        assertRejected("bad\nname.txt");
+        assertRejected(".");
+        assertRejected("a".repeat(256));
+    }
+
+    private static void assertRejected(String name) throws Exception {
+        try { LanTransfer.validateFileName(name); fail("Unsafe filename must be rejected: " + name); }
+        catch (java.io.IOException expected) { /* rejected */ }
+    }
+
     @Test public void aesGcmRoundTripsAndRejectsTampering() throws Exception {
         byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 7);
         SecretKey key = LanTransfer.sessionKey("QWERTY2345", salt);
