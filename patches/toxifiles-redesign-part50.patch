@@ -37,7 +37,7 @@ diff --git a/app/build.gradle.kts b/app/build.gradle.kts
 diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 --- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 +++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
-@@ -65,5 +65,6 @@
+@@ -64,5 +64,6 @@
  import androidx.documentfile.provider.DocumentFile;
  
  public class MainActivity extends Activity {
@@ -45,7 +45,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
      final ExecutorService io = Executors.newFixedThreadPool(2);
      final ExecutorService ops = Executors.newSingleThreadExecutor();
      final Set<String> favs = new LinkedHashSet<>();
-@@ -103,6 +104,11 @@
+@@ -104,6 +105,11 @@
          boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
          setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
          super.onCreate(b);
@@ -57,7 +57,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
          IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
          if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
          else registerReceiver(screenOffReceiver, screenOffFilter);
-@@ -277,7 +278,8 @@
+@@ -275,7 +281,8 @@
      }
  
      @Override protected void onDestroy() {
@@ -85,7 +85,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
 diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
 --- a/tools/project_smoke_test.py
 +++ b/tools/project_smoke_test.py
-@@ -230,6 +230,13 @@
+@@ -231,6 +238,13 @@
      require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
              'decorative motion is reduced by default')
      manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()

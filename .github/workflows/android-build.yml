@@ -73,7 +73,8 @@ jobs:
             elif patch --dry-run --batch --reverse -p1 < "$p" >/dev/null 2>&1; then
               echo "$p already applied; recording marker."
             else
-              echo "::error::Patch $p does not apply cleanly and is not already applied."
+              echo "::error::Patch $p does not apply cleanly and is not already applied. Diagnostic follows:"
+              patch --dry-run --batch --forward --verbose -p1 < "$p" || true
               exit 1
             fi
             touch "$marker"
