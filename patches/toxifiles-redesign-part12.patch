@@ -1,0 +1,226 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/Glyphs.java b/app/src/main/java/com/music/echo/offline/files/Glyphs.java
+index 3098404..ed53bf2 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Glyphs.java
++++ b/app/src/main/java/com/music/echo/offline/files/Glyphs.java
+@@ -22,7 +22,7 @@ final class Glyphs {
+             FOLDER_PLUS = 23, SORT = 24, OPEN = 25, PLAY = 26, PAUSE = 27, PASTE = 28,
+             PALETTE = 29, SPARKLE = 30, VIBRATE = 31, EYE = 32, SHIELD = 33, CLOCK = 34,
+             LOCK = 35, WIFI = 36, DATABASE = 37, ANALYTICS = 38, DOWNLOAD = 39, CLOUD = 40,
+-            MUSIC = 41, SUN = 42, REFRESH = 43;
++            MUSIC = 41, SUN = 42, REFRESH = 43, SETTINGS = 44;
+ 
+     static Drawable get(int kind, int color) { return new G(kind, color); }
+ 
+@@ -150,6 +150,19 @@ final class Glyphs {
+                     c.drawPath(st, fs);
+                     break;
+                 }
++                case SETTINGS: {
++                    c.drawCircle(12f, 12f, 3.3f, s);
++                    for (int i = 0; i < 8; i++) {
++                        double a = Math.toRadians(i * 45);
++                        float x1 = (float) (12 + 5.3 * Math.cos(a));
++                        float y1 = (float) (12 + 5.3 * Math.sin(a));
++                        float x2 = (float) (12 + 8.2 * Math.cos(a));
++                        float y2 = (float) (12 + 8.2 * Math.sin(a));
++                        c.drawLine(x1, y1, x2, y2, s);
++                    }
++                    c.drawCircle(12f, 12f, 8.4f, s);
++                    break;
++                }
+                 case TUNE:
+                     c.drawLine(4f, 7f, 20f, 7f, s);
+                     c.drawLine(4f, 12f, 20f, 12f, s);
+diff --git a/app/src/main/java/com/music/echo/offline/files/Indexer.java b/app/src/main/java/com/music/echo/offline/files/Indexer.java
+index bb9e54f..2f02f68 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Indexer.java
++++ b/app/src/main/java/com/music/echo/offline/files/Indexer.java
+@@ -36,7 +36,7 @@ final class Indexer {
+             case FileKinds.AUDIO: return 2;
+             case FileKinds.PDF: case FileKinds.DOC: case FileKinds.SHEET: case FileKinds.SLIDE: case FileKinds.TEXT: return 3;
+             case FileKinds.ARCHIVE: return 4;
+-            case FileKinds.APK: return 5;
++            case FileKinds.APK: return 6;
+             default: return 6;
+         }
+     }
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index bab0507..09b08e7 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -430,9 +430,9 @@ public class MainActivity extends Activity {
+         LinearLayout items = new LinearLayout(this);
+         items.setOrientation(LinearLayout.HORIZONTAL);
+         nav.addView(items, new FrameLayout.LayoutParams(-1, -1));
+-        int[] gl = {Glyphs.HOME, Glyphs.FOLDER, Glyphs.STAR};
+-        String[] lb = {"Home", "Files", "Favorites"};
+-        for (int i = 0; i < 3; i++) {
++        int[] gl = {Glyphs.HOME, Glyphs.FOLDER};
++        String[] lb = {"Home", "Files"};
++        for (int i = 0; i < 2; i++) {
+             final int idx = i;
+             LinearLayout it = new LinearLayout(this);
+             it.setOrientation(LinearLayout.VERTICAL);
+@@ -457,19 +457,19 @@ public class MainActivity extends Activity {
+         lp.setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(12));
+         root.addView(nav, lp);
+         nav.addOnLayoutChangeListener((v, l, t, r, b, l0, t0, r0, b0) -> {
+-            int iw = (r - l - Ui.dp(12)) / 3;
++            int iw = (r - l - Ui.dp(12)) / 2;
+             FrameLayout.LayoutParams hp = (FrameLayout.LayoutParams) hl.getLayoutParams();
+             if (hp.width != iw) { hp.width = iw; hl.setLayoutParams(hp); }
+-            hl.setTranslationX(Math.min(tab, 2) * iw);
++            hl.setTranslationX(Math.min(tab, 1) * iw);
+         });
+     }
+ 
+     void moveHighlight(int i) {
+         int iw = hl.getLayoutParams().width;
+-        int visualIndex = Math.min(i, 2);
++        int visualIndex = Math.min(i, 1);
+         if (Ui.bool("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
+         else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
+-        for (int k = 0; k < 3; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
++        for (int k = 0; k < 2; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
+     }
+ 
+     void recolor() {
+@@ -528,14 +528,10 @@ public class MainActivity extends Activity {
+         hd.setGravity(Gravity.CENTER_VERTICAL);
+         hd.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(8), 0);
+         hd.addView(Ui.tv(this, "Your files", 30, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+-        ImageView settingsBtn = Ui.iconBtn(this, Glyphs.TUNE, Ui.WHITE);
++        ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
+         settingsBtn.setContentDescription("Settings");
+         settingsBtn.setOnClickListener(v -> selectTab(3));
+         hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+-        ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH, Ui.WHITE);
+-        sb.setContentDescription("Search");
+-        sb.setOnClickListener(v -> openSearch());
+-        hd.addView(sb, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
+         TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
+         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
+@@ -625,8 +621,8 @@ public class MainActivity extends Activity {
+         // categories
+         home.addView(section("Quick access"));
+         // Keep every major media type directly accessible from Home, including audio.
+-        int[] categoryIndices = {0, 1, 2, 3, 4, 5, 6, -1};
+-        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.APK, FileKinds.OTHER, FileKinds.APK};
++        int[] categoryIndices = {0, 1, 2, 3, 4, 6};
++        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
+         for (int r = 0; r < (categoryIndices.length + 2) / 3; r++) {
+             LinearLayout row = new LinearLayout(this);
+             for (int c = 0; c < 3; c++) {
+@@ -645,8 +641,8 @@ public class MainActivity extends Activity {
+                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
+                 Ui.ringIcon(ic);
+                 t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
+-                String categoryName = cat == -1 ? "Apps" : Indexer.CAT_NAMES[cat];
+-                String categorySub = cat == -1 ? "Installed apps" : (ix.ready ? ix.counts[cat] + " files" : "…");
++                String categoryName = Indexer.CAT_NAMES[cat];
++                String categorySub = ix.ready ? ix.counts[cat] + " files" : "…";
+                 TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
+                 nm.setPadding(0, Ui.dp(12), 0, 0);
+                 t.addView(nm);
+@@ -657,8 +653,8 @@ public class MainActivity extends Activity {
+                 t.setFocusable(true);
+                 t.setOnClickListener(v -> {
+                     Ui.tick(v);
+-                    if (cat == -1) new AlertDialog.Builder(MainActivity.this).setTitle("Apps")
+-                            .setItems(new String[]{"System Apps", "Downloaded Apps"}, (dialog, which) -> showInstalledApps(which == 0)).show();
++                    if (cat == 6) new AlertDialog.Builder(MainActivity.this).setTitle("Other")
++                            .setItems(new String[]{"Other files and APKs", "System Apps", "Downloaded Apps"}, (dialog, which) -> { if (which == 0) openCategory(6); else showInstalledApps(which == 1); }).show();
+                     else openCategory(cat);
+                 });
+                 Ui.press(t);
+@@ -870,7 +866,6 @@ public class MainActivity extends Activity {
+         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
+         settings.addView(switchRow(Glyphs.SUN, "Light mode", "Switches panels, text, and system dialogs for a bright background", "light", false, () -> { Ui.setLight(Ui.bool("light", false), true); recreate(); }), lpm(-1, -2, 16, 0, 16, 8));
+         settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
+-        settings.addView(switchRow(Glyphs.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
+ 
+         settings.addView(section("Files"));
+         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
+@@ -923,9 +918,6 @@ public class MainActivity extends Activity {
+         settings.addView(section("Other storage"));
+         settings.addView(row(Glyphs.CLOUD, "Browse other storage", "SD card, USB, or a cloud app's documents (read-only import)", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
+ 
+-        settings.addView(section("Backup"));
+-        settings.addView(row(Glyphs.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
+-        settings.addView(row(Glyphs.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
+ 
+         settings.addView(section("About"));
+         settings.addView(row(Glyphs.SPARKLE, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 8));
+@@ -934,6 +926,12 @@ public class MainActivity extends Activity {
+             settings.addView(section("Developer options"));
+             settings.addView(row(Glyphs.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(switchRow(Glyphs.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
++            TextView backupHeading = Ui.tv(this, "Backup & Restore", 14, Ui.accent, true);
++            backupHeading.setPadding(Ui.dp(8), Ui.dp(12), 0, Ui.dp(2));
++            settings.addView(backupHeading);
++            settings.addView(row(Glyphs.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(row(Glyphs.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
+@@ -1505,7 +1503,7 @@ public class MainActivity extends Activity {
+             final String m = msg;
+             runOnUiThread(() -> {
+                 Ui.toast(this, m);
+-                Ui.setTheme(Ui.sp.getInt("theme", 0), false);
++                Ui.setTheme(Ui.sp.getInt("theme", 11), false);
+                 recolor();
+                 buildSettings();
+             });
+diff --git a/app/src/main/java/com/music/echo/offline/files/Ui.java b/app/src/main/java/com/music/echo/offline/files/Ui.java
+index 37d41f5..762fd47 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java
+@@ -47,7 +47,7 @@ final class Ui {
+         D = c.getResources().getDisplayMetrics().density;
+         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
+         setLight(sp.getBoolean("light", false), false);
+-        setTheme(sp.getInt("theme", 0), false);
++        setTheme(sp.getInt("theme", 11), false);
+     }
+ 
+     static void setLight(boolean l, boolean save) {
+@@ -96,7 +96,7 @@ final class Ui {
+             case 8: accent=Color.rgb(0,220,190); blob1=Color.argb(110,0,220,190); blob2=Color.argb(85,0,120,255); blob3=Color.argb(65,180,80,255); break;
+             case 9: accent=Color.rgb(100,140,255); blob1=Color.argb(110,45,70,180); blob2=Color.argb(85,0,210,255); blob3=Color.argb(65,190,80,255); break;
+             case 10: accent=Color.rgb(30,230,220); blob1=Color.argb(110,0,130,145); blob2=Color.argb(85,40,80,220); blob3=Color.argb(65,0,220,180); break;
+-            case 11: accent=Color.rgb(180,190,210); blob1=Color.argb(85,90,100,125); blob2=Color.argb(70,35,45,70); blob3=Color.argb(50,190,200,220); break;
++            case 11: accent=Color.rgb(135,235,255); blob1=Color.argb(76,30,190,225); blob2=Color.argb(54,90,125,255); blob3=Color.argb(34,180,245,255); break;
+             case 12: accent=Color.rgb(80,120,255); blob1=Color.argb(110,40,70,210); blob2=Color.argb(85,0,200,255); blob3=Color.argb(65,180,60,255); break;
+             case 13: accent=Color.rgb(255,110,190); blob1=Color.argb(110,190,45,145); blob2=Color.argb(85,65,80,255); blob3=Color.argb(65,255,175,90); break;
+             case 14: accent=Color.rgb(70,210,255); blob1=Color.argb(110,0,145,220); blob2=Color.argb(85,170,65,230); blob3=Color.argb(65,255,170,80); break;
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index cab067a..89b6084 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -55,6 +55,12 @@ def main():
+             'separate Compose player and MusicService are not registered in the app manifest')
+     require('.files.BackgroundAudioService' in service_names, 'built-in foreground audio service is registered')
+     require('Export settings' in settings and 'Import settings' in settings, 'file manager settings backup and restore remain available')
++    require('SETTINGS = 44' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text(), 'dedicated gear-shaped settings icon is available')
++    require('setTheme(sp.getInt(\"theme\", 11), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'VantaGlass is the default theme')
++    require('Haptic feedback' in settings and 'Backup & Restore' in settings, 'haptics and backup controls are inside developer options')
++    require('ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH' not in settings, 'main page has no top-level search shortcut')
++    require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
++    require('case FileKinds.APK: return 6;' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text(), 'APK files are categorized under Other')
+     require('toUpperCase(java.util.Locale.ROOT)' in settings, 'settings categories use consistent compact section headings')
+     require('No internet permission' not in settings,
+             'no contradictory claim that INTERNET permission is absent')
+@@ -131,8 +137,8 @@ def main():
+             'sound.json and wave.json are removed from packaged Android assets')
+     require('com.airbnb.android:lottie' not in gradle, 'unused Lottie runtime dependency is removed')
+     main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
+-    require('categoryName = cat == -1 ? "Apps"' in main_activity and 'System Apps' in main_activity and 'Downloaded Apps' in main_activity,
+-            'Apps is a compact main-page tile with separate System Apps and Downloaded Apps choices')
++    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System Apps' in main_activity and 'Downloaded Apps' in main_activity and 'Other files and APKs' in main_activity,
++            'APK files are grouped under Other with installed-app choices available there')
+     require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
+             'Settings is accessed from the top-right home header')
+     require('Usage & diagnostics' in main_activity and 'Built-in tools' in main_activity and 'phone\'s separate apps' in main_activity and 'Debug options' not in main_activity,
