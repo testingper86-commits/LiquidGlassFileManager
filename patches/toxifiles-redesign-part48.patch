@@ -3,4 +3,4 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/Vault.java b/app/src
 +++ b/app/src/main/java/com/music/echo/offline/files/Vault.java
 @@ -273,1 +273,1 @@
 -                FileOps.deleteTree(it.wrapper);            // only remove the encrypted copy once that succeeds
-+                if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file, but encrypted Vault source cleanup failed; both copies were kept");
++                if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file is available, but encrypted Vault cleanup was incomplete");
