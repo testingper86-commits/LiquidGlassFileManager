@@ -1,0 +1,142 @@
+name: ToxiFiles Android Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toxifiles-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test, and launch ToxiFiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Android project if source is archived
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -s gradlew ]]; then
+            ARCHIVE=""
+            while IFS= read -r candidate; do
+              unzip -tq "$candidate" >/dev/null 2>&1 || continue
+              if unzip -Z1 "$candidate" | grep -Eq '(^|/)gradlew$' && unzip -Z1 "$candidate" | grep -Eq '(^|/)settings\.gradle(\.kts)?$'; then ARCHIVE="$candidate"; break; fi
+            done < <(find . -maxdepth 4 -type f -iname '*.zip' | sort)
+            [[ -n "$ARCHIVE" ]] || { echo "::error::No valid ZIP containing a Gradle Android project was found."; exit 1; }
+            TMP="$RUNNER_TEMP/toxifiles-project"
+            mkdir -p "$TMP"
+            unzip -oq "$ARCHIVE" -d "$TMP"
+            ROOT=""
+            while IFS= read -r candidate; do
+              d="$(dirname "$candidate")"
+              if [[ -s "$d/settings.gradle" || -s "$d/settings.gradle.kts" ]]; then ROOT="$d"; break; fi
+            done < <(find "$TMP" -type f -name gradlew -print)
+            [[ -n "$ROOT" ]] || { echo "::error::Archive contains no Gradle project root."; exit 1; }
+            rsync -a "$ROOT"/ "$GITHUB_WORKSPACE"/
+          fi
+          test -s gradlew
+          test -s gradle/wrapper/gradle-wrapper.jar
+          test -s settings.gradle || test -s settings.gradle.kts
+          chmod +x gradlew
+
+      - name: Apply ordered ToxiFiles patch series
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
+            [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
+            echo "Applying $p"
+            patch --batch --forward -p1 < "$p"
+          done
+          rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
+          if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
+            echo "::error::Legacy visualizer references remain."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Structural smoke tests and Android XML validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/project_smoke_test.py
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          files = [Path('app/src/main/AndroidManifest.xml'), *Path('app/src/main/res').rglob('*.xml')]
+          for path in files:
+              if path.is_file(): ET.parse(path)
+          print('Android XML parsed successfully.')
+          PY
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Run JVM unit tests and lint
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToxiFiles-debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enable KVM access
+        run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; else echo "::warning::/dev/kvm unavailable"; fi
+
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        timeout-minutes: 10
+        with:
+          api-level: 34
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 2048
+          heap-size: 512
+          disable-animations: true
+          script: |
+            set -eu
+            APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+            test -n "$APK"
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell monkey -p com.liquidfiles.offline.debug 1
+            sleep 12
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline.debug'
+            if adb logcat -d | grep -q 'FATAL EXCEPTION'; then adb logcat -d; exit 1; fi
