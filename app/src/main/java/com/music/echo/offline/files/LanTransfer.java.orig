@@ -1,0 +1,201 @@
+package com.music.echo.offline.files;
+
+import com.music.echo.offline.R;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.security.MessageDigest;
+import java.util.Enumeration;
+import java.util.List;
+
+/**
+ * Minimal same-network (Wi-Fi) file transfer over a plain TCP socket — no device discovery,
+ * no QR pairing, no pause/resume. Deliberately scoped to what can be reasoned about correctly
+ * without real multi-device testing, rather than a bigger protocol that might silently hang
+ * or corrupt a transfer in a situation this environment can't reproduce.
+ *
+ * Protocol (all blocking, one connection per transfer):
+ *   sender -> receiver: int fileCount, long totalBytes
+ *   receiver -> sender: boolean accepted          (shown to the user first — nothing streams
+ *                                                   before they explicitly accept)
+ *   for each file: sender -> receiver: UTF name, long length, UTF sha256-hex, then raw bytes
+ *                  receiver -> sender: boolean checksumMatched
+ */
+final class LanTransfer {
+    static final int PORT = 52017;
+
+    interface Listener {
+        void onWaiting(String ip, int port);
+        void onIncoming(String fromIp, int count, long totalBytes, Runnable accept, Runnable reject);
+        void onFileStart(int idx, int total, String name);
+        void onDone(String msg);
+        void onError(String msg);
+    }
+
+    static String localIp() {
+        try {
+            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+            while (ifaces.hasMoreElements()) {
+                NetworkInterface iface = ifaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) continue;
+                Enumeration<InetAddress> addrs = iface.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    InetAddress addr = addrs.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) return addr.getHostAddress();
+                }
+            }
+        } catch (Exception ignored) { }
+        return null;
+    }
+
+    private static String sha256(File f) {
+        try (InputStream in = new FileInputStream(f)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) { return ""; }
+    }
+
+    private static String hex(MessageDigest md) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : md.digest()) sb.append(String.format("%02x", b));
+        return sb.toString();
+    }
+
+    static volatile ServerSocket activeServer;
+    static volatile Socket activeSocket;
+
+    static void cancel() {
+        try { if (activeSocket != null) activeSocket.close(); } catch (Exception ignored) { }
+        try { if (activeServer != null) activeServer.close(); } catch (Exception ignored) { }
+    }
+
+    // ---------------- RECEIVER ----------------
+    static void receive(final File destDir, final Listener l) {
+        new Thread(() -> {
+            ServerSocket server = null;
+            try {
+                server = new ServerSocket(PORT);
+                activeServer = server;
+                String ip = localIp();
+                l.onWaiting(ip != null ? ip : "unknown — check your Wi-Fi connection", PORT);
+
+                Socket sock = server.accept();
+                activeSocket = sock;
+                DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
+                DataOutputStream out = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
+
+                int count = in.readInt();
+                long totalBytes = in.readLong();
+
+                final Object lock = new Object();
+                final boolean[] decided = {false};
+                final boolean[] accepted = {false};
+                Runnable accept = () -> { synchronized (lock) { accepted[0] = true; decided[0] = true; lock.notifyAll(); } };
+                Runnable reject = () -> { synchronized (lock) { accepted[0] = false; decided[0] = true; lock.notifyAll(); } };
+                l.onIncoming(sock.getInetAddress().getHostAddress(), count, totalBytes, accept, reject);
+                synchronized (lock) { while (!decided[0]) lock.wait(); }
+
+                out.writeBoolean(accepted[0]);
+                out.flush();
+                if (!accepted[0]) { l.onError("Declined"); return; }
+
+                destDir.mkdirs();
+                for (int i = 0; i < count; i++) {
+                    String name = in.readUTF();
+                    long len = in.readLong();
+                    String expectHash = in.readUTF();
+                    l.onFileStart(i + 1, count, name);
+                    File dest = FileOps.unique(destDir, name);
+                    MessageDigest md = MessageDigest.getInstance("SHA-256");
+                    try (OutputStream fout = new FileOutputStream(dest)) {
+                        byte[] buf = new byte[65536];
+                        long remaining = len;
+                        while (remaining > 0) {
+                            int n = in.read(buf, 0, (int) Math.min(buf.length, remaining));
+                            if (n < 0) throw new EOFException("Connection closed early");
+                            fout.write(buf, 0, n);
+                            md.update(buf, 0, n);
+                            remaining -= n;
+                        }
+                    }
+                    boolean ok = hex(md).equals(expectHash);
+                    out.writeBoolean(ok);
+                    out.flush();
+                    if (!ok) { dest.delete(); throw new IOException(name + " failed checksum verification"); }
+                }
+                l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
+            } catch (Exception ex) {
+                l.onError("Receive failed: " + ex.getMessage());
+            } finally {
+                try { if (activeSocket != null) activeSocket.close(); } catch (Exception ignored) { }
+                try { if (server != null) server.close(); } catch (Exception ignored) { }
+                activeServer = null;
+                activeSocket = null;
+            }
+        }).start();
+    }
+
+    // ---------------- SENDER ----------------
+    static void send(final String ip, final List<File> files, final Listener l) {
+        new Thread(() -> {
+            Socket sock = null;
+            try {
+                sock = new Socket();
+                activeSocket = sock;
+                sock.connect(new InetSocketAddress(ip, PORT), 8000);
+                DataOutputStream out = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
+                DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
+
+                long total = 0;
+                for (File f : files) total += f.length();
+                out.writeInt(files.size());
+                out.writeLong(total);
+                out.flush();
+
+                if (!in.readBoolean()) { l.onError("The other device declined the transfer"); return; }
+
+                int idx = 0;
+                for (File f : files) {
+                    idx++;
+                    l.onFileStart(idx, files.size(), f.getName());
+                    out.writeUTF(f.getName());
+                    out.writeLong(f.length());
+                    out.writeUTF(sha256(f));
+                    try (InputStream fin = new FileInputStream(f)) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = fin.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                    out.flush();
+                    if (!in.readBoolean()) throw new IOException(f.getName() + " failed checksum verification on the receiving end");
+                }
+                l.onDone("Sent " + files.size() + " file" + (files.size() == 1 ? "" : "s"));
+            } catch (Exception ex) {
+                l.onError("Send failed: " + ex.getMessage());
+            } finally {
+                try { if (sock != null) sock.close(); } catch (Exception ignored) { }
+                activeSocket = null;
+            }
+        }).start();
+    }
+}

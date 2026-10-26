@@ -1,0 +1,5 @@
+Heroicons
+Source: https://github.com/tailwindlabs/heroicons
+License: MIT (see LICENSE in this folder)
+Bundled outline SVG assets: home, folder, musical-note, cog-6-tooth, magnifying-glass.
+These assets are bundled locally; the app does not fetch icons from the network at runtime.
