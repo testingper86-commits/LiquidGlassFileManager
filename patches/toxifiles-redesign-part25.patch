@@ -1,0 +1,76 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+index ba1b3a2..2e2e17b 100644
+--- a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
++++ b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+@@ -95,12 +95,12 @@ final class LanTransfer {
+         for (int i = 0; i < 10; i++) code.append(CODE_ALPHABET.charAt(random.nextInt(CODE_ALPHABET.length())));
+         return code.toString();
+     }
+-    private static SecretKey sessionKey(String code, byte[] salt) throws Exception {
++    static SecretKey sessionKey(String code, byte[] salt) throws Exception {
+         PBEKeySpec spec = new PBEKeySpec(code.toCharArray(), salt, 200_000, 256);
+         try { return new SecretKeySpec(SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded(), "AES"); }
+         finally { spec.clearPassword(); }
+     }
+-    private static byte[] authProof(SecretKey key, byte[] salt) throws Exception {
++    static byte[] authProof(SecretKey key, byte[] salt) throws Exception {
+         Mac mac = Mac.getInstance("HmacSHA256"); mac.init(new SecretKeySpec(key.getEncoded(), "HmacSHA256"));
+         mac.update("ToxiFiles LAN pairing v1".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+         return mac.doFinal(salt);
+diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+new file mode 100644
+index 0000000..ee2e1f9
+--- /dev/null
++++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+@@ -0,0 +1,38 @@
++package com.music.echo.offline.files;
++
++import org.junit.Test;
++import static org.junit.Assert.*;
++import java.security.MessageDigest;
++import java.util.Arrays;
++import javax.crypto.AEADBadTagException;
++import javax.crypto.Cipher;
++import javax.crypto.SecretKey;
++import javax.crypto.spec.GCMParameterSpec;
++
++public class LanTransferCryptoTest {
++    @Test public void pairingProofRejectsWrongCode() throws Exception {
++        byte[] salt = new byte[16]; for (int i = 0; i < salt.length; i++) salt[i] = (byte) (i + 1);
++        SecretKey correct = LanTransfer.sessionKey("ABCDEFGH2345", salt);
++        SecretKey wrong = LanTransfer.sessionKey("ABCDEFGH2346", salt);
++        assertTrue(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(correct, salt)));
++        assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
++    }
++
++    @Test public void aesGcmRoundTripsAndRejectsTampering() throws Exception {
++        byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 7);
++        SecretKey key = LanTransfer.sessionKey("QWERTY2345", salt);
++        byte[] iv = new byte[12]; Arrays.fill(iv, (byte) 9);
++        byte[] plain = "local network file transfer payload".getBytes(java.nio.charset.StandardCharsets.UTF_8);
++        Cipher enc = Cipher.getInstance("AES/GCM/NoPadding");
++        enc.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
++        byte[] encrypted = enc.doFinal(plain);
++        Cipher dec = Cipher.getInstance("AES/GCM/NoPadding");
++        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
++        assertArrayEquals(plain, dec.doFinal(encrypted));
++        encrypted[0] ^= 1;
++        Cipher tampered = Cipher.getInstance("AES/GCM/NoPadding");
++        tampered.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
++        try { tampered.doFinal(encrypted); fail("Tampered ciphertext must not authenticate"); }
++        catch (AEADBadTagException expected) { /* authenticated encryption rejects changes */ }
++    }
++}
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index cb8c310..a346db7 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -83,6 +83,8 @@ def main():
+     require('versionCode = 3' in build_gradle and 'versionName = \"1.2.0\"' in build_gradle, 'application version is advanced for the security and feature release')
+     require('ANDROID_KEYSTORE_PATH' in build_gradle and 'signingConfig = signingConfigs.getByName(\"release\")' in build_gradle, 'release builds support environment-provided signing without committing keystore material')
+ 
++    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
