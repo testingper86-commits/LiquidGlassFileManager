@@ -1,0 +1,120 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/FileOps.java b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+index 431b6f7..39ad8f6 100644
+--- a/app/src/main/java/com/music/echo/offline/files/FileOps.java
++++ b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+@@ -100,7 +100,12 @@ final class FileOps {
+                         fail++; err = "Can't put a folder inside itself"; continue;
+                     }
+                     File t = unique(dst, s.getName());
+-                    if (move) { if (!s.renameTo(t)) { copy(s, t); deleteTree(s); } } else copy(s, t);
++                    if (move) {
++                        if (!s.renameTo(t)) {
++                            copy(s, t);
++                            if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept");
++                        }
++                    } else copy(s, t);
+                     ok++;
+                 } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
+             }
+@@ -193,6 +198,8 @@ final class FileOps {
+                 if (!dest.mkdirs() && !dest.isDirectory()) throw new IOException("Unable to create extraction folder");
+                 String root = dest.getCanonicalPath();
+                 long expanded = 0L;
++                final long initialFreeSpace = dest.getUsableSpace();
++                java.util.Set<String> extractedPaths = new java.util.HashSet<>();
+                 try (ZipFile z = new ZipFile(zip)) {
+                     int total = z.size(), idx = 0;
+                     if (total > 20_000) throw new IOException("Archive has too many entries");
+@@ -206,6 +213,9 @@ final class FileOps {
+                         a.runOnUiThread(() -> a.progress("Extracting " + fi + " of " + ft + ": " + nm));
+                         String entryName = e.getName();
+                         if (entryName == null || entryName.isEmpty() || entryName.startsWith("/") || entryName.startsWith("\\") || entryName.matches("^[A-Za-z]:.*")) continue;
++                        String normalizedName = entryName.replace('\\\\', '/');
++                        for (String segment : normalizedName.split("/", -1)) if ("..".equals(segment) || ".".equals(segment) || segment.isEmpty()) throw new IOException("Unsafe archive entry path rejected");
++                        if (!extractedPaths.add(normalizedName)) throw new IOException("Archive contains duplicate entry paths");
+                         File o = new File(dest, entryName);
+                         String cp = o.getCanonicalPath();
+                         if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
+@@ -220,7 +230,7 @@ final class FileOps {
+                                 checkCancelled();
+                                 entryBytes += n; expanded += n;
+                                 if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
+-                                if (n > dest.getUsableSpace()) throw new IOException("Not enough free space to extract archive");
++                                if (expanded > initialFreeSpace) throw new IOException("Not enough free space to extract archive");
+                                 out.write(buf, 0, n);
+                             }
+                         } catch (Exception writeError) { o.delete(); throw writeError; }
+diff --git a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
+index 7e33491..8a66e88 100644
+--- a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
++++ b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
+@@ -65,7 +65,10 @@ final class RecycleBin {
+                     File wrapper = new File(root(a), wrapName);
+                     if (!wrapper.mkdirs()) { fail++; continue; }
+                     File target = new File(wrapper, s.getName());
+-                    if (!s.renameTo(target)) { FileOps.copy(s, target); FileOps.deleteTree(s); }
++                    if (!s.renameTo(target)) {
++                        FileOps.copy(s, target);
++                        if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
++                    }
+                     ok++;
+                 } catch (Exception ex) { fail++; }
+             }
+@@ -112,11 +115,17 @@ final class RecycleBin {
+             try {
+                 File destDir = it.originalParent;
+                 boolean fellBack = destDir == null || !destDir.isDirectory();
+-                if (fellBack) destDir = Environment.getExternalStorageDirectory();
++                if (fellBack) {
++                    destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
++                    if (!destDir.isDirectory() && !destDir.mkdirs()) throw new java.io.IOException("Unable to create Downloads folder for restore");
++                }
+                 File target = FileOps.unique(destDir, it.file.getName());
+-                if (!it.file.renameTo(target)) { FileOps.copy(it.file, target); FileOps.deleteTree(it.file); }
+-                FileOps.deleteTree(it.wrapper);
+-                msg = fellBack ? "Restored to internal storage (original folder is gone)" : "Restored " + target.getName();
++                if (!it.file.renameTo(target)) {
++                    FileOps.copy(it.file, target);
++                    if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept");
++                }
++                if (!FileOps.deleteTree(it.wrapper)) throw new java.io.IOException("Restored file, but Recycle Bin cleanup failed");
++                msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
+             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
+             final String m = msg;
+             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+diff --git a/app/src/main/java/com/music/echo/offline/files/Vault.java b/app/src/main/java/com/music/echo/offline/files/Vault.java
+index fb8054d..9306376 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Vault.java
++++ b/app/src/main/java/com/music/echo/offline/files/Vault.java
+@@ -267,11 +267,14 @@ final class Vault {
+             try {
+                 File destDir = it.originalParent;
+                 boolean fellBack = destDir == null || !destDir.isDirectory();
+-                if (fellBack) destDir = Environment.getExternalStorageDirectory();
++                if (fellBack) {
++                    destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
++                    if (!destDir.isDirectory() && !destDir.mkdirs()) throw new IOException("Unable to create Downloads folder for restore");
++                }
+                 File target = FileOps.unique(destDir, it.file.getName());
+                 try { decryptTree(it.file, target); } catch (Exception decryptError) { FileOps.deleteTree(target); throw decryptError; } // no partial plaintext on failure
+                 FileOps.deleteTree(it.wrapper);            // only remove the encrypted copy once that succeeds
+-                msg = fellBack ? "Decrypted to internal storage (original folder is gone)" : "Decrypted and moved out: " + target.getName();
++                msg = fellBack ? "Decrypted to Downloads (original folder is gone)" : "Decrypted and moved out: " + target.getName();
+             } catch (Exception ex) { msg = "Failed: " + ex.getMessage(); }
+             final String m = msg;
+             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index cb2ea5a..3c32c48 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -77,6 +77,10 @@ def main():
+     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
+     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
+     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
++    require('initialFreeSpace' in file_ops and 'expanded > initialFreeSpace' in file_ops, 'archive extraction checks cumulative expanded bytes against available storage')
++    require('duplicate entry paths' in file_ops and 'extractedPaths.add(normalizedName)' in file_ops, 'archive extraction rejects duplicate paths rather than overwriting earlier entries')
++    require('both copies were kept' in file_ops and 'both copies were kept' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text(), 'cross-volume moves and Recycle Bin operations never report success if source cleanup fails')
++    require('Restored to Downloads (original folder is gone)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text() and 'Decrypted to Downloads (original folder is gone)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Vault.java').read_text(), 'Recycle Bin and Vault restore missing original paths into the visible Downloads folder')
+     require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
+     require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
+     require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
