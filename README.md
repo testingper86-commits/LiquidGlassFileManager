@@ -1,34 +1,40 @@
-# Liquid Files — Offline File Manager
+# ToxiFiles — Offline File Manager
 
-A file-manager-first Android app with a built-in **Liquid Player** for local music playback. This repository contains the Android source directly at the root (not a nested project ZIP), plus automated source checks and a GitHub Actions build workflow.
+ToxiFiles is a native Android file manager with an integrated local media viewer/player. The Android project is committed directly at the repository root; it is not built from a nested project ZIP.
 
-## Core design goals
-- File manager is the launch experience; the player is integrated rather than a separate app.
-- Local file browsing and playback are designed to work on-device. Optional LAN transfer may use the Android INTERNET permission; this is disclosed in the UI and manifest.
-- Keep the existing Java file operations, built-in viewer, settings, and bundled icon attributions. The separate Echo-derived player project and its unused build dependencies have been removed.
-- Liquid Glass surfaces are layered translucent/tinted surfaces; do not assume true backdrop blur on every Android version.
+## Product goals
 
-## Build with GitHub Actions
-1. Create a **new empty repository**.
-2. Extract this ZIP and upload its **contents** to the repository root. Do not upload this project as a ZIP nested inside GitHub. Include hidden `.github` files.
-3. Commit to `main` (or `master`) or open a pull request.
-4. Open **Actions → Android Build & Checks**. The workflow runs repository smoke tests and then `./gradlew assembleDebug`.
-5. Download the `LiquidFiles-debug-apk` artifact only after the run succeeds.
+- **File manager first:** browse and manage files, with the existing built-in viewer and audio/video player.
+- **Local-first:** normal browsing and playback do not require a remote service or account.
+- **Liquid Glass UI:** translucent surfaces, real Android 12+ backdrop blur for overlays where supported, accessibility-aware contrast, reduced-motion support, and VantaGlass as the default theme.
+- **Safer operations:** explicit copy/move conflict choices, cancellation for supported long-running operations, atomic temporary-file handling, archive limits, and regression checks.
+- **Privacy features:** encrypted Vault data, App Lock, screenshot protection for protected screens, and non-destructive GPS-metadata removal for supported images.
 
-## Local build
-Use Android Studio with JDK 17 and Android SDK 35. From the project root run `./gradlew assembleDebug`. On Windows, run `gradlew.bat assembleDebug`.
+## Build locally
 
-## Automated checks
-`python3 tools/project_smoke_test.py` checks project layout, Gradle wrapper files, manifest declarations, the file-manager-first launcher, the native file manager and removed separate player path, and consistency of privacy messaging with the INTERNET permission. GitHub Actions also compiles the Android app. These checks do not replace device tests.
+Use Android Studio, JDK 17, and Android SDK 35.
 
-## Important limits
-- No successful Android build or device test is claimed until GitHub Actions completes successfully and the APK is installed and exercised on a device.
-- `MANAGE_EXTERNAL_STORAGE` is a sensitive Android permission. Review current Play policy and explain the user-facing purpose if distributing through Google Play.
-- LAN transfer, removable storage, archive handling, vault security, media playback, and all destructive file operations still need device-level verification.
+```bash
+python3 tools/project_smoke_test.py
+./gradlew testDebugUnitTest lintDebug assembleDebug
+```
 
+On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-## Current UI development pass
+## GitHub Actions
 
-The active redesign focuses on a consistent layered-glass visual language, clearer browser spacing, better file-row hierarchy, grouped settings, updated launcher branding, and richer controls in the existing built-in audio player (including Repeat and Shuffle). The separate Echo player is not part of the intended app architecture.
+- **Android Build & Checks** runs structural checks, JVM unit tests, Android lint, the debug build, and the configured install/launch smoke workflow.
+- **ToxiFiles Release Build** runs the unit tests and lint before assembling a release APK. It signs the artifact only when all four release secrets are configured: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Without them, the workflow uploads an explicitly labelled **unsigned** APK. Do not distribute an unsigned APK as a trusted release.
 
-Per the project owner's instruction, APK builds and device/runtime tests are deferred until all planned UI and feature-integration changes are consolidated into one final ZIP. Do not treat this working source as release-verified.
+## Security and privacy notes
+
+- LAN transfer requires a one-time pairing code, authenticates the peer, encrypts file payloads with AES-GCM, and checks file hashes. Keep the code private and use a trusted local network.
+- Vault contents are AES-GCM encrypted with a device-bound Android Keystore key. The Vault PIN gates the in-app UI; it is not itself the encryption key. Clearing app data, uninstalling, or losing the device Keystore key may make vaulted data unrecoverable. Restore important items before uninstalling or resetting the device.
+- App Lock and Vault PIN verifiers use salted PBKDF2 with persistent escalating lockout. App Lock is an in-app privacy barrier, not a replacement for the Android device lock.
+- Android backup is disabled. File sharing uses non-exported FileProvider URI grants.
+- Full file management uses Android's sensitive all-files-access permission. Review current Google Play policy and explain the core file-management purpose if distributing through Play. APK installation also depends on Android's user-controlled package-install permission.
+- See [SECURITY.md](SECURITY.md) for the security model and known boundaries.
+
+## Validation limits
+
+A passing source check is not a substitute for a successful Android build, emulator install/launch, and device-level testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. The project intentionally consolidates changes before the final mass verification pass; until that pass completes, treat the build as work in progress.
