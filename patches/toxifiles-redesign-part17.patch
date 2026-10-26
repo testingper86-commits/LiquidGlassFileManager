@@ -1,0 +1,100 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/FileOps.java b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+index a6fe94f..2b50152 100644
+--- a/app/src/main/java/com/music/echo/offline/files/FileOps.java
++++ b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+@@ -39,14 +39,17 @@ final class FileOps {
+         if (java.nio.file.Files.isSymbolicLink(s.toPath())) throw new IOException("Symbolic links are not copied");
+         if (s.isDirectory()) {
+             if (!t.mkdirs() && !t.isDirectory()) throw new IOException("Can't create " + t.getName());
+-            File[] kids = s.listFiles();
+-            if (kids != null) for (File k : kids) copy(k, new File(t, k.getName()));
++            try {
++                File[] kids = s.listFiles();
++                if (kids == null) throw new IOException("Can't read folder " + s.getName());
++                for (File k : kids) copy(k, new File(t, k.getName()));
++            } catch (IOException copyError) { deleteTree(t); throw copyError; }
+         } else {
+             try (InputStream in = new FileInputStream(s); OutputStream out = new FileOutputStream(t)) {
+                 byte[] buf = new byte[65536];
+                 int n;
+                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+-            }
++            } catch (IOException copyError) { t.delete(); throw copyError; }
+         }
+     }
+ 
+@@ -114,16 +117,17 @@ final class FileOps {
+         a.busy(true);
+         a.ops.execute(() -> {
+             String msg;
++            File out = null;
+             try {
+                 String base = fs.size() == 1 ? fs.get(0).getName() : "Archive";
+                 int i = base.lastIndexOf('.');
+                 if (fs.size() == 1 && i > 0 && !fs.get(0).isDirectory()) base = base.substring(0, i);
+-                File out = unique(destDir, base + ".zip");
++                out = unique(destDir, base + ".zip");
+                 try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out)))) {
+                     for (File f : fs) addZip(z, f, f.getName(), out);
+                 }
+                 msg = "Created " + out.getName();
+-            } catch (Exception ex) { msg = "Zip failed: " + ex.getMessage(); }
++            } catch (Exception ex) { if (out != null) deleteTree(out); msg = "Zip failed: " + ex.getMessage(); }
+             final String m = msg;
+             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+         });
+@@ -133,7 +137,8 @@ final class FileOps {
+         if (f.equals(skip) || java.nio.file.Files.isSymbolicLink(f.toPath())) return;
+         if (f.isDirectory()) {
+             File[] kids = f.listFiles();
+-            if (kids != null) for (File k : kids) addZip(z, k, name + "/" + k.getName(), skip);
++            if (kids == null) throw new IOException("Can't read folder " + f.getName());
++            for (File k : kids) addZip(z, k, name + "/" + k.getName(), skip);
+         } else {
+             z.putNextEntry(new ZipEntry(name));
+             try (InputStream in = new FileInputStream(f)) {
+@@ -195,6 +200,7 @@ final class FileOps {
+                             while ((n = in.read(buf)) > 0) {
+                                 entryBytes += n; expanded += n;
+                                 if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
++                                if (n > dest.getUsableSpace()) throw new IOException("Not enough free space to extract archive");
+                                 out.write(buf, 0, n);
+                             }
+                         } catch (Exception writeError) { o.delete(); throw writeError; }
+diff --git a/app/src/main/java/com/music/echo/offline/files/Vault.java b/app/src/main/java/com/music/echo/offline/files/Vault.java
+index f1b2f6c..e0b2560 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Vault.java
++++ b/app/src/main/java/com/music/echo/offline/files/Vault.java
+@@ -173,7 +173,8 @@ final class Vault {
+         if (src.isDirectory()) {
+             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
+             File[] kids = src.listFiles();
+-            if (kids != null) for (File k : kids) encryptTree(k, new File(destRoot, k.getName()));
++            if (kids == null) throw new IOException("Can't read folder " + src.getName());
++            for (File k : kids) encryptTree(k, new File(destRoot, k.getName()));
+         } else {
+             encryptFile(src, destRoot);
+         }
+@@ -184,7 +185,8 @@ final class Vault {
+         if (src.isDirectory()) {
+             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
+             File[] kids = src.listFiles();
+-            if (kids != null) for (File k : kids) decryptTree(k, new File(destRoot, k.getName()));
++            if (kids == null) throw new IOException("Can't read encrypted folder " + src.getName());
++            for (File k : kids) decryptTree(k, new File(destRoot, k.getName()));
+         } else {
+             decryptFile(src, destRoot);
+         }
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index ddd420b..fa5ee16 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -57,6 +57,8 @@ def main():
+     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
+     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
+     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
++    require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
++    require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
+     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
+     glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
+     ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
