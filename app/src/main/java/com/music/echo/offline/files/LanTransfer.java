@@ -38,18 +38,28 @@ import java.util.List;
  * or corrupt a transfer in a situation this environment can't reproduce.
  *
  * Protocol (all blocking, one connection per transfer):
- *   sender -> receiver: int fileCount, long totalBytes
- *   receiver -> sender: boolean accepted          (shown to the user first — nothing streams
- *                                                   before they explicitly accept)
- *   for each file: sender -> receiver: UTF name, long length, UTF sha256-hex, then raw bytes
- *                  receiver -> sender: boolean checksumMatched
+ *   challenge/response pairing, then int fileCount, long totalBytes and file headers
+ *   receiver shows the verified file names/sizes and asks for explicit consent
+ *   after consent, each file body is AES-GCM encrypted and SHA-256 verified
  */
 final class LanTransfer {
     static final int PORT = 52017;
 
+    private static final class IncomingFile {
+        final String name; final long length; final String sha256;
+        IncomingFile(String name, long length, String sha256) { this.name = name; this.length = length; this.sha256 = sha256; }
+    }
+
+    private static String validateFileName(String name) throws IOException {
+        if (name == null || name.isEmpty() || name.length() > 255 || ".".equals(name) || "..".equals(name)
+                || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) throw new IOException("Unsafe incoming filename rejected");
+        for (int i = 0; i < name.length(); i++) { char c = name.charAt(i); if (c < 0x20 || c == 0x7f) throw new IOException("Filename contains control characters"); }
+        return name;
+    }
+
     interface Listener {
         void onWaiting(String ip, int port, String pairingCode);
-        void onIncoming(String fromIp, int count, long totalBytes, Runnable accept, Runnable reject);
+        void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject);
         void onFileStart(int idx, int total, String name);
         void onDone(String msg);
         void onError(String msg);
@@ -147,12 +157,27 @@ final class LanTransfer {
                     throw new IOException("Destination folder is unavailable");
                 if (totalBytes > destDir.getUsableSpace()) throw new IOException("Not enough free space for this transfer");
 
+                List<IncomingFile> incomingFiles = new java.util.ArrayList<>();
+                List<String> incomingNames = new java.util.ArrayList<>();
+                long declaredBytes = 0L;
+                for (int i = 0; i < count; i++) {
+                    String name = validateFileName(in.readUTF());
+                    long len = in.readLong();
+                    String expectHash = in.readUTF();
+                    if (len < 0 || len > totalBytes - declaredBytes) throw new IOException("Invalid incoming file size");
+                    if (!expectHash.matches("[0-9a-fA-F]{64}")) throw new IOException("Invalid incoming file checksum header");
+                    declaredBytes += len;
+                    incomingFiles.add(new IncomingFile(name, len, expectHash));
+                    incomingNames.add(name);
+                }
+                if (declaredBytes != totalBytes) throw new IOException("Transfer size did not match its header");
+
                 final Object lock = new Object();
                 final boolean[] decided = {false};
                 final boolean[] accepted = {false};
                 Runnable accept = () -> { synchronized (lock) { accepted[0] = true; decided[0] = true; lock.notifyAll(); } };
                 Runnable reject = () -> { synchronized (lock) { accepted[0] = false; decided[0] = true; lock.notifyAll(); } };
-                l.onIncoming(sock.getInetAddress().getHostAddress(), count, totalBytes, accept, reject);
+                l.onIncoming(sock.getInetAddress().getHostAddress(), count, totalBytes, incomingNames, accept, reject);
                 synchronized (lock) {
                     long deadline = System.currentTimeMillis() + 60_000L;
                     while (!decided[0]) {
@@ -166,17 +191,11 @@ final class LanTransfer {
                 out.flush();
                 if (!accepted[0]) { l.onError("Declined"); return; }
 
-                long remainingDeclaredBytes = totalBytes;
-                for (int i = 0; i < count; i++) {
-                    String suppliedName = in.readUTF();
-                    String name = suppliedName == null ? "" : suppliedName.replace('\\', '/');
-                    name = new File(name).getName();
-                    if (name.isEmpty() || ".".equals(name) || "..".equals(name) || name.indexOf('\0') >= 0)
-                        throw new IOException("Unsafe incoming filename rejected");
-                    long len = in.readLong();
-                    String expectHash = in.readUTF();
-                    if (len < 0 || len > remainingDeclaredBytes) throw new IOException("Invalid incoming file size");
-                    remainingDeclaredBytes -= len;
+                for (int i = 0; i < incomingFiles.size(); i++) {
+                    IncomingFile header = incomingFiles.get(i);
+                    String name = header.name;
+                    long len = header.length;
+                    String expectHash = header.sha256;
                     l.onFileStart(i + 1, count, name);
                     File dest = FileOps.unique(destDir, name);
                     String rootPath = destDir.getCanonicalPath() + File.separator;
@@ -206,7 +225,6 @@ final class LanTransfer {
                     } catch (Exception commitError) { FileOps.deleteTree(dest); pending.delete(); throw commitError; }
                     out.writeBoolean(true); out.flush();
                 }
-                if (remainingDeclaredBytes != 0) throw new IOException("Transfer size did not match its header");
                 l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
             } catch (Exception ex) {
                 l.onError("Receive failed: " + ex.getMessage());
@@ -237,26 +255,35 @@ final class LanTransfer {
                 SecretKey key = sessionKey(pairingCode, salt);
                 out.write(authProof(key, salt)); out.flush();
 
-                long total = 0;
                 if (files.size() < 1 || files.size() > 500) throw new IOException("Choose between 1 and 500 files");
-                for (File f : files) { if (!f.isFile() || java.nio.file.Files.isSymbolicLink(f.toPath())) throw new IOException("Only regular files can be sent"); total += f.length(); }
-                if (total > 8L * 1024 * 1024 * 1024) throw new IOException("Transfer exceeds the 8 GB session limit");
+                long total = 0L;
+                long[] lengths = new long[files.size()];
+                String[] hashes = new String[files.size()];
+                for (int i = 0; i < files.size(); i++) {
+                    File f = files.get(i);
+                    if (!f.isFile() || java.nio.file.Files.isSymbolicLink(f.toPath())) throw new IOException("Only regular files can be sent");
+                    validateFileName(f.getName());
+                    lengths[i] = f.length();
+                    if (lengths[i] > 8L * 1024 * 1024 * 1024 - total) throw new IOException("Transfer exceeds the 8 GB session limit");
+                    total += lengths[i];
+                    hashes[i] = sha256(f);
+                    if (hashes[i].isEmpty()) throw new IOException("Unable to hash " + f.getName());
+                }
                 out.writeInt(files.size());
                 out.writeLong(total);
+                for (int i = 0; i < files.size(); i++) {
+                    out.writeUTF(files.get(i).getName());
+                    out.writeLong(lengths[i]);
+                    out.writeUTF(hashes[i]);
+                }
                 out.flush();
 
                 if (!in.readBoolean()) { l.onError("The other device declined the transfer"); return; }
 
-                int idx = 0;
-                for (File f : files) {
-                    idx++;
-                    l.onFileStart(idx, files.size(), f.getName());
-                    long fileLength = f.length();
-                    String fileHash = sha256(f);
-                    if (fileHash.isEmpty()) throw new IOException("Unable to hash " + f.getName());
-                    out.writeUTF(f.getName());
-                    out.writeLong(fileLength);
-                    out.writeUTF(fileHash);
+                for (int idx = 0; idx < files.size(); idx++) {
+                    File f = files.get(idx);
+                    l.onFileStart(idx + 1, files.size(), f.getName());
+                    long fileLength = lengths[idx];
                     byte[] iv = new byte[12]; new SecureRandom().nextBytes(iv); out.write(iv);
                     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
                     cipher.init(Cipher.ENCRYPT_MODE, key, new javax.crypto.spec.GCMParameterSpec(128, iv));

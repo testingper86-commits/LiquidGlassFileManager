@@ -1367,11 +1367,15 @@ public class MainActivity extends Activity {
             @Override public void onWaiting(String ip, int port, String pairingCode) {
                 runOnUiThread(() -> waitDlg.setMessage("On the sending device, use ⋮ → Send via Wi-Fi… and enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
             }
-            @Override public void onIncoming(String fromIp, int count, long totalBytes, Runnable accept, Runnable reject) {
+            @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) {
                 runOnUiThread(() -> {
                     if (waitDlg.isShowing()) waitDlg.dismiss();
+                    StringBuilder preview = new StringBuilder();
+                    int shown = Math.min(8, names.size());
+                    for (int i = 0; i < shown; i++) preview.append("\n• ").append(names.get(i));
+                    if (names.size() > shown) preview.append("\n…and ").append(names.size() - shown).append(" more");
                     new AlertDialog.Builder(MainActivity.this).setTitle("Incoming transfer")
-                            .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + Ui.size(totalBytes))
+                            .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + Ui.size(totalBytes) + "\n\nFiles:" + preview)
                             .setCancelable(false)
                             .setNegativeButton("Decline", (d, w) -> reject.run())
                             .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receiving…"); })
@@ -1406,7 +1410,7 @@ public class MainActivity extends Activity {
                     progress("Connecting securely…");
                     LanTransfer.send(ip, pairingCode, files, new LanTransfer.Listener() {
                         @Override public void onWaiting(String ip2, int port, String pairingCode2) { }
-                        @Override public void onIncoming(String fromIp, int count, long totalBytes, Runnable accept, Runnable reject) { }
+                        @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) { }
                         @Override public void onFileStart(int idx, int total, String name) { runOnUiThread(() -> progress("Sending " + idx + " of " + total + ": " + name)); }
                         @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); Ui.toast(MainActivity.this, msg); }); }
                         @Override public void onError(String msg) { runOnUiThread(() -> { busy(false); Ui.toast(MainActivity.this, msg); }); }

@@ -44,6 +44,8 @@ def main():
     require('PBKDF2WithHmacSHA256' in lan and 'HmacSHA256' in lan and 'AES/GCM/NoPadding' in lan and 'Pairing code is incorrect' in lan, 'LAN transfer uses one-time pairing authentication and AES-GCM encryption')
     main_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
     require('10-character pairing code' in main_src and 'Files are encrypted during transfer' in main_src, 'LAN UI communicates pairing and encrypted-transfer requirements')
+    require('List<IncomingFile> incomingFiles' in lan and 'incomingNames' in lan and 'Files:' in main_src and 'names.size() > shown' in main_src, 'LAN receiver shows verified filenames before the user accepts a transfer')
+    require("name.indexOf('/') >= 0" in lan and "name.indexOf('\\\\') >= 0" in lan, 'LAN rejects path separators rather than silently renaming untrusted paths')
     require('portableSettingKeys()' in main_src and 'Settings file exceeds the 1 MB limit' in main_src, 'settings import is size-limited and restricted to portable preferences')
     require('if (!allowed.contains(k)) continue;' in main_src and 'applock_on' not in main_src[main_src.index('private static java.util.Set<String> portableSettingKeys()'):main_src.index('// ---------------- LARGEST FILES')], 'settings import cannot overwrite App Lock or other non-portable security preferences')
     pin_hash = (ROOT / 'app/src/main/java/com/music/echo/offline/files/PinHash.java').read_text()
