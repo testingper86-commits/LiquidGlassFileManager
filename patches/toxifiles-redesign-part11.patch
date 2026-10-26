@@ -1,0 +1,190 @@
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -623,7 +623,7 @@
+         home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
+ 
+         // categories
+-        home.addView(section("Browse by type"));
++        home.addView(section("Quick access"));
+         // Keep every major media type directly accessible from Home, including audio.
+         int[] categoryIndices = {0, 1, 2, 3, 4, 5, 6, -1};
+         int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.APK, FileKinds.OTHER, FileKinds.APK};
+@@ -690,7 +690,7 @@
+         Set<String> hidden = Ui.sp.getStringSet("dev_hidden_apps", new HashSet<String>());
+         for (ApplicationInfo ai : pm.getInstalledApplications(PackageManager.GET_META_DATA)) {
+             boolean isSystem = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0 || (ai.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
+-            if (isSystem == system && !hidden.contains(ai.packageName) && pm.getLaunchIntentForPackage(ai.packageName) != null) apps.add(ai);
++            if (isSystem == system && !hidden.contains(ai.packageName) && (system || pm.getLaunchIntentForPackage(ai.packageName) != null)) apps.add(ai);
+         }
+         java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
+         LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
+@@ -703,7 +703,7 @@
+             labels.addView(Ui.tv(this, String.valueOf(pm.getApplicationLabel(ai)), 14, Ui.WHITE, true));
+             labels.addView(Ui.tv(this, ai.packageName, 10, Ui.SUB, false));
+             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+-            item.setOnClickListener(v -> { try { Intent launch = pm.getLaunchIntentForPackage(ai.packageName); if (launch != null) startActivity(launch); } catch (Exception e) { Ui.toast(this, "This app cannot be opened from here"); } });
++            item.setOnClickListener(v -> { try { Intent launch = pm.getLaunchIntentForPackage(ai.packageName); if (launch != null) startActivity(launch); else { Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ai.packageName)); startActivity(details); } } catch (Exception e) { Ui.toast(this, "This system component has no launchable screen"); } });
+             Ui.press(item); list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
+         }
+         if (apps.isEmpty()) list.addView(Ui.tv(this, "No launchable apps found in this section.", 13, Ui.SUB, false));
+@@ -714,13 +714,57 @@
+         new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+     }
+ 
+-    void showDeveloperAppVisibility() {
+-        PackageManager pm = getPackageManager(); List<ApplicationInfo> apps = new ArrayList<>();
+-        try { for (ApplicationInfo ai : pm.getInstalledApplications(PackageManager.GET_META_DATA)) if (pm.getLaunchIntentForPackage(ai.packageName) != null) apps.add(ai); } catch (Exception ignored) {}
+-        java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
+-        String[] labels = new String[apps.size()]; boolean[] checked = new boolean[apps.size()]; Set<String> hidden = Ui.sp.getStringSet("dev_hidden_apps", new HashSet<String>());
+-        for (int i=0;i<apps.size();i++) { labels[i] = String.valueOf(pm.getApplicationLabel(apps.get(i))); checked[i] = !hidden.contains(apps.get(i).packageName); }
+-        new AlertDialog.Builder(this).setTitle("Built-in app visibility").setMultiChoiceItems(labels, checked, (d, which, isChecked) -> { checked[which] = isChecked; }).setNegativeButton("Cancel", null).setPositiveButton("Save", (d,w) -> { Set<String> next = new HashSet<>(); for(int i=0;i<apps.size();i++) if(!checked[i]) next.add(apps.get(i).packageName); Ui.sp.edit().putStringSet("dev_hidden_apps", next).apply(); Ui.toast(this,"App visibility preferences saved"); }).show();
++    void showBuiltInTools() {
++        String[] tools = {
++                "Built-in image viewer and image grid",
++                "Built-in video player",
++                "Built-in music player",
++                "Built-in text editor",
++                "ZIP archive inspection and extraction",
++                "PDF and document preview"
++        };
++        String[] details = {
++                "Opens image files inside ToxiFiles and displays image collections in a grid.",
++                "Plays supported local video files inside ToxiFiles.",
++                "Plays supported local audio files inside ToxiFiles.",
++                "Edits supported text files up to 1 MB and saves changes to the file.",
++                "Inspects ZIP contents and extracts supported ZIP archives.",
++                "Previews supported PDF and text documents inside the file manager."
++        };
++        LinearLayout list = new LinearLayout(this);
++        list.setOrientation(LinearLayout.VERTICAL);
++        list.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
++        int[] icons = {Glyphs.IMAGE, Glyphs.VIDEO, Glyphs.AUDIO, Glyphs.DOC, Glyphs.ARCHIVE, Glyphs.FILE};
++        for (int i = 0; i < tools.length; i++) {
++            LinearLayout item = new LinearLayout(this);
++            item.setGravity(Gravity.CENTER_VERTICAL);
++            item.setPadding(Ui.dp(12), Ui.dp(12), Ui.dp(12), Ui.dp(12));
++            item.setBackground(Ui.glass(16, true));
++            ImageView icon = new ImageView(this);
++            icon.setImageDrawable(Glyphs.get(icons[i], Ui.accent));
++            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(30)));
++            LinearLayout copy = new LinearLayout(this);
++            copy.setOrientation(LinearLayout.VERTICAL);
++            copy.setPadding(Ui.dp(12), 0, 0, 0);
++            copy.addView(Ui.tv(this, tools[i], 14, Ui.WHITE, true));
++            TextView sub = Ui.tv(this, details[i], 11.5f, Ui.SUB, false);
++            sub.setPadding(0, Ui.dp(4), 0, 0);
++            copy.addView(sub);
++            item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
++            list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
++        }
++        ScrollView scroll = new ScrollView(this);
++        scroll.addView(list);
++        LinearLayout outer = new LinearLayout(this);
++        outer.setOrientation(LinearLayout.VERTICAL);
++        TextView heading = Ui.tv(this, "ToxiFiles built-in tools", 22, Ui.WHITE, true);
++        heading.setPadding(Ui.dp(18), Ui.dp(18), Ui.dp(18), Ui.dp(6));
++        TextView note = Ui.tv(this, "These features run inside the file manager. This list does not launch or manage your phone's separate apps.", 12, Ui.SUB, false);
++        note.setPadding(Ui.dp(18), 0, Ui.dp(18), Ui.dp(10));
++        outer.addView(heading);
++        outer.addView(note);
++        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
++        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+     }
+ 
+     void showUsageDiagnostics() {
+@@ -893,7 +937,7 @@
+             settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
+-            settings.addView(row(Glyphs.SHIELD, "Built-in app visibility", "Choose which launchable apps are shown in app lists", null, v -> showDeveloperAppVisibility()), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(row(Glyphs.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> showBuiltInTools()), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(row(Glyphs.REFRESH, "Reset developer options", "Hide this section again", null, v -> { Ui.sp.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
+         }
+ 
+@@ -1600,7 +1644,8 @@
+ 
+         TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
+         allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
+-        String[] marks = {"◉","◌","◇","⬡","◈","✧","◍","◐","◑","▣","⬢","◒","◓","✦","◉"};
++        String[] marks = {"◈","◉","⬡","◇","✦","✧","◍","◐","◑","▣","⬢","◒","◓","✺","❖"};
++        String[] finishNotes = {"Crystal cyan on pure black", "Warm amber molten glass", "Silver mirror with soft edges", "Emerald prism reflections", "Violet deep-space glass", "Rose quartz gloss", "Arctic teal reflections", "Solar copper glass", "Aqua neon crystal", "Cobalt spectral glass", "Deep jade obsidian", "Smoked titanium", "Ultramarine liquid crystal", "Magenta aurora glass", "Icy blue polished glass"};
+         for (int index = 0; index < Ui.THEMES.length; index++) {
+             final int themeIndex = index;
+             boolean selected = index == Ui.theme;
+@@ -1621,7 +1666,7 @@
+             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
+             labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
+             labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
+-            TextView desc = Ui.tv(this, selected ? "Currently applied" : "Dark glass colour finish", 11, Ui.SUB, false);
++            TextView desc = Ui.tv(this, selected ? "Currently applied · " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
+             desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
+             tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+             TextView status = Ui.tv(this, selected ? "✓" : "›", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -325,7 +325,7 @@
+         mode = LIST;
+         listTitle = t;
+         String normalizedTitle = t == null ? "" : t.toLowerCase(Locale.ROOT);
+-        if (normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")) columns = 3;
++        if (normalizedTitle.contains("image") || normalizedTitle.contains("photo") || normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")) columns = 3;
+         else columns = Ui.bool("grid", false) ? 3 : 1;
+         limit = limited;
+         selecting = false;
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java
+@@ -35,7 +35,7 @@
+     static int WHITE = 0xFFFFFFFF;
+     static int SUB = Color.argb(175, 225, 230, 244);
+     static boolean light = false;
+-    static int bg = Color.rgb(7, 9, 15);
++    static int bg = Color.rgb(2, 3, 5);
+     static int panelR = 10, panelG = 14, panelB = 26;
+     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
+     static int edgeStroke = Color.argb(72, 255, 255, 255);
+@@ -63,10 +63,10 @@
+         } else {
+             WHITE = 0xFFFFFFFF;
+             SUB = Color.argb(175, 225, 230, 244);
+-            bg = Color.rgb(7, 9, 15);
+-            panelR = 10; panelG = 14; panelB = 26;
+-            hiTop = Color.argb(56, 255, 255, 255); hiBot = Color.argb(6, 255, 255, 255);
+-            edgeStroke = Color.argb(72, 255, 255, 255);
++            bg = Color.rgb(2, 3, 5);
++            panelR = 5; panelG = 8; panelB = 12;
++            hiTop = Color.argb(76, 255, 255, 255); hiBot = Color.argb(10, 255, 255, 255);
++            edgeStroke = Color.argb(112, 235, 250, 255);
+         }
+     }
+ 
+@@ -100,7 +100,7 @@
+             case 12: accent=Color.rgb(80,120,255); blob1=Color.argb(110,40,70,210); blob2=Color.argb(85,0,200,255); blob3=Color.argb(65,180,60,255); break;
+             case 13: accent=Color.rgb(255,110,190); blob1=Color.argb(110,190,45,145); blob2=Color.argb(85,65,80,255); blob3=Color.argb(65,255,175,90); break;
+             case 14: accent=Color.rgb(70,210,255); blob1=Color.argb(110,0,145,220); blob2=Color.argb(85,170,65,230); blob3=Color.argb(65,255,170,80); break;
+-            default: accent = Color.rgb(150, 175, 255); blob1 = Color.argb(115, 90, 120, 255); blob2 = Color.argb(100, 170, 100, 255); blob3 = Color.argb(70, 60, 200, 255);
++            default: accent = Color.rgb(135, 235, 255); blob1 = Color.argb(76, 30, 190, 225); blob2 = Color.argb(54, 90, 125, 255); blob3 = Color.argb(34, 180, 245, 255);
+         }
+     }
+ 
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -135,15 +135,15 @@
+             'Apps is a compact main-page tile with separate System Apps and Downloaded Apps choices')
+     require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
+             'Settings is accessed from the top-right home header')
+-    require('Usage & diagnostics' in main_activity and 'Built-in app visibility' in main_activity and 'Debug options' not in main_activity,
+-            'developer options contain diagnostics and debug controls without a separate Debug section')
++    require('Usage & diagnostics' in main_activity and 'Built-in tools' in main_activity and 'phone\'s separate apps' in main_activity and 'Debug options' not in main_activity,
++            'developer options refer to integrated file-manager tools rather than mobile apps')
+     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
+     require('normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")' in browser,
+             'Videos and Music/Audio categories default to grid view')
+     require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
+             'LiquidDrive dashboard shortcut and activity are removed')
+-    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity,
+-            'theme chooser has dedicated studio layout and a distinct icon for each finish')
++    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity and 'finishNotes[index]' in main_activity,
++            'theme chooser has dedicated studio layout, distinct icons and finish descriptions')
+     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
+             'built-in text editor can edit and save supported small text files')
+     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
