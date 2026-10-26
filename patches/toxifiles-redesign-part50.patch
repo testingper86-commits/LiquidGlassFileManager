@@ -85,10 +85,8 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
 diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
 --- a/tools/project_smoke_test.py
 +++ b/tools/project_smoke_test.py
-@@ -231,6 +238,13 @@
-     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
-             'decorative motion is reduced by default')
-     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+@@ -244,1 +244,8 @@
+-    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
 +    build_config = (ROOT / 'app/build.gradle.kts').read_text()
 +    root_build_config = (ROOT / 'build.gradle.kts').read_text()
 +    gradle_wrapper = (ROOT / 'gradle/wrapper/gradle-wrapper.properties').read_text()
@@ -96,9 +94,8 @@ diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
 +            'project compiles and targets Android 16 API 36')
 +    require('version "8.9.2"' in root_build_config and 'gradle-8.11.1-bin.zip' in gradle_wrapper,
 +            'Android Gradle Plugin and Gradle wrapper meet Android 16 build requirements')
++    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
 +    require('registerOnBackInvokedCallback' in main_activity and 'unregisterOnBackInvokedCallback' in main_activity
 +            and 'private void handleBackNavigation()' in main_activity,
 +            'back navigation is registered and released through the Android 13+ callback API')
-     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
-     crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
-     require('android:name=".files.LiquidFilesApplication"' in manifest and 'CrashLogger.install(this)' in crash_app,
++    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
