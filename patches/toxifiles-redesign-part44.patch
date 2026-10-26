@@ -1,0 +1,90 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/ArchivePath.java b/app/src/main/java/com/music/echo/offline/files/ArchivePath.java
+new file mode 100644
+index 0000000..181685a
+--- /dev/null
++++ b/app/src/main/java/com/music/echo/offline/files/ArchivePath.java
+@@ -0,0 +1,21 @@
++package com.music.echo.offline.files;
++
++import java.io.IOException;
++
++/** Strict ZIP entry path validation, independent of host path-separator semantics. */
++final class ArchivePath {
++    private ArchivePath() {}
++
++    static String normalize(String name, boolean directory) throws IOException {
++        if (name == null || name.isEmpty()) throw new IOException("Empty archive entry path");
++        String path = name.replace('\\', '/');
++        if (path.startsWith("/") || path.matches("^[A-Za-z]:.*")) throw new IOException("Absolute archive entry path rejected");
++        if (directory && path.endsWith("/")) path = path.substring(0, path.length() - 1);
++        if (path.isEmpty()) throw new IOException("Empty archive entry path");
++        for (String segment : path.split("/", -1)) {
++            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment))
++                throw new IOException("Unsafe archive entry path rejected");
++        }
++        return path;
++    }
++}
+diff --git a/app/src/main/java/com/music/echo/offline/files/FileOps.java b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+index 39ad8f6..17bde91 100644
+--- a/app/src/main/java/com/music/echo/offline/files/FileOps.java
++++ b/app/src/main/java/com/music/echo/offline/files/FileOps.java
+@@ -213,10 +213,9 @@ final class FileOps {
+                         a.runOnUiThread(() -> a.progress("Extracting " + fi + " of " + ft + ": " + nm));
+                         String entryName = e.getName();
+                         if (entryName == null || entryName.isEmpty() || entryName.startsWith("/") || entryName.startsWith("\\") || entryName.matches("^[A-Za-z]:.*")) continue;
+-                        String normalizedName = entryName.replace('\\\\', '/');
+-                        for (String segment : normalizedName.split("/", -1)) if ("..".equals(segment) || ".".equals(segment) || segment.isEmpty()) throw new IOException("Unsafe archive entry path rejected");
++                        String normalizedName = ArchivePath.normalize(entryName, e.isDirectory());
+                         if (!extractedPaths.add(normalizedName)) throw new IOException("Archive contains duplicate entry paths");
+-                        File o = new File(dest, entryName);
++                        File o = new File(dest, normalizedName);
+                         String cp = o.getCanonicalPath();
+                         if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
+                         if (e.isDirectory()) { if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder"); continue; }
+diff --git a/app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java b/app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
+new file mode 100644
+index 0000000..d5d2912
+--- /dev/null
++++ b/app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
+@@ -0,0 +1,26 @@
++package com.music.echo.offline.files;
++
++import org.junit.Test;
++import static org.junit.Assert.*;
++
++public class ArchivePathTest {
++    @Test public void acceptsDirectoryEntriesWithTrailingSlash() throws Exception {
++        assertEquals("assets", ArchivePath.normalize("assets/", true));
++        assertEquals("assets/icon.png", ArchivePath.normalize("assets\\icon.png", false));
++    }
++
++    @Test public void rejectsTraversalAbsoluteAndAmbiguousPaths() throws Exception {
++        reject("../outside.txt", false);
++        reject("folder/../../outside.txt", false);
++        reject("/absolute.txt", false);
++        reject("C:\\outside.txt", false);
++        reject("folder//file.txt", false);
++        reject("folder/./file.txt", false);
++        reject("folder/../file.txt", false);
++    }
++
++    private static void reject(String path, boolean directory) throws Exception {
++        try { ArchivePath.normalize(path, directory); fail("Unsafe path accepted: " + path); }
++        catch (java.io.IOException expected) { /* rejected */ }
++    }
++}
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 3c32c48..5beadc7 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -79,6 +79,9 @@ def main():
+     require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
+     require('initialFreeSpace' in file_ops and 'expanded > initialFreeSpace' in file_ops, 'archive extraction checks cumulative expanded bytes against available storage')
+     require('duplicate entry paths' in file_ops and 'extractedPaths.add(normalizedName)' in file_ops, 'archive extraction rejects duplicate paths rather than overwriting earlier entries')
++    archive_path = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ArchivePath.java').read_text()
++    require('ArchivePath.normalize(entryName, e.isDirectory())' in file_ops and 'path.endsWith("/")' in archive_path, 'ZIP directory entries remain valid while path traversal and duplicate separators are rejected')
++    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java').is_file() and 'rejectsTraversalAbsoluteAndAmbiguousPaths' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java').read_text(), 'ZIP path normalization has automated regression tests')
+     require('both copies were kept' in file_ops and 'both copies were kept' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text(), 'cross-volume moves and Recycle Bin operations never report success if source cleanup fails')
+     require('Restored to Downloads (original folder is gone)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text() and 'Decrypted to Downloads (original folder is gone)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Vault.java').read_text(), 'Recycle Bin and Vault restore missing original paths into the visible Downloads folder')
+     require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
