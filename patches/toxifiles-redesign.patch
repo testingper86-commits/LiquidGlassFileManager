@@ -329,7 +329,17 @@
      int audioRepeatMode = 0; // 0 off, 1 repeat one, 2 repeat all
      float audioSpeed = 1.0f, videoSpeed = 1.0f, audioVolume = 1.0f;
      final Handler sleepHandler = new Handler(Looper.getMainLooper());
-@@ -488,6 +493,18 @@
+@@ -220,6 +225,9 @@
+             pdf = null; pfd = null;
+         }
+         stage.removeAllViews();
++        try { if (videoVisualizer != null) { videoVisualizer.pauseAnimation(); videoVisualizer.cancelAnimation(); } } catch (Exception ignored) {}
++        try { if (musicVisualizer != null) { musicVisualizer.pauseAnimation(); musicVisualizer.cancelAnimation(); } } catch (Exception ignored) {}
++        videoVisualizer = null; musicVisualizer = null;
+     }
+ 
+     void show() {
+@@ -488,6 +496,18 @@
          dock.setPadding(Ui.dp(8), Ui.dp(7), Ui.dp(8), Ui.dp(7));
          dock.setBackground(Ui.glass(24, true));
          dock.setElevation(Ui.dp(10));
@@ -348,7 +358,7 @@
  
          LinearLayout seekRow = new LinearLayout(this);
          seekRow.setGravity(Gravity.CENTER_VERTICAL);
-@@ -987,6 +1004,15 @@
+@@ -987,6 +1007,15 @@
          art.setPadding(Ui.dp(8), Ui.dp(8), Ui.dp(8), Ui.dp(8));
          Ui.round(art, 28);
          card.addView(art, new LinearLayout.LayoutParams(Ui.dp(180), Ui.dp(180)));
@@ -364,7 +374,7 @@
          TextView nm = Ui.tv(this, f.getName(), 18, Ui.WHITE, true);
          nm.setMaxLines(2);
          nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
-@@ -1193,17 +1219,18 @@
+@@ -1193,17 +1222,18 @@
                  GlowRing.setActive(pp, true);
                  initAudioEffects(m.getAudioSessionId());
                  pp.setPlaying(true);
@@ -385,7 +395,7 @@
              });
              mp.setOnErrorListener((m, w, x) -> { Ui.toast(this, "Can't play this audio file"); return true; });
              mp.prepareAsync();
-@@ -1213,8 +1240,8 @@
+@@ -1213,8 +1243,8 @@
          pp.setOnClickListener(v -> {
              if (mp == null) return;
              try {
@@ -396,7 +406,7 @@
              } catch (Exception ignored) { }
          });
          sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-@@ -1368,6 +1395,13 @@
+@@ -1368,6 +1398,13 @@
          t.setText("Loading…");
          sv.addView(t, new FrameLayout.LayoutParams(-1, -2));
          stage.addView(sv, new FrameLayout.LayoutParams(-1, -1));
@@ -410,7 +420,7 @@
          final int my = idx;
          io.execute(() -> {
              String s;
-@@ -1379,6 +1413,36 @@
+@@ -1379,6 +1416,36 @@
              } catch (Exception ex) { s = "Can't read this file."; }
              final String fs = s;
              h.post(() -> { if (!destroyed && my == idx) t.setText(fs); });
@@ -447,7 +457,7 @@
          });
      }
  
-@@ -1529,6 +1593,8 @@
+@@ -1529,6 +1596,8 @@
  
      @Override protected void onPause() {
          super.onPause();
@@ -456,7 +466,7 @@
          try { audioWasPlayingBeforeBackground = mp != null && mp.isPlaying(); if (mp != null && mp.isPlaying()) mp.pause(); } catch (Exception ignored) { }
          try { if (videoPlayer != null && paths != null && idx >= 0 && idx < paths.size()) { getPreferences(MODE_PRIVATE).edit().putInt("video_pos_" + paths.get(idx), videoPlayer.getCurrentPosition()).apply(); if (videoPlayer.isPlaying() && !(Build.VERSION.SDK_INT >= 26 && (isInPictureInPictureMode() || videoPipRequested))) { videoPlayer.pause(); videoUserWantsPlayback = false; } } } catch (Exception ignored) { }
      }
-@@ -1618,6 +1684,8 @@
+@@ -1618,6 +1687,8 @@
              } catch (Exception ex) { android.util.Log.w("LiquidFiles", "Returning from background playback failed", ex); }
              backgroundAudioHandoff = false;
          }
@@ -465,7 +475,7 @@
      }
  
      @Override public void onWindowFocusChanged(boolean hasFocus) {
-@@ -1627,6 +1695,9 @@
+@@ -1627,6 +1698,9 @@
  
      @Override protected void onDestroy() {
          destroyed = true;
@@ -475,7 +485,7 @@
          if (sleepStopper != null) sleepHandler.removeCallbacks(sleepStopper);
          if (hideLevelOverlays != null) levelOverlayHandler.removeCallbacks(hideLevelOverlays);
          cleanup();
-@@ -1635,21 +1706,20 @@
+@@ -1635,21 +1709,20 @@
      }
  
      private void setVideoPlayAnimation(TextView button, boolean playing) {
@@ -507,7 +517,7 @@
          @Override protected void onDraw(Canvas canvas) {
              super.onDraw(canvas);
              float cx = getWidth() * .5f, cy = getHeight() * .5f, unit = Math.min(getWidth(), getHeight()) * .24f;
-@@ -1658,9 +1728,8 @@
+@@ -1658,9 +1731,8 @@
                  android.graphics.Path path = new android.graphics.Path();
                  path.moveTo(cx-unit*.55f, cy-unit); path.lineTo(cx+unit, cy); path.lineTo(cx-unit*.55f, cy+unit); path.close(); canvas.drawPath(path, paint);
              } else {
@@ -569,3 +579,32 @@
      <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
      <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
      <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -124,7 +124,25 @@
+             'video frames render through TextureView and subtitle UI is removed')
+     require('new SquigglySeekBar(this)' in viewer and 'videoProgressAnimation' not in viewer and 'audioProgressAnimation' not in viewer,
+             'audio and video playback use only the custom squiggly progress control')
+-    # Legacy sound.json and wave.json files were verified absent from the packaged source archive.
++    require('setAnimation("sound.json")' in viewer and 'setAnimation("wave.json")' in viewer,
++            'sound and wave Lottie animations are assigned to separate music/video visualizer strips')
++    require('private static final class PlayAnimationImageView' in viewer and 'setAnimation("wave.json")' not in viewer.split('private static final class PlayAnimationImageView', 1)[1].split('}', 1)[0],
++            'wave.json is not used as the music pause/play button')
++    assets = ROOT / 'app/src/main/assets'
++    require((assets / 'sound.json').is_file() and (assets / 'wave.json').is_file(),
++            'sound and wave animation assets are packaged in Android assets')
++    require('com.airbnb.android:lottie' in gradle, 'Lottie runtime dependency is configured for player animations')
++    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
++    require('Apps hub' in main_activity and 'showInstalledApps(true)' in main_activity and 'showInstalledApps(false)' in main_activity,
++            'home screen separates System Apps and Downloaded Apps')
++    require('Usage & diagnostics' in main_activity and 'Built-in app visibility' in main_activity and 'Debug options' in main_activity,
++            'developer options expose diagnostics, debug settings and app visibility selection')
++    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity,
++            'theme chooser has dedicated studio layout and a distinct icon for each finish')
++    require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
++            'built-in text editor can edit and save supported small text files')
++    require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
++            'decorative motion is reduced by default')
+     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
+     crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
