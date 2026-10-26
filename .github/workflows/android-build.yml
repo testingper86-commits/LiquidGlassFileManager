@@ -113,6 +113,28 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon --stacktrace assembleDebug
 
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="$(find dist -maxdepth 1 -type f -name '*.apk' -print -quit)"
+            test -n "$APK"
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell monkey -p com.liquidfiles.offline 1
+            sleep 12
+            adb shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline'
+            if adb logcat -d | grep -q 'FATAL EXCEPTION'; then
+              adb logcat -d > dist/emulator-failure-log.txt
+              exit 1
+            fi
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
