@@ -1,0 +1,24 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index d5f5973..1cb2ed5 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -1432,6 +1432,7 @@ public class MainActivity extends Activity {
+         } catch (Exception ex) { Ui.toast(this, "Can't open the storage picker on this device"); }
+     }
+ 
++    @android.annotation.SuppressLint("WrongConstant")
+     @Override protected void onActivityResult(int rq, int rc, Intent data) {
+         super.onActivityResult(rq, rc, data);
+         if (rc != RESULT_OK || data == null) return;
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index b14516c..5f041b4 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -111,6 +111,7 @@ def main():
+     require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
+ 
+     require('@android.annotation.TargetApi(Build.VERSION_CODES.P)' in main_src and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main_src, 'framework biometric prompt is isolated to API 28+ devices')
++    require('@android.annotation.SuppressLint(\"WrongConstant\")' in main_src and 'takePersistableUriPermission(tree, grantedFlags)' in main_src, 'persisted SAF grants are limited to read/write URI permissions')
+ 
+     launcher = []
+     for activity in app.findall('activity'):
