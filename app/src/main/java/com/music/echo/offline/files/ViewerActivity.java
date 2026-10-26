@@ -111,6 +111,7 @@ public class ViewerActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Ui.init(this);
+        if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         paths = getIntent().getStringArrayListExtra("paths");
         idx = getIntent().getIntExtra("index", 0);
         if (paths == null || paths.isEmpty()) { finish(); return; }

@@ -96,6 +96,9 @@ def main():
     manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
     require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
 
+    viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
+    require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
+
     launcher = []
     for activity in app.findall('activity'):
         filt = activity.find('intent-filter')
