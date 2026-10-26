@@ -179,6 +179,7 @@ jobs:
           script: |
             set -eu
             APK="${{ runner.temp }}/toxifiles/toxifiles-debug.apk"
+            echo "Checking staged APK: $APK"
             ls -l "$APK"
             test -s "$APK"
             export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -195,17 +196,6 @@ jobs:
             BOOTED=0
             for attempt in $(seq 1 60); do
               BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | sed 's/[[:space:]]//g' || true)"
-              if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
-              sleep 2
-            done
-            test "$BOOTED" -eq 1
-            adb -s emulator-5554 logcat -c
-            adb -s emulator-5554 install -r "$APK"
-            adb -s emulator-5554 shell monkey -p com.liquidfiles.offline.debug 1
-            sleep 12
-            adb -s emulator-5554 shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | grep -q 'com.liquidfiles.offline.debug'
-            if adb -s emulator-5554 logcat -d | grep -q 'FATAL EXCEPTION'; then adb -s emulator-5554 logcat -d; exit 1; fi
-\\r'/}"
               if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
               sleep 2
             done
