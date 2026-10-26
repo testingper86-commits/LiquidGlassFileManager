@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,31 @@
 +package com.music.echo.offline.files;
 +
 +import org.junit.Test;

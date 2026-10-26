@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferSecurityTest.java
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,51 @@
 +package com.music.echo.offline.files;
 +
 +import org.junit.Test;
@@ -23,7 +23,7 @@ index 0000000..0000000
 +        reject("folder/file.txt");
 +        reject("folder\\file.txt");
 +        reject("line\nfeed.txt");
-+        reject("nul\u0000name.txt");
++        reject("nul" + ((char) 0) + "name.txt");
 +        reject(repeat('a', 256));
 +    }
 +
