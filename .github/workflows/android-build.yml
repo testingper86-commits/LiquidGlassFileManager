@@ -153,10 +153,21 @@ jobs:
       - name: Enable KVM access
         run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; else echo "::warning::/dev/kvm unavailable"; fi
 
+      - name: Stage APK for emulator smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${GITHUB_WORKSPACE}/dist"
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          cp "$APK" "${GITHUB_WORKSPACE}/dist/toxifiles-debug.apk"
+          test -s "${GITHUB_WORKSPACE}/dist/toxifiles-debug.apk"
+
       - name: Install and launch on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 10
         with:
+          working-directory: ${{ github.workspace }}
           api-level: 36
           target: default
           arch: x86_64
@@ -166,8 +177,8 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APK="$(find "$GITHUB_WORKSPACE/app/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
-            test -n "$APK"
+            APK="${{ github.workspace }}/dist/toxifiles-debug.apk"
+            test -s "$APK"
             adb logcat -c
             adb install -r "$APK"
             adb shell monkey -p com.liquidfiles.offline.debug 1

@@ -12,7 +12,7 @@ ToxiFiles is a native Android file manager with an integrated local media viewer
 
 ## Build locally
 
-Use Android Studio, JDK 17, and Android SDK 35.
+Use Android Studio, JDK 17, and Android SDK 36.
 
 ```bash
 python3 tools/project_smoke_test.py
