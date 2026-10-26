@@ -28,11 +28,11 @@ index 0ed10de..207989f 100644
  
                  int count = in.readInt();
                  long totalBytes = in.readLong();
-+                if (count < 1 || count > 500) throw new IOException("Invalid transfer file count");
-+                if (totalBytes < 0) throw new IOException("Invalid transfer size");
++                if (count < 1 || count > 500) throw new java.io.IOException("Invalid transfer file count");
++                if (totalBytes < 0) throw new java.io.IOException("Invalid transfer size");
 +                if (!destDir.exists() && !destDir.mkdirs() && !destDir.isDirectory())
-+                    throw new IOException("Destination folder is unavailable");
-+                if (totalBytes > destDir.getUsableSpace()) throw new IOException("Not enough free space for this transfer");
++                    throw new java.io.IOException("Destination folder is unavailable");
++                if (totalBytes > destDir.getUsableSpace()) throw new java.io.IOException("Not enough free space for this transfer");
  
                  final Object lock = new Object();
                  final boolean[] decided = {false};
@@ -45,7 +45,7 @@ index 0ed10de..207989f 100644
 +                    long deadline = System.currentTimeMillis() + 60_000L;
 +                    while (!decided[0]) {
 +                        long waitMs = deadline - System.currentTimeMillis();
-+                        if (waitMs <= 0) throw new IOException("Transfer confirmation timed out");
++                        if (waitMs <= 0) throw new java.io.IOException("Transfer confirmation timed out");
 +                        lock.wait(waitMs);
 +                    }
 +                }
@@ -62,23 +62,23 @@ index 0ed10de..207989f 100644
 +                    String name = suppliedName == null ? "" : suppliedName.replace('\\', '/');
 +                    name = new File(name).getName();
 +                    if (name.isEmpty() || ".".equals(name) || "..".equals(name) || name.indexOf('\0') >= 0)
-+                        throw new IOException("Unsafe incoming filename rejected");
++                        throw new java.io.IOException("Unsafe incoming filename rejected");
                      long len = in.readLong();
                      String expectHash = in.readUTF();
-+                    if (len < 0 || len > remainingDeclaredBytes) throw new IOException("Invalid incoming file size");
++                    if (len < 0 || len > remainingDeclaredBytes) throw new java.io.IOException("Invalid incoming file size");
 +                    remainingDeclaredBytes -= len;
                      l.onFileStart(i + 1, count, name);
                      File dest = FileOps.unique(destDir, name);
 +                    String rootPath = destDir.getCanonicalPath() + File.separator;
-+                    if (!dest.getCanonicalPath().startsWith(rootPath)) throw new IOException("Unsafe destination path rejected");
++                    if (!dest.getCanonicalPath().startsWith(rootPath)) throw new java.io.IOException("Unsafe destination path rejected");
                      MessageDigest md = MessageDigest.getInstance("SHA-256");
                      try (OutputStream fout = new FileOutputStream(dest)) {
                          byte[] buf = new byte[65536];
 @@ -143,6 +165,7 @@ final class LanTransfer {
                      out.flush();
-                     if (!ok) { dest.delete(); throw new IOException(name + " failed checksum verification"); }
+                     if (!ok) { dest.delete(); throw new java.io.IOException(name + " failed checksum verification"); }
                  }
-+                if (remainingDeclaredBytes != 0) throw new IOException("Transfer size did not match its header");
++                if (remainingDeclaredBytes != 0) throw new java.io.IOException("Transfer size did not match its header");
                  l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
              } catch (Exception ex) {
                  l.onError("Receive failed: " + ex.getMessage());
@@ -118,11 +118,11 @@ index 09b08e7..70dea11 100644
 -                    while ((line = r.readLine()) != null) sb.append(line);
 +                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
 +                try (InputStream in = getContentResolver().openInputStream(file)) {
-+                    if (in == null) throw new IOException("Unable to open settings file");
++                    if (in == null) throw new java.io.IOException("Unable to open settings file");
 +                    byte[] buffer = new byte[8192];
 +                    int n;
 +                    while ((n = in.read(buffer)) != -1) {
-+                        if (bytes.size() + n > 1024 * 1024) throw new IOException("Settings file exceeds the 1 MB limit");
++                        if (bytes.size() + n > 1024 * 1024) throw new java.io.IOException("Settings file exceeds the 1 MB limit");
 +                        bytes.write(buffer, 0, n);
 +                    }
                  }
