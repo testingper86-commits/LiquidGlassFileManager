@@ -194,8 +194,7 @@ jobs:
             test "$READY" -eq 1
             BOOTED=0
             for attempt in $(seq 1 60); do
-              BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null || true)"
-              BOOT="${BOOT//
+              BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | sed 's/[[:space:]]//g' || true)"
               if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
               sleep 2
             done
