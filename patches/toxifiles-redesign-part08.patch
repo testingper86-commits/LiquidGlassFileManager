@@ -1,0 +1,18 @@
+diff -ruN a/app/src/main/java/com/music/echo/offline/files/Ui.java b/app/src/main/java/com/music/echo/offline/files/Ui.java
+--- a/app/src/main/java/com/music/echo/offline/files/Ui.java	2026-10-26 08:24:20.000000000 +0000
++++ b/app/src/main/java/com/music/echo/offline/files/Ui.java	2026-10-26 10:50:31.042583129 +0000
+@@ -220,10 +220,12 @@
+     /** Springy "liquid" press feedback; never consumes the touch so clicks still work. */
+     static void press(View v) {
+         v.setOnTouchListener((x, e) -> {
++            // The clean glass interface defaults to reduced motion; enable spring feedback only by opting out.
++            if (bool("reduce_motion", true)) return false;
+             int a = e.getActionMasked();
+-            if (a == MotionEvent.ACTION_DOWN) { playRing(x); x.animate().scaleX(0.94f).scaleY(0.94f).setDuration(80).start(); }
++            if (a == MotionEvent.ACTION_DOWN) { playRing(x); x.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start(); }
+             else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL)
+-                x.animate().scaleX(1f).scaleY(1f).setDuration(260).setInterpolator(new OvershootInterpolator(2.2f)).start();
++                x.animate().scaleX(1f).scaleY(1f).setDuration(140).setInterpolator(new OvershootInterpolator(1.1f)).start();
+             return false;
+         });
+     }

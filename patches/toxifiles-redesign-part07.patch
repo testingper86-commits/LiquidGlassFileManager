@@ -1,0 +1,406 @@
+diff -ruN a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java	2026-10-26 08:24:48.000000000 +0000
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java	2026-10-26 10:50:31.046583129 +0000
+@@ -8,6 +8,8 @@
+ import android.content.Intent;
+ import android.content.SharedPreferences;
+ import android.content.pm.PackageManager;
++import android.content.pm.ApplicationInfo;
++import android.graphics.drawable.Drawable;
+ import android.content.res.ColorStateList;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
+@@ -79,8 +81,8 @@
+     View[] screens;
+     FrameLayout nav;
+     View hl;
+-    ImageView[] navIc = new ImageView[2];
+-    TextView[] navTx = new TextView[2];
++    ImageView[] navIc = new ImageView[3];
++    TextView[] navTx = new TextView[3];
+     TextView busyTv;
+     int busyCount, tab = 0, pendingCat = -1;
+     View overlayView;
+@@ -122,21 +124,6 @@
+         themeScroll = new ScrollView(this);
+         themeScroll.setVerticalScrollBarEnabled(false);
+         themeScroll.setClipToPadding(false);
+-        themeScroll = new ScrollView(this);
+-        themeScroll.setVerticalScrollBarEnabled(false);
+-        themeScroll.setClipToPadding(false);
+-        themeScroll = new ScrollView(this);
+-        themeScroll.setVerticalScrollBarEnabled(false);
+-        themeScroll.setClipToPadding(false);
+-        themeScroll = new ScrollView(this);
+-        themeScroll.setVerticalScrollBarEnabled(false);
+-        themeScroll.setClipToPadding(false);
+-        themeScroll = new ScrollView(this);
+-        themeScroll.setVerticalScrollBarEnabled(false);
+-        themeScroll.setClipToPadding(false);
+-        themeScroll = new ScrollView(this);
+-        themeScroll.setVerticalScrollBarEnabled(false);
+-        themeScroll.setClipToPadding(false);
+         aboutScroll = new ScrollView(this);
+         aboutScroll.setVerticalScrollBarEnabled(false);
+         aboutScroll.setClipToPadding(false);
+@@ -379,6 +366,7 @@
+     void selectTab(int i) {
+         closeOverlay();
+         tab = i;
++        nav.setVisibility(i == 3 ? View.GONE : View.VISIBLE);
+         for (int k = 0; k < screens.length; k++) {
+             screens[k].animate().cancel();
+             screens[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
+@@ -386,9 +374,8 @@
+             screens[k].setTranslationY(0);
+         }
+         View s = screens[i];
+-        s.setAlpha(0f);
+-        s.setTranslationY(Ui.dp(12));
+-        s.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(new DecelerateInterpolator()).start();
++        if (Ui.bool("reduce_motion", true)) { s.setAlpha(1f); s.setTranslationY(0f); }
++        else { s.setAlpha(0f); s.setTranslationY(Ui.dp(8)); s.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+         if (i == 0) buildHome();
+         else if (i == 1) {
+             if (filesView.cur == null) {
+@@ -405,10 +392,9 @@
+     void showOverlay(View v) {
+         overlayView = v;
+         screens[tab].setVisibility(View.GONE);
+-        v.setAlpha(0f);
+-        v.setTranslationY(Ui.dp(14));
+         v.setVisibility(View.VISIBLE);
+-        v.animate().alpha(1f).translationY(0f).setDuration(240).setInterpolator(new DecelerateInterpolator()).start();
++        if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
++        else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+         nav.setVisibility(v == listView ? View.GONE : View.VISIBLE);
+     }
+ 
+@@ -444,9 +430,9 @@
+         LinearLayout items = new LinearLayout(this);
+         items.setOrientation(LinearLayout.HORIZONTAL);
+         nav.addView(items, new FrameLayout.LayoutParams(-1, -1));
+-        int[] gl = {Glyphs.HOME, Glyphs.TUNE};
+-        String[] lb = {"Home", "Settings"};
+-        for (int i = 0; i < 2; i++) {
++        int[] gl = {Glyphs.HOME, Glyphs.FOLDER, Glyphs.STAR};
++        String[] lb = {"Home", "Files", "Favorites"};
++        for (int i = 0; i < 3; i++) {
+             final int idx = i;
+             LinearLayout it = new LinearLayout(this);
+             it.setOrientation(LinearLayout.VERTICAL);
+@@ -462,7 +448,7 @@
+             it.addView(navTx[i], tp);
+             it.setOnClickListener(v -> {
+                 Ui.tick(v);
+-                if (idx == 1) selectTab(3); else selectTab(0);
++                selectTab(idx);
+             });
+             Ui.press(it);
+             items.addView(it, new LinearLayout.LayoutParams(0, -1, 1f));
+@@ -471,18 +457,19 @@
+         lp.setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(12));
+         root.addView(nav, lp);
+         nav.addOnLayoutChangeListener((v, l, t, r, b, l0, t0, r0, b0) -> {
+-            int iw = (r - l - Ui.dp(12)) / 2;
++            int iw = (r - l - Ui.dp(12)) / 3;
+             FrameLayout.LayoutParams hp = (FrameLayout.LayoutParams) hl.getLayoutParams();
+             if (hp.width != iw) { hp.width = iw; hl.setLayoutParams(hp); }
+-            hl.setTranslationX((tab == 3 ? 1 : 0) * iw);
++            hl.setTranslationX(Math.min(tab, 2) * iw);
+         });
+     }
+ 
+     void moveHighlight(int i) {
+         int iw = hl.getLayoutParams().width;
+-        int visualIndex = i == 3 ? 1 : 0;
+-        hl.animate().translationX(visualIndex * iw).setDuration(340).setInterpolator(new OvershootInterpolator(1.0f)).start();
+-        for (int k = 0; k < 2; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
++        int visualIndex = Math.min(i, 2);
++        if (Ui.bool("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
++        else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
++        for (int k = 0; k < 3; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
+     }
+ 
+     void recolor() {
+@@ -541,21 +528,18 @@
+         hd.setGravity(Gravity.CENTER_VERTICAL);
+         hd.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(8), 0);
+         hd.addView(Ui.tv(this, "Your files", 30, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
++        ImageView settingsBtn = Ui.iconBtn(this, Glyphs.TUNE, Ui.WHITE);
++        settingsBtn.setContentDescription("Settings");
++        settingsBtn.setOnClickListener(v -> selectTab(3));
++        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+         ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH, Ui.WHITE);
+         sb.setContentDescription("Search");
+         sb.setOnClickListener(v -> openSearch());
+-        hd.addView(sb, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
++        hd.addView(sb, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
+         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
+         TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
+         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
+         home.addView(homeSub);
+-        TextView dashboardBtn = Ui.tv(this, "Open LiquidDrive dashboard  ↗", 13, Ui.WHITE, true);
+-        dashboardBtn.setGravity(Gravity.CENTER);
+-        dashboardBtn.setPadding(Ui.dp(14), Ui.dp(13), Ui.dp(14), Ui.dp(13));
+-        dashboardBtn.setBackground(Ui.accentPill(18));
+-        dashboardBtn.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, DashboardActivity.class)));
+-        Ui.press(dashboardBtn);
+-        home.addView(dashboardBtn, lpm(-1, -2, 16, 8, 16, 8));
+ 
+         if (!hasAccess()) {
+             LinearLayout c = new LinearLayout(this);
+@@ -641,8 +625,8 @@
+         // categories
+         home.addView(section("Browse by type"));
+         // Keep every major media type directly accessible from Home, including audio.
+-        int[] categoryIndices = {0, 1, 2, 3, 4, 5, 6};
+-        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.APK, FileKinds.OTHER};
++        int[] categoryIndices = {0, 1, 2, 3, 4, 5, 6, -1};
++        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.APK, FileKinds.OTHER, FileKinds.APK};
+         for (int r = 0; r < (categoryIndices.length + 2) / 3; r++) {
+             LinearLayout row = new LinearLayout(this);
+             for (int c = 0; c < 3; c++) {
+@@ -658,18 +642,25 @@
+                 t.setElevation(Ui.dp(3));
+                 t.setPadding(Ui.dp(13), Ui.dp(14), Ui.dp(11), Ui.dp(14));
+                 ImageView ic = new ImageView(this);
+-                ic.setImageDrawable(Glyphs.tile(categoryKinds[position]));
++                ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
+                 Ui.ringIcon(ic);
+                 t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
+-                TextView nm = Ui.tv(this, Indexer.CAT_NAMES[cat], 14, Ui.WHITE, true);
++                String categoryName = cat == -1 ? "Apps" : Indexer.CAT_NAMES[cat];
++                String categorySub = cat == -1 ? "Installed apps" : (ix.ready ? ix.counts[cat] + " files" : "…");
++                TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
+                 nm.setPadding(0, Ui.dp(12), 0, 0);
+                 t.addView(nm);
+-                TextView sub = Ui.tv(this, ix.ready ? ix.counts[cat] + " files" : "…", 11.5f, Ui.SUB, false);
++                TextView sub = Ui.tv(this, categorySub, 11.5f, Ui.SUB, false);
+                 sub.setPadding(0, Ui.dp(3), 0, 0);
+                 t.addView(sub);
+-                t.setContentDescription(Indexer.CAT_NAMES[cat] + ", " + (ix.ready ? ix.counts[cat] + " files" : "count loading") + ". Open category");
++                t.setContentDescription(categoryName + ", " + categorySub + ". Open category");
+                 t.setFocusable(true);
+-                t.setOnClickListener(v -> { Ui.tick(v); openCategory(cat); });
++                t.setOnClickListener(v -> {
++                    Ui.tick(v);
++                    if (cat == -1) new AlertDialog.Builder(MainActivity.this).setTitle("Apps")
++                            .setItems(new String[]{"System Apps", "Downloaded Apps"}, (dialog, which) -> showInstalledApps(which == 0)).show();
++                    else openCategory(cat);
++                });
+                 Ui.press(t);
+                 row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 2 ? 16 : 4, 8));
+                 ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
+@@ -682,6 +673,67 @@
+         // Recent-files panel intentionally omitted for a cleaner, section-first home screen.
+     }
+ 
++    TextView appLaunchButton(String title, String subtitle, int glyph) {
++        TextView v = Ui.tv(this, "", 14, Ui.WHITE, true);
++        v.setGravity(Gravity.CENTER);
++        v.setBackground(Ui.glass(18, true));
++        v.setText(title + "\n" + subtitle);
++        v.setCompoundDrawablesWithIntrinsicBounds(Glyphs.get(glyph, Ui.accent), null, null, null);
++        v.setCompoundDrawablePadding(Ui.dp(8));
++        v.setOnTouchListener((view, event) -> { if (event.getAction() == android.view.MotionEvent.ACTION_UP) Ui.tick(view); return false; });
++        return v;
++    }
++
++    void showInstalledApps(boolean system) {
++        List<ApplicationInfo> apps = new ArrayList<>();
++        PackageManager pm = getPackageManager();
++        Set<String> hidden = Ui.sp.getStringSet("dev_hidden_apps", new HashSet<String>());
++        for (ApplicationInfo ai : pm.getInstalledApplications(PackageManager.GET_META_DATA)) {
++            boolean isSystem = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0 || (ai.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
++            if (isSystem == system && !hidden.contains(ai.packageName) && pm.getLaunchIntentForPackage(ai.packageName) != null) apps.add(ai);
++        }
++        java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
++        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
++        ScrollView scroll = new ScrollView(this); scroll.setFillViewport(false);
++        for (ApplicationInfo ai : apps) {
++            LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(Ui.dp(10), Ui.dp(9), Ui.dp(10), Ui.dp(9)); item.setBackground(Ui.glass(16, false));
++            ImageView icon = new ImageView(this); try { icon.setImageDrawable(pm.getApplicationIcon(ai)); } catch (Exception ignored) {}
++            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
++            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(Ui.dp(12), 0, 0, 0);
++            labels.addView(Ui.tv(this, String.valueOf(pm.getApplicationLabel(ai)), 14, Ui.WHITE, true));
++            labels.addView(Ui.tv(this, ai.packageName, 10, Ui.SUB, false));
++            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
++            item.setOnClickListener(v -> { try { Intent launch = pm.getLaunchIntentForPackage(ai.packageName); if (launch != null) startActivity(launch); } catch (Exception e) { Ui.toast(this, "This app cannot be opened from here"); } });
++            Ui.press(item); list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
++        }
++        if (apps.isEmpty()) list.addView(Ui.tv(this, "No launchable apps found in this section.", 13, Ui.SUB, false));
++        scroll.addView(list);
++        TextView heading = Ui.tv(this, system ? "System Apps" : "Downloaded Apps", 23, Ui.WHITE, true);
++        heading.setPadding(Ui.dp(18), Ui.dp(18), Ui.dp(18), Ui.dp(8));
++        LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
++        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
++    }
++
++    void showDeveloperAppVisibility() {
++        PackageManager pm = getPackageManager(); List<ApplicationInfo> apps = new ArrayList<>();
++        try { for (ApplicationInfo ai : pm.getInstalledApplications(PackageManager.GET_META_DATA)) if (pm.getLaunchIntentForPackage(ai.packageName) != null) apps.add(ai); } catch (Exception ignored) {}
++        java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
++        String[] labels = new String[apps.size()]; boolean[] checked = new boolean[apps.size()]; Set<String> hidden = Ui.sp.getStringSet("dev_hidden_apps", new HashSet<String>());
++        for (int i=0;i<apps.size();i++) { labels[i] = String.valueOf(pm.getApplicationLabel(apps.get(i))); checked[i] = !hidden.contains(apps.get(i).packageName); }
++        new AlertDialog.Builder(this).setTitle("Built-in app visibility").setMultiChoiceItems(labels, checked, (d, which, isChecked) -> { checked[which] = isChecked; }).setNegativeButton("Cancel", null).setPositiveButton("Save", (d,w) -> { Set<String> next = new HashSet<>(); for(int i=0;i<apps.size();i++) if(!checked[i]) next.add(apps.get(i).packageName); Ui.sp.edit().putStringSet("dev_hidden_apps", next).apply(); Ui.toast(this,"App visibility preferences saved"); }).show();
++    }
++
++    void showUsageDiagnostics() {
++        String msg = "Usage & diagnostics (stored locally)\n\n" +
++                "App version: " + versionName() + "\n" +
++                "Android: " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")\n" +
++                "Device: " + Build.MANUFACTURER + " " + Build.MODEL + "\n" +
++                "Storage access: " + (hasAccess() ? "Granted" : "Not granted") + "\n" +
++                "Crash report: " + (CrashLogger.hasReport(this) ? "Available on this device" : "None saved") + "\n\n" +
++                "No usage data is uploaded by this screen. Diagnostics remain on this device unless you explicitly share a report.";
++        new AlertDialog.Builder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> showCrashLogOptions()).setNegativeButton("Close", null).show();
++    }
++
+     // ---------------- SETTINGS ----------------
+     View row(int glyph, String title, String sub, View right, View.OnClickListener l) {
+         LinearLayout r = new LinearLayout(this);
+@@ -836,8 +888,12 @@
+ 
+         if (Ui.bool("developer_options_unlocked", false)) {
+             settings.addView(section("Developer options"));
++            settings.addView(row(Glyphs.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(switchRow(Glyphs.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
+-            settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", false, null), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(switchRow(Glyphs.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(switchRow(Glyphs.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
++            settings.addView(row(Glyphs.SHIELD, "Built-in app visibility", "Choose which launchable apps are shown in app lists", null, v -> showDeveloperAppVisibility()), lpm(-1, -2, 16, 0, 16, 8));
+             settings.addView(row(Glyphs.REFRESH, "Reset developer options", "Hide this section again", null, v -> { Ui.sp.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
+         }
+ 
+@@ -1515,66 +1571,70 @@
+         themeScroll.removeAllViews();
+         LinearLayout panel = new LinearLayout(this);
+         panel.setOrientation(LinearLayout.VERTICAL);
+-        panel.setPadding(Ui.dp(16), Ui.dp(24), Ui.dp(16), Ui.dp(100));
+-        TextView title = Ui.tv(this, "Appearance", 30, Ui.WHITE, true);
+-        title.setPadding(Ui.dp(4), Ui.dp(4), Ui.dp(4), Ui.dp(4));
++        panel.setPadding(Ui.dp(18), Ui.dp(24), Ui.dp(18), Ui.dp(112));
++
++        TextView title = Ui.tv(this, "Liquid Glass Studio", 28, Ui.WHITE, true);
++        title.setPadding(Ui.dp(2), Ui.dp(4), Ui.dp(2), Ui.dp(2));
+         panel.addView(title);
+-        TextView subtitle = Ui.tv(this, "Choose a mirror-black Liquid Glass finish", 13, Ui.SUB, false);
+-        subtitle.setPadding(Ui.dp(6), 0, Ui.dp(6), Ui.dp(16));
+-        panel.addView(subtitle);
+-        int[] swatches = {Color.rgb(0,229,255),Color.rgb(255,64,190),Color.rgb(70,110,255),Color.rgb(245,170,85),Color.rgb(0,190,220),Color.rgb(120,90,255),Color.rgb(50,190,255),Color.rgb(210,80,255),Color.rgb(0,220,190),Color.rgb(100,140,255),Color.rgb(30,230,220),Color.rgb(180,190,210),Color.rgb(80,120,255),Color.rgb(255,110,190),Color.rgb(70,210,255)};
+-        for (int start = 0; start < Ui.THEMES.length; start += 2) {
+-            LinearLayout row = new LinearLayout(this);
+-            row.setOrientation(LinearLayout.HORIZONTAL);
+-            for (int col = 0; col < 2 && start + col < Ui.THEMES.length; col++) {
+-                final int index = start + col;
+-                LinearLayout tile = new LinearLayout(this);
+-                tile.setOrientation(LinearLayout.VERTICAL);
+-                tile.setGravity(Gravity.CENTER_VERTICAL);
+-                tile.setBackground(Ui.glass(20, true));
+-                tile.setElevation(Ui.dp(3));
+-                tile.setPadding(Ui.dp(12), Ui.dp(14), Ui.dp(10), Ui.dp(14));
+-                LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
+-                tp.setMargins(Ui.dp(4), Ui.dp(4), Ui.dp(4), Ui.dp(4));
+-                FrameLayout preview = new FrameLayout(this);
+-                android.graphics.drawable.GradientDrawable grad = new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, new int[]{Color.rgb(22,26,40), Color.rgb(4,6,12), Color.rgb(16,20,34)});
+-                grad.setCornerRadius(Ui.dp(12));
+-                grad.setStroke(Ui.dp(1), Color.argb(145, Color.red(swatches[index]), Color.green(swatches[index]), Color.blue(swatches[index])));
+-                preview.setBackground(grad);
+-                View glow = new View(this);
+-                android.graphics.drawable.GradientDrawable glowBg = new android.graphics.drawable.GradientDrawable();
+-                glowBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+-                glowBg.setColor(swatches[index]);
+-                glow.setBackground(glowBg);
+-                FrameLayout.LayoutParams gp = new FrameLayout.LayoutParams(Ui.dp(24), Ui.dp(24), Gravity.RIGHT | Gravity.TOP);
+-                gp.setMargins(0, Ui.dp(7), Ui.dp(7), 0);
+-                preview.addView(glow, gp);
+-                tile.addView(preview, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+-                TextView name = Ui.tv(this, Ui.THEMES[index], 12, Ui.WHITE, index == Ui.theme);
+-                name.setPadding(0, Ui.dp(10), 0, 0);
+-                name.setMaxLines(2);
+-                name.setMinHeight(Ui.dp(34));
+-                name.setGravity(Gravity.CENTER_VERTICAL);
+-                tile.addView(name);
+-                TextView state = Ui.tv(this, index == Ui.theme ? "SELECTED" : "TAP TO APPLY", 9.5f, index == Ui.theme ? Ui.accent : Ui.SUB, true);
+-                state.setPadding(0, Ui.dp(4), 0, 0);
+-                tile.addView(state);
+-                if (index == Ui.theme) tile.setBackground(Ui.accentPill(20));
+-                tile.setOnClickListener(v -> {
+-                    Ui.tick(v);
+-                    if (!Ui.bool("reduce_motion", false)) {
+-                        v.animate().cancel();
+-                        v.setScaleX(0.975f); v.setScaleY(0.975f);
+-                        v.animate().scaleX(1f).scaleY(1f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start();
+-                    }
+-                    Ui.setTheme(index, true);
+-                    recolor();
+-                    buildThemeScreen();
+-                });
+-                Ui.press(tile);
+-                row.addView(tile, tp);
+-            }
+-            panel.addView(row, new LinearLayout.LayoutParams(-1, -2));
++        TextView subtitle = Ui.tv(this, "Choose a finish for your workspace", 13, Ui.SUB, false);
++        subtitle.setPadding(Ui.dp(3), 0, Ui.dp(3), Ui.dp(18)); panel.addView(subtitle);
++
++        LinearLayout current = new LinearLayout(this);
++        current.setGravity(Gravity.CENTER_VERTICAL);
++        current.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(16));
++        current.setBackground(Ui.glass(24, true));
++        FrameLayout currentIcon = new FrameLayout(this);
++        currentIcon.setBackground(Ui.accentPill(16));
++        TextView currentGlyph = Ui.tv(this, "◈", 25, Ui.WHITE, true); currentGlyph.setGravity(Gravity.CENTER);
++        currentIcon.addView(currentGlyph, new FrameLayout.LayoutParams(-1, -1));
++        current.addView(currentIcon, new LinearLayout.LayoutParams(Ui.dp(54), Ui.dp(54)));
++        LinearLayout currentText = new LinearLayout(this); currentText.setOrientation(LinearLayout.VERTICAL);
++        currentText.setPadding(Ui.dp(14), 0, Ui.dp(8), 0);
++        currentText.addView(Ui.tv(this, "CURRENT FINISH", 10, Ui.accent, true));
++        TextView activeName = Ui.tv(this, Ui.THEMES[Ui.theme], 17, Ui.WHITE, true);
++        activeName.setPadding(0, Ui.dp(4), 0, 0); currentText.addView(activeName);
++        current.addView(currentText, new LinearLayout.LayoutParams(0, -2, 1f));
++        TextView activeMark = Ui.tv(this, "✓", 22, Ui.accent, true); activeMark.setGravity(Gravity.CENTER);
++        current.addView(activeMark, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(42)));
++        panel.addView(current, lpm(-1, -2, 0, 0, 0, 20));
++
++        TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
++        allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
++        String[] marks = {"◉","◌","◇","⬡","◈","✧","◍","◐","◑","▣","⬢","◒","◓","✦","◉"};
++        for (int index = 0; index < Ui.THEMES.length; index++) {
++            final int themeIndex = index;
++            boolean selected = index == Ui.theme;
++            LinearLayout tile = new LinearLayout(this);
++            tile.setGravity(Gravity.CENTER_VERTICAL);
++            tile.setPadding(Ui.dp(13), Ui.dp(12), Ui.dp(13), Ui.dp(12));
++            tile.setBackground(selected ? Ui.accentPill(20) : Ui.glass(20, true));
++
++            FrameLayout swatch = new FrameLayout(this);
++            android.graphics.drawable.GradientDrawable swatchBg = new android.graphics.drawable.GradientDrawable();
++            swatchBg.setColor(Ui.DOTS[index]); swatchBg.setCornerRadius(Ui.dp(14));
++            swatchBg.setStroke(Ui.dp(1), Color.argb(130, 255, 255, 255));
++            swatch.setBackground(swatchBg);
++            TextView glyph = Ui.tv(this, marks[index], 20, Color.WHITE, true); glyph.setGravity(Gravity.CENTER);
++            swatch.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
++            tile.addView(swatch, new LinearLayout.LayoutParams(Ui.dp(46), Ui.dp(46)));
++
++            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
++            labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
++            labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
++            TextView desc = Ui.tv(this, selected ? "Currently applied" : "Dark glass colour finish", 11, Ui.SUB, false);
++            desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
++            tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
++            TextView status = Ui.tv(this, selected ? "✓" : "›", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
++            status.setGravity(Gravity.CENTER); tile.addView(status, new LinearLayout.LayoutParams(Ui.dp(28), Ui.dp(42)));
++
++            tile.setOnClickListener(v -> {
++                Ui.tick(v);
++                Ui.setTheme(themeIndex, true);
++                recolor();
++                buildThemeScreen();
++            });
++            Ui.press(tile);
++            panel.addView(tile, lpm(-1, -2, 0, 0, 0, 8));
+         }
+         themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
+     }

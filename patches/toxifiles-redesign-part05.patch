@@ -1,0 +1,37 @@
+diff -ruN a/app/src/main/java/com/music/echo/offline/files/DashboardActivity.java b/app/src/main/java/com/music/echo/offline/files/DashboardActivity.java
+--- a/app/src/main/java/com/music/echo/offline/files/DashboardActivity.java	2026-10-26 08:24:20.000000000 +0000
++++ b/app/src/main/java/com/music/echo/offline/files/DashboardActivity.java	1970-01-01 00:00:00.000000000 +0000
+@@ -1,33 +0,0 @@
+-package com.music.echo.offline.files;
+-
+-import android.app.Activity;
+-import android.os.Bundle;
+-import android.webkit.WebChromeClient;
+-import android.webkit.WebSettings;
+-import android.webkit.WebView;
+-import android.webkit.WebViewClient;
+-import android.graphics.Color;
+-
+-/** Responsive LiquidDrive concept dashboard embedded alongside the native file manager. */
+-public class DashboardActivity extends Activity {
+-    private WebView web;
+-    @Override protected void onCreate(Bundle state) {
+-        super.onCreate(state);
+-        getWindow().setStatusBarColor(Color.rgb(5,5,8));
+-        getWindow().setNavigationBarColor(Color.rgb(5,5,8));
+-        web = new WebView(this);
+-        web.setBackgroundColor(Color.rgb(5,5,8));
+-        WebSettings settings = web.getSettings();
+-        settings.setJavaScriptEnabled(true);
+-        settings.setDomStorageEnabled(true);
+-        settings.setLoadsImagesAutomatically(false);
+-        settings.setAllowFileAccess(true);
+-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+-        web.setWebViewClient(new WebViewClient());
+-        web.setWebChromeClient(new WebChromeClient());
+-        setContentView(web);
+-        web.loadUrl("file:///android_asset/liquiddrive-dashboard.html");
+-    }
+-    @Override public void onBackPressed() { finish(); }
+-    @Override protected void onDestroy() { if (web != null) { web.stopLoading(); web.destroy(); web = null; } super.onDestroy(); }
+-}

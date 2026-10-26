@@ -1,0 +1,19 @@
+diff -ruN a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	2026-10-26 08:24:20.000000000 +0000
++++ b/app/src/main/AndroidManifest.xml	2026-10-26 10:50:31.058583129 +0000
+@@ -2,6 +2,7 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+ 
+     <!-- Network permission is used only for optional local Wi-Fi transfer; no remote service is required for playback or browsing. -->
++    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
+     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+@@ -34,7 +35,6 @@
+             </intent-filter>
+         </activity>
+         <service android:name=".files.BackgroundAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+-        <activity android:name=".files.DashboardActivity" android:exported="false" android:screenOrientation="unspecified" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
+         <activity
+             android:name=".files.ViewerActivity"
+             android:exported="false"

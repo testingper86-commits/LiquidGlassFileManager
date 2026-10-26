@@ -1,0 +1,36 @@
+diff -ruN a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+--- a/tools/project_smoke_test.py	2026-10-26 08:24:20.000000000 +0000
++++ b/tools/project_smoke_test.py	2026-10-26 10:50:31.066583129 +0000
+@@ -124,7 +124,30 @@
+             'video frames render through TextureView and subtitle UI is removed')
+     require('new SquigglySeekBar(this)' in viewer and 'videoProgressAnimation' not in viewer and 'audioProgressAnimation' not in viewer,
+             'audio and video playback use only the custom squiggly progress control')
+-    # Legacy sound.json and wave.json files were verified absent from the packaged source archive.
++    require('sound.json' not in viewer and 'wave.json' not in viewer and 'LottieAnimationView' not in viewer,
++            'music and video players contain no sound/wave JSON visualizers')
++    assets = ROOT / 'app/src/main/assets'
++    require(not (assets / 'sound.json').exists() and not (assets / 'wave.json').exists(),
++            'sound.json and wave.json are removed from packaged Android assets')
++    require('com.airbnb.android:lottie' not in gradle, 'unused Lottie runtime dependency is removed')
++    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
++    require('categoryName = cat == -1 ? "Apps"' in main_activity and 'System Apps' in main_activity and 'Downloaded Apps' in main_activity,
++            'Apps is a compact main-page tile with separate System Apps and Downloaded Apps choices')
++    require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
++            'Settings is accessed from the top-right home header')
++    require('Usage & diagnostics' in main_activity and 'Built-in app visibility' in main_activity and 'Debug options' not in main_activity,
++            'developer options contain diagnostics and debug controls without a separate Debug section')
++    browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
++    require('normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")' in browser,
++            'Videos and Music/Audio categories default to grid view')
++    require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
++            'LiquidDrive dashboard shortcut and activity are removed')
++    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity,
++            'theme chooser has dedicated studio layout and a distinct icon for each finish')
++    require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
++            'built-in text editor can edit and save supported small text files')
++    require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
++            'decorative motion is reduced by default')
+     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
+     crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
+

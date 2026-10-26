@@ -1,0 +1,13 @@
+diff -ruN a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java	2026-10-26 08:24:20.000000000 +0000
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java	2026-10-26 10:50:31.050583129 +0000
+@@ -324,6 +324,9 @@
+     void setList(String t, List<Entry> list, boolean limited, boolean focusSearch) {
+         mode = LIST;
+         listTitle = t;
++        String normalizedTitle = t == null ? "" : t.toLowerCase(Locale.ROOT);
++        if (normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")) columns = 3;
++        else columns = Ui.bool("grid", false) ? 3 : 1;
+         limit = limited;
+         selecting = false;
+         sel.clear();

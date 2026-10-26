@@ -1,0 +1,24 @@
+diff -ruN a/app/src/main/java/com/music/echo/offline/files/GlowRing.java b/app/src/main/java/com/music/echo/offline/files/GlowRing.java
+--- a/app/src/main/java/com/music/echo/offline/files/GlowRing.java	2026-10-26 08:24:20.000000000 +0000
++++ b/app/src/main/java/com/music/echo/offline/files/GlowRing.java	2026-10-26 10:50:31.042583129 +0000
+@@ -34,7 +34,7 @@
+         }
+     }
+ 
+-    public static void attach(View target) { if (target != null) state(target, true); }
++    public static void attach(View target) { if (target != null) state(target, !Ui.bool("reduce_motion", true)); }
+     public static void detach(View target) {
+         if (target == null) return;
+         State s = STATES.remove(target);
+@@ -46,6 +46,11 @@
+     }
+     public static void setActive(View target, boolean active) {
+         if (target == null) return;
++        if (Ui.bool("reduce_motion", true)) {
++            State s = state(target, false);
++            s.active = false; s.ring.setAlpha(0f); s.ring.stop(); sync(s);
++            return;
++        }
+         State s = state(target, active);
+         s.active = active;
+         sync(s);
