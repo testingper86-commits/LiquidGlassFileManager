@@ -95,6 +95,8 @@ def main():
     require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
 
     require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
+    require('Ui.bool(\"blur\", true) && !Ui.highContrast' in main_src, 'backdrop blur setting and high-contrast accessibility mode are respected')
+    require('Re-locks after you leave the app or the screen turns off' in main_src and 'copy files out' in main_src, 'settings descriptions match App Lock lifecycle and bidirectional external storage')
     manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
     require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
 
