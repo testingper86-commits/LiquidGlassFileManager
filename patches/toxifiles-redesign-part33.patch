@@ -1,0 +1,44 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index bf9b445..888976a 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -414,7 +414,7 @@ public class MainActivity extends Activity {
+     void showOverlay(View v) {
+         overlayView = v;
+         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+-        if (Build.VERSION.SDK_INT >= 31 && !Ui.highContrast) {
++        if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", true) && !Ui.highContrast) {
+             screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
+         }
+         screens[tab].setVisibility(View.VISIBLE);
+@@ -921,7 +921,7 @@ public class MainActivity extends Activity {
+ 
+         settings.addView(section("App Lock"));
+         settings.addView(row(Glyphs.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
+-        settings.addView(switchRow(Glyphs.SHIELD, "Require unlock to open app", "Checked every time the app returns to the foreground", "applock_on", false, () -> {
++        settings.addView(switchRow(Glyphs.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
+             if (Ui.bool("applock_on", false) && !AppLock.hasPin(this)) { Ui.toast(this, "Set an App Lock PIN first"); Ui.set("applock_on", false); buildSettings(); }
+         }), lpm(-1, -2, 16, 0, 16, 8));
+ 
+@@ -952,7 +952,7 @@ public class MainActivity extends Activity {
+         settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then ⋮ → Send via Wi-Fi…", null, v -> Ui.toast(this, "Select files in Files tab first, then use ⋮ → Send via Wi-Fi…")), lpm(-1, -2, 16, 0, 16, 8));
+ 
+         settings.addView(section("Other storage"));
+-        settings.addView(row(Glyphs.CLOUD, "Browse other storage", "SD card, USB, or a cloud app's documents (read-only import)", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
++        settings.addView(row(Glyphs.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
+ 
+ 
+         settings.addView(section("About"));
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index b4b9dca..d937459 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -95,6 +95,8 @@ def main():
+     require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
+ 
+     require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
++    require('Ui.bool(\"blur\", true) && !Ui.highContrast' in main_src, 'backdrop blur setting and high-contrast accessibility mode are respected')
++    require('Re-locks after you leave the app or the screen turns off' in main_src and 'copy files out' in main_src, 'settings descriptions match App Lock lifecycle and bidirectional external storage')
+     manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+     require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
+ 
