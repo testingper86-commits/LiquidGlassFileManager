@@ -1,7 +1,7 @@
 diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 --- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-@@ -1,1 +1,11 @@
+@@ -13,1 +13,11 @@
  public class LanTransferCryptoTest {
 +
 +    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
