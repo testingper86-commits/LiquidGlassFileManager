@@ -479,11 +479,23 @@ final class BrowserView extends FrameLayout {
         if (a.clip == null || cur == null) return;
         final File[] src = a.clip;
         final boolean cut = a.clipCut;
-        FileOps.paste(a, src, cur, cut, msg -> {
+        pasteWithConflictPrompt(src, cur, cut, msg -> {
             if (cut) a.setClip(null, false);
             Ui.toast(a, msg);
             a.afterOps();
         });
+    }
+
+    void pasteWithConflictPrompt(final File[] src, final File destination, final boolean move, final FileOps.Done done) {
+        int conflicts = 0;
+        for (File file : src) if (!(move && destination.equals(file.getParentFile())) && new File(destination, file.getName()).exists()) conflicts++;
+        if (conflicts == 0) { FileOps.paste(a, src, destination, move, false, done); return; }
+        new AlertDialog.Builder(a).setTitle("Name conflicts")
+                .setMessage(conflicts + " item" + (conflicts == 1 ? " already exists" : "s already exist") + " in the destination. Choose how to continue.")
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Skip existing", (dialog, which) -> FileOps.paste(a, src, destination, move, true, done))
+                .setPositiveButton("Keep both", (dialog, which) -> FileOps.paste(a, src, destination, move, false, done))
+                .show();
     }
 
     // ---------- menus ----------
@@ -632,7 +644,7 @@ final class BrowserView extends FrameLayout {
         new AlertDialog.Builder(a).setTitle("Move to").setItems(names, (d, w) -> {
             File dest = dirs[w];
             if (!dest.isDirectory()) { Ui.toast(a, "That folder doesn't exist on this device"); return; }
-            FileOps.paste(a, files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
+            pasteWithConflictPrompt(files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
         }).show();
     }
 

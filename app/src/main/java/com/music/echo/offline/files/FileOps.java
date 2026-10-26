@@ -77,9 +77,14 @@ final class FileOps {
     }
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final Done d) {
+        paste(a, src, dst, move, false, d);
+    }
+
+    static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
         a.busy(true);
         a.ops.execute(() -> {
-            int ok = 0, fail = 0;
+            cancelRequested = false;
+            int ok = 0, fail = 0, skipped = 0;
             String err = "";
             int total = src.length, idx = 0;
             for (File s : src) {
@@ -90,6 +95,7 @@ final class FileOps {
                 a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
                 try {
                     if (move && dst.equals(s.getParentFile())) { ok++; continue; }
+                    if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
                     if (s.isDirectory() && (dst.getCanonicalPath() + "/").startsWith(s.getCanonicalPath() + "/")) {
                         fail++; err = "Can't put a folder inside itself"; continue;
                     }
@@ -98,7 +104,8 @@ final class FileOps {
                     ok++;
                 } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
             }
-            final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s") : err;
+            final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
+                    + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
         });
     }

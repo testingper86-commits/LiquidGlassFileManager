@@ -73,6 +73,7 @@ def main():
     require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
     require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
     require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
+    require('skipExisting' in file_ops and 'skipped > 0' in file_ops and 'Skip existing' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text() and 'Keep both' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text(), 'copy and move operations offer explicit conflict handling')
     require('Tap to request cancellation' in main_src and 'tap to cancel' in main_src and 'LanTransfer.cancel()' in main_src, 'progress control exposes cancellation for file and LAN operations')
     require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
     require('onUserLeaveHint()' in main_src and 'ACTION_SCREEN_OFF' in main_src and 'unlocked = false; // re-lock every time the app leaves the foreground' not in main_src, 'App Lock re-arms on actual app departure and screen-off, not every Activity pause')
