@@ -64,46 +64,50 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f .toxifiles-patches-applied ]]; then
-            echo "Committed source tree is already patched; skipping patch replay."
-          else
+          if [[ ! -f .toxifiles-patches-applied ]]; then
             for PATCH_FILE in patches/toxifiles-redesign.patch patches/toxifiles-redesign-part02.patch patches/toxifiles-redesign-part03.patch patches/toxifiles-redesign-part04.patch patches/toxifiles-redesign-part05.patch patches/toxifiles-redesign-part06.patch patches/toxifiles-redesign-part07.patch patches/toxifiles-redesign-part08.patch patches/toxifiles-redesign-part09.patch patches/toxifiles-redesign-part10.patch patches/toxifiles-redesign-part11.patch patches/toxifiles-redesign-part12.patch patches/toxifiles-redesign-part13.patch patches/toxifiles-redesign-part14.patch patches/toxifiles-redesign-part15.patch; do
-              if [[ ! -s "$PATCH_FILE" ]]; then
-                echo "::error::Required ToxiFiles patch missing: $PATCH_FILE"
-                exit 1
-              fi
+              if [[ ! -s "$PATCH_FILE" ]]; then echo "::error::Required ToxiFiles patch missing: $PATCH_FILE"; exit 1; fi
               patch --batch --forward -p1 < "$PATCH_FILE"
             done
             touch .toxifiles-patches-applied
           fi
+          for PATCH_FILE in patches/toxifiles-redesign-part*.patch; do
+            [[ -e "$PATCH_FILE" ]] || continue
+            case "$PATCH_FILE" in
+              patches/toxifiles-redesign-part0[2-9].patch|patches/toxifiles-redesign-part1[0-5].patch) continue ;;
+            esac
+            MARKER=".toxifiles-$(basename "$PATCH_FILE" .patch)-applied"
+            if [[ ! -f "$MARKER" ]]; then
+              patch --batch --forward -p1 < "$PATCH_FILE"
+              touch "$MARKER"
+            fi
+          done
           rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
           if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
             echo "::error::Legacy visualizer JSON/Lottie references remain in the packaged source."
             exit 1
           fi
 
-      - name: Flatten source tree and remove archive-based build inputs
+      - name: Flatten and sync the Android source tree
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f .toxifiles-source-tree ]]; then
-            echo "Root Android source tree is already committed."
-            exit 0
+          if [[ ! -f .toxifiles-source-tree ]]; then
+            test -s gradlew
+            test -s settings.gradle.kts || test -s settings.gradle
+            touch .toxifiles-source-tree
+            find . -maxdepth 1 -type f -iname '*.zip' -delete
           fi
-          test -s gradlew
-          test -s settings.gradle.kts || test -s settings.gradle
-          touch .toxifiles-source-tree
-          find . -maxdepth 1 -type f -iname '*.zip' -delete
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
-            echo "::error::No root source changes were staged for flattening."
-            exit 1
+            echo "Source tree is already synchronized."
+          else
+            git commit -m "Synchronize Android source tree"
+            git push origin "HEAD:\${GITHUB_REF_NAME}"
           fi
-          git commit -m "Flatten Android project source tree"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
