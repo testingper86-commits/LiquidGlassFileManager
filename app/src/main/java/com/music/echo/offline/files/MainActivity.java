@@ -414,7 +414,10 @@ public class MainActivity extends Activity {
     void showOverlay(View v) {
         overlayView = v;
         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        screens[tab].setVisibility(View.GONE);
+        if (Build.VERSION.SDK_INT >= 31 && !Ui.highContrast) {
+            screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
+        }
+        screens[tab].setVisibility(View.VISIBLE);
         v.setVisibility(View.VISIBLE);
         if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
         else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
@@ -428,6 +431,7 @@ public class MainActivity extends Activity {
         overlayView.setVisibility(View.GONE);
         overlayView = null;
         if (wasVault) getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        if (Build.VERSION.SDK_INT >= 31) screens[tab].setRenderEffect(null);
         screens[tab].setVisibility(View.VISIBLE);
         nav.setVisibility(View.VISIBLE);
         if (tab == 0) buildHome();
