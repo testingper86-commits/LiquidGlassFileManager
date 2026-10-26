@@ -1,0 +1,152 @@
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 7e292cd..e4b6fd4 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -30,4 +30,5 @@ android {
+ 
+ dependencies {
+     implementation("androidx.core:core:1.13.1")
++    implementation("androidx.documentfile:documentfile:1.0.1")
+ }
+diff --git a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+index b2edab6..e938c42 100644
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -533,6 +533,7 @@ final class BrowserView extends FrameLayout {
+         List<String> l = new ArrayList<>();
+         List<Runnable> r = new ArrayList<>();
+         if (mode == DIR && !selecting) add(l, r, "New folder", this::newFolder);
++        if (mode == DIR && !selecting) add(l, r, "Choose SD/USB storage…", a::openOtherStorage);
+         if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { Ui.sp.edit().putString("default_folder", cur.getAbsolutePath()).apply(); Ui.toast(a, "Set as default: " + cur.getAbsolutePath()); });
+         add(l, r, columns > 1 ? "List view" : "Grid view", this::toggleView);
+         add(l, r, "Sort by…", this::sortDialog);
+@@ -574,6 +575,7 @@ final class BrowserView extends FrameLayout {
+         add(l, r, "Compress to ZIP", () -> zip(s));
+         add(l, r, "Move to…", () -> moveToQuick(s));
+         add(l, r, "Send via Wi-Fi…", () -> a.sendViaWifi(files(s)));
++        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> a.copyToSafTree(files(s)));
+         add(l, r, "Label", () -> labelDialog(s));
+         add(l, r, "Move to Vault", () -> vaultMove(s));
+         if (s.size() == 1) {
+@@ -654,6 +656,7 @@ final class BrowserView extends FrameLayout {
+         add(l, r, "Cut", () -> { a.setClip(new File[]{e.f}, true); Ui.toast(a, "Cut — open a folder and tap Paste"); });
+         add(l, r, "Move to…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); moveToQuick(one); });
+         add(l, r, "Send via Wi-Fi…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); a.sendViaWifi(files(one)); });
++        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> { List<File> one = new ArrayList<>(); one.add(e.f); a.copyToSafTree(one); });
+         add(l, r, "Compress to ZIP", () -> { List<Entry> one = new ArrayList<>(); one.add(e); zip(one); });
+         if (e.ext.equals("zip")) add(l, r, "Extract here", () -> unzip(e.f));
+         add(l, r, "Delete", () -> { List<Entry> one = new ArrayList<>(); one.add(e); confirmDelete(one); });
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 0b0eb72..72e80a8 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -60,6 +60,7 @@ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ import org.json.JSONObject;
+ import androidx.core.content.FileProvider;
++import androidx.documentfile.provider.DocumentFile;
+ 
+ public class MainActivity extends Activity {
+     final ExecutorService io = Executors.newFixedThreadPool(2);
+@@ -94,6 +95,8 @@ public class MainActivity extends Activity {
+         setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
+         super.onCreate(b);
+         Ui.init(this);
++        String savedSafTree = getSharedPreferences("lg_storage", MODE_PRIVATE).getString("saf_tree", null);
++        if (savedSafTree != null) safTree = Uri.parse(savedSafTree);
+         getWindow().setStatusBarColor(Color.TRANSPARENT);
+         getWindow().setNavigationBarColor(Color.TRANSPARENT);
+         SharedPreferences fp = getSharedPreferences("lg_favs", MODE_PRIVATE);
+@@ -1408,8 +1411,10 @@ public class MainActivity extends Activity {
+         if (rq == REQ_SAF_TREE) {
+             Uri tree = data.getData();
+             if (tree == null) return;
+-            try { getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
++            int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
++            try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (Exception ignored) { /* session grant may still work */ }
+             safTree = tree;
++            getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
+             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
+             showSafLevel(tree, DocumentsContract.buildDocumentUriUsingTree(tree, rootDoc), "Other storage");
+         } else if (rq == REQ_IMPORT_SETTINGS) {
+@@ -1418,6 +1423,67 @@ public class MainActivity extends Activity {
+         }
+     }
+ 
++    void copyToSafTree(final List<File> files) {
++        if (safTree == null || files == null || files.isEmpty()) { Ui.toast(this, "Choose an SD/USB destination first"); return; }
++        final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
++        if (rootDoc == null || !rootDoc.canWrite()) { Ui.toast(this, "This storage location is not writable"); return; }
++        busy(true);
++        ops.execute(() -> {
++            FileOps.cancelRequested = false;
++            int ok = 0, failed = 0, idx = 0;
++            String error = "";
++            for (File file : files) {
++                if (FileOps.cancelRequested) { failed++; error = "Operation cancelled"; break; }
++                final int current = ++idx;
++                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
++                try { copyLocalToSaf(file, rootDoc); ok++; }
++                catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
++            }
++            final int copied = ok, failures = failed; final String detail = error;
++            runOnUiThread(() -> {
++                busy(false);
++                Ui.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
++            });
++        });
++    }
++
++    private void copyLocalToSaf(File source, DocumentFile parent) throws java.io.IOException {
++        FileOps.checkCancelled();
++        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new java.io.IOException("Symbolic links cannot be copied to external storage");
++        String base = source.getName(); String candidate = base; int suffix = 1;
++        while (parent.findFile(candidate) != null) {
++            int dot = source.isDirectory() ? -1 : base.lastIndexOf('.');
++            String stem = dot > 0 ? base.substring(0, dot) : base;
++            String ext = dot > 0 ? base.substring(dot) : "";
++            candidate = stem + " (" + suffix++ + ")" + ext;
++        }
++        String mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(
++                android.webkit.MimeTypeMap.getFileExtensionFromUrl(candidate));
++        DocumentFile target = source.isDirectory() ? parent.createDirectory(candidate) : parent.createFile(mime == null ? "application/octet-stream" : mime, candidate);
++        if (target == null) throw new java.io.IOException("Could not create " + candidate + " on external storage");
++        try {
++            if (source.isDirectory()) {
++                File[] children = source.listFiles();
++                if (children == null) throw new java.io.IOException("Can't read folder " + source.getName());
++                for (File child : children) copyLocalToSaf(child, target);
++            } else {
++                try (InputStream in = new java.io.FileInputStream(source); OutputStream out = getContentResolver().openOutputStream(target.getUri(), "w")) {
++                    if (out == null) throw new java.io.IOException("External storage returned no output stream");
++                    byte[] buf = new byte[65536]; int n;
++                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
++                }
++            }
++        } catch (Exception copyError) {
++            deleteSafTree(target);
++            if (copyError instanceof java.io.IOException) throw (java.io.IOException) copyError;
++            throw new java.io.IOException("Copy failed: " + copyError.getMessage(), copyError);
++        }
++    }
++
++    private void deleteSafTree(DocumentFile target) {
++        try { if (target.isDirectory()) { DocumentFile[] kids = target.listFiles(); if (kids != null) for (DocumentFile kid : kids) deleteSafTree(kid); } target.delete(); } catch (Exception ignored) { }
++    }
++
+     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
+         Ui.toast(this, "Loading…");
+         io.execute(() -> {
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 11a35e1..3353a43 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -56,6 +56,8 @@ def main():
+     require('writeMetadata(wrapper, parent.getAbsolutePath())' in vault and 'readMetadata(meta)' in vault and 'META_FILE = \".vault_meta\"' in vault, 'Vault original-path metadata is encrypted at rest')
+     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
+     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
++    require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
++    require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
+     require('Encrypted at rest with AES-GCM' in browser and 'it does not encrypt them' not in browser, 'Vault UI accurately describes encryption at rest')
+     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
+     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
