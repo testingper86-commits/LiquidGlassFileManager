@@ -55,8 +55,15 @@ jobs:
           set -euo pipefail
           for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
             [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
-            echo "Applying $p"
-            patch --batch --forward -p1 < "$p"
+            if patch --dry-run --batch --forward -p1 < "$p" >/dev/null 2>&1; then
+              echo "Applying $p"
+              patch --batch --forward -p1 < "$p"
+            elif patch --dry-run --batch --reverse -p1 < "$p" >/dev/null 2>&1; then
+              echo "$p already applied in the source archive; skipping."
+            else
+              echo "::error::Patch $p does not apply cleanly and is not already applied."
+              exit 1
+            fi
           done
           rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
           if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
