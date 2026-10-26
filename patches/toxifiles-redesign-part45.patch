@@ -1,9 +1,9 @@
 diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 --- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-@@ -13,1 +13,11 @@
- public class LanTransferCryptoTest {
-+
+@@ -50,3 +50,13 @@
+         catch (AEADBadTagException expected) { /* authenticated encryption rejects changes */ }
+     }
 +    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
 +        byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 3);
 +        byte[] otherSalt = salt.clone(); otherSalt[0] ^= 0x55;
@@ -13,3 +13,4 @@ diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTes
 +        assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
 +        assertRejected("nul" + ((char) 0) + "name.txt");
 +    }
+ }
