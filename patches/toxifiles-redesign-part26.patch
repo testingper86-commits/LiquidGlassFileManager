@@ -1,0 +1,105 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/Vault.java b/app/src/main/java/com/music/echo/offline/files/Vault.java
+index c2b1b21..ebaa843 100644
+--- a/app/src/main/java/com/music/echo/offline/files/Vault.java
++++ b/app/src/main/java/com/music/echo/offline/files/Vault.java
+@@ -19,7 +19,6 @@ import java.security.MessageDigest;
+ import java.util.ArrayList;
+ import java.util.List;
+ import javax.crypto.Cipher;
+-import javax.crypto.CipherInputStream;
+ import javax.crypto.CipherOutputStream;
+ import javax.crypto.KeyGenerator;
+ import javax.crypto.SecretKey;
+@@ -119,21 +118,34 @@ final class Vault {
+         }
+     }
+ 
+-    /** Streams encrypted src → plaintext dest. */
++    /** Authenticates AES-GCM before publishing plaintext at the destination path. */
+     private static void decryptFile(File src, File dest) throws Exception {
++        File parent = dest.getParentFile();
++        if (parent == null || (!parent.isDirectory() && !parent.mkdirs())) throw new IOException("Unable to create restore folder");
++        File pending = new File(parent, ".toxifiles-decrypt-" + java.util.UUID.randomUUID() + ".part");
++        boolean published = false;
+         try (InputStream rawIn = new FileInputStream(src)) {
+             int ivLen = rawIn.read();
+-            if (ivLen <= 0) throw new IOException("Not a vault file");
+-            byte[] iv = new byte[ivLen];
+-            int off = 0;
++            if (ivLen != 12) throw new IOException("Invalid vault IV");
++            byte[] iv = new byte[ivLen]; int off = 0;
+             while (off < ivLen) { int r = rawIn.read(iv, off, ivLen - off); if (r < 0) throw new IOException("Truncated vault file"); off += r; }
+             Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+             c.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
+-            try (CipherInputStream cis = new CipherInputStream(rawIn, c); OutputStream out = new FileOutputStream(dest)) {
+-                byte[] buf = new byte[65536];
+-                int n;
+-                while ((n = cis.read(buf)) > 0) out.write(buf, 0, n);
++            try (OutputStream out = new FileOutputStream(pending)) {
++                byte[] buf = new byte[65536]; int n;
++                while ((n = rawIn.read(buf)) != -1) {
++                    byte[] plain = c.update(buf, 0, n);
++                    if (plain != null && plain.length > 0) out.write(plain);
++                }
++                byte[] finalPlain = c.doFinal(); // throws if the GCM authentication tag is invalid
++                if (finalPlain.length > 0) out.write(finalPlain);
+             }
++            if (dest.exists() || !pending.renameTo(dest)) throw new IOException("Could not safely publish decrypted file");
++            published = true;
++        } catch (Exception decryptError) {
++            pending.delete();
++            if (published) dest.delete();
++            throw decryptError;
+         }
+     }
+ 
+@@ -198,7 +210,7 @@ final class Vault {
+         a.busy(true);
+         a.ops.execute(() -> {
+             FileOps.cancelRequested = false;
+-            int ok = 0, fail = 0;
++            int ok = 0, fail = 0, cleanupFailed = 0;
+             for (File s : src) {
+                 if (FileOps.cancelRequested) { fail++; break; }
+                 try {
+@@ -211,12 +223,13 @@ final class Vault {
+                         encryptTree(s, target);               // never delete the original until encryption fully succeeds
+                         writeMetadata(wrapper, parent.getAbsolutePath());
+                     } catch (Exception encryptError) { FileOps.deleteTree(wrapper); throw encryptError; }
+-                    FileOps.deleteTree(s);
+-                    ok++;
++                    if (FileOps.deleteTree(s)) ok++;
++                    else { cleanupFailed++; fail++; }
+                 } catch (Exception ex) { fail++; }
+             }
+-            final int fok = ok, ffail = fail;
+-            final String msg = ffail == 0 ? "Encrypted and moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Vault" : "Moved " + fok + ", failed " + ffail;
++            final int fok = ok, ffail = fail, fcleanup = cleanupFailed;
++            final String msg = ffail == 0 ? "Encrypted and moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Vault"
++                    : "Encrypted/moved " + fok + ", failed " + ffail + (fcleanup > 0 ? "; encrypted copies are safe, but some originals may remain" : "");
+             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+         });
+     }
+@@ -231,7 +244,7 @@ final class Vault {
+             String origPath = "";
+             File meta = new File(w, META_FILE);
+             if (meta.isFile()) {
+-                try { origPath = readMetadata(meta); } catch (Exception invalidMetadata) { continue; }
++                try { origPath = readMetadata(meta); } catch (Exception invalidMetadata) { origPath = ""; }
+             } else {
+                 // Backward compatibility for vault entries created before metadata encryption.
+                 int i = nm.lastIndexOf('~');
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index a346db7..d6cf582 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -55,6 +55,9 @@ def main():
+     require('failed_attempts' in vault and 'blocked_until' in vault and 'Math.min(15 * 60_000L' in vault, 'Vault applies persistent escalating PIN lockout')
+     require('UUID.randomUUID()' in vault and 'UUID.randomUUID()' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text(), 'Vault and Recycle Bin wrapper names avoid timestamp collisions')
+     require('writeMetadata(wrapper, parent.getAbsolutePath())' in vault and 'readMetadata(meta)' in vault and 'META_FILE = \".vault_meta\"' in vault, 'Vault original-path metadata is encrypted at rest')
++    decrypt_src = vault[vault.index('private static void decryptFile'):vault.index('private static final String META_FILE')]
++    require('c.doFinal(); // throws if the GCM authentication tag is invalid' in decrypt_src and 'toxifiles-decrypt-' in decrypt_src and 'CipherInputStream' not in decrypt_src, 'Vault decrypt authenticates AES-GCM before publishing plaintext')
++    require('origPath = \"\"' in vault and 'encrypted copies are safe' in vault, 'Vault keeps entries visible when metadata is unreadable and reports source cleanup failures')
+     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
+     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
+     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
