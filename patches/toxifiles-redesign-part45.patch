@@ -1,7 +1,7 @@
 diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 --- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-@@ -50,3 +50,13 @@
+@@ -50,3 +50,12 @@
          catch (AEADBadTagException expected) { /* authenticated encryption rejects changes */ }
      }
 +    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
