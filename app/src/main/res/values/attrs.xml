@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="GradientRingView">
+        <attr name="ringStrokeWidth" format="dimension" />
+        <attr name="ringCornerRadius" format="dimension" />
+        <attr name="ringGlowRadius" format="dimension" />
+        <attr name="ringSpeed" format="integer" />
+        <attr name="ringColors" format="reference|color" />
+    </declare-styleable>
+</resources>
