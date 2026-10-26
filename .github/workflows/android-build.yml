@@ -106,7 +106,7 @@ jobs:
             echo "Source tree is already synchronized."
           else
             git commit -m "Synchronize Android source tree"
-            git push origin "HEAD:\${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - name: Set up Python
