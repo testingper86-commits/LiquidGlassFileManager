@@ -60,6 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONObject;
 import androidx.core.content.FileProvider;
+import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends Activity {
     final ExecutorService io = Executors.newFixedThreadPool(2);
@@ -94,6 +95,8 @@ public class MainActivity extends Activity {
         setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
         super.onCreate(b);
         Ui.init(this);
+        String savedSafTree = getSharedPreferences("lg_storage", MODE_PRIVATE).getString("saf_tree", null);
+        if (savedSafTree != null) safTree = Uri.parse(savedSafTree);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         SharedPreferences fp = getSharedPreferences("lg_favs", MODE_PRIVATE);
@@ -1408,14 +1411,77 @@ public class MainActivity extends Activity {
         if (rq == REQ_SAF_TREE) {
             Uri tree = data.getData();
             if (tree == null) return;
-            try { getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
+            int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (Exception ignored) { /* session grant may still work */ }
             safTree = tree;
+            getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
             showSafLevel(tree, DocumentsContract.buildDocumentUriUsingTree(tree, rootDoc), "Other storage");
         } else if (rq == REQ_IMPORT_SETTINGS) {
             Uri file = data.getData();
             if (file != null) applyImportedSettings(file);
         }
+    }
+
+    void copyToSafTree(final List<File> files) {
+        if (safTree == null || files == null || files.isEmpty()) { Ui.toast(this, "Choose an SD/USB destination first"); return; }
+        final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
+        if (rootDoc == null || !rootDoc.canWrite()) { Ui.toast(this, "This storage location is not writable"); return; }
+        busy(true);
+        ops.execute(() -> {
+            FileOps.cancelRequested = false;
+            int ok = 0, failed = 0, idx = 0;
+            String error = "";
+            for (File file : files) {
+                if (FileOps.cancelRequested) { failed++; error = "Operation cancelled"; break; }
+                final int current = ++idx;
+                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
+                try { copyLocalToSaf(file, rootDoc); ok++; }
+                catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
+            }
+            final int copied = ok, failures = failed; final String detail = error;
+            runOnUiThread(() -> {
+                busy(false);
+                Ui.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
+            });
+        });
+    }
+
+    private void copyLocalToSaf(File source, DocumentFile parent) throws java.io.IOException {
+        FileOps.checkCancelled();
+        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new java.io.IOException("Symbolic links cannot be copied to external storage");
+        String base = source.getName(); String candidate = base; int suffix = 1;
+        while (parent.findFile(candidate) != null) {
+            int dot = source.isDirectory() ? -1 : base.lastIndexOf('.');
+            String stem = dot > 0 ? base.substring(0, dot) : base;
+            String ext = dot > 0 ? base.substring(dot) : "";
+            candidate = stem + " (" + suffix++ + ")" + ext;
+        }
+        String mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+                android.webkit.MimeTypeMap.getFileExtensionFromUrl(candidate));
+        DocumentFile target = source.isDirectory() ? parent.createDirectory(candidate) : parent.createFile(mime == null ? "application/octet-stream" : mime, candidate);
+        if (target == null) throw new java.io.IOException("Could not create " + candidate + " on external storage");
+        try {
+            if (source.isDirectory()) {
+                File[] children = source.listFiles();
+                if (children == null) throw new java.io.IOException("Can't read folder " + source.getName());
+                for (File child : children) copyLocalToSaf(child, target);
+            } else {
+                try (InputStream in = new java.io.FileInputStream(source); OutputStream out = getContentResolver().openOutputStream(target.getUri(), "w")) {
+                    if (out == null) throw new java.io.IOException("External storage returned no output stream");
+                    byte[] buf = new byte[65536]; int n;
+                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                }
+            }
+        } catch (Exception copyError) {
+            deleteSafTree(target);
+            if (copyError instanceof java.io.IOException) throw (java.io.IOException) copyError;
+            throw new java.io.IOException("Copy failed: " + copyError.getMessage(), copyError);
+        }
+    }
+
+    private void deleteSafTree(DocumentFile target) {
+        try { if (target.isDirectory()) { DocumentFile[] kids = target.listFiles(); if (kids != null) for (DocumentFile kid : kids) deleteSafTree(kid); } target.delete(); } catch (Exception ignored) { }
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {

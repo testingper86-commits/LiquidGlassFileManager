@@ -56,6 +56,8 @@ def main():
     require('writeMetadata(wrapper, parent.getAbsolutePath())' in vault and 'readMetadata(meta)' in vault and 'META_FILE = \".vault_meta\"' in vault, 'Vault original-path metadata is encrypted at rest')
     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
+    require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
+    require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
     require('Encrypted at rest with AES-GCM' in browser and 'it does not encrypt them' not in browser, 'Vault UI accurately describes encryption at rest')
     require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
     file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()

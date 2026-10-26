@@ -533,6 +533,7 @@ final class BrowserView extends FrameLayout {
         List<String> l = new ArrayList<>();
         List<Runnable> r = new ArrayList<>();
         if (mode == DIR && !selecting) add(l, r, "New folder", this::newFolder);
+        if (mode == DIR && !selecting) add(l, r, "Choose SD/USB storage…", a::openOtherStorage);
         if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { Ui.sp.edit().putString("default_folder", cur.getAbsolutePath()).apply(); Ui.toast(a, "Set as default: " + cur.getAbsolutePath()); });
         add(l, r, columns > 1 ? "List view" : "Grid view", this::toggleView);
         add(l, r, "Sort by…", this::sortDialog);
@@ -574,6 +575,7 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Compress to ZIP", () -> zip(s));
         add(l, r, "Move to…", () -> moveToQuick(s));
         add(l, r, "Send via Wi-Fi…", () -> a.sendViaWifi(files(s)));
+        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> a.copyToSafTree(files(s)));
         add(l, r, "Label", () -> labelDialog(s));
         add(l, r, "Move to Vault", () -> vaultMove(s));
         if (s.size() == 1) {
@@ -654,6 +656,7 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Cut", () -> { a.setClip(new File[]{e.f}, true); Ui.toast(a, "Cut — open a folder and tap Paste"); });
         add(l, r, "Move to…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); moveToQuick(one); });
         add(l, r, "Send via Wi-Fi…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); a.sendViaWifi(files(one)); });
+        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> { List<File> one = new ArrayList<>(); one.add(e.f); a.copyToSafTree(one); });
         add(l, r, "Compress to ZIP", () -> { List<Entry> one = new ArrayList<>(); one.add(e); zip(one); });
         if (e.ext.equals("zip")) add(l, r, "Extract here", () -> unzip(e.f));
         add(l, r, "Delete", () -> { List<Entry> one = new ArrayList<>(); one.add(e); confirmDelete(one); });
