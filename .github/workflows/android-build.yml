@@ -53,17 +53,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
+          if [[ ! -f .toxifiles-patches-applied ]]; then
+            for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part[0-1][0-5].patch' | sort -V); do
+              [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
+              patch --batch --forward -p1 < "$p"
+            done
+            touch .toxifiles-patches-applied
+          else
+            echo "Base redesign patches 01-15 are already recorded as applied."
+          fi
+          for p in $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
             [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
+            part="$(basename "$p" .patch)"
+            case "$part" in toxifiles-redesign-part0[2-9]|toxifiles-redesign-part1[0-5]) continue ;; esac
+            marker=".toxifiles-$part-applied"
+            [[ -f "$marker" ]] && { echo "$p already recorded as applied."; continue; }
             if patch --dry-run --batch --forward -p1 < "$p" >/dev/null 2>&1; then
-              echo "Applying $p"
               patch --batch --forward -p1 < "$p"
             elif patch --dry-run --batch --reverse -p1 < "$p" >/dev/null 2>&1; then
-              echo "$p already applied in the source archive; skipping."
+              echo "$p already applied; recording marker."
             else
               echo "::error::Patch $p does not apply cleanly and is not already applied."
               exit 1
             fi
+            touch "$marker"
           done
           rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
           if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
