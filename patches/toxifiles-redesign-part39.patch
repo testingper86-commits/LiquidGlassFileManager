@@ -1,0 +1,25 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+index 5c33b85..d5f5973 100644
+--- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
++++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
+@@ -1123,6 +1123,7 @@ public class MainActivity extends Activity {
+         if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);
+     }
+ 
++    @android.annotation.TargetApi(Build.VERSION_CODES.P)
+     void tryBiometric(final android.app.Dialog dlg) {
+         try {
+             android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 1483467..b14516c 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -110,6 +110,8 @@ def main():
+ 
+     require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
+ 
++    require('@android.annotation.TargetApi(Build.VERSION_CODES.P)' in main_src and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main_src, 'framework biometric prompt is isolated to API 28+ devices')
++
+     launcher = []
+     for activity in app.findall('activity'):
+         filt = activity.find('intent-filter')
