@@ -1,7 +1,7 @@
 diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 --- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 +++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
-@@ -64,7 +64,8 @@
+@@ -64,6 +64,7 @@
  import androidx.documentfile.provider.DocumentFile;
  
  public class MainActivity extends Activity {
@@ -9,7 +9,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
      final ExecutorService io = Executors.newFixedThreadPool(2);
      final ExecutorService ops = Executors.newSingleThreadExecutor();
      final Set<String> favs = new LinkedHashSet<>();
-@@ -104,6 +105,12 @@
+@@ -104,6 +105,11 @@
          boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
          setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
          super.onCreate(b);
@@ -49,7 +49,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
 diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
 --- a/tools/project_smoke_test.py
 +++ b/tools/project_smoke_test.py
-@@ -244,1 +244,4 @@
+@@ -244,1 +244,5 @@
 -    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
 +    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
 +    require('registerOnBackInvokedCallback' in main_activity and 'unregisterOnBackInvokedCallback' in main_activity
