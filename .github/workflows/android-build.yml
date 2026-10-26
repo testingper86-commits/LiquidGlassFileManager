@@ -151,7 +151,9 @@ jobs:
           heap-size: 512
           disable-animations: true
           script: |
-            set -euo pipefail
+            # The emulator action runs this script with /bin/sh, not bash.
+            set -eu
+            mkdir -p dist
             APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
             test -n "$APK"
             adb logcat -c
