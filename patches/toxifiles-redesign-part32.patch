@@ -1,0 +1,68 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/BrowserView.java b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+index a07bf00..5bb5e28 100644
+--- a/app/src/main/java/com/music/echo/offline/files/BrowserView.java
++++ b/app/src/main/java/com/music/echo/offline/files/BrowserView.java
+@@ -677,6 +677,7 @@ final class BrowserView extends FrameLayout {
+         add(l, r, "Label", () -> { List<Entry> one = new ArrayList<>(); one.add(e); labelDialog(one); });
+         add(l, r, "Move to Vault", () -> { List<Entry> one = new ArrayList<>(); one.add(e); vaultMove(one); });
+         add(l, r, "Properties", () -> properties(e));
++        if (!e.dir && isExifImage(e.ext)) add(l, r, "Strip GPS metadata (save copy)…", () -> stripGpsMetadata(e.f));
+         showMenu(a, e.name, l, r);
+     }
+ 
+@@ -749,6 +750,43 @@ final class BrowserView extends FrameLayout {
+ 
+     void unzip(File z) { FileOps.unzip(a, z, msg -> { Ui.toast(a, msg); a.afterOps(); }); }
+ 
++    private boolean isExifImage(String ext) {
++        return "jpg".equals(ext) || "jpeg".equals(ext) || "png".equals(ext) || "webp".equals(ext)
++                || "heic".equals(ext) || "heif".equals(ext) || "tif".equals(ext) || "tiff".equals(ext);
++    }
++
++    void stripGpsMetadata(final File source) {
++        new AlertDialog.Builder(a).setTitle("Remove GPS metadata?")
++                .setMessage("Creates a separate copy without GPS coordinates and related location tags. The original stays unchanged; camera and date metadata may remain.")
++                .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
++                    a.busy(true);
++                    a.ops.execute(() -> {
++                        FileOps.cancelRequested = false;
++                        File copy = null; String result;
++                        try {
++                            android.media.ExifInterface original = new android.media.ExifInterface(source.getAbsolutePath());
++                            String[] gpsTags = {"GPSLatitude", "GPSLatitudeRef", "GPSLongitude", "GPSLongitudeRef", "GPSAltitude", "GPSAltitudeRef", "GPSTimeStamp", "GPSDateStamp", "GPSProcessingMethod", "GPSDestBearing", "GPSDestBearingRef", "GPSDestDistance", "GPSDestDistanceRef", "GPSDestLatitude", "GPSDestLatitudeRef", "GPSDestLongitude", "GPSDestLongitudeRef", "GPSSpeed", "GPSSpeedRef", "GPSImgDirection", "GPSImgDirectionRef", "GPSMapDatum", "GPSVersionID", "GPSAreaInformation", "GPSDifferential", "GPSHPositioningError"};
++                            boolean hasGps = false;
++                            for (String tag : gpsTags) if (original.getAttribute(tag) != null) { hasGps = true; break; }
++                            if (!hasGps) throw new java.io.IOException("No GPS/location metadata was found");
++                            String name = source.getName(); int dot = name.lastIndexOf('.');
++                            String base = dot > 0 ? name.substring(0, dot) : name; String ext = dot > 0 ? name.substring(dot) : "";
++                            copy = FileOps.unique(source.getParentFile(), base + "_no_location" + ext);
++                            FileOps.copy(source, copy);
++                            android.media.ExifInterface cleaned = new android.media.ExifInterface(copy.getAbsolutePath());
++                            for (String tag : gpsTags) cleaned.setAttribute(tag, null);
++                            cleaned.saveAttributes();
++                            result = "Saved copy without GPS metadata: " + copy.getName();
++                        } catch (Exception ex) {
++                            if (copy != null) FileOps.deleteTree(copy);
++                            result = "GPS metadata removal failed: " + ex.getMessage();
++                        }
++                        final String message = result;
++                        a.runOnUiThread(() -> { a.busy(false); Ui.toast(a, message); a.afterOps(); });
++                    });
++                }).show();
++    }
++
+     String propText(Entry e, String size, String hash) {
+         return "Path: " + e.f.getAbsolutePath() + "\nType: " + (e.dir ? "Folder" : e.ext.isEmpty() ? "File" : e.ext.toUpperCase(Locale.ROOT) + " file")
+                 + "\nSize: " + size + "\nModified: " + Ui.date(e.mod)
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 3bacc35..b4b9dca 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -62,6 +62,7 @@ def main():
+     require('origPath = \"\"' in vault and 'encrypted copies are safe' in vault, 'Vault keeps entries visible when metadata is unreadable and reports source cleanup failures')
+     browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
+     require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
++    require('Strip GPS metadata (save copy)' in browser and 'cleaned.setAttribute(tag, null)' in browser and 'The original stays unchanged' in browser, 'image GPS stripping creates a separate copy and preserves the original')
+     require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
+     require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
+     require('.toxifiles-import-' in main_src and 'FileOps.checkCancelled(); out.write(buf, 0, n)' in main_src and 'External storage returned no input stream' in main_src, 'SAF imports are cancellable and publish only completed files')
