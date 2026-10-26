@@ -157,11 +157,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "${GITHUB_WORKSPACE}/dist"
+          mkdir -p "${RUNNER_TEMP}/toxifiles"
           APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK"
-          cp "$APK" "${GITHUB_WORKSPACE}/dist/toxifiles-debug.apk"
-          test -s "${GITHUB_WORKSPACE}/dist/toxifiles-debug.apk"
+          cp "$APK" "${RUNNER_TEMP}/toxifiles/toxifiles-debug.apk"
+          test -s "${RUNNER_TEMP}/toxifiles/toxifiles-debug.apk"
+          ls -l "${RUNNER_TEMP}/toxifiles/toxifiles-debug.apk"
 
       - name: Install and launch on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -177,7 +178,8 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APK="${{ github.workspace }}/dist/toxifiles-debug.apk"
+            APK="${{ runner.temp }}/toxifiles/toxifiles-debug.apk"
+            ls -l "$APK"
             test -s "$APK"
             adb logcat -c
             adb install -r "$APK"

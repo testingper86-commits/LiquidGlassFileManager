@@ -1,0 +1,65 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 7ee03f0..7c9c0bf 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -19,6 +19,8 @@
+     <application
+         android:name=".files.LiquidFilesApplication"
+         android:allowBackup="false"
++        android:fullBackupContent="@xml/backup_rules"
++        android:dataExtractionRules="@xml/data_extraction_rules"
+         android:usesCleartextTraffic="false"
+         android:icon="@drawable/ic_liquidfiles_launcher"
+         android:label="@string/app_name"
+diff --git a/app/src/main/res/xml/backup_rules.xml b/app/src/main/res/xml/backup_rules.xml
+new file mode 100644
+index 0000000..ce0b324
+--- /dev/null
++++ b/app/src/main/res/xml/backup_rules.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="utf-8"?>
++<full-backup-content>
++    <exclude domain="root" path="." />
++    <exclude domain="file" path="." />
++    <exclude domain="database" path="." />
++    <exclude domain="sharedpref" path="." />
++    <exclude domain="external" path="." />
++</full-backup-content>
+diff --git a/app/src/main/res/xml/data_extraction_rules.xml b/app/src/main/res/xml/data_extraction_rules.xml
+new file mode 100644
+index 0000000..491c90f
+--- /dev/null
++++ b/app/src/main/res/xml/data_extraction_rules.xml
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="utf-8"?>
++<data-extraction-rules>
++    <cloud-backup disableIfNoEncryptionCapabilities="true">
++        <exclude domain="root" path="." />
++        <exclude domain="file" path="." />
++        <exclude domain="database" path="." />
++        <exclude domain="sharedpref" path="." />
++        <exclude domain="external" path="." />
++    </cloud-backup>
++    <device-transfer>
++        <exclude domain="root" path="." />
++        <exclude domain="file" path="." />
++        <exclude domain="database" path="." />
++        <exclude domain="sharedpref" path="." />
++        <exclude domain="external" path="." />
++    </device-transfer>
++</data-extraction-rules>
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index 96539b1..cb2ea5a 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -33,6 +33,10 @@ def main():
+     app = manifest.find('application')
+     require(app is not None, 'manifest has application node')
+     require(app.attrib.get(ANDROID + 'allowBackup') == 'false', 'Android system backup is disabled for private app state')
++    require(app.attrib.get(ANDROID + 'fullBackupContent') == '@xml/backup_rules' and app.attrib.get(ANDROID + 'dataExtractionRules') == '@xml/data_extraction_rules', 'cloud backup and device-transfer rules are explicitly configured')
++    backup = ET.parse(ROOT / 'app/src/main/res/xml/backup_rules.xml').getroot()
++    extraction = ET.parse(ROOT / 'app/src/main/res/xml/data_extraction_rules.xml').getroot()
++    require(len(backup.findall('exclude')) >= 5 and len(extraction.findall('cloud-backup/exclude')) >= 5 and len(extraction.findall('device-transfer/exclude')) >= 5, 'backup rules exclude private files, databases, preferences, and external state')
+     require(app.attrib.get(ANDROID + 'usesCleartextTraffic') == 'false', 'app manifest disables cleartext HTTP traffic')
+     require(any(p.attrib.get(ANDROID + 'name') == 'android.permission.USE_BIOMETRIC' for p in manifest.findall('uses-permission')), 'biometric prompt permission is declared')
+     paths = ET.parse(ROOT / 'app/src/main/res/xml/file_paths.xml').getroot()
