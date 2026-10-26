@@ -1,0 +1,37 @@
+diff --git a/app/src/test/java/com/music/echo/offline/files/PinHashTest.java b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
+@@ -0,0 +1,34 @@
++package com.music.echo.offline.files;
++
++import org.junit.Test;
++import static org.junit.Assert.*;
++
++/** Regression tests for the shared App Lock and Vault PIN verifier. */
++public class PinHashTest {
++    @Test public void storesSaltedPbkdf2VerifierAndAcceptsOnlyCorrectPin() {
++        String stored = PinHash.create("482917");
++        assertTrue(stored.startsWith("pbkdf2$120000$"));
++        assertTrue(PinHash.verify("482917", stored, "lgapplock:"));
++        assertFalse(PinHash.verify("482918", stored, "lgapplock:"));
++        assertFalse(PinHash.verify("", stored, "lgapplock:"));
++    }
++
++    @Test public void independentlyCreatedHashesUseDifferentSalts() {
++        String first = PinHash.create("135790");
++        String second = PinHash.create("135790");
++        assertNotEquals(first, second);
++        assertTrue(PinHash.verify("135790", first, "lgapplock:"));
++        assertTrue(PinHash.verify("135790", second, "lgvault:"));
++    }
++
++    @Test public void rejectsMalformedAndUnreasonablyExpensiveVerifiers() {
++        assertFalse(PinHash.verify("1234", null, "lgapplock:"));
++        assertFalse(PinHash.verify("1234", "", "lgapplock:"));
++        assertFalse(PinHash.verify("1234", "pbkdf2$1$abc$def", "lgapplock:"));
++        assertFalse(PinHash.verify("1234", "pbkdf2$999999999$abc$def", "lgapplock:"));
++        assertFalse(PinHash.verify("1234", "pbkdf2$120000$not-base64$not-base64", "lgapplock:"));
++    }
++}
