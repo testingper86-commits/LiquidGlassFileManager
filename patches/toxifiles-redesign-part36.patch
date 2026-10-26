@@ -1,0 +1,50 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+index 4c1b8ff..794de34 100644
+--- a/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
++++ b/app/src/main/java/com/music/echo/offline/files/LanTransfer.java
+@@ -50,7 +50,7 @@ final class LanTransfer {
+         IncomingFile(String name, long length, String sha256) { this.name = name; this.length = length; this.sha256 = sha256; }
+     }
+ 
+-    private static String validateFileName(String name) throws IOException {
++    static String validateFileName(String name) throws IOException {
+         if (name == null || name.isEmpty() || name.length() > 255 || ".".equals(name) || "..".equals(name)
+                 || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) throw new IOException("Unsafe incoming filename rejected");
+         for (int i = 0; i < name.length(); i++) { char c = name.charAt(i); if (c < 0x20 || c == 0x7f) throw new IOException("Filename contains control characters"); }
+diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+index ee2e1f9..33e6baf 100644
+--- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
++++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
+@@ -18,6 +18,20 @@ public class LanTransferCryptoTest {
+         assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
+     }
+ 
++    @Test public void filenamesRejectTraversalSeparatorsAndControlCharacters() throws Exception {
++        assertEquals("song.mp3", LanTransfer.validateFileName("song.mp3"));
++        assertRejected("../outside.txt");
++        assertRejected("folder\\outside.txt");
++        assertRejected("bad\nname.txt");
++        assertRejected(".");
++        assertRejected("a".repeat(256));
++    }
++
++    private static void assertRejected(String name) throws Exception {
++        try { LanTransfer.validateFileName(name); fail("Unsafe filename must be rejected: " + name); }
++        catch (java.io.IOException expected) { /* rejected */ }
++    }
++
+     @Test public void aesGcmRoundTripsAndRejectsTampering() throws Exception {
+         byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 7);
+         SecretKey key = LanTransfer.sessionKey("QWERTY2345", salt);
+diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
+index e404c11..dfea841 100644
+--- a/tools/project_smoke_test.py
++++ b/tools/project_smoke_test.py
+@@ -93,6 +93,7 @@ def main():
+     require('ANDROID_KEYSTORE_PATH' in build_gradle and 'signingConfig = signingConfigs.getByName(\"release\")' in build_gradle, 'release builds support environment-provided signing without committing keystore material')
+ 
+     require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
++    require('filenamesRejectTraversalSeparatorsAndControlCharacters' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN filename validation has automated traversal regression tests')
+ 
+     require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
+     require('Ui.bool(\"blur\", true) && !Ui.highContrast' in main_src, 'backdrop blur setting and high-contrast accessibility mode are respected')
