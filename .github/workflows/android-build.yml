@@ -143,10 +143,12 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         timeout-minutes: 10
         with:
-          api-level: 35
-          target: google_apis
+          api-level: 34
+          target: default
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
+          ram-size: 2048
+          heap-size: 512
           disable-animations: true
           script: |
             set -euo pipefail
