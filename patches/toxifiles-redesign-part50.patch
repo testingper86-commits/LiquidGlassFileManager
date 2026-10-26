@@ -37,7 +37,7 @@ diff --git a/app/build.gradle.kts b/app/build.gradle.kts
 diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 --- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 +++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
-@@ -65,6 +65,7 @@
+@@ -65,5 +65,6 @@
  import androidx.documentfile.provider.DocumentFile;
  
  public class MainActivity extends Activity {
@@ -57,7 +57,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
          IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
          if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
          else registerReceiver(screenOffReceiver, screenOffFilter);
-@@ -274,10 +280,11 @@
+@@ -277,7 +278,8 @@
      }
  
      @Override protected void onDestroy() {
@@ -66,7 +66,7 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
          super.onDestroy();
          io.shutdown();
          ops.shutdown();
-@@ -439,12 +446,14 @@
+@@ -439,11 +446,13 @@
  
      void navForSelection(boolean selecting) { nav.setVisibility(selecting || overlayView == listView ? View.GONE : View.VISIBLE); }
  
