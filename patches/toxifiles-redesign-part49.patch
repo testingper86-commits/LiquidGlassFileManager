@@ -1,0 +1,22 @@
+diff --git a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
+--- a/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
++++ b/app/src/main/java/com/music/echo/offline/files/RecycleBin.java
+@@ -158,9 +158,17 @@
+             FileOps.cancelRequested = false;
+             File[] ws = root(a).listFiles();
+-            int n = ws == null ? 0 : ws.length;
+-            if (ws != null) for (File w : ws) { if (FileOps.cancelRequested) break; FileOps.deleteTree(w); }
+-            a.runOnUiThread(() -> { a.busy(false); d.run("Recycle Bin emptied (" + n + " item" + (n == 1 ? "" : "s") + ")"); });
++            int deleted = 0, failed = 0;
++            boolean cancelled = false;
++            if (ws != null) for (File w : ws) {
++                if (FileOps.cancelRequested) { cancelled = true; break; }
++                if (FileOps.deleteTree(w)) deleted++; else failed++;
++            }
++            final int fdeleted = deleted, ffailed = failed;
++            final boolean fcancelled = cancelled;
++            final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
++                    + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
++            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+         });
+     }
