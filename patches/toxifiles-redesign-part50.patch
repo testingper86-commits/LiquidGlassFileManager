@@ -1,43 +1,7 @@
-diff --git a/build.gradle.kts b/build.gradle.kts
---- a/build.gradle.kts
-+++ b/build.gradle.kts
-@@ -1,3 +1,3 @@
- plugins {
--    id("com.android.application") version "8.7.2" apply false
-+    id("com.android.application") version "8.9.2" apply false
- }
-diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
---- a/gradle/wrapper/gradle-wrapper.properties
-+++ b/gradle/wrapper/gradle-wrapper.properties
-@@ -1,5 +1,5 @@
- distributionBase=GRADLE_USER_HOME
- distributionPath=wrapper/dists
--distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip
-+distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip
- zipStoreBase=GRADLE_USER_HOME
- zipStorePath=wrapper/dists
-diff --git a/app/build.gradle.kts b/app/build.gradle.kts
---- a/app/build.gradle.kts
-+++ b/app/build.gradle.kts
-@@ -8,12 +8,12 @@
- 
- android {
-     namespace = "com.music.echo.offline"
--    compileSdk = 35
-+    compileSdk = 36
- 
-     defaultConfig {
-         applicationId = "com.liquidfiles.offline"
-         minSdk = 26
--        targetSdk = 35
-+        targetSdk = 36
-         versionCode = 3
-         versionName = "1.2.0"
-     }
 diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 --- a/app/src/main/java/com/music/echo/offline/files/MainActivity.java
 +++ b/app/src/main/java/com/music/echo/offline/files/MainActivity.java
-@@ -64,5 +64,6 @@
+@@ -64,7 +64,8 @@
  import androidx.documentfile.provider.DocumentFile;
  
  public class MainActivity extends Activity {
@@ -85,15 +49,8 @@ diff --git a/app/src/main/java/com/music/echo/offline/files/MainActivity.java b/
 diff --git a/tools/project_smoke_test.py b/tools/project_smoke_test.py
 --- a/tools/project_smoke_test.py
 +++ b/tools/project_smoke_test.py
-@@ -244,1 +244,8 @@
+@@ -244,1 +244,4 @@
 -    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
-+    build_config = (ROOT / 'app/build.gradle.kts').read_text()
-+    root_build_config = (ROOT / 'build.gradle.kts').read_text()
-+    gradle_wrapper = (ROOT / 'gradle/wrapper/gradle-wrapper.properties').read_text()
-+    require('compileSdk = 36' in build_config and 'targetSdk = 36' in build_config,
-+            'project compiles and targets Android 16 API 36')
-+    require('version "8.9.2"' in root_build_config and 'gradle-8.11.1-bin.zip' in gradle_wrapper,
-+            'Android Gradle Plugin and Gradle wrapper meet Android 16 build requirements')
 +    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
 +    require('registerOnBackInvokedCallback' in main_activity and 'unregisterOnBackInvokedCallback' in main_activity
 +            and 'private void handleBackNavigation()' in main_activity,
