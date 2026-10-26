@@ -1,4 +1,4 @@
-name: LiquidFiles Offline Manager - Android Build
+name: ToxiFiles Android Build
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: liquidfiles-android-${{ github.ref }}
+  group: toxifiles-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,40 +22,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP if source is not at repository root
+      - name: Extract valid Android project archive
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ ! -s gradlew ]]; then
-            ARCHIVE="$(find . -maxdepth 3 -type f -iname '*.zip' -print -quit)"
-            if [[ -z "$ARCHIVE" ]]; then
-              echo "::error::gradlew is missing and no project ZIP was found. Upload the project files or a ZIP containing gradlew, settings.gradle(.kts), gradle/wrapper, and app/."
-              exit 1
-            fi
-
-            EXTRACT_DIR="$RUNNER_TEMP/liquidfiles-project"
-            mkdir -p "$EXTRACT_DIR"
-            unzip -oq "$ARCHIVE" -d "$EXTRACT_DIR"
-
-            PROJECT_ROOT=""
+            ARCHIVE=""
             while IFS= read -r candidate; do
-              candidate_dir="$(dirname "$candidate")"
-              if [[ -s "$candidate" && ( -s "$candidate_dir/settings.gradle.kts" || -s "$candidate_dir/settings.gradle" ) ]]; then
-                PROJECT_ROOT="$candidate_dir"
+              if ! unzip -tq "$candidate" >/dev/null 2>&1; then
+                echo "::warning::Skipping invalid ZIP: $candidate"
+                continue
+              fi
+              if unzip -Z1 "$candidate" | grep -Eq '(^|/)gradlew$' && unzip -Z1 "$candidate" | grep -Eq '(^|/)settings\.gradle(\.kts)?$'; then
+                ARCHIVE="$candidate"
                 break
               fi
-            done < <(find "$EXTRACT_DIR" -type f -name gradlew -print)
-
-            if [[ -z "$PROJECT_ROOT" ]]; then
-              echo "::error::ZIP was extracted, but no Gradle project root containing gradlew and settings.gradle(.kts) was found."
-              find "$EXTRACT_DIR" -maxdepth 4 -type f | head -80
+            done < <(find . -maxdepth 3 -type f -iname '*.zip' | sort)
+            if [[ -z "$ARCHIVE" ]]; then
+              echo "::error::No valid ZIP containing a Gradle Android project was found."
               exit 1
             fi
-
+            EXTRACT_DIR="$RUNNER_TEMP/toxifiles-project"
+            mkdir -p "$EXTRACT_DIR"
+            unzip -oq "$ARCHIVE" -d "$EXTRACT_DIR"
+            PROJECT_ROOT=""
+            while IFS= read -r candidate; do
+              d="$(dirname "$candidate")"
+              if [[ -s "$candidate" && ( -s "$d/settings.gradle.kts" || -s "$d/settings.gradle" ) ]]; then PROJECT_ROOT="$d"; break; fi
+            done < <(find "$EXTRACT_DIR" -type f -name gradlew -print)
+            if [[ -z "$PROJECT_ROOT" ]]; then echo "::error::Archive is valid but has no Gradle project root."; exit 1; fi
             cp -a "$PROJECT_ROOT"/. "$GITHUB_WORKSPACE"/
           fi
-
           test -s gradlew
           test -s settings.gradle.kts || test -s settings.gradle
           test -s gradle/wrapper/gradle-wrapper.jar
@@ -77,11 +74,10 @@ jobs:
           from pathlib import Path
           import xml.etree.ElementTree as ET
           root = Path('app/src/main')
-          files = [root / 'AndroidManifest.xml', *(root / 'res').rglob('*.xml')]
-          for p in files:
-              if p.is_file():
-                  ET.parse(p)
-                  print('XML OK:', p)
+          files = [root / 'AndroidManifest.xml', *root.joinpath('res').rglob('*.xml')]
+          for path in files:
+              if path.is_file(): ET.parse(path)
+          print(f'Validated XML in {len(files)} candidate files.')
           PY
 
       - name: Set up JDK 17
@@ -90,7 +86,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle (with caching)
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Install Android SDK packages
@@ -99,8 +95,8 @@ jobs:
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
-          test -n "$SDKMANAGER" || { echo "::error::sdkmanager not found"; exit 1; }
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          test -n "$SDKMANAGER" || { echo '::error::sdkmanager not found'; exit 1; }
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
 
       - name: Build debug APK
@@ -109,7 +105,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: LiquidFiles-Offline-Manager-debug-APK
+          name: ToxiFiles-debug-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
