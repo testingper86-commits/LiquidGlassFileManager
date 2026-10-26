@@ -1,11 +1,9 @@
 diff --git a/app/src/test/java/com/music/echo/offline/files/PinHashTest.java b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
-index 0000000..0000000 100644
 --- a/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/PinHashTest.java
-@@ -20,4 +20,6 @@ public class PinHashTest {
-         assertFalse(PinHash.verify("1234", "pbkdf2$broken", "lgvault:"));
-         assertFalse(PinHash.verify("1234", "", "lgvault:"));
-         assertFalse(PinHash.verify("1234", null, "lgvault:"));
+@@ -1,1 +1,7 @@
+ public class PinHashTest {
++    @Test public void rejectsVerifierIterationCountsOutsideSafeBounds() {
 +        assertFalse(PinHash.verify("1234", "pbkdf2$1$abc$def", "lgvault:"));
 +        assertFalse(PinHash.verify("1234", "pbkdf2$999999999$abc$def", "lgvault:"));
-     }
++    }

@@ -1,11 +1,9 @@
 diff --git a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-index 33e6baf..0000000 100644
 --- a/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
 +++ b/app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java
-@@ -18,4 +18,14 @@ public class LanTransferCryptoTest {
-         assertFalse(MessageDigest.isEqual(LanTransfer.authProof(correct, salt), LanTransfer.authProof(wrong, salt)));
-     }
- 
+@@ -1,1 +1,11 @@
+ public class LanTransferCryptoTest {
++
 +    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
 +        byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 3);
 +        byte[] otherSalt = salt.clone(); otherSalt[0] ^= 0x55;
@@ -15,5 +13,3 @@ index 33e6baf..0000000 100644
 +        assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
 +        assertRejected("nul" + ((char) 0) + "name.txt");
 +    }
-+
-     @Test public void filenamesRejectTraversalSeparatorsAndControlCharacters() throws Exception {
