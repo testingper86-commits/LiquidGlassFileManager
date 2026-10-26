@@ -25,6 +25,9 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -634,7 +637,7 @@ final class BrowserView extends FrameLayout {
     void vaultMove(final List<Entry> list) {
         if (!Vault.hasPin(a)) { Ui.toast(a, "Set a Vault PIN first — Settings → Vault"); return; }
         new AlertDialog.Builder(a).setTitle("Move " + list.size() + " item" + (list.size() > 1 ? "s" : "") + " to Vault?")
-                .setMessage("Hidden behind your Vault PIN. This hides the files from other apps, it does not encrypt them.")
+                .setMessage("Encrypted at rest with AES-GCM using Android Keystore. Keep your Vault PIN private; loss of device Keystore keys can make vault data unrecoverable.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (d, w) -> Vault.moveIn(a, files(list), msg -> {
                     a.removeFavs(files(list)); endSelect(); a.afterOps(); Ui.toast(a, msg);
@@ -731,18 +734,48 @@ final class BrowserView extends FrameLayout {
 
     void unzip(File z) { FileOps.unzip(a, z, msg -> { Ui.toast(a, msg); a.afterOps(); }); }
 
-    String propText(Entry e, String size) {
+    String propText(Entry e, String size, String hash) {
         return "Path: " + e.f.getAbsolutePath() + "\nType: " + (e.dir ? "Folder" : e.ext.isEmpty() ? "File" : e.ext.toUpperCase(Locale.ROOT) + " file")
-                + "\nSize: " + size + "\nModified: " + Ui.date(e.mod);
+                + "\nSize: " + size + "\nModified: " + Ui.date(e.mod)
+                + (e.dir ? "" : "\nSHA-256: " + hash);
+    }
+
+    private String sha256(File file) {
+        try (InputStream in = new FileInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[65536]; int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            StringBuilder out = new StringBuilder();
+            for (byte b : md.digest()) out.append(String.format(Locale.ROOT, "%02x", b));
+            return out.toString();
+        } catch (Exception ex) { return "unavailable"; }
     }
 
     void properties(final Entry e) {
+        final String[] digest = {null};
         final AlertDialog dlg = new AlertDialog.Builder(a).setTitle(e.name)
-                .setMessage(propText(e, e.dir ? "calculating…" : Ui.size(e.len))).setPositiveButton("OK", null).show();
+                .setMessage(propText(e, e.dir ? "calculating…" : Ui.size(e.len), e.dir ? "" : "calculating…"))
+                .setNeutralButton(e.dir ? "" : "Copy SHA-256", null).setPositiveButton("Close", null).show();
+        final android.widget.Button copyHash = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);
+        if (e.dir) copyHash.setVisibility(View.GONE); else {
+            copyHash.setEnabled(false);
+            copyHash.setOnClickListener(v -> {
+                if (digest[0] == null || "unavailable".equals(digest[0])) return;
+                android.content.ClipboardManager cm = (android.content.ClipboardManager) a.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null) { cm.setPrimaryClip(android.content.ClipData.newPlainText("SHA-256", digest[0])); Ui.toast(a, "SHA-256 copied"); }
+            });
+        }
         if (e.dir) a.io.execute(() -> {
             final long[] t = new long[2];
             FileOps.treeSize(e.f, t);
-            a.runOnUiThread(() -> dlg.setMessage(propText(e, Ui.size(t[0]) + " • " + t[1] + " files")));
+            a.runOnUiThread(() -> dlg.setMessage(propText(e, Ui.size(t[0]) + " • " + t[1] + " files", "")));
+        }); else a.io.execute(() -> {
+            digest[0] = sha256(e.f);
+            a.runOnUiThread(() -> {
+                if (!dlg.isShowing()) return;
+                dlg.setMessage(propText(e, Ui.size(e.f.length()), digest[0]));
+                copyHash.setEnabled(!"unavailable".equals(digest[0]));
+            });
         });
     }
 }
