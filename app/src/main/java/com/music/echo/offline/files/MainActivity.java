@@ -886,8 +886,12 @@ public class MainActivity extends Activity {
 
     void buildSettings() {
         settings.removeAllViews();
-        TextView t = Ui.tv(this, "Settings", 32, Ui.WHITE, true);
-        t.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(2));
+        TextView eyebrow = Ui.tv(this, "PERSONALIZE", 9.5f, Ui.SUB, true);
+        eyebrow.setLetterSpacing(0.14f);
+        eyebrow.setPadding(Ui.dp(22), Ui.dp(18), Ui.dp(20), Ui.dp(2));
+        settings.addView(eyebrow);
+        TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
+        t.setPadding(Ui.dp(20), Ui.dp(3), Ui.dp(20), Ui.dp(2));
         settings.addView(t);
         t.setOnClickListener(v -> {
             int taps = Ui.sp.getInt("developer_unlock_taps", 0) + 1;
@@ -900,7 +904,7 @@ public class MainActivity extends Activity {
                 if (taps >= 4) Ui.toast(this, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = Ui.tv(this, "Make LiquidFiles work your way", 13, Ui.SUB, false);
+        TextView intro = Ui.tv(this, "A quieter, more considered experience.", 13, Ui.SUB, false);
         intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
         settings.addView(intro);
         TextView hint = Ui.tv(this, "Choose a section to reveal its controls", 11.5f, Ui.accent, false);
