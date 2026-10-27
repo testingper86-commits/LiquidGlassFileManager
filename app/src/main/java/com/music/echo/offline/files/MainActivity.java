@@ -556,13 +556,22 @@ public class MainActivity extends Activity {
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
         hd.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(8), 0);
-        hd.addView(Ui.tv(this, "Your files", 30, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout titleStack = new LinearLayout(this);
+        titleStack.setOrientation(LinearLayout.VERTICAL);
+        titleStack.setGravity(Gravity.CENTER_VERTICAL);
+        TextView eyebrow = Ui.tv(this, "TOXIFILES  /  OFFLINE", 9.5f, Ui.SUB, true);
+        eyebrow.setLetterSpacing(0.12f);
+        titleStack.addView(eyebrow);
+        TextView homeTitle = Ui.tv(this, "Your files.", 28, Ui.WHITE, true);
+        homeTitle.setPadding(0, Ui.dp(3), 0, 0);
+        titleStack.addView(homeTitle);
+        hd.addView(titleStack, new LinearLayout.LayoutParams(0, -2, 1f));
         ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
         settingsBtn.setContentDescription("Settings");
         settingsBtn.setOnClickListener(v -> selectTab(3));
         hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
-        TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
+        TextView homeSub = Ui.tv(this, "Everything, beautifully in one place.", 12.5f, Ui.SUB, false);
         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
         home.addView(homeSub);
         if (ix.ready && ix.truncated) {
@@ -659,10 +668,11 @@ public class MainActivity extends Activity {
         // Keep every major media type directly accessible from Home, including audio.
         int[] categoryIndices = {0, 1, 2, 3, 4, 6};
         int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
-        for (int r = 0; r < (categoryIndices.length + 2) / 3; r++) {
+        // Two-column cards follow the Figma design's roomier, easier-to-tap category layout.
+        for (int r = 0; r < (categoryIndices.length + 1) / 2; r++) {
             LinearLayout row = new LinearLayout(this);
-            for (int c = 0; c < 3; c++) {
-                final int position = r * 3 + c;
+            for (int c = 0; c < 2; c++) {
+                final int position = r * 2 + c;
                 if (position >= categoryIndices.length) {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
                     continue;
@@ -694,7 +704,7 @@ public class MainActivity extends Activity {
                     else openCategory(cat);
                 });
                 Ui.press(t);
-                row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 2 ? 16 : 4, 8));
+                row.addView(t, lpm(0, -2, c == 0 ? 16 : 5, 0, c == 1 ? 16 : 5, 10));
                 ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
             }
             home.addView(row, new LinearLayout.LayoutParams(-1, -2));
@@ -876,8 +886,12 @@ public class MainActivity extends Activity {
 
     void buildSettings() {
         settings.removeAllViews();
-        TextView t = Ui.tv(this, "Settings", 32, Ui.WHITE, true);
-        t.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(2));
+        TextView eyebrow = Ui.tv(this, "PERSONALIZE", 9.5f, Ui.SUB, true);
+        eyebrow.setLetterSpacing(0.14f);
+        eyebrow.setPadding(Ui.dp(22), Ui.dp(18), Ui.dp(20), Ui.dp(2));
+        settings.addView(eyebrow);
+        TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
+        t.setPadding(Ui.dp(20), Ui.dp(3), Ui.dp(20), Ui.dp(2));
         settings.addView(t);
         t.setOnClickListener(v -> {
             int taps = Ui.sp.getInt("developer_unlock_taps", 0) + 1;
@@ -890,7 +904,7 @@ public class MainActivity extends Activity {
                 if (taps >= 4) Ui.toast(this, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = Ui.tv(this, "Make LiquidFiles work your way", 13, Ui.SUB, false);
+        TextView intro = Ui.tv(this, "A quieter, more considered experience.", 13, Ui.SUB, false);
         intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
         settings.addView(intro);
         TextView hint = Ui.tv(this, "Choose a section to reveal its controls", 11.5f, Ui.accent, false);
