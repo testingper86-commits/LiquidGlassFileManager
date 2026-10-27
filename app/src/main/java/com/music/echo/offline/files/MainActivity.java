@@ -556,6 +556,24 @@ public class MainActivity extends Activity {
         return v;
     }
 
+    // Home section labels are deliberately non-interactive; settings groups use section().
+    // Keeping the two helpers separate prevents Home headings from displaying a fake expand affordance.
+    View homeSection(String title) {
+        LinearLayout line = new LinearLayout(this);
+        line.setGravity(Gravity.CENTER_VERTICAL);
+        line.setPadding(Ui.dp(18), Ui.dp(20), Ui.dp(18), Ui.dp(10));
+        View marker = new View(this);
+        marker.setBackground(Ui.accentPill(3));
+        line.addView(marker, new LinearLayout.LayoutParams(Ui.dp(3), Ui.dp(16)));
+        TextView label = Ui.tv(this, title, 15, Ui.WHITE, true);
+        label.setPadding(Ui.dp(10), 0, Ui.dp(12), 0);
+        line.addView(label, new LinearLayout.LayoutParams(-2, -2));
+        View rule = new View(this);
+        rule.setBackgroundColor(Color.argb(48, Color.red(Ui.accent), Color.green(Ui.accent), Color.blue(Ui.accent)));
+        line.addView(rule, new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
+        return line;
+    }
+
     void buildHome() {
         home.removeAllViews();
         Indexer ix = Indexer.I;
@@ -661,7 +679,7 @@ public class MainActivity extends Activity {
         home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
 
         // categories
-        home.addView(section("Quick access"));
+        home.addView(homeSection("Browse files"));
         // Keep every major media type directly accessible from Home, including audio.
         int[] categoryIndices = {0, 1, 2, 3, 4, 6};
         int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
@@ -677,7 +695,8 @@ public class MainActivity extends Activity {
                 LinearLayout t = new LinearLayout(this);
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
-                t.setElevation(Ui.dp(3));
+                t.setElevation(Ui.dp(2));
+                t.setMinHeight(Ui.dp(132));
                 t.setPadding(Ui.dp(13), Ui.dp(14), Ui.dp(11), Ui.dp(14));
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
@@ -709,16 +728,21 @@ public class MainActivity extends Activity {
         // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
 
         // Recent-files empty state: reserved space for actual local recent-file history.
-        home.addView(section("Recently opened"));
+        home.addView(homeSection("Recently opened"));
         LinearLayout recent = new LinearLayout(this);
         recent.setOrientation(LinearLayout.VERTICAL);
         recent.setGravity(Gravity.CENTER);
         recent.setBackground(Ui.glass(22, false));
-        recent.setPadding(Ui.dp(18), Ui.dp(22), Ui.dp(18), Ui.dp(22));
+        recent.setPadding(Ui.dp(18), Ui.dp(24), Ui.dp(18), Ui.dp(24));
+        ImageView recentIcon = new ImageView(this);
+        recentIcon.setImageDrawable(Glyphs.get(Glyphs.CLOCK, Ui.accent));
+        recentIcon.setContentDescription("Recently opened files");
+        recent.addView(recentIcon, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(30)));
         TextView recentTitle = Ui.tv(this, "Nothing opened yet", 14, Ui.WHITE, true);
+        recentTitle.setPadding(0, Ui.dp(10), 0, 0);
         recentTitle.setGravity(Gravity.CENTER);
         recent.addView(recentTitle);
-        TextView recentSub = Ui.tv(this, "Recent-file history is not available in this build yet", 12, Ui.SUB, false);
+        TextView recentSub = Ui.tv(this, "Files you open will appear here when recent history is supported", 12, Ui.SUB, false);
         recentSub.setGravity(Gravity.CENTER);
         recentSub.setPadding(0, Ui.dp(6), 0, 0);
         recent.addView(recentSub);
@@ -896,8 +920,8 @@ public class MainActivity extends Activity {
 
     void buildSettings() {
         settings.removeAllViews();
-        TextView t = Ui.tv(this, "Settings", 32, Ui.WHITE, true);
-        t.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(2));
+        TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
+        t.setPadding(Ui.dp(20), Ui.dp(22), Ui.dp(20), Ui.dp(4));
         settings.addView(t);
         t.setOnClickListener(v -> {
             int taps = Ui.sp.getInt("developer_unlock_taps", 0) + 1;
@@ -910,11 +934,11 @@ public class MainActivity extends Activity {
                 if (taps >= 4) Ui.toast(this, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = Ui.tv(this, "Configure ToxiFiles your way", 13, Ui.SUB, false);
-        intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
+        TextView intro = Ui.tv(this, "Make ToxiFiles work the way you do", 13, Ui.SUB, false);
+        intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
         settings.addView(intro);
-        TextView hint = Ui.tv(this, "Tap a section to expand its controls", 11.5f, Ui.accent, false);
-        hint.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(4));
+        TextView hint = Ui.tv(this, "Choose a section to view its settings", 11.5f, Ui.accent, false);
+        hint.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(2));
         settings.addView(hint);
 
         settings.addView(section("Appearance"));
