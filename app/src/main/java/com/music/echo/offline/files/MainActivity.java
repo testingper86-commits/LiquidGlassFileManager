@@ -524,10 +524,15 @@ public class MainActivity extends Activity {
     TextView section(String t) {
         TextView v = Ui.tv(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, Ui.WHITE, true);
         v.setLetterSpacing(0.08f);
+        v.setTextColor(Ui.accent);
+        v.setText("＋  " + t.toUpperCase(java.util.Locale.ROOT));
         v.setGravity(Gravity.CENTER_VERTICAL);
+        v.setMinHeight(Ui.dp(48));
         v.setPadding(Ui.dp(14), Ui.dp(11), Ui.dp(14), Ui.dp(11));
         v.setBackground(Ui.glass(16, false));
-        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 18, 16, 8);
+        v.setFocusable(true);
+        v.setContentDescription(t + ", collapsed settings section. Double tap to expand.");
+        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 14, 16, 6);
         v.setLayoutParams(p);
         v.setTag("settings_section");
         v.setOnClickListener(view -> {
@@ -545,6 +550,7 @@ public class MainActivity extends Activity {
                 child.setVisibility(anyVisible ? View.GONE : View.VISIBLE);
             }
             v.setText((anyVisible ? "＋  " : "⌄  ") + t.toUpperCase(java.util.Locale.ROOT));
+            v.setContentDescription(t + (anyVisible ? ", collapsed settings section. Double tap to expand." : ", expanded settings section. Double tap to collapse."));
             Ui.tick(v);
         });
         return v;
@@ -579,7 +585,7 @@ public class MainActivity extends Activity {
             c.setBackground(Ui.glass(24, true));
             c.setPadding(Ui.dp(20), Ui.dp(20), Ui.dp(20), Ui.dp(20));
             c.addView(Ui.tv(this, "Allow access to your files", 18, Ui.WHITE, true));
-            TextView d = Ui.tv(this, "Grant \"All files access\" so LiquidFiles can browse, open and manage files on your phone.", 13, Ui.SUB, false);
+            TextView d = Ui.tv(this, "Grant \"All files access\" so ToxiFiles can browse, open and manage files on your phone.", 13, Ui.SUB, false);
             d.setPadding(0, Ui.dp(8), 0, Ui.dp(14));
             c.addView(d);
             TextView btn = Ui.tv(this, "Grant access", 14, Ui.WHITE, true);
@@ -712,7 +718,7 @@ public class MainActivity extends Activity {
         TextView recentTitle = Ui.tv(this, "Nothing opened yet", 14, Ui.WHITE, true);
         recentTitle.setGravity(Gravity.CENTER);
         recent.addView(recentTitle);
-        TextView recentSub = Ui.tv(this, "Files you open will appear here", 12, Ui.SUB, false);
+        TextView recentSub = Ui.tv(this, "Recent-file history is not available in this build yet", 12, Ui.SUB, false);
         recentSub.setGravity(Gravity.CENTER);
         recentSub.setPadding(0, Ui.dp(6), 0, 0);
         recent.addView(recentSub);
@@ -907,7 +913,7 @@ public class MainActivity extends Activity {
         TextView intro = Ui.tv(this, "Configure ToxiFiles your way", 13, Ui.SUB, false);
         intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
         settings.addView(intro);
-        TextView hint = Ui.tv(this, "Choose a section to reveal its controls", 11.5f, Ui.accent, false);
+        TextView hint = Ui.tv(this, "Tap a section to expand its controls", 11.5f, Ui.accent, false);
         hint.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(4));
         settings.addView(hint);
 
@@ -925,7 +931,7 @@ public class MainActivity extends Activity {
 
         settings.addView(section("Storage"));
         settings.addView(row(Glyphs.DATABASE, "All files access", hasAccess() ? "Allowed" : "Not allowed — tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories, recents and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Recycle Bin"));
         settings.addView(switchRow(Glyphs.TRASH, "Use Recycle Bin", "Deleted items are kept here before being removed for good", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
@@ -999,6 +1005,12 @@ public class MainActivity extends Activity {
                 inSection = true;
                 appearanceSection = child instanceof TextView && ((TextView) child).getText().toString().contains("APPEARANCE");
                 child.setVisibility(View.VISIBLE);
+                if (child instanceof TextView) {
+                    TextView heading = (TextView) child;
+                    String label = heading.getText().toString().replace("＋  ", "").replace("⌄  ", "");
+                    heading.setText((appearanceSection ? "⌄  " : "＋  ") + label);
+                    heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
+                }
             } else if (inSection) {
                 child.setVisibility(appearanceSection ? View.VISIBLE : View.GONE);
             }
@@ -1112,7 +1124,7 @@ public class MainActivity extends Activity {
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
         col.setPadding(Ui.dp(32), 0, Ui.dp(32), 0);
-        col.addView(Ui.tv(this, "LiquidFiles is locked", 18, Ui.WHITE, true), lpm(-2, -2, 0, 0, 0, 16));
+        col.addView(Ui.tv(this, "ToxiFiles is locked", 18, Ui.WHITE, true), lpm(-2, -2, 0, 0, 0, 16));
         final EditText in = pinField();
         col.addView(wrapField(in), new LinearLayout.LayoutParams(-1, -2));
         TextView unlockBtn = Ui.tv(this, "Unlock", 16, Ui.accent, true);
@@ -1139,7 +1151,7 @@ public class MainActivity extends Activity {
     void tryBiometric(final android.app.Dialog dlg) {
         try {
             android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
-                    .setTitle("Unlock LiquidFiles")
+                    .setTitle("Unlock ToxiFiles")
                     .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
                     .build();
             prompt.authenticate(new android.os.CancellationSignal(), getMainExecutor(),
@@ -1861,7 +1873,7 @@ public class MainActivity extends Activity {
         CrashLogger.markPrompted(this, crashTime);
         new AlertDialog.Builder(this)
                 .setTitle("App crash report available")
-                .setMessage("LiquidFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
+                .setMessage("ToxiFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
                 .setPositiveButton("Share report", (d, w) -> shareCrashReport())
                 .setNegativeButton("Later", null)
                 .setNeutralButton("Delete report", (d, w) -> deleteCrashReport())
@@ -1871,7 +1883,7 @@ public class MainActivity extends Activity {
     void showCrashLogOptions() {
         if (!CrashLogger.hasReport(this)) {
             new AlertDialog.Builder(this).setTitle("Crash logs")
-                    .setMessage("No crash report has been captured yet. If the app closes unexpectedly, LiquidFiles will save diagnostic details locally and offer them the next time you open the app.")
+                    .setMessage("No crash report has been captured yet. If the app closes unexpectedly, ToxiFiles will save diagnostic details locally and offer them the next time you open the app.")
                     .setPositiveButton("OK", null).show();
             return;
         }
@@ -1892,7 +1904,7 @@ public class MainActivity extends Activity {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", report);
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("text/plain");
-            share.putExtra(Intent.EXTRA_SUBJECT, "LiquidFiles crash report");
+            share.putExtra(Intent.EXTRA_SUBJECT, "ToxiFiles crash report");
             share.putExtra(Intent.EXTRA_STREAM, uri);
             share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             share.setClipData(android.content.ClipData.newUri(getContentResolver(), "Crash report", uri));
@@ -1964,7 +1976,7 @@ public class MainActivity extends Activity {
 
         about.addView(section("PROJECT & COMMUNITY"));
         about.addView(aboutCard(Glyphs.SPARKLE, "Developer GitHub", "github.com/testingper86-commits", "https://github.com/testingper86-commits"), lpm(-1, -2, 16, 0, 16, 8));
-        about.addView(aboutCard(Glyphs.INFO, "LiquidFiles source project", "View project updates, source and build workflow", "https://github.com/testingper86-commits/LiquidGlassFileManager"), lpm(-1, -2, 16, 0, 16, 8));
+        about.addView(aboutCard(Glyphs.INFO, "ToxiFiles source project", "View project updates, source and build workflow", "https://github.com/testingper86-commits/LiquidGlassFileManager"), lpm(-1, -2, 16, 0, 16, 8));
         LinearLayout social = new LinearLayout(this);
         social.setOrientation(LinearLayout.VERTICAL);
         social.setBackground(Ui.glass(20, true));
@@ -1992,7 +2004,7 @@ public class MainActivity extends Activity {
             share.setType("text/plain");
             share.putExtra(Intent.EXTRA_SUBJECT, "ToxiFiles");
             share.putExtra(Intent.EXTRA_TEXT, "ToxiFiles\nYour files. Your device. Your control.\nFacebook: https://www.facebook.com/chand.p.319/\nInstagram: https://www.instagram.com/_chandu_rp_1?stkn=MWxsNzJhNGpwZzluaA==\nTelegram: https://t.me/Toxiiii2k23\nProject: https://github.com/testingper86-commits/LiquidGlassFileManager");
-            startActivity(Intent.createChooser(share, "Share LiquidFiles"));
+            startActivity(Intent.createChooser(share, "Share ToxiFiles"));
         });
         socialActions.addView(shareAction, new LinearLayout.LayoutParams(0, -2, 1f));
         social.addView(socialActions);
@@ -2004,7 +2016,7 @@ public class MainActivity extends Activity {
         details.setBackground(Ui.glass(20, false));
         details.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
         details.addView(Ui.tv(this, "BUILT FOR LOCAL FILE CONTROL", 11, Ui.accent, true));
-        TextView detailText = Ui.tv(this, "Browse and organize files on your device, manage common file actions, and use the built-in viewing tools. LiquidFiles is designed around an offline-first workflow; optional features may require Android permissions or local connectivity. Availability depends on the installed build.", 13, Ui.SUB, false);
+        TextView detailText = Ui.tv(this, "Browse and organize files on your device, manage common file actions, and use the built-in viewing tools. ToxiFiles is designed around an offline-first workflow; optional features may require Android permissions or local connectivity. Availability depends on the installed build.", 13, Ui.SUB, false);
         detailText.setPadding(0, Ui.dp(7), 0, Ui.dp(12));
         details.addView(detailText);
         details.addView(aboutDetailRow("Product", "ToxiFiles"));
