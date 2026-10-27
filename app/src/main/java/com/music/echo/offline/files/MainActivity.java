@@ -577,18 +577,20 @@ public class MainActivity extends Activity {
     void buildHome() {
         home.removeAllViews();
         Indexer ix = Indexer.I;
+        // Establish a clear brand eyebrow, title, and action hierarchy at the top of Home.
+        TextView homeSub = Ui.tv(this, "TOXIFILES  ·  OFFLINE", 11.5f, Ui.accent, true);
+        homeSub.setLetterSpacing(0.12f);
+        homeSub.setPadding(Ui.dp(22), Ui.dp(10), Ui.dp(20), 0);
+        home.addView(homeSub);
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(8), 0);
+        hd.setPadding(Ui.dp(20), 0, Ui.dp(8), Ui.dp(4));
         hd.addView(Ui.tv(this, "Your files", 30, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
         ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
         settingsBtn.setContentDescription("Settings");
         settingsBtn.setOnClickListener(v -> selectTab(3));
         hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
-        TextView homeSub = Ui.tv(this, "TOXIFILES  ·  OFFLINE", 11.5f, Ui.accent, true);
-        homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
-        home.addView(homeSub);
+        home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(58)));
         if (ix.ready && ix.truncated) {
             TextView limitNotice = Ui.tv(this, "Large library: quick search and overview are limited to the first 150,000 indexed entries. Open folders directly to browse remaining files.", 12, Ui.SUB, false);
             limitNotice.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(12));
@@ -683,9 +685,10 @@ public class MainActivity extends Activity {
         // Keep every major media type directly accessible from Home, including audio.
         int[] categoryIndices = {0, 1, 2, 3, 4, 6};
         int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
-        for (int r = 0; r < (categoryIndices.length + 2) / 3; r++) {
+        // Two-column cards provide room for labels and counts instead of compressing six categories.
+        for (int r = 0; r < (categoryIndices.length + 1) / 2; r++) {
             LinearLayout row = new LinearLayout(this);
-            for (int c = 0; c < 3; c++) {
+            for (int c = 0; c < 2; c++) {
                 final int position = r * 3 + c;
                 if (position >= categoryIndices.length) {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
@@ -696,8 +699,8 @@ public class MainActivity extends Activity {
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
                 t.setElevation(Ui.dp(2));
-                t.setMinimumHeight(Ui.dp(132));
-                t.setPadding(Ui.dp(13), Ui.dp(14), Ui.dp(11), Ui.dp(14));
+                t.setMinimumHeight(Ui.dp(140));
+                t.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(14), Ui.dp(16));
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
                 Ui.ringIcon(ic);
@@ -719,7 +722,7 @@ public class MainActivity extends Activity {
                     else openCategory(cat);
                 });
                 Ui.press(t);
-                row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 2 ? 16 : 4, 8));
+                row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 1 ? 16 : 4, 10));
                 ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
             }
             home.addView(row, new LinearLayout.LayoutParams(-1, -2));
