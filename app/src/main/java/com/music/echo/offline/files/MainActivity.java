@@ -562,7 +562,7 @@ public class MainActivity extends Activity {
         settingsBtn.setOnClickListener(v -> selectTab(3));
         hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
-        TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
+        TextView homeSub = Ui.tv(this, "TOXIFILES  ·  OFFLINE", 11.5f, Ui.accent, true);
         homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
         home.addView(homeSub);
         if (ix.ready && ix.truncated) {
@@ -702,7 +702,21 @@ public class MainActivity extends Activity {
 
         // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
 
-        // Recent-files panel intentionally omitted for a cleaner, section-first home screen.
+        // Recent-files empty state: reserved space for actual local recent-file history.
+        home.addView(section("Recently opened"));
+        LinearLayout recent = new LinearLayout(this);
+        recent.setOrientation(LinearLayout.VERTICAL);
+        recent.setGravity(Gravity.CENTER);
+        recent.setBackground(Ui.glass(22, false));
+        recent.setPadding(Ui.dp(18), Ui.dp(22), Ui.dp(18), Ui.dp(22));
+        TextView recentTitle = Ui.tv(this, "Nothing opened yet", 14, Ui.WHITE, true);
+        recentTitle.setGravity(Gravity.CENTER);
+        recent.addView(recentTitle);
+        TextView recentSub = Ui.tv(this, "Files you open will appear here", 12, Ui.SUB, false);
+        recentSub.setGravity(Gravity.CENTER);
+        recentSub.setPadding(0, Ui.dp(6), 0, 0);
+        recent.addView(recentSub);
+        home.addView(recent, lpm(-1, -2, 16, 0, 16, 18));
     }
 
     TextView appLaunchButton(String title, String subtitle, int glyph) {
@@ -890,7 +904,7 @@ public class MainActivity extends Activity {
                 if (taps >= 4) Ui.toast(this, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = Ui.tv(this, "Make LiquidFiles work your way", 13, Ui.SUB, false);
+        TextView intro = Ui.tv(this, "Configure ToxiFiles your way", 13, Ui.SUB, false);
         intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
         settings.addView(intro);
         TextView hint = Ui.tv(this, "Choose a section to reveal its controls", 11.5f, Ui.accent, false);
