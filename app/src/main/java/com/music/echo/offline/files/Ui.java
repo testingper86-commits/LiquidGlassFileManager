@@ -140,8 +140,8 @@ final class Ui {
         GradientDrawable bloom = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 new int[]{
-                        Color.argb(light ? 56 : 94, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                        Color.argb(light ? 16 : 28, Color.red(blob2), Color.green(blob2), Color.blue(blob2)),
+                        Color.argb(light ? 38 : 62, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                        Color.argb(light ? 10 : 18, Color.red(blob2), Color.green(blob2), Color.blue(blob2)),
                         Color.argb(0, 255, 255, 255)
                 });
         bloom.setCornerRadius(rad);
@@ -149,8 +149,8 @@ final class Ui {
         GradientDrawable hi = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{
-                        Color.argb(light ? 168 : 142, 255, 255, 255),
-                        Color.argb(light ? 48 : 34, 255, 255, 255),
+                        Color.argb(light ? 112 : 88, 255, 255, 255),
+                        Color.argb(light ? 28 : 18, 255, 255, 255),
                         Color.argb(0, 255, 255, 255)
                 });
         hi.setCornerRadius(rad);
@@ -158,13 +158,13 @@ final class Ui {
         GradientDrawable innerRim = new GradientDrawable();
         innerRim.setColor(Color.TRANSPARENT);
         innerRim.setCornerRadius(Math.max(0, rad - dp(2)));
-        innerRim.setStroke(Math.max(1, dp(0.7f)), Color.argb(light ? 100 : 86, 255, 255, 255));
+        innerRim.setStroke(Math.max(1, dp(0.7f)), Color.argb(light ? 76 : 58, 255, 255, 255));
 
         GradientDrawable edge = new GradientDrawable();
         edge.setColor(Color.TRANSPARENT);
         edge.setCornerRadius(rad);
-        int edgeAlpha = highContrast ? 235 : (strong ? (light ? 205 : 176) : (light ? 160 : 132));
-        edge.setStroke(Math.max(1, dp(highContrast ? (strong ? 2f : 1.5f) : (strong ? 1.15f : 0.9f))),
+        int edgeAlpha = highContrast ? 235 : (strong ? (light ? 178 : 138) : (light ? 126 : 96));
+        edge.setStroke(Math.max(1, dp(highContrast ? (strong ? 2f : 1.5f) : (strong ? 1.0f : 0.75f))),
                 Color.argb(edgeAlpha, Color.red(edgeStroke), Color.green(edgeStroke), Color.blue(edgeStroke)));
 
         return new LayerDrawable(new Drawable[]{base, bloom, hi, innerRim, edge});
