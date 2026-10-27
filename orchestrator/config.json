@@ -1,0 +1,29 @@
+{
+  "project": "ToxiFiles",
+  "phase": 1,
+  "mode": "bounded-triage",
+  "trigger_label": "agent-ready",
+  "maximum_repair_attempts": 2,
+  "implementation_branch_required": true,
+  "pull_request_required": true,
+  "automatic_merge": false,
+  "automatic_release": false,
+  "automatic_signing": false,
+  "permissions": {
+    "contents": "read",
+    "issues": "write"
+  },
+  "required_checks": [
+    "python3 tools/project_smoke_test.py",
+    "./gradlew testDebugUnitTest",
+    "./gradlew lintDebug",
+    "./gradlew assembleDebug"
+  ],
+  "escalate_when": [
+    "credentials are missing",
+    "real-device acceptance is required",
+    "product behavior is ambiguous",
+    "security or data-loss risk is unresolved",
+    "two repair attempts fail"
+  ]
+}
