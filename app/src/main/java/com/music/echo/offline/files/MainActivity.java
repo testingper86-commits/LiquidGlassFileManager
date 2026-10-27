@@ -696,7 +696,7 @@ public class MainActivity extends Activity {
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
                 t.setElevation(Ui.dp(2));
-                t.setMinHeight(Ui.dp(132));
+                t.setMinimumHeight(Ui.dp(132));
                 t.setPadding(Ui.dp(13), Ui.dp(14), Ui.dp(11), Ui.dp(14));
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
