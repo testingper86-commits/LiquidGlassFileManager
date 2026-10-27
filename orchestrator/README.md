@@ -1,28 +1,30 @@
-# ToxiFiles Agent Orchestrator — Phase 1
+# ToxiFiles Agent Orchestrator — Phase 2 foundation
 
-This is a **safe coordination starter**, not yet a fully autonomous coding agent.
+## What is implemented
 
-## What it does now
+- GitHub issue triage for issues labelled `agent-ready`, or manual dispatch.
+- One managed triage comment per issue, with security, data-loss, and release gates.
+- A dependency-free task state machine in `supervisor.py` with queued/running/retry/blocked/succeeded/exhausted states.
+- Bounded attempts (default 2; hard maximum 5), recorded agent handoffs, diagnostic errors, verifier-gated success, and JSON state persistence using atomic file replacement.
+- Offline unit tests run by GitHub Actions.
+- Least-privilege workflow permissions and PR-only change policy.
 
-- Responds to an issue labelled `agent-ready`, or a manual workflow dispatch.
-- Produces a consistent triage plan based on issue text and links the workflow run.
-- Posts or updates one managed comment on the issue, avoiding repeated comment spam.
-- Uses the repository's short-lived `GITHUB_TOKEN`; it does not need a personal access token.
-- Has no permission to write repository contents, create branches, merge pull requests, publish releases, or access app secrets.
+## Current limits — important
 
-## Start a run
+This is a **coordination foundation, not yet a fully autonomous coding system**. The supervisor does not invoke a model, run code changes, or automatically dispatch Composio/Figma/Canva/Replit agents. A configured execution adapter, model/provider credentials stored as repository secrets, and a verifier that runs repository checks are still required. No credentials should be put in issue text or committed files.
 
-1. Create a GitHub issue describing one concrete ToxiFiles task.
-2. Add the `agent-ready` label (create that label in GitHub if it does not exist).
-3. Or open **Actions → ToxiFiles Agent Orchestrator → Run workflow** and enter the issue number.
+The supervisor state file is designed for a single coordinator process; it does not provide distributed locking or concurrency-safe multi-run writes. Do not run concurrent writers against the same state file.
 
-## Current limits
+## Run it
 
-This phase does not call an LLM, edit source files, dispatch Figma/Canva/Replit agents, or repair code. It establishes a traceable task handoff and a narrow permission boundary. The next phase should add an explicitly configured model credential, isolated implementation branches, test execution, bounded repair attempts, and PR-only delivery. Any external agent must be treated as untrusted input and its output tested.
+1. Open a GitHub issue with one concrete ToxiFiles task.
+2. Apply the `agent-ready` label, or use **Actions → ToxiFiles Agent Orchestrator → Run workflow** and provide an issue number.
+3. Inspect the generated triage plan and workflow logs.
 
-## Safety policy
+## Safety gates
 
-- Never put API keys or signing secrets in issue text or committed files.
-- Never automatically merge, publish, sign a release, or alter the app's security model.
-- Keep app changes in pull requests and require CI and human review before merging.
-- Stop and report when a task requires product decisions, missing credentials, real-device testing, or destructive/security-sensitive changes.
+- Keep implementation changes on a feature branch and submit a pull request.
+- Never automatically merge, sign, or publish releases.
+- Do not weaken vault encryption, authentication, permissions, or recovery behavior without explicit security review.
+- Stop and report missing credentials, ambiguous product decisions, required real-device acceptance, or unresolved data-loss/security risks.
+- A task may be marked successful only after a separate verifier confirms it; agent output alone is not proof.

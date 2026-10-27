@@ -1,14 +1,18 @@
 {
   "project": "ToxiFiles",
-  "phase": 1,
-  "mode": "bounded-triage",
+  "phase": 2,
+  "mode": "bounded-supervisor-foundation",
   "trigger_label": "agent-ready",
   "maximum_repair_attempts": 2,
+  "maximum_configurable_attempts": 5,
   "implementation_branch_required": true,
   "pull_request_required": true,
   "automatic_merge": false,
   "automatic_release": false,
   "automatic_signing": false,
+  "agent_execution_adapter": "not-configured",
+  "verification_required_for_success": true,
+  "state_storage": "JSON file; single-writer only",
   "permissions": {
     "contents": "read",
     "issues": "write"
