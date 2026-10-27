@@ -23,7 +23,7 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 
 ## GitHub Actions
 
-- **Android Build & Checks** runs structural checks, JVM unit tests, Android lint, the debug build, and the configured install/launch smoke workflow.
+- **ToxiFiles Android Build** runs structural checks, JVM unit tests, Android lint, the debug build, and the configured install/launch smoke workflow.
 - **ToxiFiles Release Build** runs the unit tests and lint before assembling a release APK. It signs the artifact only when all four release secrets are configured: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Without them, the workflow uploads an explicitly labelled **unsigned** APK. Do not distribute an unsigned APK as a trusted release.
 
 ## Security and privacy notes
@@ -35,6 +35,8 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 - Full file management uses Android's sensitive all-files-access permission. Review current Google Play policy and explain the core file-management purpose if distributing through Play. APK installation also depends on Android's user-controlled package-install permission.
 - See [SECURITY.md](SECURITY.md) for the security model and known boundaries.
 
-## Validation limits
+## Validation status
 
-A passing source check is not a substitute for a successful Android build, emulator install/launch, and device-level testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. The project intentionally consolidates changes before the final mass verification pass; until that pass completes, treat the build as work in progress.
+The latest successful main-branch GitHub Actions run completed structural smoke checks, Android XML validation, JVM unit tests, debug APK assembly, Android lint, and installation/launch on an Android 16 emulator. See [run 40429882984](https://github.com/testingper86-commits/LiquidGlassFileManager/actions/runs/40429882984).
+
+CI success does not replace real-device acceptance testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. A release build is not distribution-ready until signing, package policy review, and device testing are complete.
