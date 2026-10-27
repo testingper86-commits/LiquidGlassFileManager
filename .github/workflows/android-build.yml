@@ -139,6 +139,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Build release Android App Bundle
+        run: ./gradlew --no-daemon --stacktrace bundleRelease
+
+      - name: Upload release App Bundle (unsigned unless signing secrets are configured)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToxiFiles-release-AAB
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run Android lint
         run: ./gradlew --no-daemon --stacktrace lintDebug
 
