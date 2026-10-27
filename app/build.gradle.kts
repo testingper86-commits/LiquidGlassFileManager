@@ -9,12 +9,12 @@ val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
 
 android {
     namespace = "com.music.echo.offline"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.liquidfiles.offline"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 3
         versionName = "1.2.0"
     }
