@@ -132,8 +132,7 @@ def main():
     require('.files.BackgroundAudioService' in service_names, 'built-in foreground audio service is registered')
     require('Export settings' in settings and 'Import settings' in settings, 'file manager settings backup and restore remain available')
     require('SETTINGS = 44' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text(), 'dedicated gear-shaped settings icon is available')
-    ui_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
-    require('theme = 0' in ui_source and 'accent = Color.rgb(220, 220, 225)' in ui_source, 'single monochrome glass palette is fixed')
+    require('setTheme(sp.getInt(\"theme\", 11), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'VantaGlass is the default theme')
     require('Haptic feedback' in settings and 'Backup & Restore' in settings, 'haptics and backup controls are inside developer options')
     require('ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH' not in settings, 'main page has no top-level search shortcut')
     require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
@@ -225,7 +224,8 @@ def main():
             'Videos and Music/Audio categories default to grid view')
     require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
             'LiquidDrive dashboard shortcut and activity are removed')
-    require('void buildThemeScreen()' not in main_activity and 'Glyphs.PALETTE, \"Theme\"' not in main_activity, 'theme chooser and theme-selection settings are removed')
+    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity and 'finishNotes[index]' in main_activity,
+            'theme chooser has dedicated studio layout, distinct icons and finish descriptions')
     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
             'built-in text editor can edit and save supported small text files')
     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),

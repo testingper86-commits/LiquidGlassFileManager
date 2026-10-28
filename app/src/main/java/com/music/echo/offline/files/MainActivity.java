@@ -101,7 +101,8 @@ public class MainActivity extends Activity {
     };
 
     @Override protected void onCreate(Bundle b) {
-        setTheme(R.style.AppTheme);
+        boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
+        setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
         super.onCreate(b);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
@@ -939,12 +940,14 @@ public class MainActivity extends Activity {
         TextView intro = Ui.tv(this, "Make ToxiFiles work the way you do", 13, Ui.SUB, false);
         intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
         settings.addView(intro);
-        TextView hint = Ui.tv(this, "Choose a section to view its settings", 11.5f, Ui.SUB, false);
+        TextView hint = Ui.tv(this, "Choose a section to view its settings", 11.5f, Ui.accent, false);
         hint.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(2));
         settings.addView(hint);
 
         settings.addView(section("Appearance"));
+        settings.addView(row(Glyphs.PALETTE, "Theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(Glyphs.SUN, "Light mode", "Switches panels, text, and system dialogs for a bright background", "light", false, () -> { Ui.setLight(Ui.bool("light", false), true); recreate(); }), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("File Management"));
@@ -1010,7 +1013,7 @@ public class MainActivity extends Activity {
             TextView backupHeading = Ui.tv(this, "Backup & Restore", 14, Ui.accent, true);
             backupHeading.setPadding(Ui.dp(8), Ui.dp(12), 0, Ui.dp(2));
             settings.addView(backupHeading);
-            settings.addView(row(Glyphs.DOWNLOAD, "Export settings", "Save your preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(Glyphs.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(row(Glyphs.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(switchRow(Glyphs.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
@@ -1662,7 +1665,7 @@ public class MainActivity extends Activity {
 
     private static java.util.Set<String> portableSettingKeys() {
         return new java.util.HashSet<>(java.util.Arrays.asList(
-                "haptic", "blur", "hidden", "sort", "grid",
+                "theme", "light", "haptic", "blur", "hidden", "sort", "grid",
                 "font_family", "reduce_motion", "recyclebin_days", "dev_verbose",
                 "dev_debug_toasts", "dev_logging"));
     }
@@ -1689,7 +1692,10 @@ public class MainActivity extends Activity {
                     String k = keys.next();
                     if (!allowed.contains(k)) continue;
                     Object v = o.get(k);
-                    if ("font_family".equals(k) && v instanceof Number) {
+                    if ("theme".equals(k) && v instanceof Number) {
+                        int theme = ((Number) v).intValue();
+                        if (theme >= 0 && theme <= 14) ed.putInt(k, theme);
+                    } else if ("font_family".equals(k) && v instanceof Number) {
                         int font = ((Number) v).intValue();
                         if (font >= 0 && font <= 3) ed.putInt(k, font);
                     } else if ("recyclebin_days".equals(k) && v instanceof Number) {
@@ -1708,6 +1714,7 @@ public class MainActivity extends Activity {
             final String m = msg;
             runOnUiThread(() -> {
                 Ui.toast(this, m);
+                Ui.setTheme(Ui.sp.getInt("theme", 11), false);
                 recolor();
                 buildSettings();
             });
@@ -1806,6 +1813,86 @@ public class MainActivity extends Activity {
             recreate();
         }).setNegativeButton("Cancel", null).show();
     }
+    void themeDialog() { openThemeScreen(); }
+
+    void openThemeScreen() {
+        buildThemeScreen();
+        showOverlay(themeScroll);
+    }
+
+    void buildThemeScreen() {
+        themeScroll.removeAllViews();
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(Ui.dp(18), Ui.dp(24), Ui.dp(18), Ui.dp(112));
+
+        TextView title = Ui.tv(this, "Liquid Glass Studio", 28, Ui.WHITE, true);
+        title.setPadding(Ui.dp(2), Ui.dp(4), Ui.dp(2), Ui.dp(2));
+        panel.addView(title);
+        TextView subtitle = Ui.tv(this, "Choose a finish for your workspace", 13, Ui.SUB, false);
+        subtitle.setPadding(Ui.dp(3), 0, Ui.dp(3), Ui.dp(18)); panel.addView(subtitle);
+
+        LinearLayout current = new LinearLayout(this);
+        current.setGravity(Gravity.CENTER_VERTICAL);
+        current.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(16));
+        current.setBackground(Ui.glass(24, true));
+        FrameLayout currentIcon = new FrameLayout(this);
+        currentIcon.setBackground(Ui.accentPill(16));
+        TextView currentGlyph = Ui.tv(this, "◈", 25, Ui.WHITE, true); currentGlyph.setGravity(Gravity.CENTER);
+        currentIcon.addView(currentGlyph, new FrameLayout.LayoutParams(-1, -1));
+        current.addView(currentIcon, new LinearLayout.LayoutParams(Ui.dp(54), Ui.dp(54)));
+        LinearLayout currentText = new LinearLayout(this); currentText.setOrientation(LinearLayout.VERTICAL);
+        currentText.setPadding(Ui.dp(14), 0, Ui.dp(8), 0);
+        currentText.addView(Ui.tv(this, "CURRENT FINISH", 10, Ui.accent, true));
+        TextView activeName = Ui.tv(this, Ui.THEMES[Ui.theme], 17, Ui.WHITE, true);
+        activeName.setPadding(0, Ui.dp(4), 0, 0); currentText.addView(activeName);
+        current.addView(currentText, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView activeMark = Ui.tv(this, "✓", 22, Ui.accent, true); activeMark.setGravity(Gravity.CENTER);
+        current.addView(activeMark, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(42)));
+        panel.addView(current, lpm(-1, -2, 0, 0, 0, 20));
+
+        TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
+        allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
+        String[] marks = {"◈","◉","⬡","◇","✦","✧","◍","◐","◑","▣","⬢","◒","◓","✺","❖"};
+        String[] finishNotes = {"Crystal cyan on pure black", "Warm amber molten glass", "Silver mirror with soft edges", "Emerald prism reflections", "Violet deep-space glass", "Rose quartz gloss", "Arctic teal reflections", "Solar copper glass", "Aqua neon crystal", "Cobalt spectral glass", "Deep jade obsidian", "Smoked titanium", "Ultramarine liquid crystal", "Magenta aurora glass", "Icy blue polished glass"};
+        for (int index = 0; index < Ui.THEMES.length; index++) {
+            final int themeIndex = index;
+            boolean selected = index == Ui.theme;
+            LinearLayout tile = new LinearLayout(this);
+            tile.setGravity(Gravity.CENTER_VERTICAL);
+            tile.setPadding(Ui.dp(13), Ui.dp(12), Ui.dp(13), Ui.dp(12));
+            tile.setBackground(selected ? Ui.accentPill(20) : Ui.glass(20, true));
+
+            FrameLayout swatch = new FrameLayout(this);
+            android.graphics.drawable.GradientDrawable swatchBg = new android.graphics.drawable.GradientDrawable();
+            swatchBg.setColor(Ui.DOTS[index]); swatchBg.setCornerRadius(Ui.dp(14));
+            swatchBg.setStroke(Ui.dp(1), Color.argb(130, 255, 255, 255));
+            swatch.setBackground(swatchBg);
+            TextView glyph = Ui.tv(this, marks[index], 20, Color.WHITE, true); glyph.setGravity(Gravity.CENTER);
+            swatch.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
+            tile.addView(swatch, new LinearLayout.LayoutParams(Ui.dp(46), Ui.dp(46)));
+
+            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
+            labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
+            labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
+            TextView desc = Ui.tv(this, selected ? "Currently applied · " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
+            desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
+            tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView status = Ui.tv(this, selected ? "✓" : "›", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
+            status.setGravity(Gravity.CENTER); tile.addView(status, new LinearLayout.LayoutParams(Ui.dp(28), Ui.dp(42)));
+
+            tile.setOnClickListener(v -> {
+                Ui.tick(v);
+                Ui.setTheme(themeIndex, true);
+                recolor();
+                buildThemeScreen();
+            });
+            Ui.press(tile);
+            panel.addView(tile, lpm(-1, -2, 0, 0, 0, 8));
+        }
+        themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
+    }
+
     void maybeOfferCrashReport() {
         if (isFinishing() || isDestroyed() || !CrashLogger.hasReport(this)) return;
         long crashTime = CrashLogger.reportTime(this);

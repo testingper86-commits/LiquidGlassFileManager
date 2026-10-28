@@ -5,7 +5,16 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">#DCDCE1</item>
-        <item name="android:windowBackground">#07080A</item>
+        <item name="android:colorAccent">#DCE4FF</item>
+        <item name="android:windowBackground">#07090F</item>
+    </style>
+    <style name="AppTheme_Light" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#3355CC</item>
+        <item name="android:windowBackground">#ECEEF4</item>
     </style>
 </resources>
