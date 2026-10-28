@@ -225,8 +225,7 @@ def main():
             'Videos and Music/Audio categories default to grid view')
     require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
             'LiquidDrive dashboard shortcut and activity are removed')
-    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity and 'finishNotes[index]' in main_activity,
-            'theme chooser has dedicated studio layout, distinct icons and finish descriptions')
+    require('void buildThemeScreen()' not in main_activity and 'Glyphs.PALETTE, \"Theme\"' not in main_activity, 'theme chooser and theme-selection settings are removed')
     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
             'built-in text editor can edit and save supported small text files')
     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
