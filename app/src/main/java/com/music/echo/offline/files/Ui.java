@@ -29,7 +29,7 @@ import java.util.Locale;
 final class Ui {
     static float D = 3f;
     static SharedPreferences sp;
-    static int theme = 0, accent = Color.rgb(150, 175, 255), blob1, blob2, blob3;
+    static int theme = 0, accent = Color.rgb(224, 224, 224), blob1 = Color.argb(24,255,255,255), blob2 = Color.argb(15,255,255,255), blob3 = Color.argb(8,255,255,255);
     static int top = 0, bottom = 0;
     // Not "final" on purpose: javac only inlines static-final primitives initialized with a
     // constant expression. WHITE (a literal) would be baked into every call site and could
@@ -43,8 +43,8 @@ final class Ui {
     static int panelR = 10, panelG = 14, panelB = 26;
     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
     static int edgeStroke = Color.argb(72, 255, 255, 255);
-    static final String[] THEMES = {"BlackViscosity", "ShadowMelt", "DarkMirror VR", "PitchGloss", "AbyssFluid", "JetGlaze", "MidnightGloss", "InkMirror", "SlickDark", "ObsidianCanvas", "OnyxFlow", "VantaGlass", "LiquidObsidian", "GlossEngine", "DarkFluid"};
-    static final int[] DOTS = {Color.rgb(0,229,255),Color.rgb(255,64,190),Color.rgb(70,110,255),Color.rgb(245,170,85),Color.rgb(0,190,220),Color.rgb(120,90,255),Color.rgb(50,190,255),Color.rgb(210,80,255),Color.rgb(0,220,190),Color.rgb(100,140,255),Color.rgb(30,230,220),Color.rgb(180,190,210),Color.rgb(80,120,255),Color.rgb(255,110,190),Color.rgb(70,210,255)};
+    static final String[] THEMES = {"Monochrome Glass"};
+    static final int[] DOTS = {Color.rgb(220,220,220)};
     static final SimpleDateFormat DF = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
 
     static void init(Context c) {
@@ -52,33 +52,18 @@ final class Ui {
         AccessibilityManager am = (AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
         highContrast = am != null && am.isHighTextContrastEnabled();
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
-        // Migrate the previous default (index 0) to VantaGlass once; preserve any other saved theme.
-        if (!sp.getBoolean("vantaglass_default_migrated", false)) {
-            if (!sp.contains("theme") || sp.getInt("theme", 11) == 0) sp.edit().putInt("theme", 11).apply();
-            sp.edit().putBoolean("vantaglass_default_migrated", true).apply();
-        }
-        setLight(sp.getBoolean("light", false), false);
-        setTheme(sp.getInt("theme", 11), false);
+        // Fixed monochrome glass appearance; legacy theme preferences are ignored.
+        setLight(false, false);
+        setTheme(0, false);
     }
 
     static void setLight(boolean l, boolean save) {
-        light = l;
-        if (save) sp.edit().putBoolean("light", l).apply();
-        if (l) {
-            WHITE = Color.rgb(18, 20, 26);
-            SUB = Color.argb(highContrast ? 255 : 210, 55, 60, 72);
-            bg = Color.rgb(236, 238, 244);
-            panelR = 255; panelG = 255; panelB = 255;
-            hiTop = Color.argb(150, 255, 255, 255); hiBot = Color.argb(10, 255, 255, 255);
-            edgeStroke = Color.argb(50, 20, 22, 30);
-        } else {
-            WHITE = 0xFFFFFFFF;
-            SUB = Color.argb(highContrast ? 245 : 175, 235, 240, 250);
-            bg = Color.rgb(2, 3, 5);
-            panelR = 5; panelG = 8; panelB = 12;
-            hiTop = Color.argb(76, 255, 255, 255); hiBot = Color.argb(10, 255, 255, 255);
-            edgeStroke = Color.argb(112, 235, 250, 255);
-        }
+        light = false;
+        if (save && sp != null) sp.edit().putBoolean("light", false).apply();
+        WHITE = 0xFFFFFFFF; SUB = Color.argb(highContrast ? 245 : 190,225,225,225);
+        bg = Color.rgb(5,5,6); panelR=18; panelG=18; panelB=20;
+        hiTop=Color.argb(66,255,255,255); hiBot=Color.argb(3,255,255,255);
+        edgeStroke=Color.argb(105,255,255,255);
     }
 
     static String fontFamily() {
@@ -94,88 +79,29 @@ final class Ui {
     static int dp(float v) { return Math.round(v * D); }
 
     static void setTheme(int t, boolean save) {
-        theme = t;
-        if (save) sp.edit().putInt("theme", t).apply();
-        switch (t) {
-            case 1: accent = Color.rgb(255, 190, 120); blob1 = Color.argb(115, 255, 150, 70); blob2 = Color.argb(95, 255, 80, 90); blob3 = Color.argb(70, 255, 210, 120); break;
-            case 2: accent = Color.rgb(225, 228, 235); blob1 = Color.argb(70, 255, 255, 255); blob2 = Color.argb(55, 170, 180, 200); blob3 = Color.argb(40, 255, 255, 255); break;
-            case 3: accent = Color.rgb(120, 235, 200); blob1 = Color.argb(105, 30, 200, 160); blob2 = Color.argb(90, 70, 120, 255); blob3 = Color.argb(70, 150, 255, 200); break;
-            case 4: accent = Color.rgb(190, 145, 255); blob1 = Color.argb(115, 145, 70, 235); blob2 = Color.argb(95, 90, 90, 255); blob3 = Color.argb(70, 220, 150, 255); break;
-            case 5: accent = Color.rgb(255, 150, 190); blob1 = Color.argb(110, 245, 90, 155); blob2 = Color.argb(90, 180, 100, 230); blob3 = Color.argb(65, 255, 190, 220); break;
-            case 6: accent = Color.rgb(90, 210, 220); blob1 = Color.argb(110, 20, 170, 190); blob2 = Color.argb(90, 50, 120, 220); blob3 = Color.argb(70, 120, 245, 230); break;
-            case 7: accent = Color.rgb(255, 130, 105); blob1 = Color.argb(110, 255, 95, 80); blob2 = Color.argb(90, 255, 155, 75); blob3 = Color.argb(70, 255, 210, 120); break;
-            case 8: accent=Color.rgb(0,220,190); blob1=Color.argb(110,0,220,190); blob2=Color.argb(85,0,120,255); blob3=Color.argb(65,180,80,255); break;
-            case 9: accent=Color.rgb(100,140,255); blob1=Color.argb(110,45,70,180); blob2=Color.argb(85,0,210,255); blob3=Color.argb(65,190,80,255); break;
-            case 10: accent=Color.rgb(30,230,220); blob1=Color.argb(110,0,130,145); blob2=Color.argb(85,40,80,220); blob3=Color.argb(65,0,220,180); break;
-            case 11: accent=Color.rgb(135,235,255); blob1=Color.argb(76,30,190,225); blob2=Color.argb(54,90,125,255); blob3=Color.argb(34,180,245,255); break;
-            case 12: accent=Color.rgb(80,120,255); blob1=Color.argb(110,40,70,210); blob2=Color.argb(85,0,200,255); blob3=Color.argb(65,180,60,255); break;
-            case 13: accent=Color.rgb(255,110,190); blob1=Color.argb(110,190,45,145); blob2=Color.argb(85,65,80,255); blob3=Color.argb(65,255,175,90); break;
-            case 14: accent=Color.rgb(70,210,255); blob1=Color.argb(110,0,145,220); blob2=Color.argb(85,170,65,230); blob3=Color.argb(65,255,170,80); break;
-            default: accent = Color.rgb(135, 235, 255); blob1 = Color.argb(76, 30, 190, 225); blob2 = Color.argb(54, 90, 125, 255); blob3 = Color.argb(34, 180, 245, 255);
-        }
+        theme=0; accent=Color.rgb(224,224,224);
+        blob1=Color.argb(24,255,255,255); blob2=Color.argb(15,255,255,255); blob3=Color.argb(8,255,255,255);
+        if(save && sp!=null) sp.edit().putInt("theme",0).apply();
     }
 
     static boolean bool(String k, boolean d) { return sp.getBoolean(k, d); }
     static void set(String k, boolean v) { sp.edit().putBoolean(k, v).apply(); }
 
-    /**
-     * Layered Liquid Glass panel: readable tinted body, subtle colour bloom, top specular
-     * highlight and a fine rim. This is a translucent layered drawable, not a backdrop blur.
-     */
+    /** Translucent monochrome glass with restrained highlights and a fine rim. */
     static Drawable glass(float radiusDp, boolean strong) {
-        float rad = dp(radiusDp);
-        // Stronger "hard glass" treatment: a deeper smoked body, saturated edge bloom,
-        // crisp specular highlight and two fine rims. This is a drawable-only effect and
-        // intentionally does not pretend to be a real-time backdrop blur.
-        int bodyAlpha = highContrast ? (strong ? 248 : 224) : (strong ? (light ? 226 : 202) : (light ? 194 : 158));
-        GradientDrawable base = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{
-                        Color.argb(Math.min(250, bodyAlpha + 34), panelR, panelG, panelB),
-                        Color.argb(bodyAlpha, panelR, panelG, panelB),
-                        Color.argb(Math.max(38, bodyAlpha - 38), panelR, panelG, panelB)
-                });
+        float rad=dp(radiusDp); int a=highContrast?(strong?118:88):(strong?58:34);
+        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(130,a+18),255,255,255),Color.argb(a,255,255,255),Color.argb(Math.max(12,a-12),220,220,220)});
         base.setCornerRadius(rad);
-
-        GradientDrawable bloom = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.argb(light ? 38 : 62, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                        Color.argb(light ? 10 : 18, Color.red(blob2), Color.green(blob2), Color.blue(blob2)),
-                        Color.argb(0, 255, 255, 255)
-                });
-        bloom.setCornerRadius(rad);
-
-        GradientDrawable hi = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{
-                        Color.argb(light ? 112 : 88, 255, 255, 255),
-                        Color.argb(light ? 28 : 18, 255, 255, 255),
-                        Color.argb(0, 255, 255, 255)
-                });
+        GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(42,255,255,255),Color.argb(10,255,255,255),Color.argb(0,255,255,255)});
         hi.setCornerRadius(rad);
-
-        GradientDrawable innerRim = new GradientDrawable();
-        innerRim.setColor(Color.TRANSPARENT);
-        innerRim.setCornerRadius(Math.max(0, rad - dp(2)));
-        innerRim.setStroke(Math.max(1, dp(0.7f)), Color.argb(light ? 76 : 58, 255, 255, 255));
-
-        GradientDrawable edge = new GradientDrawable();
-        edge.setColor(Color.TRANSPARENT);
-        edge.setCornerRadius(rad);
-        int edgeAlpha = highContrast ? 235 : (strong ? (light ? 178 : 138) : (light ? 126 : 96));
-        edge.setStroke(Math.max(1, dp(highContrast ? (strong ? 2f : 1.5f) : (strong ? 1.0f : 0.75f))),
-                Color.argb(edgeAlpha, Color.red(edgeStroke), Color.green(edgeStroke), Color.blue(edgeStroke)));
-
-        return new LayerDrawable(new Drawable[]{base, bloom, hi, innerRim, edge});
+        GradientDrawable edge=new GradientDrawable(); edge.setColor(Color.TRANSPARENT); edge.setCornerRadius(rad);
+        int ea=highContrast?220:(strong?112:78); edge.setStroke(Math.max(1,dp(strong?1.0f:0.7f)),Color.argb(ea,255,255,255));
+        return new LayerDrawable(new Drawable[]{base,hi,edge});
     }
 
     static Drawable accentPill(float radiusDp) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)));
-        g.setCornerRadius(dp(radiusDp));
-        g.setStroke(Math.max(1, dp(1)), Color.argb(130, 255, 255, 255));
-        return g;
+        GradientDrawable g=new GradientDrawable(); g.setColor(Color.argb(46,255,255,255));
+        g.setCornerRadius(dp(radiusDp)); g.setStroke(Math.max(1,dp(1)),Color.argb(105,255,255,255)); return g;
     }
 
     static TextView tv(Context c, CharSequence t, float sp, int color, boolean bold) {
