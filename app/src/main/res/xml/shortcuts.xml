@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="free_online_music"
+        android:enabled="true"
+        android:icon="@drawable/ic_liquidfiles_launcher"
+        android:shortcutShortLabel="Online Music"
+        android:shortcutLongLabel="Search Free Online Music">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.liquidfiles.offline"
+            android:targetClass="com.music.echo.offline.files.FreeOnlineMusicActivity" />
+    </shortcut>
+</shortcuts>
