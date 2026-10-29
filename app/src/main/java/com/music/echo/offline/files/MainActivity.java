@@ -630,7 +630,7 @@ public class MainActivity extends Activity {
         card.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(14));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        int[] cc = {Color.rgb(46, 196, 140), Color.rgb(236, 72, 130), Color.rgb(160, 90, 250), Color.rgb(64, 130, 245), Color.rgb(255, 176, 64)};
+        int[] cc = {Color.argb(230,255,255,255), Color.argb(185,255,255,255), Color.argb(145,255,255,255), Color.argb(105,255,255,255), Color.argb(65,255,255,255)};
         long[] seg = new long[5];
         if (ix.ready) {
             seg[0] = ix.sizes[0]; seg[1] = ix.sizes[1]; seg[2] = ix.sizes[2]; seg[3] = ix.sizes[3];
@@ -700,16 +700,18 @@ public class MainActivity extends Activity {
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
                 t.setElevation(Ui.dp(2));
-                t.setMinimumHeight(Ui.dp(140));
-                t.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(14), Ui.dp(16));
+                t.setMinimumHeight(Ui.dp(124));
+                t.setPadding(Ui.dp(12), Ui.dp(12), Ui.dp(12), Ui.dp(12));
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
                 Ui.ringIcon(ic);
-                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
+                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(32), Ui.dp(32)));
                 String categoryName = Indexer.CAT_NAMES[cat];
                 String categorySub = ix.ready ? ix.counts[cat] + " files" : "…";
                 TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
-                nm.setPadding(0, Ui.dp(12), 0, 0);
+                nm.setSingleLine(true);
+                nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                nm.setPadding(0, Ui.dp(8), 0, 0);
                 t.addView(nm);
                 TextView sub = Ui.tv(this, categorySub, 11.5f, Ui.SUB, false);
                 sub.setPadding(0, Ui.dp(3), 0, 0);
@@ -849,7 +851,7 @@ public class MainActivity extends Activity {
         for (ApplicationInfo ai : apps) {
             LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(Ui.dp(10), Ui.dp(9), Ui.dp(10), Ui.dp(9)); item.setBackground(Ui.glass(16, false));
             ImageView icon = new ImageView(this); try { icon.setImageDrawable(pm.getApplicationIcon(ai)); } catch (Exception ignored) {}
-            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
+            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(32), Ui.dp(32)));
             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(Ui.dp(12), 0, 0, 0);
             labels.addView(Ui.tv(this, String.valueOf(pm.getApplicationLabel(ai)), 14, Ui.WHITE, true));
             labels.addView(Ui.tv(this, ai.packageName, 10, Ui.SUB, false));
@@ -993,6 +995,44 @@ public class MainActivity extends Activity {
         return row(glyph, title, sub, s, v -> s.toggle());
     }
 
+    View glassTransparencyRow() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(Ui.glass(18, false));
+        card.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(10));
+        LinearLayout heading = new LinearLayout(this);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = Ui.tv(this, "Glass transparency", 14, Ui.WHITE, true);
+        heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        int initial = Math.max(35, Math.min(85, Ui.sp.getInt("glass_transparency", 68)));
+        TextView value = Ui.tv(this, initial + "%", 12, Ui.SUB, false);
+        value.setContentDescription("Glass transparency " + initial + " percent");
+        heading.addView(value);
+        card.addView(heading);
+        TextView hint = Ui.tv(this, "Adjust how clear the water-like glass panels look", 11.5f, Ui.SUB, false);
+        hint.setPadding(0, Ui.dp(3), 0, Ui.dp(3));
+        card.addView(hint);
+        android.widget.SeekBar bar = new android.widget.SeekBar(this);
+        bar.setMax(50);
+        bar.setProgress(initial - 35);
+        bar.setContentDescription("Glass transparency adjustment");
+        bar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            int selected = initial;
+            @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                selected = progress + 35;
+                value.setText(selected + "%");
+                value.setContentDescription("Glass transparency " + selected + " percent");
+            }
+            @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) { }
+            @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                Ui.sp.edit().putInt("glass_transparency", selected).apply();
+                recreate();
+            }
+        });
+        card.addView(bar, new LinearLayout.LayoutParams(-1, Ui.dp(36)));
+        return card;
+    }
+
     void buildSettings() {
         settings.removeAllViews();
         TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
@@ -1019,6 +1059,7 @@ public class MainActivity extends Activity {
         settings.addView(section("Appearance"));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(glassTransparencyRow(), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Files & Folders"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
@@ -2199,7 +2240,7 @@ public class MainActivity extends Activity {
         card.setPadding(Ui.dp(14), Ui.dp(13), Ui.dp(14), Ui.dp(13));
         ImageView iv = Ui.iconBtn(this, icon, Ui.accent);
         iv.setContentDescription(title);
-        card.addView(iv, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
+        card.addView(iv, new LinearLayout.LayoutParams(Ui.dp(32), Ui.dp(32)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         texts.setPadding(Ui.dp(10), 0, Ui.dp(8), 0);

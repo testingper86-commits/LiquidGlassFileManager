@@ -30,7 +30,7 @@ import java.util.Locale;
 final class Ui {
     static float D = 3f;
     static SharedPreferences sp;
-    static int theme = 0, accent = Color.rgb(224, 224, 224), blob1 = Color.argb(24,255,255,255), blob2 = Color.argb(15,255,255,255), blob3 = Color.argb(8,255,255,255);
+    static int theme = 0, accent = Color.WHITE, blob1 = Color.argb(24,255,255,255), blob2 = Color.argb(15,255,255,255), blob3 = Color.argb(8,255,255,255);
     static int top = 0, bottom = 0;
     // Not "final" on purpose: javac only inlines static-final primitives initialized with a
     // constant expression. WHITE (a literal) would be baked into every call site and could
@@ -79,7 +79,7 @@ final class Ui {
     static int dp(float v) { return Math.round(v * D); }
 
     static void setTheme(int t, boolean save) {
-        theme=0; accent=Color.rgb(224,224,224);
+        theme=0; accent=Color.WHITE;
         blob1=Color.argb(24,255,255,255); blob2=Color.argb(15,255,255,255); blob3=Color.argb(8,255,255,255);
         if(save && sp!=null) sp.edit().putInt("theme",0).apply();
     }
@@ -89,13 +89,13 @@ final class Ui {
 
     /** Translucent monochrome glass with restrained highlights and a fine rim. */
     static Drawable glass(float radiusDp, boolean strong) {
-        float rad=dp(radiusDp); int a=highContrast ? (strong ? 118 : 88) : (strong ? 30 : 18);
-        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(84,a+18),255,255,255),Color.argb(a,255,255,255),Color.argb(Math.max(6,a-8),220,220,220)});
+        float rad=dp(radiusDp); int transparency=sp == null ? 68 : Math.max(35, Math.min(85, sp.getInt("glass_transparency", 68))); int a=highContrast ? (strong ? 72 : 48) : Math.max(4, Math.round((100-transparency) * (strong ? 0.52f : 0.30f)));
+        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(84,a+18),255,255,255),Color.argb(a,255,255,255),Color.argb(Math.max(2,a-3),255,255,255)});
         base.setCornerRadius(rad);
-        GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(28,255,255,255),Color.argb(7,255,255,255),Color.argb(0,255,255,255)});
+        GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(18,255,255,255),Color.argb(4,255,255,255),Color.argb(0,255,255,255)});
         hi.setCornerRadius(rad);
         GradientDrawable edge=new GradientDrawable(); edge.setColor(Color.TRANSPARENT); edge.setCornerRadius(rad);
-        int ea=highContrast?170:(strong?76:48); edge.setStroke(Math.max(1,dp(strong?1.0f:0.7f)),Color.argb(ea,255,255,255));
+        int ea=highContrast?150:(strong?64:36); edge.setStroke(Math.max(1,dp(strong?1.0f:0.7f)),Color.argb(ea,255,255,255));
         return new LayerDrawable(new Drawable[]{base,hi,edge});
     }
 
