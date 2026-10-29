@@ -59,6 +59,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Native checked-in Android projects must not receive the legacy archive patch overlay.
+          if [[ -s app/src/main/java/com/music/echo/offline/files/MainActivity.java && -s app/build.gradle.kts && ( -s settings.gradle || -s settings.gradle.kts ) ]]; then
+            echo "Native Android source tree detected; skipping legacy patch series."
+            exit 0
+          fi
           # Patches are replayable: apply when they fit forward, skip when already present,
           # and fail with diagnostics only when neither state matches the checked-out tree.
           while IFS= read -r p; do
