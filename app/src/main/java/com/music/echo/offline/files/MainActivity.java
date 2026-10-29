@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
         for (View v : all) { content.addView(v, new FrameLayout.LayoutParams(-1, -1)); v.setVisibility(View.GONE); }
 
         buildNav();
-        busyTv = Ui.tv(this, "Working…", 13, Ui.WHITE, true);
+        busyTv = Ui.tv(this, "Workingâ¦", 13, Ui.WHITE, true);
         busyTv.setBackground(Ui.accentPill(20));
         busyTv.setPadding(Ui.dp(18), Ui.dp(10), Ui.dp(18), Ui.dp(10));
         busyTv.setVisibility(View.GONE);
@@ -320,11 +320,11 @@ public class MainActivity extends Activity {
         busyTv.setVisibility(busyCount > 0 ? View.VISIBLE : View.GONE);
         GlowRing.attach(busyTv);
         GlowRing.setActive(busyTv, busyCount > 0);
-        if (busyCount == 1 && on) busyTv.setText("Working…"); // reset text for ops that don't call progress()
+        if (busyCount == 1 && on) busyTv.setText("Workingâ¦"); // reset text for ops that don't call progress()
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+    void progress(String text) { busyTv.setText(text + " Â· tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {
@@ -526,7 +526,7 @@ public class MainActivity extends Activity {
         TextView v = Ui.tv(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, Ui.WHITE, true);
         v.setLetterSpacing(0.08f);
         v.setTextColor(Ui.accent);
-        v.setText("＋  " + t.toUpperCase(java.util.Locale.ROOT));
+        v.setText("ï¼  " + t.toUpperCase(java.util.Locale.ROOT));
         v.setGravity(Gravity.CENTER_VERTICAL);
         v.setMinHeight(Ui.dp(48));
         v.setPadding(Ui.dp(14), Ui.dp(11), Ui.dp(14), Ui.dp(11));
@@ -550,7 +550,7 @@ public class MainActivity extends Activity {
                 if ("settings_section".equals(child.getTag())) break;
                 child.setVisibility(anyVisible ? View.GONE : View.VISIBLE);
             }
-            v.setText((anyVisible ? "＋  " : "⌄  ") + t.toUpperCase(java.util.Locale.ROOT));
+            v.setText((anyVisible ? "ï¼  " : "â  ") + t.toUpperCase(java.util.Locale.ROOT));
             v.setContentDescription(t + (anyVisible ? ", collapsed settings section. Double tap to expand." : ", expanded settings section. Double tap to collapse."));
             Ui.tick(v);
         });
@@ -579,7 +579,7 @@ public class MainActivity extends Activity {
         home.removeAllViews();
         Indexer ix = Indexer.I;
         // Establish a clear brand eyebrow, title, and action hierarchy at the top of Home.
-        TextView homeSub = Ui.tv(this, "TOXIFILES  ·  OFFLINE", 11.5f, Ui.accent, true);
+        TextView homeSub = Ui.tv(this, "TOXIFILES  Â·  OFFLINE", 11.5f, Ui.accent, true);
         homeSub.setLetterSpacing(0.12f);
         homeSub.setPadding(Ui.dp(22), Ui.dp(10), Ui.dp(20), 0);
         home.addView(homeSub);
@@ -640,7 +640,7 @@ public class MainActivity extends Activity {
         float[] parts = new float[5];
         if (total > 0) for (int i = 0; i < 5; i++) parts[i] = (float) ((double) seg[i] / total);
         if (!ix.ready && total > 0) { parts = new float[]{(float) ((double) used / total)}; cc = new int[]{Ui.accent}; }
-        dv.set(parts, cc, total > 0 ? (int) (used * 100 / total) + "%" : "—", "used");
+        dv.set(parts, cc, total > 0 ? (int) (used * 100 / total) + "%" : "â", "used");
         top.addView(dv, new LinearLayout.LayoutParams(Ui.dp(104), Ui.dp(104)));
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -653,7 +653,7 @@ public class MainActivity extends Activity {
         fr.setPadding(0, Ui.dp(6), 0, 0);
         info.addView(fr);
         if (ix.running) {
-            TextView sc = Ui.tv(this, "Scanning files…", 12, Ui.SUB, false);
+            TextView sc = Ui.tv(this, "Scanning filesâ¦", 12, Ui.SUB, false);
             sc.setPadding(0, Ui.dp(8), 0, 0);
             info.addView(sc);
         }
@@ -666,7 +666,7 @@ public class MainActivity extends Activity {
                 LinearLayout c1 = new LinearLayout(this);
                 c1.setOrientation(LinearLayout.VERTICAL);
                 c1.setGravity(Gravity.CENTER);
-                TextView n = Ui.tv(this, "● " + ln[i], 10.5f, Ui.SUB, false);
+                TextView n = Ui.tv(this, "â " + ln[i], 10.5f, Ui.SUB, false);
                 SpannableHelper.dot(n, cc[i]);
                 TextView sz = Ui.tv(this, Ui.size(seg[i]), 11, Ui.WHITE, true);
                 sz.setPadding(0, Ui.dp(3), 0, 0);
@@ -690,7 +690,7 @@ public class MainActivity extends Activity {
         for (int r = 0; r < (categoryIndices.length + 1) / 2; r++) {
             LinearLayout row = new LinearLayout(this);
             for (int c = 0; c < 2; c++) {
-                final int position = r * 3 + c;
+                final int position = r * 2 + c;
                 if (position >= categoryIndices.length) {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
                     continue;
@@ -707,7 +707,7 @@ public class MainActivity extends Activity {
                 Ui.ringIcon(ic);
                 t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
                 String categoryName = Indexer.CAT_NAMES[cat];
-                String categorySub = ix.ready ? ix.counts[cat] + " files" : "…";
+                String categorySub = ix.ready ? ix.counts[cat] + " files" : "â¦";
                 TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
                 nm.setPadding(0, Ui.dp(12), 0, 0);
                 t.addView(nm);
@@ -740,13 +740,13 @@ public class MainActivity extends Activity {
         List<View> actions = new ArrayList<>();
 
         // Group related destinations under plain, familiar headings.
-        String[] groupNames = {"FILES & APK FILES", "INSTALLED APPS", "FILE MANAGER"};
-        String[] names = {"Other files", "APK installer files", "System apps", "Downloaded apps", "Settings"};
+        String[] groupNames = {"FILES", "APPS", "SETTINGS"};
+        String[] names = {"Other files", "APK files", "System apps", "Downloaded apps", "Settings"};
         String[] descriptions = {
-                "Browse files that do not fit the main categories",
-                "Find Android installer files (.apk) saved on this device",
-                "View apps supplied with Android or your device",
-                "View apps installed by you",
+                "Browse files outside Images, Videos, Music and Documents",
+                "Find APK installer files saved on this device",
+                "Apps included with your device",
+                "Apps you installed",
                 "Change ToxiFiles preferences"
         };
         int[] groupForItem = {0, 0, 1, 1, 2};
@@ -769,7 +769,7 @@ public class MainActivity extends Activity {
             sub.setPadding(0, Ui.dp(4), 0, 0);
             labels.addView(sub);
             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView arrow = Ui.tv(this, "›", 24, Ui.SUB, false);
+            TextView arrow = Ui.tv(this, "âº", 24, Ui.SUB, false);
             arrow.setGravity(Gravity.CENTER);
             item.addView(arrow, new LinearLayout.LayoutParams(Ui.dp(24), Ui.dp(30)));
             item.setContentDescription(names[i] + ". " + descriptions[i] + ". Open");
@@ -784,7 +784,7 @@ public class MainActivity extends Activity {
         scroll.addView(menu);
         TextView title = Ui.tv(this, "Other", 24, Ui.WHITE, true);
         title.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(4));
-        TextView subtitle = Ui.tv(this, "APK files, installed apps and file manager settings", 12, Ui.SUB, false);
+        TextView subtitle = Ui.tv(this, "Other files, APKs, apps and settings", 12, Ui.SUB, false);
         subtitle.setPadding(Ui.dp(20), 0, Ui.dp(20), Ui.dp(6));
         LinearLayout outer = new LinearLayout(this);
         outer.setOrientation(LinearLayout.VERTICAL);
@@ -815,11 +815,11 @@ public class MainActivity extends Activity {
         if (ix.ready && ix.cats.size() > 6) {
             for (Entry e : ix.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
         }
-        listView.setList("APK installer files", apks, false, false);
+        listView.setList("APK files", apks, false, false);
         if (!ix.ready) {
             pendingCat = 6;
             if (!ix.running) startIndex();
-            Ui.toast(this, "Scanning storage for APK files…");
+            Ui.toast(this, "Scanning storage for APK filesâ¦");
         }
         showOverlay(listView);
     }
@@ -1020,55 +1020,55 @@ public class MainActivity extends Activity {
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("File Management"));
+        settings.addView(section("Files & Folders"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.OPEN, "Open files inside the app", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(Glyphs.OPEN, "Open files in ToxiFiles", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.TRASH, "Confirm before deleting", null, "confirm", true, null), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup"));
-        settings.addView(row(Glyphs.DATABASE, "All files access", hasAccess() ? "Allowed" : "Not allowed — tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Storage Access"));
+        settings.addView(row(Glyphs.DATABASE, "Storage permission", hasAccess() ? "Allowed" : "Not allowed â tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanningâ¦"); }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Deleted Files & Retention"));
-        settings.addView(switchRow(Glyphs.TRASH, "Use Recycle Bin", "Deleted items are kept here before being removed for good", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Recycle Bin"));
+        settings.addView(switchRow(Glyphs.TRASH, "Move deleted files to Recycle Bin", "Keep deleted files here before permanent removal", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
         int binCount = RecycleBin.list(this).size();
-        settings.addView(row(Glyphs.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " • auto-removed after " + Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.TRASH, "Keep deleted items for", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " â¢ auto-removed after " + Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.TRASH, "Recycle Bin retention", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security · App Lock"));
+        settings.addView(section("Privacy & Security Â· App Lock"));
         settings.addView(row(Glyphs.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
             if (Ui.bool("applock_on", false) && !AppLock.hasPin(this)) { Ui.toast(this, "Set an App Lock PIN first"); Ui.set("applock_on", false); buildSettings(); }
         }), lpm(-1, -2, 16, 0, 16, 8));
 
         String defFolder = Ui.sp.getString("default_folder", null);
-        settings.addView(row(Glyphs.FOLDER, "Default start folder", defFolder != null ? defFolder : "Internal storage root (use ⋮ in Files to set another)", null, v -> {
-            if (defFolder == null) { Ui.toast(this, "Open a folder, then use ⋮ → Set as default start folder"); return; }
+        settings.addView(row(Glyphs.FOLDER, "Starting folder", defFolder != null ? defFolder : "Internal storage root (use â® in Files to set another)", null, v -> {
+            if (defFolder == null) { Ui.toast(this, "Open a folder, then use â® â Set as default start folder"); return; }
             new AlertDialog.Builder(this).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Reset", (d, w) -> { Ui.sp.edit().remove("default_folder").apply(); buildSettings(); }).show();
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup · Analysis"));
+        settings.addView(section("Storage & Backup Â· Analysis"));
         settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security"));
-        settings.addView(row(Glyphs.SHIELD, "Privacy and connectivity audit", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Crash logs & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Privacy & Diagnostics"));
+        settings.addView(row(Glyphs.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security · Vault"));
+        settings.addView(section("Privacy & Security Â· Vault"));
         settings.addView(row(Glyphs.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("File Transfer"));
+        settings.addView(section("Wi-Fi Transfer"));
         settings.addView(row(Glyphs.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then ⋮ → Send via Wi-Fi…", null, v -> Ui.toast(this, "Select files in Files tab first, then use ⋮ → Send via Wi-Fi…")), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then â® â Send via Wi-Fiâ¦", null, v -> Ui.toast(this, "Select files in Files tab first, then use â® â Send via Wi-Fiâ¦")), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup · Other Storage"));
+        settings.addView(section("Storage & Backup Â· Other Storage"));
         settings.addView(row(Glyphs.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
 
 
@@ -1104,8 +1104,8 @@ public class MainActivity extends Activity {
                 child.setVisibility(View.VISIBLE);
                 if (child instanceof TextView) {
                     TextView heading = (TextView) child;
-                    String label = heading.getText().toString().replace("＋  ", "").replace("⌄  ", "");
-                    heading.setText((appearanceSection ? "⌄  " : "＋  ") + label);
+                    String label = heading.getText().toString().replace("ï¼  ", "").replace("â  ", "");
+                    heading.setText((appearanceSection ? "â  " : "ï¼  ") + label);
                     heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
                 }
             } else if (inSection) {
@@ -1117,7 +1117,7 @@ public class MainActivity extends Activity {
     // ---------------- STORAGE ANALYZER ----------------
     void openStorageAnalyzer() {
         if (!hasAccess()) { showStorageAccess(); return; }
-        Ui.toast(this, "Analyzing storage…");
+        Ui.toast(this, "Analyzing storageâ¦");
         io.execute(() -> {
             File rootDir = Environment.getExternalStorageDirectory();
             long[] totals = new long[6]; // images, video, audio, documents, archives, other
@@ -1131,10 +1131,10 @@ public class MainActivity extends Activity {
             StringBuilder report = new StringBuilder();
             report.append("Scanned internal shared storage\n\nFiles: ").append(totalFiles[0])
                     .append("\nEstimated file size total: ").append(formatBytes(totalBytes[0])).append("\n\nBy category:\n");
-            for (int i = 0; i < labels.length; i++) report.append(labels[i]).append(": ").append(counts[i]).append(" files • ").append(formatBytes(totals[i])).append("\n");
+            for (int i = 0; i < labels.length; i++) report.append(labels[i]).append(": ").append(counts[i]).append(" files â¢ ").append(formatBytes(totals[i])).append("\n");
             report.append("\nLargest files found (up to 15):\n");
             int n = Math.min(15, largest.size());
-            for (int i = 0; i < n; i++) report.append("\n").append(formatBytes(largest.get(i).length())).append(" — ").append(largest.get(i).getAbsolutePath());
+            for (int i = 0; i < n; i++) report.append("\n").append(formatBytes(largest.get(i).length())).append(" â ").append(largest.get(i).getAbsolutePath());
             if (n == 0) report.append("None found.");
             final String result = report.toString();
             runOnUiThread(() -> new AlertDialog.Builder(this).setTitle("Storage analysis")
@@ -1185,14 +1185,14 @@ public class MainActivity extends Activity {
 
     void showPrivacyAudit() {
         String report = "OFFLINE & PRIVACY REVIEW\n\n"
-                + "• File browsing and built-in viewing operate on local files.\n"
-                + "• No account or cloud-sync feature is provided by this app.\n"
-                + "• Wi-Fi transfer is a local-network feature; it requires network permission and both devices on a reachable network. It is not internet cloud storage.\n"
-                + "• All-files access gives broad access to shared storage. Disable it in Android settings when you no longer need it.\n"
-                + "• App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
-                + "• Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
+                + "â¢ File browsing and built-in viewing operate on local files.\n"
+                + "â¢ No account or cloud-sync feature is provided by this app.\n"
+                + "â¢ Wi-Fi transfer is a local-network feature; it requires network permission and both devices on a reachable network. It is not internet cloud storage.\n"
+                + "â¢ All-files access gives broad access to shared storage. Disable it in Android settings when you no longer need it.\n"
+                + "â¢ App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
+                + "â¢ Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
                 + "This is an in-app permission/feature summary, not an independent network-traffic audit. To verify network behavior, inspect the source and test traffic on the device.";
-        new AlertDialog.Builder(this).setTitle("Privacy and connectivity audit")
+        new AlertDialog.Builder(this).setTitle("Privacy & network information")
                 .setMessage(report).setPositiveButton("OK", null).show();
     }
 
@@ -1260,13 +1260,13 @@ public class MainActivity extends Activity {
                             dlg.dismiss();
                         }
                     });
-        } catch (Exception ignored) { } // no enrolled biometric / unsupported — PIN field stays usable
+        } catch (Exception ignored) { } // no enrolled biometric / unsupported â PIN field stays usable
     }
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
-        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
-        Ui.toast(this, "Scanning for duplicates…");
+        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage â try again in a moment"); return; }
+        Ui.toast(this, "Scanning for duplicatesâ¦");
         io.execute(() -> {
             final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
             runOnUiThread(() -> { buildDuplicates(groups); showOverlay(dupScroll); });
@@ -1293,7 +1293,7 @@ public class MainActivity extends Activity {
         }
         long reclaimable = 0;
         for (DupFinder.Group g : groups) reclaimable += g.size * (g.files.size() - 1);
-        TextView sum = Ui.tv(this, groups.size() + " duplicate group" + (groups.size() == 1 ? "" : "s") + " — up to " + Ui.size(reclaimable) + " reclaimable", 12, Ui.SUB, false);
+        TextView sum = Ui.tv(this, groups.size() + " duplicate group" + (groups.size() == 1 ? "" : "s") + " â up to " + Ui.size(reclaimable) + " reclaimable", 12, Ui.SUB, false);
         sum.setPadding(Ui.dp(20), Ui.dp(2), Ui.dp(20), Ui.dp(6));
         dup.addView(sum);
 
@@ -1303,7 +1303,7 @@ public class MainActivity extends Activity {
         bulk.setGravity(Gravity.CENTER);
         Ui.press(bulk);
         bulk.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Move duplicates to Recycle Bin?")
-                .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin — they can still be restored from there.")
+                .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin â they can still be restored from there.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (d, w) -> {
                     List<File> victims = new ArrayList<>();
@@ -1317,7 +1317,7 @@ public class MainActivity extends Activity {
         dup.addView(bulk, lpm(-1, -2, 16, 4, 16, 14));
 
         for (final DupFinder.Group g : groups) {
-            TextView gh = Ui.tv(this, g.files.size() + " copies • " + Ui.size(g.size) + " each", 12, Ui.SUB, true);
+            TextView gh = Ui.tv(this, g.files.size() + " copies â¢ " + Ui.size(g.size) + " each", 12, Ui.SUB, true);
             gh.setPadding(Ui.dp(20), Ui.dp(10), Ui.dp(20), Ui.dp(2));
             dup.addView(gh);
             for (final File f : g.files) {
@@ -1337,8 +1337,8 @@ public class MainActivity extends Activity {
     }
 
     void openCleanup() {
-        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
-        Ui.toast(this, "Scanning for empty folders…");
+        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage â try again in a moment"); return; }
+        Ui.toast(this, "Scanning for empty foldersâ¦");
         io.execute(() -> {
             final List<File> empties = new ArrayList<>();
             for (Entry e : Indexer.I.all) {
@@ -1486,27 +1486,27 @@ public class MainActivity extends Activity {
 
     // ---------------- WI-FI TRANSFER ----------------
     void receiveViaWifi() {
-        final AlertDialog waitDlg = new AlertDialog.Builder(this).setTitle("Waiting for sender…")
-                .setMessage("Starting…")
+        final AlertDialog waitDlg = new AlertDialog.Builder(this).setTitle("Waiting for senderâ¦")
+                .setMessage("Startingâ¦")
                 .setNegativeButton("Cancel", (d, w) -> LanTransfer.cancel())
                 .setCancelable(false).show();
         File destDir = new File(Environment.getExternalStorageDirectory(), "Download/LanReceived");
         LanTransfer.receive(destDir, new LanTransfer.Listener() {
             @Override public void onWaiting(String ip, int port, String pairingCode) {
-                runOnUiThread(() -> waitDlg.setMessage("On the sending device, use ⋮ → Send via Wi-Fi… and enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
+                runOnUiThread(() -> waitDlg.setMessage("On the sending device, use â® â Send via Wi-Fiâ¦ and enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
             }
             @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) {
                 runOnUiThread(() -> {
                     if (waitDlg.isShowing()) waitDlg.dismiss();
                     StringBuilder preview = new StringBuilder();
                     int shown = Math.min(8, names.size());
-                    for (int i = 0; i < shown; i++) preview.append("\n• ").append(names.get(i));
-                    if (names.size() > shown) preview.append("\n…and ").append(names.size() - shown).append(" more");
+                    for (int i = 0; i < shown; i++) preview.append("\nâ¢ ").append(names.get(i));
+                    if (names.size() > shown) preview.append("\nâ¦and ").append(names.size() - shown).append(" more");
                     new AlertDialog.Builder(MainActivity.this).setTitle("Incoming transfer")
                             .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + Ui.size(totalBytes) + "\n\nFiles:" + preview)
                             .setCancelable(false)
                             .setNegativeButton("Decline", (d, w) -> reject.run())
-                            .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receiving…"); })
+                            .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receivingâ¦"); })
                             .show();
                 });
             }
@@ -1535,7 +1535,7 @@ public class MainActivity extends Activity {
                     if (raw.isEmpty() || pairingCode.length() != 10) { Ui.toast(this, "Enter the address and 10-character pairing code"); return; }
                     String ip = raw.contains(":") ? raw.substring(0, raw.indexOf(':')) : raw;
                     busy(true);
-                    progress("Connecting securely…");
+                    progress("Connecting securelyâ¦");
                     LanTransfer.send(ip, pairingCode, files, new LanTransfer.Listener() {
                         @Override public void onWaiting(String ip2, int port, String pairingCode2) { }
                         @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) { }
@@ -1645,7 +1645,7 @@ public class MainActivity extends Activity {
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
-        Ui.toast(this, "Loading…");
+        Ui.toast(this, "Loadingâ¦");
         io.execute(() -> {
             final List<String[]> rows = new ArrayList<>(); // [docId, name, "1" dir / "0" file]
             try {
@@ -1660,7 +1660,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (rows.isEmpty()) { Ui.toast(this, "Nothing here, or can't read this location"); return; }
                 String[] names = new String[rows.size()];
-                for (int i = 0; i < rows.size(); i++) names[i] = (rows.get(i)[2].equals("1") ? "📁 " : "") + rows.get(i)[1];
+                for (int i = 0; i < rows.size(); i++) names[i] = (rows.get(i)[2].equals("1") ? "ð " : "") + rows.get(i)[1];
                 new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
                     String[] r = rows.get(w);
                     Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, r[0]);
@@ -1806,7 +1806,7 @@ public class MainActivity extends Activity {
     // ---------------- LARGEST FILES ----------------
     void openLargest() {
         Indexer ix = Indexer.I;
-        if (!ix.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
+        if (!ix.ready) { Ui.toast(this, "Still scanning storage â try again in a moment"); return; }
         List<Entry> big = new ArrayList<>(ix.all);
         java.util.Collections.sort(big, (x, y) -> Long.compare(y.len, x.len));
         if (big.size() > 300) big = big.subList(0, 300);
@@ -1818,7 +1818,7 @@ public class MainActivity extends Activity {
         final int[] days = {7, 14, 30, 60, 90};
         String[] labels = new String[days.length];
         for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(this).setTitle("Keep deleted items for")
+        new AlertDialog.Builder(this).setTitle("Recycle Bin retention")
                 .setItems(labels, (d, w) -> { Ui.sp.edit().putInt("recyclebin_days", days[w]).apply(); buildSettings(); })
                 .show();
     }
@@ -1920,7 +1920,7 @@ public class MainActivity extends Activity {
         current.setBackground(Ui.glass(24, true));
         FrameLayout currentIcon = new FrameLayout(this);
         currentIcon.setBackground(Ui.accentPill(16));
-        TextView currentGlyph = Ui.tv(this, "◈", 25, Ui.WHITE, true); currentGlyph.setGravity(Gravity.CENTER);
+        TextView currentGlyph = Ui.tv(this, "â", 25, Ui.WHITE, true); currentGlyph.setGravity(Gravity.CENTER);
         currentIcon.addView(currentGlyph, new FrameLayout.LayoutParams(-1, -1));
         current.addView(currentIcon, new LinearLayout.LayoutParams(Ui.dp(54), Ui.dp(54)));
         LinearLayout currentText = new LinearLayout(this); currentText.setOrientation(LinearLayout.VERTICAL);
@@ -1929,13 +1929,13 @@ public class MainActivity extends Activity {
         TextView activeName = Ui.tv(this, Ui.THEMES[Ui.theme], 17, Ui.WHITE, true);
         activeName.setPadding(0, Ui.dp(4), 0, 0); currentText.addView(activeName);
         current.addView(currentText, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView activeMark = Ui.tv(this, "✓", 22, Ui.accent, true); activeMark.setGravity(Gravity.CENTER);
+        TextView activeMark = Ui.tv(this, "â", 22, Ui.accent, true); activeMark.setGravity(Gravity.CENTER);
         current.addView(activeMark, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(42)));
         panel.addView(current, lpm(-1, -2, 0, 0, 0, 20));
 
         TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
         allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
-        String[] marks = {"◈","◉","⬡","◇","✦","✧","◍","◐","◑","▣","⬢","◒","◓","✺","❖"};
+        String[] marks = {"â","â","â¬¡","â","â¦","â§","â","â","â","â£","â¬¢","â","â","âº","â"};
         String[] finishNotes = {"Crystal cyan on pure black", "Warm amber molten glass", "Silver mirror with soft edges", "Emerald prism reflections", "Violet deep-space glass", "Rose quartz gloss", "Arctic teal reflections", "Solar copper glass", "Aqua neon crystal", "Cobalt spectral glass", "Deep jade obsidian", "Smoked titanium", "Ultramarine liquid crystal", "Magenta aurora glass", "Icy blue polished glass"};
         for (int index = 0; index < Ui.THEMES.length; index++) {
             final int themeIndex = index;
@@ -1957,10 +1957,10 @@ public class MainActivity extends Activity {
             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
             labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
             labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
-            TextView desc = Ui.tv(this, selected ? "Currently applied · " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
+            TextView desc = Ui.tv(this, selected ? "Currently applied Â· " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
             desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
             tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView status = Ui.tv(this, selected ? "✓" : "›", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
+            TextView status = Ui.tv(this, selected ? "â" : "âº", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
             status.setGravity(Gravity.CENTER); tile.addView(status, new LinearLayout.LayoutParams(Ui.dp(28), Ui.dp(42)));
 
             tile.setOnClickListener(v -> {
@@ -1996,7 +1996,7 @@ public class MainActivity extends Activity {
                     .setPositiveButton("OK", null).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Crash logs & diagnostics")
+        new AlertDialog.Builder(this).setTitle("Crash reports & diagnostics")
                 .setMessage("A crash report is stored privately inside the app. It includes the exception stack trace, app version, Android version, device model, and crashing thread. Nothing is uploaded automatically.")
                 .setPositiveButton("Share report", (d, w) -> shareCrashReport())
                 .setNegativeButton("Close", null)
@@ -2076,7 +2076,7 @@ public class MainActivity extends Activity {
         about.addView(hero, lpm(-1, -2, 16, 8, 16, 12));
 
         about.addView(section("CREATOR"));
-        about.addView(aboutCard(Glyphs.INFO, "Created by", "CHANDU❤️‍🔥", null), lpm(-1, -2, 16, 0, 16, 8));
+        about.addView(aboutCard(Glyphs.INFO, "Created by", "CHANDUâ¤ï¸âð¥", null), lpm(-1, -2, 16, 0, 16, 8));
 
         about.addView(section("ABOUT DEVELOPER"));
         about.addView(aboutCard(Glyphs.INFO, "Facebook", "facebook.com/chand.p.319", "https://www.facebook.com/chand.p.319/"), lpm(-1, -2, 16, 0, 16, 8));
@@ -2096,7 +2096,7 @@ public class MainActivity extends Activity {
         social.addView(socialCopy);
         LinearLayout socialActions = new LinearLayout(this);
         socialActions.setGravity(Gravity.CENTER_VERTICAL);
-        TextView githubAction = Ui.tv(this, "OPEN GITHUB  ↗", 12, Ui.WHITE, true);
+        TextView githubAction = Ui.tv(this, "OPEN GITHUB  â", 12, Ui.WHITE, true);
         githubAction.setGravity(Gravity.CENTER);
         githubAction.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
         githubAction.setBackground(Ui.glass(14, false));
@@ -2104,7 +2104,7 @@ public class MainActivity extends Activity {
         socialActions.addView(githubAction, new LinearLayout.LayoutParams(0, -2, 1f));
         View socialGap = new View(this);
         socialActions.addView(socialGap, new LinearLayout.LayoutParams(Ui.dp(10), 1));
-        TextView shareAction = Ui.tv(this, "SHARE APP  ↗", 12, Ui.WHITE, true);
+        TextView shareAction = Ui.tv(this, "SHARE APP  â", 12, Ui.WHITE, true);
         shareAction.setGravity(Gravity.CENTER);
         shareAction.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
         shareAction.setBackground(Ui.glass(14, false));
@@ -2145,11 +2145,11 @@ public class MainActivity extends Activity {
         licenses.setOrientation(LinearLayout.VERTICAL);
         licenses.setBackground(Ui.glass(18, false));
         licenses.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        licenses.addView(Ui.tv(this, "Heroicons — MIT License", 14, Ui.WHITE, true));
+        licenses.addView(Ui.tv(this, "Heroicons â MIT License", 14, Ui.WHITE, true));
         TextView heroicons = Ui.tv(this, "Bundled outline icon assets are stored locally in the app. Attribution and the license are included with the assets.", 12, Ui.SUB, false);
         heroicons.setPadding(0, Ui.dp(4), 0, Ui.dp(12));
         licenses.addView(heroicons);
-        licenses.addView(Ui.tv(this, "AndroidX Core — Apache License 2.0", 14, Ui.WHITE, true));
+        licenses.addView(Ui.tv(this, "AndroidX Core â Apache License 2.0", 14, Ui.WHITE, true));
         TextView androidx = Ui.tv(this, "The project declares AndroidX Core as a dependency. This summary is not a complete transitive-dependency license report; release packaging should include all required notices.", 12, Ui.SUB, false);
         androidx.setPadding(0, Ui.dp(4), 0, 0);
         licenses.addView(androidx);
@@ -2187,7 +2187,7 @@ public class MainActivity extends Activity {
         try {
             android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
             long code = android.os.Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
-            return "Version " + info.versionName + "  ·  Build " + code;
+            return "Version " + info.versionName + "  Â·  Build " + code;
         } catch (Exception e) { return versionName(); }
     }
 
