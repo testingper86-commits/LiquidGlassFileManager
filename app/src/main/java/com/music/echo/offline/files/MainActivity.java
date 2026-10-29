@@ -630,7 +630,7 @@ public class MainActivity extends Activity {
         card.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(14));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        int[] cc = {Color.argb(230,255,255,255), Color.argb(185,255,255,255), Color.argb(145,255,255,255), Color.argb(105,255,255,255), Color.argb(65,255,255,255)};
+        int[] cc = {Color.argb(150,255,255,255), Color.argb(120,255,255,255), Color.argb(90,255,255,255), Color.argb(60,255,255,255), Color.argb(30,255,255,255)};
         long[] seg = new long[5];
         if (ix.ready) {
             seg[0] = ix.sizes[0]; seg[1] = ix.sizes[1]; seg[2] = ix.sizes[2]; seg[3] = ix.sizes[3];
@@ -1004,7 +1004,7 @@ public class MainActivity extends Activity {
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = Ui.tv(this, "Glass transparency", 14, Ui.WHITE, true);
         heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-        int initial = Math.max(35, Math.min(85, Ui.sp.getInt("glass_transparency", 68)));
+        int initial = Math.max(70, Math.min(95, Ui.sp.getInt("glass_transparency", 90)));
         TextView value = Ui.tv(this, initial + "%", 12, Ui.SUB, false);
         value.setContentDescription("Glass transparency " + initial + " percent");
         heading.addView(value);
@@ -1013,13 +1013,13 @@ public class MainActivity extends Activity {
         hint.setPadding(0, Ui.dp(3), 0, Ui.dp(3));
         card.addView(hint);
         android.widget.SeekBar bar = new android.widget.SeekBar(this);
-        bar.setMax(50);
-        bar.setProgress(initial - 35);
+        bar.setMax(25);
+        bar.setProgress(initial - 70);
         bar.setContentDescription("Glass transparency adjustment");
         bar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
             int selected = initial;
             @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                selected = progress + 35;
+                selected = progress + 70;
                 value.setText(selected + "%");
                 value.setContentDescription("Glass transparency " + selected + " percent");
             }
