@@ -213,8 +213,8 @@ def main():
             'sound.json and wave.json are removed from packaged Android assets')
     require('com.airbnb.android:lottie' not in gradle, 'unused Lottie runtime dependency is removed')
     main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System Apps' in main_activity and 'Downloaded Apps' in main_activity and 'Other files and APKs' in main_activity,
-            'APK files are grouped under Other with installed-app choices available there')
+    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System apps' in main_activity and 'Downloaded apps' in main_activity and 'APK installer files' in main_activity and 'showOtherSections()' in main_activity,
+            'Other section contains APK files, system apps, downloaded apps, and settings')
     require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
             'Settings is accessed from the top-right home header')
     require('Usage & diagnostics' in main_activity and 'Built-in tools' in main_activity and 'phone\'s separate apps' in main_activity and 'Debug options' not in main_activity,
