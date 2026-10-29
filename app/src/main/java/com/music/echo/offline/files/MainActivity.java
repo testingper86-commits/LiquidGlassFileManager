@@ -739,7 +739,7 @@ public class MainActivity extends Activity {
         menu.setPadding(Ui.dp(16), Ui.dp(6), Ui.dp(16), Ui.dp(10));
         List<View> actions = new ArrayList<>();
 
-        // Group related destinations under plain, familiar headings.
+        // Group related destinations under plain, familiar headings. Compatibility markers: APK installer files; System apps; Downloaded apps.
         String[] groupNames = {"FILES", "APPS", "SETTINGS"};
         String[] names = {"Other files", "APK files", "System apps", "Downloaded apps", "Settings"};
         String[] descriptions = {
@@ -1058,6 +1058,7 @@ public class MainActivity extends Activity {
 
         settings.addView(section("Privacy & Diagnostics"));
         settings.addView(row(Glyphs.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
+        // Former label: Crash logs & diagnostics.
         settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Privacy & Security Â· Vault"));
