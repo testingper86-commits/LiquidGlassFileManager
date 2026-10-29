@@ -224,8 +224,8 @@ def main():
             'Videos and Music/Audio categories default to grid view')
     require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
             'LiquidDrive dashboard shortcut and activity are removed')
-    require('Liquid Glass Studio' in main_activity and 'Monochrome Glass' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
-            'appearance chooser uses a single monochrome glass style')
+    require('Liquid Glass Studio' in main_activity and 'Crystal Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Warm Amber' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
+            'appearance chooser provides selectable color-glass themes')
     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
             'built-in text editor can edit and save supported small text files')
     require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
