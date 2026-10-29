@@ -89,7 +89,7 @@ final class Ui {
 
     /** Translucent monochrome glass with restrained highlights and a fine rim. */
     static Drawable glass(float radiusDp, boolean strong) {
-        float rad=dp(radiusDp); int transparency=sp == null ? 68 : Math.max(35, Math.min(85, sp.getInt("glass_transparency", 68))); int a=highContrast ? (strong ? 72 : 48) : Math.max(4, Math.round((100-transparency) * (strong ? 0.52f : 0.30f)));
+        float rad=dp(radiusDp); int transparency=sp == null ? 68 : Math.max(35, Math.min(85, sp.getInt("glass_transparency", 68))); int a=highContrast ? (strong ? 118 : 88) : Math.max(4, Math.round((100-transparency) * (strong ? 0.52f : 0.30f)));
         GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(84,a+18),255,255,255),Color.argb(a,255,255,255),Color.argb(Math.max(2,a-3),255,255,255)});
         base.setCornerRadius(rad);
         GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(18,255,255,255),Color.argb(4,255,255,255),Color.argb(0,255,255,255)});
