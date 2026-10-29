@@ -1036,7 +1036,7 @@ public class MainActivity extends Activity {
         settings.addView(row(Glyphs.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " Ã¢ÂÂ¢ auto-removed after " + Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.TRASH, "Recycle Bin retention", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security ÃÂ· App Lock"));
+        settings.addView(section("App Lock"));
         settings.addView(row(Glyphs.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
             if (Ui.bool("applock_on", false) && !AppLock.hasPin(this)) { Ui.toast(this, "Set an App Lock PIN first"); Ui.set("applock_on", false); buildSettings(); }
@@ -1050,7 +1050,7 @@ public class MainActivity extends Activity {
                     .setPositiveButton("Reset", (d, w) -> { Ui.sp.edit().remove("default_folder").apply(); buildSettings(); }).show();
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup ÃÂ· Analysis"));
+        settings.addView(section("Storage Tools"));
         settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1061,7 +1061,7 @@ public class MainActivity extends Activity {
         // Former label: Crash logs & diagnostics.
         settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security ÃÂ· Vault"));
+        settings.addView(section("Secure Vault"));
         settings.addView(row(Glyphs.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
 
@@ -1069,7 +1069,7 @@ public class MainActivity extends Activity {
         settings.addView(row(Glyphs.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then Ã¢ÂÂ® Ã¢ÂÂ Send via Wi-FiÃ¢ÂÂ¦", null, v -> Ui.toast(this, "Select files in Files tab first, then use Ã¢ÂÂ® Ã¢ÂÂ Send via Wi-FiÃ¢ÂÂ¦")), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup ÃÂ· Other Storage"));
+        settings.addView(section("SD Card & USB Storage"));
         settings.addView(row(Glyphs.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
 
 
