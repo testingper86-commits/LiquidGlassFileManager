@@ -292,7 +292,7 @@ public class MainActivity extends Activity {
         String[] names = Indexer.CAT_NAMES;
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], Indexer.I.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", Indexer.I.all, true, true); pendingCat = -1; }
-        if (tab == 0 && overlayView == null) buildHome();
+        if (tab == 0 && overlayView == null && home.getVisibility() == View.VISIBLE) buildHome();
     }
 
     void afterOps() {
@@ -699,26 +699,25 @@ public class MainActivity extends Activity {
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
                 t.setElevation(Ui.dp(2));
-                t.setMinimumHeight(Ui.dp(124));
+                t.setMinimumHeight(Ui.dp(136));
                 t.setPadding(Ui.dp(12), Ui.dp(12), Ui.dp(12), Ui.dp(12));
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
-                Ui.ringIcon(ic);
-                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(32), Ui.dp(32)));
+                ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)));
                 String categoryName = Indexer.CAT_NAMES[cat];
                 String categorySub = ix.ready ? ix.counts[cat] + " files" : "…";
                 TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
                 nm.setSingleLine(true);
                 nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                nm.setPadding(0, Ui.dp(8), 0, 0);
+                nm.setPadding(0, Ui.dp(6), 0, 0);
                 t.addView(nm);
                 TextView sub = Ui.tv(this, categorySub, 11.5f, Ui.SUB, false);
-                sub.setPadding(0, Ui.dp(3), 0, 0);
+                sub.setPadding(0, Ui.dp(2), 0, 0);
                 t.addView(sub);
                 t.setContentDescription(categoryName + ", " + categorySub + ". Open category");
                 t.setFocusable(true);
                 t.setOnClickListener(v -> {
-                    Ui.tick(v);
                     if (cat == 6) showOtherSections();
                     else openCategory(cat);
                 });
@@ -2238,7 +2237,7 @@ public class MainActivity extends Activity {
 
     // ---------------- background + donut ----------------
     static final class BgView extends View {
-        BgView(android.content.Context c) { super(c); setLayerType(LAYER_TYPE_HARDWARE, null); applyBlur(); }
+        BgView(android.content.Context c) { super(c); setLayerType(LAYER_TYPE_NONE, null); setWillNotDraw(false); applyBlur(); }
 
         void applyBlur() {
             if (Build.VERSION.SDK_INT >= 31) {
