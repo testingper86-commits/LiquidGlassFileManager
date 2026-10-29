@@ -102,7 +102,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
-        setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
+        setTheme(R.style.AppTheme);
         super.onCreate(b);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
@@ -945,9 +945,7 @@ public class MainActivity extends Activity {
         settings.addView(hint);
 
         settings.addView(section("Appearance"));
-        settings.addView(row(Glyphs.PALETTE, "Theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SUN, "Light mode", "Switches panels, text, and system dialogs for a bright background", "light", false, () -> { Ui.setLight(Ui.bool("light", false), true); recreate(); }), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("File Management"));
