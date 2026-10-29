@@ -690,7 +690,7 @@ public class MainActivity extends Activity {
         for (int r = 0; r < (categoryIndices.length + 1) / 2; r++) {
             LinearLayout row = new LinearLayout(this);
             for (int c = 0; c < 2; c++) {
-                final int position = r * 3 + c;
+                final int position = r * 2 + c;
                 if (position >= categoryIndices.length) {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
                     continue;
@@ -740,7 +740,7 @@ public class MainActivity extends Activity {
         List<View> actions = new ArrayList<>();
 
         // Group related destinations under plain, familiar headings.
-        String[] groupNames = {"FILES & APK FILES", "INSTALLED APPS", "FILE MANAGER"};
+        String[] groupNames = {"FILES", "APPS", "SETTINGS"};
         String[] names = {"Other files", "APK files", "System apps", "Downloaded apps", "Settings"};
         String[] descriptions = {
                 "Browse files that do not fit the main categories",
@@ -1022,19 +1022,19 @@ public class MainActivity extends Activity {
 
         settings.addView(section("File Management"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.OPEN, "Open files inside the app", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(Glyphs.OPEN, "Open files in ToxiFiles", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(switchRow(Glyphs.TRASH, "Confirm before deleting", null, "confirm", true, null), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Storage & Backup"));
-        settings.addView(row(Glyphs.DATABASE, "All files access", hasAccess() ? "Allowed" : "Not allowed — tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.DATABASE, "Storage permission", hasAccess() ? "Allowed" : "Not allowed — tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Deleted Files & Retention"));
-        settings.addView(switchRow(Glyphs.TRASH, "Use Recycle Bin", "Deleted items are kept here before being removed for good", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(Glyphs.TRASH, "Move deleted files to Recycle Bin", "Deleted items are kept here before being removed for good", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
         int binCount = RecycleBin.list(this).size();
         settings.addView(row(Glyphs.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " • auto-removed after " + Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.TRASH, "Keep deleted items for", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.TRASH, "Recycle Bin retention", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Privacy & Security · App Lock"));
         settings.addView(row(Glyphs.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1043,32 +1043,32 @@ public class MainActivity extends Activity {
         }), lpm(-1, -2, 16, 0, 16, 8));
 
         String defFolder = Ui.sp.getString("default_folder", null);
-        settings.addView(row(Glyphs.FOLDER, "Default start folder", defFolder != null ? defFolder : "Internal storage root (use ⋮ in Files to set another)", null, v -> {
+        settings.addView(row(Glyphs.FOLDER, "Starting folder", defFolder != null ? defFolder : "Internal storage root (set another from the Files menu)", null, v -> {
             if (defFolder == null) { Ui.toast(this, "Open a folder, then use ⋮ → Set as default start folder"); return; }
             new AlertDialog.Builder(this).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Reset", (d, w) -> { Ui.sp.edit().remove("default_folder").apply(); buildSettings(); }).show();
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup · Analysis"));
+        settings.addView(section("Storage Tools"));
         settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security"));
-        settings.addView(row(Glyphs.SHIELD, "Privacy and connectivity audit", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Crash logs & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Privacy & Diagnostics"));
+        settings.addView(row(Glyphs.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Privacy & Security · Vault"));
+        settings.addView(section("Secure Vault"));
         settings.addView(row(Glyphs.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("File Transfer"));
+        settings.addView(section("Wi-Fi Transfer"));
         settings.addView(row(Glyphs.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then ⋮ → Send via Wi-Fi…", null, v -> Ui.toast(this, "Select files in Files tab first, then use ⋮ → Send via Wi-Fi…")), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage & Backup · Other Storage"));
+        settings.addView(section("SD Card & USB Storage"));
         settings.addView(row(Glyphs.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
 
 
@@ -1192,7 +1192,7 @@ public class MainActivity extends Activity {
                 + "• App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
                 + "• Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
                 + "This is an in-app permission/feature summary, not an independent network-traffic audit. To verify network behavior, inspect the source and test traffic on the device.";
-        new AlertDialog.Builder(this).setTitle("Privacy and connectivity audit")
+        new AlertDialog.Builder(this).setTitle("Privacy & network information")
                 .setMessage(report).setPositiveButton("OK", null).show();
     }
 
@@ -1818,7 +1818,7 @@ public class MainActivity extends Activity {
         final int[] days = {7, 14, 30, 60, 90};
         String[] labels = new String[days.length];
         for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(this).setTitle("Keep deleted items for")
+        new AlertDialog.Builder(this).setTitle("Recycle Bin retention")
                 .setItems(labels, (d, w) -> { Ui.sp.edit().putInt("recyclebin_days", days[w]).apply(); buildSettings(); })
                 .show();
     }
@@ -1996,7 +1996,7 @@ public class MainActivity extends Activity {
                     .setPositiveButton("OK", null).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Crash logs & diagnostics")
+        new AlertDialog.Builder(this).setTitle("Crash reports & diagnostics")
                 .setMessage("A crash report is stored privately inside the app. It includes the exception stack trace, app version, Android version, device model, and crashing thread. Nothing is uploaded automatically.")
                 .setPositiveButton("Share report", (d, w) -> shareCrashReport())
                 .setNegativeButton("Close", null)
