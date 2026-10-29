@@ -44,8 +44,8 @@ final class Ui {
     static int panelR = 10, panelG = 14, panelB = 26;
     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
     static int edgeStroke = Color.argb(72, 255, 255, 255);
-    static final String[] THEMES = {"Crystal Cyan", "Warm Amber", "Silver Mirror", "Emerald Prism", "Violet Space", "Rose Quartz", "Arctic Teal", "Solar Copper", "Aqua Neon", "Cobalt Glass", "Deep Jade", "Smoked Titanium", "Ultramarine", "Magenta Aurora", "Icy Blue"};
-    static final int[] DOTS = {0xFF36D8FF,0xFFFFB74D,0xFFBFC7D5,0xFF43D17A,0xFFA78BFA,0xFFFB7185,0xFF2DD4BF,0xFFE58A45,0xFF22D3EE,0xFF4F8CFF,0xFF00A884,0xFF8793A5,0xFF536DFF,0xFFF472D0,0xFF8DD8FF};
+    static final String[] THEMES = {"Neon Cyan", "Matrix Green", "Quantum Violet", "Plasma Blue", "Cyber Magenta"};
+    static final int[] DOTS = {0xFF19E6FF,0xFF39FF14,0xFFB967FF,0xFF2389FF,0xFFFF3CC7};
     static final SimpleDateFormat DF = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
 
     static void init(Context c) {
@@ -114,7 +114,8 @@ final class Ui {
         v.setTextSize(sp);
         v.setTextColor(color);
         v.setTypeface(Typeface.create(fontFamily(), bold ? Typeface.BOLD : Typeface.NORMAL));
-        v.setIncludeFontPadding(false);
+        v.setIncludeFontPadding(true);
+        v.setLineSpacing(dp(1), 1.0f);
         return v;
     }
 
