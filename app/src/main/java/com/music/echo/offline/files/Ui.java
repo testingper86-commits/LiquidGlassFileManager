@@ -50,7 +50,7 @@ final class Ui {
 
     static void init(Context c) {
         D = c.getResources().getDisplayMetrics().density;
-        highContrast = Settings.Secure.getInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_HIGH_TEXT_CONTRAST_ENABLED, 0) == 1;
+        highContrast = Settings.Secure.getInt(c.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
         // Fixed monochrome glass appearance; legacy theme preferences are ignored.
         setLight(false, false);
