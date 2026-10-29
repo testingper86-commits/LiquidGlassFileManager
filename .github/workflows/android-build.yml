@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           # A checked-in native Android project is authoritative. The legacy patch series
           # is only for archive-based source bundles, not a tracked native project checkout.
-          if [[ -s app/src/main/java/com/music/echo/offline/files/MainActivity.java && -s app/build.gradle.kts && -s settings.gradle ]]; then
+          if [[ -s app/src/main/java/com/music/echo/offline/files/MainActivity.java && -s app/build.gradle.kts && ( -s settings.gradle || -s settings.gradle.kts ) ]]; then
             echo "Native Android source tree detected; skipping legacy archive patch overlay."
             exit 0
           fi
