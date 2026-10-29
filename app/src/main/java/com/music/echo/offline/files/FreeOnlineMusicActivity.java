@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,7 +52,7 @@ public final class FreeOnlineMusicActivity extends Activity {
         title.setText("Free Online Music");
         title.setTextColor(Color.WHITE);
         title.setTextSize(26);
-        title.setTypeface(null, 1);
+        title.setTypeface(null, Typeface.BOLD);
         page.addView(title);
         TextView note = new TextView(this);
         note.setText("Search publicly available audio on the Internet Archive. No API key or paid backend. Track availability and rights vary.");
@@ -139,7 +140,7 @@ public final class FreeOnlineMusicActivity extends Activity {
         title.setText(item.title);
         title.setTextColor(Color.WHITE);
         title.setTextSize(16);
-        title.setTypeface(null, 1);
+        title.setTypeface(null, Typeface.BOLD);
         card.addView(title);
         TextView artist = new TextView(this);
         artist.setText(item.creator);
