@@ -32,7 +32,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity
+            android:name=".files.FreeOnlineMusicActivity"
+            android:exported="false"
+            android:label="Free Online Music"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+
         <service android:name=".files.BackgroundAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <activity
             android:name=".files.ViewerActivity"

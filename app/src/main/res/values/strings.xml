@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ToxiFiles</string>
+    <string name="free_online_music_short">Online Music</string>
+    <string name="free_online_music_long">Search Free Online Music</string>
 </resources>
