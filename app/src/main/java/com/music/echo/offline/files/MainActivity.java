@@ -734,40 +734,68 @@ public class MainActivity extends Activity {
     }
 
     void showOtherSections() {
-        String[] sections = {"Other files", "APK installer files", "System apps", "Downloaded apps", "File manager settings"};
-        String[] descriptions = {"Browse miscellaneous files", "Find APK files saved on your phone", "Built-in and manufacturer apps", "Apps installed by you", "Change ToxiFiles preferences"};
         LinearLayout menu = new LinearLayout(this);
         menu.setOrientation(LinearLayout.VERTICAL);
-        menu.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
-        for (int i = 0; i < sections.length; i++) {
+        menu.setPadding(Ui.dp(16), Ui.dp(6), Ui.dp(16), Ui.dp(10));
+        List<View> actions = new ArrayList<>();
+
+        // Group related destinations under plain, familiar headings.
+        String[] groupNames = {"FILES & APK FILES", "INSTALLED APPS", "FILE MANAGER"};
+        String[] names = {"Other files", "APK files", "System apps", "Downloaded apps", "Settings"};
+        String[] descriptions = {
+                "Browse files that do not fit the main categories",
+                "Find Android installer files (.apk) saved on this device",
+                "View apps supplied with Android or your device",
+                "View apps installed by you",
+                "Change ToxiFiles preferences"
+        };
+        int[] groupForItem = {0, 0, 1, 1, 2};
+        for (int i = 0; i < names.length; i++) {
+            if (i == 0 || groupForItem[i] != groupForItem[i - 1]) {
+                TextView group = Ui.tv(this, groupNames[groupForItem[i]], 10.5f, Ui.accent, true);
+                group.setLetterSpacing(0.09f);
+                group.setPadding(Ui.dp(4), Ui.dp(i == 0 ? 4 : 14), Ui.dp(4), Ui.dp(7));
+                menu.addView(group, new LinearLayout.LayoutParams(-1, -2));
+            }
             LinearLayout item = new LinearLayout(this);
             item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(Ui.dp(12), Ui.dp(13), Ui.dp(12), Ui.dp(13));
+            item.setPadding(Ui.dp(13), Ui.dp(12), Ui.dp(12), Ui.dp(12));
             item.setBackground(Ui.glass(16, false));
+            item.setFocusable(true);
             LinearLayout labels = new LinearLayout(this);
             labels.setOrientation(LinearLayout.VERTICAL);
-            labels.addView(Ui.tv(this, sections[i], 14, Ui.WHITE, true));
+            labels.addView(Ui.tv(this, names[i], 14, Ui.WHITE, true));
             TextView sub = Ui.tv(this, descriptions[i], 11.5f, Ui.SUB, false);
             sub.setPadding(0, Ui.dp(4), 0, 0);
             labels.addView(sub);
             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            item.addView(Ui.tv(this, "›", 24, Ui.SUB, false));
+            TextView arrow = Ui.tv(this, "›", 24, Ui.SUB, false);
+            arrow.setGravity(Gravity.CENTER);
+            item.addView(arrow, new LinearLayout.LayoutParams(Ui.dp(24), Ui.dp(30)));
+            item.setContentDescription(names[i] + ". " + descriptions[i] + ". Open");
             Ui.press(item);
             menu.addView(item, lpm(-1, -2, 0, 3, 0, 3));
+            actions.add(item);
         }
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
         scroll.addView(menu);
-        TextView title = Ui.tv(this, "Other & apps", 23, Ui.WHITE, true);
-        title.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(8));
+        TextView title = Ui.tv(this, "Other", 24, Ui.WHITE, true);
+        title.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(4));
+        TextView subtitle = Ui.tv(this, "APK files, installed apps and file manager settings", 12, Ui.SUB, false);
+        subtitle.setPadding(Ui.dp(20), 0, Ui.dp(20), Ui.dp(6));
         LinearLayout outer = new LinearLayout(this);
         outer.setOrientation(LinearLayout.VERTICAL);
         outer.addView(title);
-        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(390)));
+        outer.addView(subtitle);
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
         AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).create();
-        for (int i = 0; i < menu.getChildCount(); i++) {
+        for (int i = 0; i < actions.size(); i++) {
             final int choice = i;
-            menu.getChildAt(i).setOnClickListener(v -> {
+            actions.get(i).setOnClickListener(v -> {
+                Ui.tick(v);
                 dialog.dismiss();
                 switch (choice) {
                     case 0: openCategory(6); break;
