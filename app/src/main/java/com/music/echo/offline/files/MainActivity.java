@@ -1562,8 +1562,8 @@ public class MainActivity extends Activity {
             if (tree == null) return;
             int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             if (grantedFlags != 0) {
-    try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (SecurityException ignored) { /* session grant may still work */ }
-}
+                try { getContentResolver().takePersistableUriPermission(tree, data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)); } catch (SecurityException ignored) { /* session grant may still work */ }
+            }
             safTree = tree;
             getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
