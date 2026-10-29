@@ -4,6 +4,7 @@ import com.music.echo.offline.R;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.provider.Settings;
 import android.view.accessibility.AccessibilityManager;
 import android.animation.ValueAnimator;
 import android.os.Build;
@@ -49,9 +50,7 @@ final class Ui {
 
     static void init(Context c) {
         D = c.getResources().getDisplayMetrics().density;
-        AccessibilityManager am = (AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
-        highContrast = android.provider.Settings.Secure.getInt(
-                c.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
+        highContrast = Settings.Secure.getInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_HIGH_TEXT_CONTRAST_ENABLED, 0) == 1;
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
         // Fixed monochrome glass appearance; legacy theme preferences are ignored.
         setLight(false, false);
