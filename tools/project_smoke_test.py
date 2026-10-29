@@ -104,7 +104,7 @@ def main():
     viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
     require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
 
-    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'AâB loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
+    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A-B loop enabled. Tap to clear loop' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
 
     require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
 
