@@ -1245,6 +1245,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);
     }
 
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
     void tryBiometric(final android.app.Dialog dlg) {
         try {
             android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
@@ -1560,7 +1561,9 @@ public class MainActivity extends Activity {
             Uri tree = data.getData();
             if (tree == null) return;
             int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (Exception ignored) { /* session grant may still work */ }
+            if (grantedFlags != 0) {
+    try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (SecurityException ignored) { /* session grant may still work */ }
+}
             safTree = tree;
             getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
