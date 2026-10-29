@@ -132,7 +132,7 @@ def main():
     require('.files.BackgroundAudioService' in service_names, 'built-in foreground audio service is registered')
     require('Export settings' in settings and 'Import settings' in settings, 'file manager settings backup and restore remain available')
     require('SETTINGS = 44' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text(), 'dedicated gear-shaped settings icon is available')
-    require('setTheme(0, false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'monochrome glass is the default appearance')
+    require('setTheme(sp.getInt(\"theme\", 0), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Crystal Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'saved color-glass themes are restored on launch')
     require('Haptic feedback' in settings and 'Backup & Restore' in settings, 'haptics and backup controls are inside developer options')
     require('ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH' not in settings, 'main page has no top-level search shortcut')
     require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
