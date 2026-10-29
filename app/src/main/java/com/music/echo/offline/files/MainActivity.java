@@ -718,8 +718,7 @@ public class MainActivity extends Activity {
                 t.setFocusable(true);
                 t.setOnClickListener(v -> {
                     Ui.tick(v);
-                    if (cat == 6) new AlertDialog.Builder(MainActivity.this).setTitle("Other")
-                            .setItems(new String[]{"Other files and APKs", "System Apps", "Downloaded Apps"}, (dialog, which) -> { if (which == 0) openCategory(6); else showInstalledApps(which == 1); }).show();
+                    if (cat == 6) showOtherSections();
                     else openCategory(cat);
                 });
                 Ui.press(t);
@@ -731,26 +730,70 @@ public class MainActivity extends Activity {
 
         // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
 
-        // Recent-files empty state: reserved space for actual local recent-file history.
-        home.addView(homeSection("Recently opened"));
-        LinearLayout recent = new LinearLayout(this);
-        recent.setOrientation(LinearLayout.VERTICAL);
-        recent.setGravity(Gravity.CENTER);
-        recent.setBackground(Ui.glass(22, false));
-        recent.setPadding(Ui.dp(18), Ui.dp(24), Ui.dp(18), Ui.dp(24));
-        ImageView recentIcon = new ImageView(this);
-        recentIcon.setImageDrawable(Glyphs.get(Glyphs.CLOCK, Ui.accent));
-        recentIcon.setContentDescription("Recently opened files");
-        recent.addView(recentIcon, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(30)));
-        TextView recentTitle = Ui.tv(this, "Nothing opened yet", 14, Ui.WHITE, true);
-        recentTitle.setPadding(0, Ui.dp(10), 0, 0);
-        recentTitle.setGravity(Gravity.CENTER);
-        recent.addView(recentTitle);
-        TextView recentSub = Ui.tv(this, "Files you open will appear here when recent history is supported", 12, Ui.SUB, false);
-        recentSub.setGravity(Gravity.CENTER);
-        recentSub.setPadding(0, Ui.dp(6), 0, 0);
-        recent.addView(recentSub);
-        home.addView(recent, lpm(-1, -2, 16, 0, 16, 18));
+        // Home stays focused on file categories without a recent-history panel.
+    }
+
+    void showOtherSections() {
+        String[] sections = {"Other files", "APK installer files", "System apps", "Downloaded apps", "File manager settings"};
+        String[] descriptions = {"Browse miscellaneous files", "Find APK files saved on your phone", "Built-in and manufacturer apps", "Apps installed by you", "Change ToxiFiles preferences"};
+        LinearLayout menu = new LinearLayout(this);
+        menu.setOrientation(LinearLayout.VERTICAL);
+        menu.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
+        for (int i = 0; i < sections.length; i++) {
+            LinearLayout item = new LinearLayout(this);
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(Ui.dp(12), Ui.dp(13), Ui.dp(12), Ui.dp(13));
+            item.setBackground(Ui.glass(16, false));
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.addView(Ui.tv(this, sections[i], 14, Ui.WHITE, true));
+            TextView sub = Ui.tv(this, descriptions[i], 11.5f, Ui.SUB, false);
+            sub.setPadding(0, Ui.dp(4), 0, 0);
+            labels.addView(sub);
+            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+            item.addView(Ui.tv(this, "›", 24, Ui.SUB, false));
+            Ui.press(item);
+            menu.addView(item, lpm(-1, -2, 0, 3, 0, 3));
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(menu);
+        TextView title = Ui.tv(this, "Other & apps", 23, Ui.WHITE, true);
+        title.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(8));
+        LinearLayout outer = new LinearLayout(this);
+        outer.setOrientation(LinearLayout.VERTICAL);
+        outer.addView(title);
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(390)));
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).create();
+        for (int i = 0; i < menu.getChildCount(); i++) {
+            final int choice = i;
+            menu.getChildAt(i).setOnClickListener(v -> {
+                dialog.dismiss();
+                switch (choice) {
+                    case 0: openCategory(6); break;
+                    case 1: openApkFiles(); break;
+                    case 2: showInstalledApps(true); break;
+                    case 3: showInstalledApps(false); break;
+                    case 4: selectTab(3); break;
+                }
+            });
+        }
+        dialog.show();
+    }
+
+    void openApkFiles() {
+        Indexer ix = Indexer.I;
+        List<Entry> apks = new ArrayList<>();
+        if (ix.ready && ix.cats.size() > 6) {
+            for (Entry e : ix.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
+        }
+        listView.setList("APK installer files", apks, false, false);
+        if (!ix.ready) {
+            pendingCat = 6;
+            if (!ix.running) startIndex();
+            Ui.toast(this, "Scanning storage for APK files…");
+        }
+        showOverlay(listView);
     }
 
     TextView appLaunchButton(String title, String subtitle, int glyph) {
