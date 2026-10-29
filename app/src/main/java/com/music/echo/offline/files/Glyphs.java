@@ -362,7 +362,7 @@ final class Glyphs {
         final RectF shine = new RectF();
 
         Tile(int kind) {
-            col = Color.argb(26, 255, 255, 255);
+            col = FileKinds.color(kind);
             g = new G(FileKinds.glyph(kind), Color.WHITE);
             st.setStyle(Paint.Style.STROKE);
             st.setColor(Color.argb(128, 255, 255, 255));
@@ -372,7 +372,7 @@ final class Glyphs {
         }
 
         @Override protected void onBoundsChange(Rect b) {
-            p.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, new int[]{Color.argb(44,255,255,255), Color.argb(12,255,255,255), Color.argb(4,255,255,255)}, new float[]{0f,0.58f,1f}, Shader.TileMode.CLAMP));
+            p.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, new int[]{Color.argb(220, Color.red(mix(col, Color.WHITE, 0.28f)), Color.green(mix(col, Color.WHITE, 0.28f)), Color.blue(mix(col, Color.WHITE, 0.28f))), Color.argb(180, Color.red(col), Color.green(col), Color.blue(col)), Color.argb(150, Color.red(col), Color.green(col), Color.blue(col))}, new float[]{0f,0.58f,1f}, Shader.TileMode.CLAMP));
             int in = (int) (b.width() * 0.2f);
             g.setBounds(b.left + in, b.top + in, b.right - in, b.bottom - in);
             st.setStrokeWidth(Math.max(1f, b.width() * 0.025f));

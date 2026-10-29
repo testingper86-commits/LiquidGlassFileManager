@@ -286,7 +286,6 @@ public class MainActivity extends Activity {
     void startIndex() {
         if (!hasAccess()) return;
         Indexer.I.start(this::onIndexDone);
-        if (tab == 0 && overlayView == null) buildHome();
     }
 
     void onIndexDone() {
@@ -415,7 +414,7 @@ public class MainActivity extends Activity {
     void showOverlay(View v) {
         overlayView = v;
         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", true) && !Ui.highContrast) {
+        if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", false) && !Ui.highContrast) {
             screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
         }
         screens[tab].setVisibility(View.VISIBLE);
@@ -630,7 +629,7 @@ public class MainActivity extends Activity {
         card.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(14));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        int[] cc = {Color.argb(150,255,255,255), Color.argb(120,255,255,255), Color.argb(90,255,255,255), Color.argb(60,255,255,255), Color.argb(30,255,255,255)};
+        int[] cc = {Color.rgb(46,196,140), Color.rgb(236,72,130), Color.rgb(160,90,250), Color.rgb(64,130,245), Color.rgb(255,176,64)};
         long[] seg = new long[5];
         if (ix.ready) {
             seg[0] = ix.sizes[0]; seg[1] = ix.sizes[1]; seg[2] = ix.sizes[2]; seg[3] = ix.sizes[3];
@@ -995,44 +994,6 @@ public class MainActivity extends Activity {
         return row(glyph, title, sub, s, v -> s.toggle());
     }
 
-    View glassTransparencyRow() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.glass(18, false));
-        card.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(10));
-        LinearLayout heading = new LinearLayout(this);
-        heading.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = Ui.tv(this, "Glass transparency", 14, Ui.WHITE, true);
-        heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-        int initial = Math.max(70, Math.min(95, Ui.sp.getInt("glass_transparency", 90)));
-        TextView value = Ui.tv(this, initial + "%", 12, Ui.SUB, false);
-        value.setContentDescription("Glass transparency " + initial + " percent");
-        heading.addView(value);
-        card.addView(heading);
-        TextView hint = Ui.tv(this, "Adjust how clear the water-like glass panels look", 11.5f, Ui.SUB, false);
-        hint.setPadding(0, Ui.dp(3), 0, Ui.dp(3));
-        card.addView(hint);
-        android.widget.SeekBar bar = new android.widget.SeekBar(this);
-        bar.setMax(25);
-        bar.setProgress(initial - 70);
-        bar.setContentDescription("Glass transparency adjustment");
-        bar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            int selected = initial;
-            @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                selected = progress + 70;
-                value.setText(selected + "%");
-                value.setContentDescription("Glass transparency " + selected + " percent");
-            }
-            @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) { }
-            @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
-                Ui.sp.edit().putInt("glass_transparency", selected).apply();
-                recreate();
-            }
-        });
-        card.addView(bar, new LinearLayout.LayoutParams(-1, Ui.dp(36)));
-        return card;
-    }
-
     void buildSettings() {
         settings.removeAllViews();
         TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
@@ -1057,9 +1018,8 @@ public class MainActivity extends Activity {
         settings.addView(hint);
 
         settings.addView(section("Appearance"));
+        settings.addView(row(Glyphs.PALETTE, "Color theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(glassTransparencyRow(), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Files & Folders"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1091,16 +1051,6 @@ public class MainActivity extends Activity {
                     .setPositiveButton("Reset", (d, w) -> { Ui.sp.edit().remove("default_folder").apply(); buildSettings(); }).show();
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage Tools"));
-        settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Privacy & Diagnostics"));
-        settings.addView(row(Glyphs.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
-        // Former label: Crash logs & diagnostics.
-        settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Secure Vault"));
         settings.addView(row(Glyphs.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1120,6 +1070,20 @@ public class MainActivity extends Activity {
         if (Ui.bool("developer_options_unlocked", false)) {
             settings.addView(section("Developer options"));
             settings.addView(row(Glyphs.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(section("Advanced tools"));
+            settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Can affect performance on some devices", "blur", false, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(section("Storage Tools"));
+            settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(Glyphs.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
+
+            settings.addView(section("Privacy & Diagnostics"));
+            settings.addView(row(Glyphs.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
+            // Former label: Crash logs & diagnostics.
+            settings.addView(row(Glyphs.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
+
+            settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh the index if file counts look outdated", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(switchRow(Glyphs.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(switchRow(Glyphs.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
             TextView backupHeading = Ui.tv(this, "Backup & Restore", 14, Ui.accent, true);
@@ -2283,7 +2247,7 @@ public class MainActivity extends Activity {
                     android.app.ActivityManager am = (android.app.ActivityManager) getContext().getSystemService(android.content.Context.ACTIVITY_SERVICE);
                     lowRam = am != null && am.isLowRamDevice();
                 } catch (Exception ignored) { }
-                if (Ui.bool("blur", true) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(Ui.dp(24), Ui.dp(24), Shader.TileMode.CLAMP));
+                if (Ui.bool("blur", false) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(Ui.dp(24), Ui.dp(24), Shader.TileMode.CLAMP));
                 else setRenderEffect(null);
             }
         }

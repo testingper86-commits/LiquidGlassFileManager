@@ -44,17 +44,17 @@ final class Ui {
     static int panelR = 10, panelG = 14, panelB = 26;
     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
     static int edgeStroke = Color.argb(72, 255, 255, 255);
-    static final String[] THEMES = {"Monochrome Glass"};
-    static final int[] DOTS = {Color.rgb(220,220,220)};
+    static final String[] THEMES = {"Crystal Cyan", "Warm Amber", "Silver Mirror", "Emerald Prism", "Violet Space", "Rose Quartz", "Arctic Teal", "Solar Copper", "Aqua Neon", "Cobalt Glass", "Deep Jade", "Smoked Titanium", "Ultramarine", "Magenta Aurora", "Icy Blue"};
+    static final int[] DOTS = {0xFF36D8FF,0xFFFFB74D,0xFFBFC7D5,0xFF43D17A,0xFFA78BFA,0xFFFB7185,0xFF2DD4BF,0xFFE58A45,0xFF22D3EE,0xFF4F8CFF,0xFF00A884,0xFF8793A5,0xFF536DFF,0xFFF472D0,0xFF8DD8FF};
     static final SimpleDateFormat DF = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
 
     static void init(Context c) {
         D = c.getResources().getDisplayMetrics().density;
         highContrast = Settings.Secure.getInt(c.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
         if (sp == null) sp = c.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
-        // Fixed monochrome glass appearance; legacy theme preferences are ignored.
-        setLight(false, false);
-        setTheme(0, false);
+         // Restore the saved color-glass finish while retaining the dark liquid-glass base.
+         setLight(false, false);
+         setTheme(sp.getInt("theme", 0), false);
     }
 
     static void setLight(boolean l, boolean save) {
@@ -79,18 +79,22 @@ final class Ui {
     static int dp(float v) { return Math.round(v * D); }
 
     static void setTheme(int t, boolean save) {
-        theme=0; accent=Color.WHITE;
-        blob1=Color.argb(24,255,255,255); blob2=Color.argb(15,255,255,255); blob3=Color.argb(8,255,255,255);
-        if(save && sp!=null) sp.edit().putInt("theme",0).apply();
+        theme = Math.max(0, Math.min(THEMES.length - 1, t));
+        accent = DOTS[theme];
+        blob1 = Color.argb(28, Color.red(accent), Color.green(accent), Color.blue(accent));
+        blob2 = Color.argb(18, Color.red(accent), Color.green(accent), Color.blue(accent));
+        blob3 = Color.argb(10, Color.red(accent), Color.green(accent), Color.blue(accent));
+        panelR = Color.red(accent); panelG = Color.green(accent); panelB = Color.blue(accent);
+        if (save && sp != null) sp.edit().putInt("theme", theme).apply();
     }
 
     static boolean bool(String k, boolean d) { return sp.getBoolean(k, d); }
     static void set(String k, boolean v) { sp.edit().putBoolean(k, v).apply(); }
 
-    /** Translucent monochrome glass with restrained highlights and a fine rim. */
+    /** Translucent color-tinted glass with restrained highlights and a fine rim. */
     static Drawable glass(float radiusDp, boolean strong) {
-        float rad=dp(radiusDp); int transparency=sp == null ? 90 : Math.max(70, Math.min(95, sp.getInt("glass_transparency", 90))); int a=highContrast ? (strong ? 118 : 88) : Math.max(4, Math.round((100-transparency) * (strong ? 0.52f : 0.30f)));
-        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(28,a+8),255,255,255),Color.argb(a,255,255,255),Color.argb(Math.max(1,a-2),255,255,255)});
+        float rad=dp(radiusDp); int a=highContrast ? (strong ? 118 : 88) : (strong ? 18 : 8);
+        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(24,a+6),Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(a,Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(Math.max(1,a-2),Color.red(accent),Color.green(accent),Color.blue(accent))});
         base.setCornerRadius(rad);
         GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(10,255,255,255),Color.argb(2,255,255,255),Color.argb(0,255,255,255)});
         hi.setCornerRadius(rad);
