@@ -125,7 +125,7 @@ final class Ui {
         v.setHorizontallyScrolling(false);
         if (Build.VERSION.SDK_INT >= 28) v.setFallbackLineSpacing(true);
         if (Build.VERSION.SDK_INT >= 23) {
-            v.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY);
+            v.setBreakStrategy(android.graphics.text.LineBreaker.BREAK_STRATEGY_HIGH_QUALITY);
             v.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);
         }
         return v;
