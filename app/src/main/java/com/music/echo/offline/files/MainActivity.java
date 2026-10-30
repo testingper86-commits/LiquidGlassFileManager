@@ -533,6 +533,11 @@ public class MainActivity extends Activity {
         return p;
     }
 
+    int dialogListHeight() {
+        int available = getResources().getDisplayMetrics().heightPixels - Ui.top - Ui.bottom - Ui.dp(260);
+        return Math.max(Ui.dp(180), Math.min(Ui.dp(520), available));
+    }
+
     TextView section(String t) {
         TextView v = Ui.tv(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, Ui.WHITE, true);
         v.setLetterSpacing(0.08f);
@@ -711,10 +716,9 @@ public class MainActivity extends Activity {
                 t.setOrientation(LinearLayout.VERTICAL);
                 t.setBackground(Ui.glass(20, true));
                 t.setElevation(Ui.dp(2));
-                t.setMinimumHeight(Ui.dp(136));
                 t.setPadding(Ui.dp(12), Ui.dp(12), Ui.dp(12), Ui.dp(12));
                 ImageView ic = new ImageView(this);
-                ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
+                ic.setImageDrawable(Glyphs.tile(categoryKinds[position]));
                 ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)));
                 String categoryName = Indexer.CAT_NAMES[cat];
@@ -733,7 +737,6 @@ public class MainActivity extends Activity {
                     if (cat == 6) showOtherSections();
                     else openCategory(cat);
                 });
-                t.setFocusable(true);
                 row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 1 ? 16 : 4, 10));
                 ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
             }
@@ -806,7 +809,7 @@ public class MainActivity extends Activity {
         outer.setOrientation(LinearLayout.VERTICAL);
         outer.addView(title);
         outer.addView(subtitle);
-        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
         AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).create();
         for (int i = 0; i < actions.size(); i++) {
             final int choice = i;
@@ -876,7 +879,7 @@ public class MainActivity extends Activity {
         scroll.addView(list);
         TextView heading = Ui.tv(this, system ? "System Apps" : "Downloaded Apps", 23, Ui.WHITE, true);
         heading.setPadding(Ui.dp(18), Ui.dp(18), Ui.dp(18), Ui.dp(8));
-        LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
+        LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
         new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
     }
 
@@ -929,7 +932,7 @@ public class MainActivity extends Activity {
         note.setPadding(Ui.dp(18), 0, Ui.dp(18), Ui.dp(10));
         outer.addView(heading);
         outer.addView(note);
-        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
         new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
     }
 
@@ -1952,7 +1955,6 @@ public class MainActivity extends Activity {
 
         TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
         allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
-        String[] marks = {"â","â","â¬¡","â","â¦","â§","â","â","â","â£","â¬¢","â","â","âº","â"};
         String[] finishNotes = {"Neon cyan • cyber circuitry", "Toxic green • Matrix terminal", "Electric violet • quantum glass", "Plasma blue • high-voltage grid", "Cyber magenta • night protocol"};
         for (int index = 0; index < Ui.THEMES.length; index++) {
             final int themeIndex = index;
@@ -1967,8 +1969,6 @@ public class MainActivity extends Activity {
             swatchBg.setColor(Ui.DOTS[index]); swatchBg.setCornerRadius(Ui.dp(14));
             swatchBg.setStroke(Ui.dp(1), Color.argb(130, 255, 255, 255));
             swatch.setBackground(swatchBg);
-            TextView glyph = Ui.tv(this, marks[index], 20, Color.WHITE, true); glyph.setGravity(Gravity.CENTER);
-            swatch.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
             tile.addView(swatch, new LinearLayout.LayoutParams(Ui.dp(46), Ui.dp(46)));
 
             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);

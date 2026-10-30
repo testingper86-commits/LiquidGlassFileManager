@@ -138,6 +138,8 @@ def main():
     require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
     require('case FileKinds.APK: return 6;' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text(), 'APK files are categorized under Other')
     require('toUpperCase(java.util.Locale.ROOT)' in settings, 'settings categories use consistent compact section headings')
+    require('int dialogListHeight()' in settings and 'Math.min(Ui.dp(520), available)' in settings and 'Ui.dp(430)' not in settings, 'dialog lists size to the available screen instead of fixed-height clipping')
+    require('t.setMinimumHeight(Ui.dp(136))' not in settings and 'String[] marks =' not in settings and 'marks[index]' not in settings, 'category cards are content-sized and obsolete theme glyph entries are removed')
     require('homeScroll.setFillViewport(true)' in settings and 'homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2))' in settings and 'homeScroll.setClipToPadding(true)' in settings and 'homeScrollFooter' in settings and 'Ui.dp(160) + Ui.bottom' in settings, 'Home uses a real scroll-content footer and clips content above bottom navigation')
     require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in settings and '(anyVisible ? "+  " : "-  ")' in settings, 'settings section indicators use safe non-corrupting characters')
     require('No internet permission' not in settings,
