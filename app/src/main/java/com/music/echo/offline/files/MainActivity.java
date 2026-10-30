@@ -35,6 +35,7 @@ import android.provider.DocumentsContract;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -127,11 +128,17 @@ public class MainActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         homeScroll = new ScrollView(this);
+        homeScroll.setFillViewport(true);
+        homeScroll.setSmoothScrollingEnabled(true);
+        homeScroll.setFocusable(true);
+        homeScroll.setFocusableInTouchMode(true);
+        homeScroll.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+        homeScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         homeScroll.setVerticalScrollBarEnabled(false);
         homeScroll.setClipToPadding(false);
         home = new LinearLayout(this);
         home.setOrientation(LinearLayout.VERTICAL);
-        homeScroll.addView(home, new FrameLayout.LayoutParams(-1, -2));
+        homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
         settingsScroll.setVerticalScrollBarEnabled(false);
         settingsScroll.setClipToPadding(false);
@@ -210,7 +217,7 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
         bp.topMargin = Ui.top + Ui.dp(8);
         busyTv.setLayoutParams(bp);
-        int pad = Ui.dp(120) + Ui.bottom;
+        int pad = Ui.dp(156) + Ui.bottom;
         homeScroll.setPadding(0, 0, 0, pad);
         settingsScroll.setPadding(0, 0, 0, pad);
         aboutScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
@@ -525,7 +532,7 @@ public class MainActivity extends Activity {
         TextView v = Ui.tv(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, Ui.WHITE, true);
         v.setLetterSpacing(0.08f);
         v.setTextColor(Ui.accent);
-        v.setText("ï¼  " + t.toUpperCase(java.util.Locale.ROOT));
+        v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT));
         v.setGravity(Gravity.CENTER_VERTICAL);
         v.setMinHeight(Ui.dp(48));
         v.setPadding(Ui.dp(14), Ui.dp(11), Ui.dp(14), Ui.dp(11));
@@ -549,7 +556,7 @@ public class MainActivity extends Activity {
                 if ("settings_section".equals(child.getTag())) break;
                 child.setVisibility(anyVisible ? View.GONE : View.VISIBLE);
             }
-            v.setText((anyVisible ? "ï¼  " : "â  ") + t.toUpperCase(java.util.Locale.ROOT));
+            v.setText((anyVisible ? "+  " : "-  ") + t.toUpperCase(java.util.Locale.ROOT));
             v.setContentDescription(t + (anyVisible ? ", collapsed settings section. Double tap to expand." : ", expanded settings section. Double tap to collapse."));
             Ui.tick(v);
         });
@@ -578,7 +585,7 @@ public class MainActivity extends Activity {
         home.removeAllViews();
         Indexer ix = Indexer.I;
         // Establish a clear brand eyebrow, title, and action hierarchy at the top of Home.
-        TextView homeSub = Ui.tv(this, "TOXIFILES  Â·  OFFLINE", 11.5f, Ui.accent, true);
+        TextView homeSub = Ui.tv(this, "TOXIFILES  |  OFFLINE", 11.5f, Ui.accent, true);
         homeSub.setLetterSpacing(0.12f);
         homeSub.setPadding(Ui.dp(22), Ui.dp(10), Ui.dp(20), 0);
         home.addView(homeSub);
@@ -665,7 +672,7 @@ public class MainActivity extends Activity {
                 LinearLayout c1 = new LinearLayout(this);
                 c1.setOrientation(LinearLayout.VERTICAL);
                 c1.setGravity(Gravity.CENTER);
-                TextView n = Ui.tv(this, "â " + ln[i], 10.5f, Ui.SUB, false);
+                TextView n = Ui.tv(this, "• " + ln[i], 10.5f, Ui.SUB, false);
                 SpannableHelper.dot(n, cc[i]);
                 TextView sz = Ui.tv(this, Ui.size(seg[i]), 11, Ui.WHITE, true);
                 sz.setPadding(0, Ui.dp(3), 0, 0);
@@ -1105,8 +1112,8 @@ public class MainActivity extends Activity {
                 child.setVisibility(View.VISIBLE);
                 if (child instanceof TextView) {
                     TextView heading = (TextView) child;
-                    String label = heading.getText().toString().replace("ï¼  ", "").replace("â  ", "");
-                    heading.setText((appearanceSection ? "â  " : "ï¼  ") + label);
+                    String label = heading.getText().toString().replace("+  ", "").replace("-  ", "");
+                    heading.setText((appearanceSection ? "-  " : "+  ") + label);
                     heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
                 }
             } else if (inSection) {
