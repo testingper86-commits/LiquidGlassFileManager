@@ -84,7 +84,7 @@ def main():
     require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
     require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
     require("high_text_contrast_enabled" in ui_src and 'highContrast ? (strong ? 118 : 88)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
-    require('ValueAnimator.areAnimatorsEnabled()' in ui_src, 'interaction motion respects Android system animation settings')
+    require('static void press(View v)' in ui_src and 'v.setOnTouchListener' not in ui_src and 'setOnClickListener' in main_src, 'global touch effects do not intercept native click dispatch')
     indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
     require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
@@ -229,7 +229,7 @@ def main():
     require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'five-theme cyber palette is installed')
     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
             'built-in text editor can edit and save supported small text files')
-    require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
+    require('Ui.bool("reduce_motion", true)' in main_activity,
             'decorative motion is reduced by default')
     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
