@@ -2,7 +2,7 @@ name: ToxiFiles Android Build
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui"]
   pull_request:
   workflow_dispatch:
 
@@ -26,6 +26,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # A checked-in native Android project is authoritative. The legacy patch series
+          # is only for archive-based source bundles, not a tracked native project checkout.
+          if [[ -s app/src/main/java/com/music/echo/offline/files/MainActivity.java && -s app/build.gradle.kts && ( -s settings.gradle || -s settings.gradle.kts ) ]]; then
+            echo "Native Android source tree detected; skipping legacy archive patch overlay."
+            exit 0
+          fi
           if [[ ! -s gradlew ]]; then
             ARCHIVE=""
             while IFS= read -r candidate; do
@@ -49,36 +55,37 @@ jobs:
           test -s settings.gradle || test -s settings.gradle.kts
           chmod +x gradlew
 
-      - name: Apply ordered ToxiFiles patch series
+      - name: Apply ordered ToxiFiles patch series safely
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -f .toxifiles-patches-applied ]]; then
-            for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f \( -name 'toxifiles-redesign-part0[2-9].patch' -o -name 'toxifiles-redesign-part1[0-5].patch' \) | sort -V); do
-              [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
-              patch --batch --forward -p1 < "$p"
-            done
-            touch .toxifiles-patches-applied
-          else
-            echo "Base redesign patches 01-15 are already recorded as applied."
+          # Native checked-in Android projects must not receive the legacy archive patch overlay.
+          if [[ -s app/src/main/java/com/music/echo/offline/files/MainActivity.java && -s app/build.gradle.kts && ( -s settings.gradle || -s settings.gradle.kts ) ]]; then
+            echo "Native Android source tree detected; skipping legacy patch series."
+            exit 0
           fi
-          for p in $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
-            [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
+          # Patches are replayable: apply when they fit forward, skip when already present,
+          # and fail with diagnostics only when neither state matches the checked-out tree.
+          while IFS= read -r p; do
+            [[ -s "$p" ]] || { echo "::error::Missing or empty patch $p"; exit 1; }
             part="$(basename "$p" .patch)"
-            case "$part" in toxifiles-redesign-part0[2-9]|toxifiles-redesign-part1[0-5]) continue ;; esac
             marker=".toxifiles-$part-applied"
-            [[ -f "$marker" ]] && { echo "$p already recorded as applied."; continue; }
+            if [[ -f "$marker" ]]; then
+              echo "$p already recorded as applied."
+              continue
+            fi
             if patch --dry-run --batch --forward -p1 < "$p" >/dev/null 2>&1; then
               patch --batch --forward -p1 < "$p"
+              echo "Applied $p"
             elif patch --dry-run --batch --reverse -p1 < "$p" >/dev/null 2>&1; then
               echo "$p already applied; recording marker."
             else
-              echo "::error::Patch $p does not apply cleanly and is not already applied. Diagnostic follows:"
+              echo "::error::Patch $p is neither cleanly applicable nor already applied."
               patch --dry-run --batch --forward --verbose -p1 < "$p" || true
               exit 1
             fi
             touch "$marker"
-          done
+          done < <(find patches -maxdepth 1 -type f -name 'toxifiles-redesign*.patch' | sort -V)
           rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
           if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
             echo "::error::Legacy visualizer references remain."
@@ -136,6 +143,17 @@ jobs:
         with:
           name: ToxiFiles-debug-APK
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build release Android App Bundle
+        run: ./gradlew --no-daemon --stacktrace bundleRelease
+
+      - name: Upload release App Bundle (unsigned unless signing secrets are configured)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToxiFiles-release-AAB
+          path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
 
@@ -202,8 +220,7 @@ jobs:
           test -n "$APK"
           adb -s emulator-5554 logcat -c
           adb -s emulator-5554 install -r "$APK"
-          adb -s emulator-5554 shell monkey -p com.liquidfiles.offline.debug 1
-          sleep 12
+          python tools/home_scroll_runtime_test.py
           adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt
           adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt
           grep -E 'mResumedActivity|ResumedActivity' dist/emulator-activities.txt | grep -q 'com.liquidfiles.offline.debug'

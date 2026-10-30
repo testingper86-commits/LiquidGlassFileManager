@@ -83,8 +83,8 @@ def main():
     ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
     require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
     require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
-    require('isHighTextContrastEnabled()' in ui_src and 'highContrast ? (strong ? 248 : 224)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
-    require('ValueAnimator.areAnimatorsEnabled()' in ui_src, 'interaction motion respects Android system animation settings')
+    require("high_text_contrast_enabled" in ui_src and 'highContrast ? (strong ? 118 : 88)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
+    require('static void press(View v)' in ui_src and 'v.setOnTouchListener' not in ui_src and 'setOnClickListener' in main_src, 'global touch effects do not intercept native click dispatch')
     indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
     require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
@@ -96,7 +96,7 @@ def main():
     require('filenamesRejectTraversalSeparatorsAndControlCharacters' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN filename validation has automated traversal regression tests')
 
     require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
-    require('Ui.bool(\"blur\", true) && !Ui.highContrast' in main_src, 'backdrop blur setting and high-contrast accessibility mode are respected')
+    require('Ui.bool(\"blur\", false) && !Ui.highContrast' in main_src, 'backdrop blur is opt-in by default for performance and high-contrast accessibility is respected')
     require('Re-locks after you leave the app or the screen turns off' in main_src and 'copy files out' in main_src, 'settings descriptions match App Lock lifecycle and bidirectional external storage')
     manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
     require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
@@ -104,7 +104,7 @@ def main():
     viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
     require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
 
-    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A–B loop enabled' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
+    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A-B loop enabled. Tap to clear loop' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
 
     require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
 
@@ -132,12 +132,16 @@ def main():
     require('.files.BackgroundAudioService' in service_names, 'built-in foreground audio service is registered')
     require('Export settings' in settings and 'Import settings' in settings, 'file manager settings backup and restore remain available')
     require('SETTINGS = 44' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text(), 'dedicated gear-shaped settings icon is available')
-    require('setTheme(sp.getInt(\"theme\", 11), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'VantaGlass is the default theme')
+    require('setTheme(sp.getInt(\"theme\", 0), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'saved color-glass themes are restored on launch')
     require('Haptic feedback' in settings and 'Backup & Restore' in settings, 'haptics and backup controls are inside developer options')
     require('ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH' not in settings, 'main page has no top-level search shortcut')
     require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
     require('case FileKinds.APK: return 6;' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text(), 'APK files are categorized under Other')
     require('toUpperCase(java.util.Locale.ROOT)' in settings, 'settings categories use consistent compact section headings')
+    require('int dialogListHeight()' in settings and 'Math.min(Ui.dp(520), available)' in settings and 'Ui.dp(430)' not in settings, 'dialog lists size to the available screen instead of fixed-height clipping')
+    require('t.setMinimumHeight(Ui.dp(136))' not in settings and 'String[] marks =' not in settings and 'marks[index]' not in settings, 'category cards are content-sized and obsolete theme glyph entries are removed')
+    require('homeScroll.setFillViewport(true)' in settings and 'homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2))' in settings and 'homeScroll.setClipToPadding(true)' in settings and 'homeScrollFooter' in settings and 'Ui.dp(160) + Ui.bottom' in settings, 'Home uses a real scroll-content footer and clips content above bottom navigation')
+    require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in settings and '(anyVisible ? "+  " : "-  ")' in settings, 'settings section indicators use safe non-corrupting characters')
     require('No internet permission' not in settings,
             'no contradictory claim that INTERNET permission is absent')
 
@@ -190,7 +194,7 @@ def main():
             'audio volume persists and transfers to background playback')
     require('void showQueueEditor()' in viewer and 'Collections.swap(paths, position, position - 1)' in viewer
             and 'paths.remove(position)' in viewer, 'playback queue supports reordering and removal')
-    require('Frame −/＋' not in viewer and 'frameForward' not in viewer
+    require('Frame â/ï¼' not in viewer and 'frameForward' not in viewer
             and 'if (!videoLoop) advanceToNextVideo();' in viewer,
             'unsupported frame-step control is removed and videos auto-advance on completion unless repeat is enabled')
     require('Audio only' not in viewer and 'Aspect ratio' not in viewer and 'Audio & subtitle tracks' not in viewer
@@ -213,8 +217,8 @@ def main():
             'sound.json and wave.json are removed from packaged Android assets')
     require('com.airbnb.android:lottie' not in gradle, 'unused Lottie runtime dependency is removed')
     main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System Apps' in main_activity and 'Downloaded Apps' in main_activity and 'Other files and APKs' in main_activity,
-            'APK files are grouped under Other with installed-app choices available there')
+    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System apps' in main_activity and 'Downloaded apps' in main_activity and 'APK installer files' in main_activity and 'showOtherSections()' in main_activity,
+            'Other section contains APK files, system apps, downloaded apps, and settings')
     require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
             'Settings is accessed from the top-right home header')
     require('Usage & diagnostics' in main_activity and 'Built-in tools' in main_activity and 'phone\'s separate apps' in main_activity and 'Debug options' not in main_activity,
@@ -224,11 +228,12 @@ def main():
             'Videos and Music/Audio categories default to grid view')
     require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
             'LiquidDrive dashboard shortcut and activity are removed')
-    require('Liquid Glass Studio' in main_activity and 'AVAILABLE FINISHES' in main_activity and 'marks[index]' in main_activity and 'finishNotes[index]' in main_activity,
-            'theme chooser has dedicated studio layout, distinct icons and finish descriptions')
+    require('Cyber Theme Studio' in main_activity and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Matrix Green' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
+            'appearance chooser provides selectable cyber themes')
+    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'five-theme cyber palette is installed')
     require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
             'built-in text editor can edit and save supported small text files')
-    require('bool("reduce_motion", true)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
+    require('Ui.bool("reduce_motion", true)' in main_activity,
             'decorative motion is reduced by default')
     manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
     crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()

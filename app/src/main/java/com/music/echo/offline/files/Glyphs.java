@@ -372,7 +372,7 @@ final class Glyphs {
         }
 
         @Override protected void onBoundsChange(Rect b) {
-            p.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, mix(col, 0xFFFFFFFF, 0.30f), col, Shader.TileMode.CLAMP));
+            p.setShader(new LinearGradient(b.left, b.top, b.left, b.bottom, new int[]{Color.argb(220, Color.red(mix(col, Color.WHITE, 0.28f)), Color.green(mix(col, Color.WHITE, 0.28f)), Color.blue(mix(col, Color.WHITE, 0.28f))), Color.argb(180, Color.red(col), Color.green(col), Color.blue(col)), Color.argb(150, Color.red(col), Color.green(col), Color.blue(col))}, new float[]{0f,0.58f,1f}, Shader.TileMode.CLAMP));
             int in = (int) (b.width() * 0.2f);
             g.setBounds(b.left + in, b.top + in, b.right - in, b.bottom - in);
             st.setStrokeWidth(Math.max(1f, b.width() * 0.025f));
