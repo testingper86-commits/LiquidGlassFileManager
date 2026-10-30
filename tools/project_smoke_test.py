@@ -138,8 +138,8 @@ def main():
     require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
     require('case FileKinds.APK: return 6;' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text(), 'APK files are categorized under Other')
     require('toUpperCase(java.util.Locale.ROOT)' in settings, 'settings categories use consistent compact section headings')
-    require('homeScroll.setFillViewport(true)' in main_activity and 'homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2))' in main_activity and 'Ui.dp(156) + Ui.bottom' in main_activity, 'Home uses a measured, scrollable viewport with bottom-navigation clearance')
-    require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in main_activity and '(anyVisible ? "+  " : "-  ")' in main_activity, 'settings section indicators use safe non-corrupting characters')
+    require('homeScroll.setFillViewport(true)' in settings and 'homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2))' in settings and 'Ui.dp(156) + Ui.bottom' in settings, 'Home uses a measured, scrollable viewport with bottom-navigation clearance')
+    require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in settings and '(anyVisible ? "+  " : "-  ")' in settings, 'settings section indicators use safe non-corrupting characters')
     require('No internet permission' not in settings,
             'no contradictory claim that INTERNET permission is absent')
 
