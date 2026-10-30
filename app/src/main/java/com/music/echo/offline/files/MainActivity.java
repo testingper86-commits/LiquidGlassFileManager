@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
     FrameLayout root, content;
     BgView bg;
     ScrollView homeScroll, settingsScroll, aboutScroll, recycleScroll, vaultScroll, themeScroll;
+    View homeScrollFooter;
     LinearLayout home, settings, about, recycle, vault;
     static final int REQ_SAF_TREE = 501, REQ_IMPORT_SETTINGS = 502;
     Uri safTree;
@@ -135,7 +136,7 @@ public class MainActivity extends Activity {
         homeScroll.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
         homeScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         homeScroll.setVerticalScrollBarEnabled(false);
-        homeScroll.setClipToPadding(false);
+        homeScroll.setClipToPadding(true);
         home = new LinearLayout(this);
         home.setOrientation(LinearLayout.VERTICAL);
         homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
@@ -217,9 +218,13 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
         bp.topMargin = Ui.top + Ui.dp(8);
         busyTv.setLayoutParams(bp);
-        int pad = Ui.dp(156) + Ui.bottom;
-        homeScroll.setPadding(0, 0, 0, pad);
-        settingsScroll.setPadding(0, 0, 0, pad);
+        homeScroll.setPadding(0, 0, 0, 0);
+        if (homeScrollFooter != null) {
+            ViewGroup.LayoutParams footerParams = homeScrollFooter.getLayoutParams();
+            footerParams.height = Ui.dp(160) + Ui.bottom;
+            homeScrollFooter.setLayoutParams(footerParams);
+        }
+        settingsScroll.setPadding(0, 0, 0, Ui.dp(156) + Ui.bottom);
         aboutScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
         recycleScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
         vaultScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
@@ -737,6 +742,10 @@ public class MainActivity extends Activity {
 
         // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
 
+        // A real child footer creates scroll range and keeps the final row above the floating navigation.
+        homeScrollFooter = new View(this);
+        homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        home.addView(homeScrollFooter, new LinearLayout.LayoutParams(-1, Ui.dp(160) + Ui.bottom));
         // Home stays focused on file categories without a recent-history panel.
     }
 

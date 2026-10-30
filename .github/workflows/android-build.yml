@@ -220,8 +220,7 @@ jobs:
           test -n "$APK"
           adb -s emulator-5554 logcat -c
           adb -s emulator-5554 install -r "$APK"
-          adb -s emulator-5554 shell monkey -p com.liquidfiles.offline.debug 1
-          sleep 12
+          python tools/home_scroll_runtime_test.py
           adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt
           adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt
           grep -E 'mResumedActivity|ResumedActivity' dist/emulator-activities.txt | grep -q 'com.liquidfiles.offline.debug'
