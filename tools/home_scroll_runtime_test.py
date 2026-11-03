@@ -35,12 +35,41 @@ def parse_bounds(node):
     return tuple(map(int, match.groups())) if match else None
 
 
-def dump(name):
+def dump(name, attempts=4):
     remote = f"/sdcard/{name}.xml"
     local = os.path.join(DIST, f"{name}.xml")
-    run("shell", "uiautomator", "dump", remote)
-    run("pull", remote, local)
-    return ET.parse(local).getroot()
+    last_error = "no hierarchy file was produced"
+    if os.path.exists(local):
+        os.remove(local)
+    for attempt in range(attempts):
+        run("shell", "rm", "-f", remote)
+        try:
+            output = run("shell", "uiautomator", "dump", remote)
+            last_error = output or "uiautomator dump returned no status text"
+        except RuntimeError as error:
+            last_error = str(error)
+        for _ in range(10):
+            probe = subprocess.run([ADB, "shell", "test", "-s", remote], text=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            if probe.returncode == 0:
+                try:
+                    run("pull", remote, local)
+                    root = ET.parse(local).getroot()
+                    if root.tag != "hierarchy":
+                        raise ET.ParseError(f"unexpected hierarchy root: {root.tag!r}")
+                    if attempt:
+                        record(f"PASS: UI hierarchy capture for {name} recovered after {attempt + 1} attempts")
+                    return root
+                except (RuntimeError, ET.ParseError) as error:
+                    last_error = str(error)
+            time.sleep(0.15)
+        time.sleep(0.25)
+    listing = subprocess.run([ADB, "shell", "ls", "-l", remote], text=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout.strip()
+    raise RuntimeError(
+        f"uiautomator dump did not produce valid XML for {name!r} after {attempts} attempts; "
+        f"last result: {last_error}; remote file: {listing or 'missing'}"
+    )
 
 
 def screenshot(name):
@@ -446,6 +475,7 @@ def main():
         assert_visible(settings, original_theme, exact=True)
         assert_navigation(settings, False, "Settings after Theme")
         assert_no_text_overlap(settings, "Settings after Theme")
+        screenshot("toxifiles-settings-after-theme")
         record("PASS: all five cyber themes can be selected and the original theme is restored")
 
         sections = [
@@ -467,6 +497,23 @@ def main():
             assert_no_text_overlap(root, f"Settings section {label}")
             record(f"PASS: Settings section {label} expands and exposes {expected}")
         screenshot("toxifiles-settings-expanded")
+
+        # Recycle Bin is a separate native screen; it must not expose the Settings page beneath it.
+        settings, recycle_row = scroll_until_text("Recycle Bin", "settings-recycle-bin-row", exact=True)
+        tap_node(recycle_row)
+        time.sleep(0.55)
+        recycle_screen = dump("toxifiles-recycle-bin-screen")
+        assert_navigation(recycle_screen, False, "Recycle Bin overlay")
+        assert_absent(recycle_screen, "Settings", "Recycle Bin overlay")
+        assert_visible(recycle_screen, "Recycle Bin", exact=True)
+        assert_no_text_overlap(recycle_screen, "Recycle Bin overlay")
+        screenshot("toxifiles-recycle-bin-screen")
+        run("shell", "input", "keyevent", "4")
+        time.sleep(0.55)
+        settings = dump("toxifiles-settings-after-recycle-bin")
+        assert_visible(settings, "Settings", exact=True)
+        assert_navigation(settings, False, "Settings after Recycle Bin")
+        assert_no_text_overlap(settings, "Settings after Recycle Bin")
 
         # Open About from Settings; the bottom navigation must remain hidden on this overlay
         # and must still be hidden after the overlay closes back to Settings.
@@ -576,7 +623,47 @@ def main():
         record("PASS: closing Other files restores Home touch/navigation state")
         record("PASS: Other menu opens and exposes Other files, APK files, System apps, and Downloaded apps")
 
+        # Exercise the remaining Other destinations on the emulator, not only their menu labels.
+        other_destinations = (
+            ("APK files", "APK files", True),
+            ("System apps", "System Apps", False),
+            ("Downloaded apps", "Downloaded Apps", False),
+        )
+        for index, (menu_label, screen_title, full_screen) in enumerate(other_destinations):
+            home, other = scroll_until_other_category(f"toxifiles-other-destination-{index}")
+            tap_node(other)
+            time.sleep(0.45)
+            menu = dump(f"toxifiles-other-destination-menu-{index}")
+            destination_row = find_text(menu, menu_label, exact=True)
+            if destination_row is None:
+                raise AssertionError(f"Other menu destination is missing: {menu_label}")
+            tap_node(destination_row)
+            time.sleep(0.65)
+            destination = dump(f"toxifiles-other-destination-screen-{index}")
+            assert_visible(destination, screen_title, exact=True)
+            if full_screen:
+                assert_navigation(destination, False, f"{screen_title} overlay")
+                assert_absent(destination, "Your files", f"{screen_title} overlay")
+                assert_no_text_overlap(destination, f"{screen_title} overlay")
+            else:
+                dialog_content = smallest_container_containing(destination, [screen_title])
+                assert_no_text_overlap(dialog_content, f"{screen_title} dialog")
+            screenshot(f"toxifiles-other-destination-{index}")
+            run("shell", "input", "keyevent", "4")
+            time.sleep(0.55)
+            home = dump(f"toxifiles-home-after-other-destination-{index}")
+            assert_visible(home, "Your files", exact=True)
+            assert_navigation(home, True, f"Home after {screen_title}")
+            record(f"PASS: Other destination {menu_label} opens and returns to Home without layout overlap")
+
         record("PASS: runtime layout and interaction regression suite completed")
+    except Exception as test_error:
+        try:
+            screenshot("toxifiles-runtime-failure")
+            record(f"FAIL: runtime layout and interaction regression stopped: {test_error}")
+        except Exception as capture_error:
+            record(f"WARNING: failure screenshot could not be captured: {capture_error}")
+        raise
     finally:
         # Remove the isolated file fixture and restore the emulator profile even on failure.
         try:

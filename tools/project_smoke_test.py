@@ -178,8 +178,13 @@ def main():
             and 'assert_absent' in runtime_layout_test and 'find_last_text' in runtime_layout_test
             and 'container_with_text_and_description' in runtime_layout_test
             and 'runtime-layout.bin' in runtime_layout_test and 'runtime-layout-renamed.bin' in runtime_layout_test
+            and 'def dump(name, attempts=4):' in runtime_layout_test
+            and 'uiautomator dump did not produce valid XML' in runtime_layout_test
+            and 'Recycle Bin overlay' in runtime_layout_test
+            and 'System Apps' in runtime_layout_test
+            and 'Downloaded Apps' in runtime_layout_test
             and all(theme in runtime_layout_test for theme in ('Neon Cyan', 'Matrix Green', 'Quantum Violet', 'Plasma Blue', 'Cyber Magenta')),
-            'emulator regression covers scoped overlap, font variants, all five themes, Settings, About, Other navigation and file rename')
+            'emulator regression covers scoped overlap, retry-safe hierarchy capture, font variants, all five themes, Settings, About, Recycle Bin, all Other destinations and file rename')
 
     gradle = (ROOT / 'app/build.gradle.kts').read_text()
     require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')
@@ -191,6 +196,9 @@ def main():
             'CI runs on pull requests and compiles debug APK')
     require('project ZIP not found' not in workflow and 'unzip -q' not in workflow,
             'CI builds source at repository root, not a nested ZIP')
+    require('set +e\n          python tools/home_scroll_runtime_test.py\n          TEST_EXIT=$?\n          set -e' in workflow
+             and 'adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt' in workflow,
+             'emulator activity and logcat diagnostics are captured before propagating runtime UI test failures')
 
     service_path = ROOT / 'app/src/main/java/com/music/echo/offline/files/BackgroundAudioService.java'
     service = service_path.read_text()

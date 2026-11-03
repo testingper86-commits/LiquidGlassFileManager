@@ -220,9 +220,16 @@ jobs:
           test -n "$APK"
           adb -s emulator-5554 logcat -c
           adb -s emulator-5554 install -r "$APK"
+          set +e
           python tools/home_scroll_runtime_test.py
-          adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt
-          adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt
+          TEST_EXIT=$?
+          set -e
+          adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt || true
+          adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt || true
+          if [[ "$TEST_EXIT" -ne 0 ]]; then
+            echo "::error::Runtime UI regression suite failed with exit code $TEST_EXIT"
+            exit "$TEST_EXIT"
+          fi
           grep -E 'mResumedActivity|ResumedActivity' dist/emulator-activities.txt | grep -q 'com.liquidfiles.offline.debug'
           if grep -q 'FATAL EXCEPTION' dist/emulator-logcat.txt; then cat dist/emulator-logcat.txt; exit 1; fi
 
