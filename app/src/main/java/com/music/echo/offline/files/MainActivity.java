@@ -93,7 +93,10 @@ public class MainActivity extends Activity {
     int busyCount, tab = 0, pendingCat = -1;
     View overlayView;
     View overlayBackgroundScreen;
+    View overlayBackgroundContent;
     int overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+    int overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+    int overlayBackgroundVisibility = View.VISIBLE;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
@@ -429,19 +432,31 @@ public class MainActivity extends Activity {
         if (overlayView != null && overlayView != v) closeOverlay();
         if (overlayView == null) {
             overlayBackgroundScreen = screens[tab];
+            overlayBackgroundVisibility = overlayBackgroundScreen.getVisibility();
             overlayBackgroundAccessibility = overlayBackgroundScreen.getImportantForAccessibility();
             overlayBackgroundScreen.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            // ScrollView exposes its content LinearLayout as a separate accessibility branch.
+            // Hide that branch explicitly as well while a full-screen child screen is active.
+            if (overlayBackgroundScreen == settingsScroll) {
+                overlayBackgroundContent = settings;
+                overlayBackgroundContentAccessibility = settings.getImportantForAccessibility();
+                settings.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            }
         }
         overlayView = v;
-        // Keep the liquid-glass cards, but stop text from the underlying screen bleeding
+        // Keep the liquid-glass cards, but stop content from the underlying screen bleeding
         // through the overlay and appearing to overlap the active screen.
         int overlayAlpha = Ui.highContrast ? 255 : 248;
         v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(Ui.bg), Color.green(Ui.bg), Color.blue(Ui.bg)));
         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", false) && !Ui.highContrast) {
+        boolean blurBackground = Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", false) && !Ui.highContrast;
+        if (blurBackground) {
             screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
+            screens[tab].setVisibility(View.VISIBLE);
+        } else {
+            // A hidden background cannot bleed through translucent glass or remain touch/accessibility reachable.
+            screens[tab].setVisibility(View.INVISIBLE);
         }
-        screens[tab].setVisibility(View.VISIBLE);
         v.setVisibility(View.VISIBLE);
         if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
         else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
@@ -449,10 +464,17 @@ public class MainActivity extends Activity {
     }
 
     void restoreOverlayBackgroundAccessibility() {
+        if (overlayBackgroundContent != null) {
+            overlayBackgroundContent.setImportantForAccessibility(overlayBackgroundContentAccessibility);
+            overlayBackgroundContent = null;
+            overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+        }
         if (overlayBackgroundScreen == null) return;
         overlayBackgroundScreen.setImportantForAccessibility(overlayBackgroundAccessibility);
+        overlayBackgroundScreen.setVisibility(overlayBackgroundVisibility);
         overlayBackgroundScreen = null;
         overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+        overlayBackgroundVisibility = View.VISIBLE;
     }
 
     void closeOverlay() {

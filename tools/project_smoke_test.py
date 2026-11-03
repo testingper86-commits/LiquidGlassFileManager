@@ -151,10 +151,14 @@ def main():
             'bottom navigation remains hidden on Settings and all overlay screens')
     require('int overlayAlpha = Ui.highContrast ? 255 : 248;' in settings
             and 'v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(Ui.bg), Color.green(Ui.bg), Color.blue(Ui.bg)))' in settings
-            and 'View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS' in settings and 'overlayBackgroundScreen' in settings,
-            'modal overlays isolate their glass surface and hide inactive screen content')
-    require('restoreOverlayBackgroundAccessibility()' in settings and 'setImportantForAccessibility(overlayBackgroundAccessibility)' in settings,
-            'closing overlays restores the underlying screen accessibility state')
+            and 'View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS' in settings and 'overlayBackgroundScreen' in settings
+            and 'overlayBackgroundVisibility' in settings and 'overlayBackgroundContent' in settings
+            and 'screens[tab].setVisibility(View.INVISIBLE)' in settings,
+            'modal overlays isolate their glass surface, hide inactive screens and restore them after closing')
+    require('restoreOverlayBackgroundAccessibility()' in settings and 'setImportantForAccessibility(overlayBackgroundAccessibility)' in settings
+            and 'setImportantForAccessibility(overlayBackgroundContentAccessibility)' in settings
+            and 'setVisibility(overlayBackgroundVisibility)' in settings,
+            'closing overlays restores the underlying screen visibility and accessibility state')
     require('settingsScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom)' in settings,
             'Settings uses a system-safe bottom inset without reserving space for hidden navigation')
     require('TextView sectionLabel(String t)' in settings and 'about.addView(sectionLabel(' in settings and 'about.addView(section(' not in settings,

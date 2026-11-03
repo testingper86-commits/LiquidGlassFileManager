@@ -415,7 +415,7 @@ def main():
         time.sleep(0.55)
         theme = dump("toxifiles-theme-screen")
         assert_navigation(theme, False, "Theme overlay")
-        assert_absent(theme, "Settings", "Theme overlay")
+        assert_absent(theme, "Make ToxiFiles work the way you do", "Theme overlay")
         assert_visible(theme, "Cyber Theme Studio", exact=True)
         for name in theme_names:
             assert_visible(theme, name, exact=True)
