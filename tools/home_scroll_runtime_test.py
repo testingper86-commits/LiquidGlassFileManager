@@ -71,6 +71,30 @@ def find_description(root, description):
     return None
 
 
+def scroll_view_containing(root, marker):
+    for container in root.iter("node"):
+        if container.attrib.get("class") != "android.widget.ScrollView":
+            continue
+        if any(child.attrib.get("text", "").strip() == marker for child in container.iter("node")):
+            return container
+    raise AssertionError(f"Could not find the native ScrollView containing {marker!r}")
+
+
+def smallest_container_containing(root, required_texts):
+    container_classes = {"android.widget.LinearLayout", "android.widget.FrameLayout",
+                         "android.widget.ScrollView", "android.widget.ListView"}
+    candidates = []
+    for container in root.iter("node"):
+        if container.attrib.get("class") not in container_classes:
+            continue
+        texts = {child.attrib.get("text", "").strip() for child in container.iter("node")}
+        if all(label in texts for label in required_texts):
+            candidates.append(container)
+    if not candidates:
+        raise AssertionError(f"Could not find a native container holding {required_texts!r}")
+    return min(candidates, key=lambda node: sum(1 for _ in node.iter("node")))
+
+
 def tap_node(node):
     rect = parse_bounds(node)
     if not rect:
@@ -296,6 +320,7 @@ def main():
         assert_visible(settings, "Color theme", exact=True)
         assert_visible(settings, "Font style", exact=True)
         assert_no_text_overlap(settings, "Settings initial")
+        screenshot("toxifiles-settings-initial")
         sections = [
             ("FILES & FOLDERS", "Show hidden files"),
             ("STORAGE ACCESS", "Storage permission"),
@@ -314,6 +339,7 @@ def main():
             root, row = scroll_until_text(expected, f"settings-row-{index}", exact=True)
             assert_no_text_overlap(root, f"Settings section {label}")
             record(f"PASS: Settings section {label} expands and exposes {expected}")
+        screenshot("toxifiles-settings-expanded")
 
         # Open About from Settings; the bottom navigation must remain hidden on this overlay
         # and must still be hidden after the overlay closes back to Settings.
@@ -322,20 +348,23 @@ def main():
         time.sleep(0.65)
         about = dump("toxifiles-about-screen")
         assert_navigation(about, False, "About overlay")
-        assert_visible(about, "About ToxiFiles", exact=True)
-        assert_visible(about, "CREATOR", exact=True)
-        assert_visible(about, "ABOUT DEVELOPER", exact=True)
-        assert_scrollable(about, "About")
-        assert_no_text_overlap(about, "About initial")
+        about_content = scroll_view_containing(about, "CREATOR")
+        assert_visible(about_content, "About ToxiFiles", exact=True)
+        assert_visible(about_content, "CREATOR", exact=True)
+        assert_visible(about_content, "ABOUT DEVELOPER", exact=True)
+        assert_scrollable(about_content, "About")
         screenshot("toxifiles-about-top")
+        assert_no_text_overlap(about_content, "About initial")
         about, _ = scroll_until_text("OPEN-SOURCE ACKNOWLEDGEMENTS", "about-acknowledgements", exact=True)
-        assert_no_text_overlap(about, "About acknowledgements")
+        about_content = scroll_view_containing(about, "CREATOR")
+        assert_no_text_overlap(about_content, "About acknowledgements")
         for _ in range(3):
             swipe_up()
         about_bottom = dump("toxifiles-about-bottom")
-        assert_no_text_overlap(about_bottom, "About bottom")
+        about_bottom_content = scroll_view_containing(about_bottom, "CREATOR")
+        assert_no_text_overlap(about_bottom_content, "About bottom")
         screenshot("toxifiles-about-bottom")
-        assert_visible(about_bottom, "ToxiFiles", exact=True)
+        assert_visible(about_bottom_content, "ToxiFiles", exact=True)
         run("shell", "input", "keyevent", "4")
         time.sleep(0.45)
         for _ in range(6):
@@ -344,6 +373,7 @@ def main():
         assert_visible(settings_after_about, "Settings", exact=True)
         assert_navigation(settings_after_about, False, "Settings after closing About")
         assert_no_text_overlap(settings_after_about, "Settings after closing About")
+        screenshot("toxifiles-settings-after-about-back")
         record("PASS: closing About does not re-enable the Settings bottom navigation")
 
         # Back to Home; navigation must return only after leaving Settings.
@@ -359,9 +389,11 @@ def main():
         tap_node(other)
         time.sleep(0.5)
         other_dialog = dump("toxifiles-other-dialog")
-        for label in ("Other files", "APK files", "System apps", "Downloaded apps"):
+        other_labels = ("Other files", "APK files", "System apps", "Downloaded apps")
+        for label in other_labels:
             assert_visible(other_dialog, label, exact=True)
-        assert_no_text_overlap(other_dialog, "Other menu")
+        other_menu_content = smallest_container_containing(other_dialog, other_labels)
+        assert_no_text_overlap(other_menu_content, "Other menu")
         screenshot("toxifiles-other-dialog")
         close_button = find_text(other_dialog, "Close", exact=True)
         if close_button is None:

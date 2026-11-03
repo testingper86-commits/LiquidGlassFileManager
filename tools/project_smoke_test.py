@@ -161,8 +161,9 @@ def main():
     require(not any(marker in settings for marker in ('â', 'Ã', 'Â', 'ï¸', 'ð', '�')),
             'MainActivity source has no mojibake text or symbol sequences')
     require('assert_no_text_overlap' in runtime_layout_test and 'font_scale' in runtime_layout_test
-            and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test,
-            'emulator regression covers text-bound overlap, font variants, Settings sections and About')
+            and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test
+            and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test,
+            'emulator regression covers scoped text overlap, font variants, Settings sections, About and dialogs')
 
     gradle = (ROOT / 'app/build.gradle.kts').read_text()
     require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')
