@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
+import android.graphics.Path;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -49,6 +50,7 @@ final class DynamicIslandView extends View {
     private int rippleAlpha;
     private boolean pressed;
     private boolean panelOpen;
+    private AlertDialog activeDialog;
 
     DynamicIslandView(MainActivity activity) {
         super(activity);
@@ -169,7 +171,9 @@ final class DynamicIslandView extends View {
             Paint ripple = new Paint(Paint.ANTI_ALIAS_FLAG);
             ripple.setColor(Color.argb(rippleAlpha, 100, 220, 255));
             canvas.save();
-            canvas.clipRoundRect(pill, radius, radius);
+            Path clip = new Path();
+            clip.addRoundRect(pill, radius, radius, Path.Direction.CW);
+            canvas.clipPath(clip);
             canvas.drawCircle(rippleX, rippleY, rippleRadius, ripple);
             canvas.restore();
             rippleRadius += dp(1.8f);
@@ -241,7 +245,10 @@ final class DynamicIslandView extends View {
         row.setFocusable(true);
         row.setOnClickListener(v -> {
             if (panelOpen) {
+                AlertDialog open = activeDialog;
+                activeDialog = null;
                 panelOpen = false;
+                if (open != null && open.isShowing()) open.dismiss();
                 if (host.isFinishing() || host.isDestroyed()) return;
                 task.run();
             }
@@ -324,7 +331,11 @@ final class DynamicIslandView extends View {
         root.addView(scroll, new LinearLayout.LayoutParams(-1, dp(390)));
 
         AlertDialog dialog = new AlertDialog.Builder(host).setView(root).setNegativeButton("Close", (d, w) -> {}).create();
-        dialog.setOnDismissListener(d -> panelOpen = false);
+        activeDialog = dialog;
+        dialog.setOnDismissListener(d -> {
+            panelOpen = false;
+            if (activeDialog == dialog) activeDialog = null;
+        });
         dialog.setOnShowListener(d -> {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
