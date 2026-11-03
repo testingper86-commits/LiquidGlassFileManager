@@ -43,6 +43,10 @@ def main():
     require('Not enough free space for this transfer' in lan and 'count > 500' in lan, 'LAN receive bounds transfer metadata and checks free space')
     require('PBKDF2WithHmacSHA256' in lan and 'HmacSHA256' in lan and 'AES/GCM/NoPadding' in lan and 'Pairing code is incorrect' in lan, 'LAN transfer uses one-time pairing authentication and AES-GCM encryption')
     main_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
+    main_activity = next((a for a in app.findall('activity') if a.attrib.get(ANDROID + 'name') == '.files.MainActivity'), None)
+    require(main_activity is not None and main_activity.attrib.get(ANDROID + 'enableOnBackInvokedCallback') == 'false'
+            and '@Override public void onBackPressed()' in main_src,
+            'Android 13+ Back dispatch preserves MainActivity overlay, Settings and file-navigation handling')
     require('10-character pairing code' in main_src and 'Files are encrypted during transfer' in main_src, 'LAN UI communicates pairing and encrypted-transfer requirements')
     require('List<IncomingFile> incomingFiles' in lan and 'incomingNames' in lan and 'Files:' in main_src and 'names.size() > shown' in main_src, 'LAN receiver shows verified filenames before the user accepts a transfer')
     require("name.indexOf('/') >= 0" in lan and "name.indexOf('\\\\') >= 0" in lan, 'LAN rejects path separators rather than silently renaming untrusted paths')
