@@ -92,6 +92,8 @@ public class MainActivity extends Activity {
     TextView busyTv;
     int busyCount, tab = 0, pendingCat = -1;
     View overlayView;
+    View overlayBackgroundScreen;
+    int overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
@@ -424,7 +426,17 @@ public class MainActivity extends Activity {
     }
 
     void showOverlay(View v) {
+        if (overlayView != null && overlayView != v) closeOverlay();
+        if (overlayView == null) {
+            overlayBackgroundScreen = screens[tab];
+            overlayBackgroundAccessibility = overlayBackgroundScreen.getImportantForAccessibility();
+            overlayBackgroundScreen.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        }
         overlayView = v;
+        // Keep the liquid-glass cards, but stop text from the underlying screen bleeding
+        // through the overlay and appearing to overlap the active screen.
+        int overlayAlpha = Ui.highContrast ? 255 : 248;
+        v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(Ui.bg), Color.green(Ui.bg), Color.blue(Ui.bg)));
         if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", false) && !Ui.highContrast) {
             screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
@@ -436,8 +448,18 @@ public class MainActivity extends Activity {
         syncNavigationVisibility(false);
     }
 
+    void restoreOverlayBackgroundAccessibility() {
+        if (overlayBackgroundScreen == null) return;
+        overlayBackgroundScreen.setImportantForAccessibility(overlayBackgroundAccessibility);
+        overlayBackgroundScreen = null;
+        overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+    }
+
     void closeOverlay() {
-        if (overlayView == null) return;
+        if (overlayView == null) {
+            restoreOverlayBackgroundAccessibility();
+            return;
+        }
         boolean wasVault = overlayView == vaultScroll;
         if (overlayView == listView) { listView.closeSearch(); listView.selecting = false; listView.sel.clear(); pendingCat = -1; }
         overlayView.setVisibility(View.GONE);
@@ -445,6 +467,7 @@ public class MainActivity extends Activity {
         if (wasVault) getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         if (Build.VERSION.SDK_INT >= 31) screens[tab].setRenderEffect(null);
         screens[tab].setVisibility(View.VISIBLE);
+        restoreOverlayBackgroundAccessibility();
         syncNavigationVisibility(false);
         if (tab == 0) buildHome();
     }

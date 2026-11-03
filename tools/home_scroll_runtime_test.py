@@ -8,6 +8,9 @@ import xml.etree.ElementTree as ET
 
 ADB = os.environ.get("ADB", "adb")
 PKG = "com.liquidfiles.offline.debug"
+TEST_DIR = "/sdcard/Download/ToxiFilesRuntimeTest"
+TEST_FILE = f"{TEST_DIR}/runtime-layout.bin"
+RENAMED_TEST_FILE = f"{TEST_DIR}/runtime-layout-renamed.bin"
 DIST = "dist"
 SCREEN_W = 720
 SCREEN_H = 1600
@@ -63,6 +66,19 @@ def find_text(root, needle, exact=False):
     return None
 
 
+def find_last_text(root, needle, exact=False):
+    target = needle.strip()
+    matches = []
+    for node in root.iter("node"):
+        if not node_is_visible(node):
+            continue
+        value = node.attrib.get("text", "").strip()
+        matched = value == target if exact else target.lower() in value.lower()
+        if matched and parse_bounds(node):
+            matches.append(node)
+    return matches[-1] if matches else None
+
+
 def find_description(root, description):
     for node in root.iter("node"):
         if node_is_visible(node) and node.attrib.get("content-desc", "").strip() == description:
@@ -73,11 +89,12 @@ def find_description(root, description):
 
 def scroll_view_containing(root, marker):
     for container in root.iter("node"):
-        if container.attrib.get("class") != "android.widget.ScrollView":
+        if container.attrib.get("class") != "android.widget.ScrollView" or not node_is_visible(container):
             continue
-        if any(child.attrib.get("text", "").strip() == marker for child in container.iter("node")):
+        if any(node_is_visible(child) and child.attrib.get("text", "").strip() == marker
+               and parse_bounds(child) for child in container.iter("node")):
             return container
-    raise AssertionError(f"Could not find the native ScrollView containing {marker!r}")
+    raise AssertionError(f"Could not find the visible native ScrollView containing {marker!r}")
 
 
 def smallest_container_containing(root, required_texts):
@@ -121,6 +138,12 @@ def assert_visible(root, text, exact=False):
     record(f"PASS: visible UI text: {text}")
 
 
+def assert_absent(root, text, label):
+    if find_text(root, text, exact=True) is not None:
+        raise AssertionError(f"{label}: inactive screen content remained accessible: {text!r}")
+    record(f"PASS: {label} hides inactive screen content: {text}")
+
+
 def assert_navigation(root, visible, label):
     labels = {node.attrib.get("text", "").strip() for node in root.iter("node") if node_is_visible(node)}
     found = {"Home", "Files"}.intersection(labels)
@@ -135,6 +158,22 @@ def assert_scrollable(root, label):
     if not any(node.attrib.get("scrollable") == "true" for node in root.iter("node")):
         raise AssertionError(f"{label}: no scrollable accessibility container")
     record(f"PASS: {label} exposes a scrollable native container")
+
+
+def container_with_text_and_description(root, text, description):
+    container_classes = {"android.widget.LinearLayout", "android.widget.FrameLayout"}
+    candidates = []
+    for container in root.iter("node"):
+        if container.attrib.get("class") not in container_classes:
+            continue
+        descendants = list(container.iter("node"))
+        texts = {child.attrib.get("text", "").strip() for child in descendants}
+        descriptions = {child.attrib.get("content-desc", "").strip() for child in descendants}
+        if text in texts and description in descriptions:
+            candidates.append((len(descendants), container))
+    if not candidates:
+        raise AssertionError(f"Could not find the row containing {text!r} and {description!r}")
+    return min(candidates, key=lambda item: item[0])[1]
 
 
 def assert_no_text_overlap(root, label):
@@ -267,6 +306,9 @@ def main():
         record(f"PROFILE: {SCREEN_W}x{SCREEN_H} pixels, density 320 dpi, system font_scale 1.30")
 
         run("shell", "appops", "set", PKG, "MANAGE_EXTERNAL_STORAGE", "allow")
+        run("shell", "rm", "-rf", TEST_DIR)
+        run("shell", "mkdir", "-p", TEST_DIR)
+        run("shell", "touch", TEST_FILE)
         run("shell", "am", "force-stop", PKG)
         run("shell", "monkey", "-p", PKG, "1")
         time.sleep(12)
@@ -321,6 +363,52 @@ def main():
         assert_visible(settings, "Font style", exact=True)
         assert_no_text_overlap(settings, "Settings initial")
         screenshot("toxifiles-settings-initial")
+
+        # Exercise every supported cyber palette in the actual native theme screen.
+        theme_names = ("Neon Cyan", "Matrix Green", "Quantum Violet", "Plasma Blue", "Cyber Magenta")
+        original_theme = next((name for name in theme_names if find_text(settings, name, exact=True)), None)
+        if original_theme is None:
+            raise AssertionError("The current cyber theme is missing from Settings")
+        theme_row = find_text(settings, "Color theme", exact=True)
+        if theme_row is None:
+            raise AssertionError("Color theme row is missing from Settings")
+        tap_node(theme_row)
+        time.sleep(0.55)
+        theme = dump("toxifiles-theme-screen")
+        assert_navigation(theme, False, "Theme overlay")
+        assert_absent(theme, "Settings", "Theme overlay")
+        assert_visible(theme, "Cyber Theme Studio", exact=True)
+        for name in theme_names:
+            assert_visible(theme, name, exact=True)
+        theme_content = scroll_view_containing(theme, "AVAILABLE FINISHES")
+        assert_no_text_overlap(theme_content, "Theme screen")
+        for name in theme_names:
+            tile_name = find_last_text(theme, name, exact=True)
+            if tile_name is None:
+                raise AssertionError(f"Theme tile is missing: {name}")
+            tap_node(tile_name)
+            time.sleep(0.35)
+            theme = dump(f"toxifiles-theme-{name.lower().replace(' ', '-')}")
+            assert_visible(theme, name, exact=True)
+            theme_content = scroll_view_containing(theme, "AVAILABLE FINISHES")
+            assert_no_text_overlap(theme_content, f"Theme {name}")
+            record(f"PASS: {name} theme applies without overlapping text bounds")
+        original_tile = find_last_text(theme, original_theme, exact=True)
+        if original_tile is None:
+            raise AssertionError(f"Could not restore original cyber theme: {original_theme}")
+        tap_node(original_tile)
+        time.sleep(0.35)
+        theme = dump("toxifiles-theme-restored")
+        assert_visible(theme, original_theme, exact=True)
+        run("shell", "input", "keyevent", "4")
+        time.sleep(0.45)
+        settings = dump("settings-after-theme")
+        assert_visible(settings, "Settings", exact=True)
+        assert_visible(settings, original_theme, exact=True)
+        assert_navigation(settings, False, "Settings after Theme")
+        assert_no_text_overlap(settings, "Settings after Theme")
+        record("PASS: all five cyber themes can be selected and the original theme is restored")
+
         sections = [
             ("FILES & FOLDERS", "Show hidden files"),
             ("STORAGE ACCESS", "Storage permission"),
@@ -348,6 +436,7 @@ def main():
         time.sleep(0.65)
         about = dump("toxifiles-about-screen")
         assert_navigation(about, False, "About overlay")
+        assert_absent(about, "AES-256 encrypted, key held in Android Keystore", "About overlay")
         about_content = scroll_view_containing(about, "CREATOR")
         assert_visible(about_content, "About ToxiFiles", exact=True)
         assert_visible(about_content, "CREATOR", exact=True)
@@ -356,12 +445,12 @@ def main():
         screenshot("toxifiles-about-top")
         assert_no_text_overlap(about_content, "About initial")
         about, _ = scroll_until_text("OPEN-SOURCE ACKNOWLEDGEMENTS", "about-acknowledgements", exact=True)
-        about_content = scroll_view_containing(about, "CREATOR")
+        about_content = scroll_view_containing(about, "OPEN-SOURCE ACKNOWLEDGEMENTS")
         assert_no_text_overlap(about_content, "About acknowledgements")
         for _ in range(3):
             swipe_up()
         about_bottom = dump("toxifiles-about-bottom")
-        about_bottom_content = scroll_view_containing(about_bottom, "CREATOR")
+        about_bottom_content = scroll_view_containing(about_bottom, "ToxiFiles")
         assert_no_text_overlap(about_bottom_content, "About bottom")
         screenshot("toxifiles-about-bottom")
         assert_visible(about_bottom_content, "ToxiFiles", exact=True)
@@ -395,16 +484,66 @@ def main():
         other_menu_content = smallest_container_containing(other_dialog, other_labels)
         assert_no_text_overlap(other_menu_content, "Other menu")
         screenshot("toxifiles-other-dialog")
-        close_button = find_text(other_dialog, "Close", exact=True)
-        if close_button is None:
-            raise AssertionError("Other menu Close button is missing")
-        tap_node(close_button)
+        other_files_row = find_text(other_dialog, "Other files", exact=True)
+        if other_files_row is None:
+            raise AssertionError("Other files menu item is missing")
+        tap_node(other_files_row)
+        time.sleep(0.55)
+        other_files = dump("toxifiles-other-files-overlay")
+        assert_navigation(other_files, False, "Other files overlay")
+        assert_absent(other_files, "Your files", "Other files overlay")
+        assert_visible(other_files, "runtime-layout.bin", exact=True)
+        assert_no_text_overlap(other_files, "Other files overlay")
+        record("PASS: Other files opens its native file list without exposing the Home screen")
+
+        # Rename the isolated .bin fixture through the actual row action and dialog.
+        file_row = container_with_text_and_description(other_files, "runtime-layout.bin", "More options")
+        more_action = find_description(file_row, "More options")
+        if more_action is None:
+            raise AssertionError("Other-file row More action is missing")
+        tap_node(more_action)
         time.sleep(0.35)
+        item_menu = dump("toxifiles-other-file-menu")
+        rename_action = find_text(item_menu, "Rename", exact=True)
+        if rename_action is None:
+            raise AssertionError("File item menu does not expose Rename")
+        tap_node(rename_action)
+        time.sleep(0.35)
+        rename_dialog = dump("toxifiles-other-file-rename")
+        edit_field = next((node for node in rename_dialog.iter("node")
+                           if node_is_visible(node) and node.attrib.get("class") == "android.widget.EditText"
+                           and parse_bounds(node)), None)
+        if edit_field is None:
+            raise AssertionError("Rename dialog does not expose its native EditText")
+        tap_node(edit_field)
+        run("shell", "input", "text", "runtime-layout-renamed")
+        time.sleep(0.2)
+        rename_dialog = dump("toxifiles-other-file-rename-filled")
+        assert_visible(rename_dialog, "runtime-layout-renamed.bin", exact=True)
+        rename_button = find_last_text(rename_dialog, "Rename", exact=True)
+        if rename_button is None:
+            raise AssertionError("Rename dialog positive button is missing")
+        tap_node(rename_button)
+        time.sleep(0.9)
+        listing = run("shell", "ls", TEST_DIR)
+        if RENAMED_TEST_FILE.split("/")[-1] not in listing or TEST_FILE.split("/")[-1] in listing:
+            raise AssertionError(f"Native Rename action did not update the fixture: {listing!r}")
+        record("PASS: native file Rename action updates the emulator file")
+        run("shell", "input", "keyevent", "4")
+        time.sleep(0.45)
+        home = dump("toxifiles-home-after-other-overlay")
+        assert_visible(home, "Your files", exact=True)
+        assert_navigation(home, True, "Home after Other files")
+        record("PASS: closing Other files restores Home touch/navigation state")
         record("PASS: Other menu opens and exposes Other files, APK files, System apps, and Downloaded apps")
 
         record("PASS: runtime layout and interaction regression suite completed")
     finally:
-        # Restore the emulator profile even when an assertion fails.
+        # Remove the isolated file fixture and restore the emulator profile even on failure.
+        try:
+            run("shell", "rm", "-rf", TEST_DIR)
+        except Exception as cleanup_error:
+            record(f"WARNING: runtime file fixture cleanup failed: {cleanup_error}")
         try:
             run("shell", "wm", "size", "reset")
             run("shell", "wm", "density", "reset")

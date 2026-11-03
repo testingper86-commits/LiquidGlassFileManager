@@ -149,6 +149,12 @@ def main():
     runtime_layout_test = (ROOT / 'tools/home_scroll_runtime_test.py').read_text()
     require('syncNavigationVisibility(boolean selecting)' in settings and 'tab == 3 || overlayView != null || selecting' in settings,
             'bottom navigation remains hidden on Settings and all overlay screens')
+    require('int overlayAlpha = Ui.highContrast ? 255 : 248;' in settings
+            and 'v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(Ui.bg), Color.green(Ui.bg), Color.blue(Ui.bg)))' in settings
+            and 'View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS' in settings and 'overlayBackgroundScreen' in settings,
+            'modal overlays isolate their glass surface and hide inactive screen content')
+    require('restoreOverlayBackgroundAccessibility()' in settings and 'setImportantForAccessibility(overlayBackgroundAccessibility)' in settings,
+            'closing overlays restores the underlying screen accessibility state')
     require('settingsScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom)' in settings,
             'Settings uses a system-safe bottom inset without reserving space for hidden navigation')
     require('TextView sectionLabel(String t)' in settings and 'about.addView(sectionLabel(' in settings and 'about.addView(section(' not in settings,
@@ -162,8 +168,12 @@ def main():
             'MainActivity source has no mojibake text or symbol sequences')
     require('assert_no_text_overlap' in runtime_layout_test and 'font_scale' in runtime_layout_test
             and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test
-            and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test,
-            'emulator regression covers scoped text overlap, font variants, Settings sections, About and dialogs')
+            and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test
+            and 'assert_absent' in runtime_layout_test and 'find_last_text' in runtime_layout_test
+            and 'container_with_text_and_description' in runtime_layout_test
+            and 'runtime-layout.bin' in runtime_layout_test and 'runtime-layout-renamed.bin' in runtime_layout_test
+            and all(theme in runtime_layout_test for theme in ('Neon Cyan', 'Matrix Green', 'Quantum Violet', 'Plasma Blue', 'Cyber Magenta')),
+            'emulator regression covers scoped overlap, font variants, all five themes, Settings, About, Other navigation and file rename')
 
     gradle = (ROOT / 'app/build.gradle.kts').read_text()
     require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')
