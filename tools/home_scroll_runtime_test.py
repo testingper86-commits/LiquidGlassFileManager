@@ -615,6 +615,12 @@ def main():
         if edit_field is None:
             raise AssertionError("Rename dialog does not expose its native EditText")
         tap_node(edit_field)
+        # The rename dialog pre-populates the current filename. Replace it instead of
+        # appending to the existing selection/cursor position; adb input text does not
+        # implicitly select existing text.
+        run("shell", "input", "keyevent", "KEYCODE_MOVE_HOME")
+        for _ in range(len(os.path.basename(TEST_FILE))):
+            run("shell", "input", "keyevent", "KEYCODE_FORWARD_DEL")
         run("shell", "input", "text", "runtime-layout-renamed")
         time.sleep(0.2)
         rename_dialog = dump("toxifiles-other-file-rename-filled")
