@@ -100,19 +100,30 @@ final class Ui {
 
     /** Translucent color-tinted glass with restrained highlights and a fine rim. */
     static Drawable glass(float radiusDp, boolean strong) {
-        float rad=dp(radiusDp); int a=highContrast ? (strong ? 118 : 88) : (strong ? 18 : 8);
-        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(Math.min(24,a+6),Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(a,Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(Math.max(1,a-2),Color.red(accent),Color.green(accent),Color.blue(accent))});
+        float rad=dp(radiusDp);
+        int a=highContrast ? (strong ? 118 : 88) : (strong ? 24 : 12);
+        int ar=Color.red(accent), ag=Color.green(accent), ab=Color.blue(accent);
+        GradientDrawable base=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(Math.min(34,a+10),ar,ag,ab),Color.argb(a,ar,ag,ab),Color.argb(Math.max(2,a-3),ar,ag,ab)});
         base.setCornerRadius(rad);
-        GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{Color.argb(10,255,255,255),Color.argb(2,255,255,255),Color.argb(0,255,255,255)});
+        GradientDrawable bloom=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(strong?12:7,ar,ag,ab),Color.argb(0,ar,ag,ab)});
+        bloom.setCornerRadius(rad);
+        GradientDrawable hi=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(18,255,255,255),Color.argb(5,255,255,255),Color.argb(0,255,255,255)});
         hi.setCornerRadius(rad);
         GradientDrawable edge=new GradientDrawable(); edge.setColor(Color.TRANSPARENT); edge.setCornerRadius(rad);
-        int ea=highContrast?150:(strong?48:24); edge.setStroke(Math.max(1,dp(strong?1.0f:0.7f)),Color.argb(ea,255,255,255));
-        return new LayerDrawable(new Drawable[]{base,hi,edge});
+        int ea=highContrast?150:(strong?66:38);
+        edge.setStroke(Math.max(1,dp(strong?1.0f:0.7f)),Color.argb(ea,255,255,255));
+        return new LayerDrawable(new Drawable[]{base,bloom,hi,edge});
     }
 
     static Drawable accentPill(float radiusDp) {
-        GradientDrawable g=new GradientDrawable(); g.setColor(Color.argb(46,255,255,255));
-        g.setCornerRadius(dp(radiusDp)); g.setStroke(Math.max(1,dp(1)),Color.argb(105,255,255,255)); return g;
+        GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.argb(74,Color.red(accent),Color.green(accent),Color.blue(accent)),Color.argb(28,Color.red(accent),Color.green(accent),Color.blue(accent))});
+        g.setCornerRadius(dp(radiusDp));
+        g.setStroke(Math.max(1,dp(1)),Color.argb(150,Color.red(accent),Color.green(accent),Color.blue(accent)));
+        return g;
     }
 
     static TextView tv(Context c, CharSequence t, float sp, int color, boolean bold) {

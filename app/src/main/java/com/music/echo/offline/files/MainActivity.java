@@ -784,7 +784,7 @@ public class MainActivity extends Activity {
                 ImageView ic = new ImageView(this);
                 ic.setImageDrawable(Glyphs.tile(categoryKinds[position]));
                 ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)));
+                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(44), Ui.dp(44)));
                 String categoryName = Indexer.CAT_NAMES[cat];
                 String categorySub = ix.ready ? ix.counts[cat] + " files" : "\u2026";
                 TextView nm = Ui.tv(this, categoryName, 15.5f, Ui.WHITE, true);

@@ -619,7 +619,8 @@ def main():
         # appending to the existing selection/cursor position; adb input text does not
         # implicitly select existing text.
         run("shell", "input", "keyevent", "KEYCODE_MOVE_HOME")
-        for _ in range(len(os.path.basename(TEST_FILE))):
+        original_stem = os.path.splitext(os.path.basename(TEST_FILE))[0]
+        for _ in range(len(original_stem)):
             run("shell", "input", "keyevent", "KEYCODE_FORWARD_DEL")
         run("shell", "input", "text", "runtime-layout-renamed")
         time.sleep(0.2)
