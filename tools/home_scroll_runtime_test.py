@@ -523,7 +523,8 @@ def main():
         run("shell", "input", "keyevent", "4")
         time.sleep(0.55)
         settings = dump("toxifiles-settings-after-recycle-bin")
-        assert_visible(settings, "Settings", exact=True)
+        assert_visible(settings, "APP LOCK")
+        settings, _ = scroll_until_text_down("Settings", "settings-header-after-recycle-bin", exact=True)
         assert_navigation(settings, False, "Settings after Recycle Bin")
         assert_no_text_overlap(settings, "Settings after Recycle Bin")
 
