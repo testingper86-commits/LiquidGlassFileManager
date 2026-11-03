@@ -79,6 +79,12 @@ final class Ui {
 
     static int dp(float v) { return Math.round(v * D); }
 
+    static float textSizePx(Context c, float sp) {
+        float systemScale = c.getResources().getConfiguration().fontScale;
+        float safeScale = Math.max(0.90f, Math.min(systemScale, 1.15f));
+        return sp * c.getResources().getDisplayMetrics().density * safeScale;
+    }
+
     static void setTheme(int t, boolean save) {
         theme = Math.max(0, Math.min(THEMES.length - 1, t));
         accent = DOTS[theme];
@@ -115,9 +121,7 @@ final class Ui {
         // Use a bounded, density-aware pixel size. Android's unrestricted system fontScale
         // previously expanded every TextView while many custom cards/headers had fixed dp
         // geometry, producing app-wide clipping and overlap on large-font devices.
-        float systemScale = c.getResources().getConfiguration().fontScale;
-        float safeScale = Math.max(0.90f, Math.min(systemScale, 1.15f));
-        v.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(sp * D * safeScale));
+        v.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(textSizePx(c, sp)));
         v.setTextColor(color);
         v.setTypeface(Typeface.create(fontFamily(), bold ? Typeface.BOLD : Typeface.NORMAL));
         v.setIncludeFontPadding(true);

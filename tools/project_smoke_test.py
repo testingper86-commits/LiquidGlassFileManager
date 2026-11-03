@@ -144,6 +144,25 @@ def main():
     require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in settings and '(anyVisible ? "+  " : "-  ")' in settings, 'settings section indicators use safe non-corrupting characters')
     require('No internet permission' not in settings,
             'no contradictory claim that INTERNET permission is absent')
+    ui_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
+    browser_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
+    runtime_layout_test = (ROOT / 'tools/home_scroll_runtime_test.py').read_text()
+    require('syncNavigationVisibility(boolean selecting)' in settings and 'tab == 3 || overlayView != null || selecting' in settings,
+            'bottom navigation remains hidden on Settings and all overlay screens')
+    require('settingsScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom)' in settings,
+            'Settings uses a system-safe bottom inset without reserving space for hidden navigation')
+    require('TextView sectionLabel(String t)' in settings and 'about.addView(sectionLabel(' in settings and 'about.addView(section(' not in settings,
+            'About uses static headings instead of disabled expandable Settings controls')
+    require('hd.setMinimumHeight(Ui.dp(58))' in settings and 'home.addView(hd, new LinearLayout.LayoutParams(-1, -2))' in settings
+            and 'header.setMinimumHeight(Ui.dp(60))' in browser_source and 'headerLp = new LinearLayout.LayoutParams(-1, -2)' in browser_source,
+            'Home and file-browser headers wrap content while retaining their visual minimums')
+    require('static float textSizePx(Context c, float sp)' in ui_source and 'Ui.textSizePx(a, 15)' in browser_source,
+            'EditText and shared labels use one density-aware bounded typography policy')
+    require(not any(marker in settings for marker in ('â', 'Ã', 'Â', 'ï¸', 'ð', '�')),
+            'MainActivity source has no mojibake text or symbol sequences')
+    require('assert_no_text_overlap' in runtime_layout_test and 'font_scale' in runtime_layout_test
+            and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test,
+            'emulator regression covers text-bound overlap, font variants, Settings sections and About')
 
     gradle = (ROOT / 'app/build.gradle.kts').read_text()
     require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')

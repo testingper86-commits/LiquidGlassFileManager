@@ -93,7 +93,8 @@ final class BrowserView extends FrameLayout {
         header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
         header.setBackground(Ui.glass(22, false));
-        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, Ui.dp(60));
+        header.setMinimumHeight(Ui.dp(60));
+        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
         headerLp.setMargins(Ui.dp(12), Ui.dp(6), Ui.dp(12), Ui.dp(8));
         col.addView(header, headerLp);
 
@@ -111,7 +112,7 @@ final class BrowserView extends FrameLayout {
         search.setHint("Search files, or .pdf for a type");
         search.setHintTextColor(Ui.SUB);
         search.setTextColor(Ui.WHITE);
-        search.setTextSize(15);
+        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.textSizePx(a, 15));
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         search.setBackground(Ui.glass(18, true));
         search.setPadding(Ui.dp(16), Ui.dp(10), Ui.dp(16), Ui.dp(10));

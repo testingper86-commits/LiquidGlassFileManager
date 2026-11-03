@@ -237,3 +237,18 @@ jobs:
             ${{ runner.temp }}/toxifiles-emulator.log
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Upload runtime UI layout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToxiFiles-runtime-layout-evidence
+          path: |
+            dist/*.xml
+            dist/*.png
+            dist/runtime-layout-results.txt
+            dist/emulator-activities.txt
+            dist/emulator-logcat.txt
+            ${{ runner.temp }}/toxifiles-emulator.log
+          if-no-files-found: warn
+          retention-days: 14
