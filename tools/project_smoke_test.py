@@ -181,6 +181,8 @@ def main():
             and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test
             and 'assert_absent' in runtime_layout_test and 'find_last_text' in runtime_layout_test
             and 'container_with_text_and_description' in runtime_layout_test
+            and 'def scroll_until_text_down(' in runtime_layout_test
+            and 'scroll_until_text_down(\"Recycle Bin\"' in runtime_layout_test
             and 'runtime-layout.bin' in runtime_layout_test and 'runtime-layout-renamed.bin' in runtime_layout_test
             and 'def dump(name, attempts=4):' in runtime_layout_test
             and 'uiautomator dump did not produce valid XML' in runtime_layout_test

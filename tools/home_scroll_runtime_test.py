@@ -280,6 +280,18 @@ def scroll_until_text(needle, prefix, exact=False, max_swipes=12):
     raise AssertionError(f"Could not scroll to visible text {needle!r} on {prefix}")
 
 
+def scroll_until_text_down(needle, prefix, exact=False, max_swipes=12):
+    """Find a previously visited Settings row after the test has scrolled lower."""
+    for attempt in range(max_swipes + 1):
+        root = dump(f"{prefix}-{attempt}")
+        node = find_text(root, needle, exact=exact)
+        if node is not None:
+            return root, node
+        if attempt < max_swipes:
+            swipe_down()
+    raise AssertionError(f"Could not scroll down to visible text {needle!r} on {prefix}")
+
+
 def scroll_until_section(label, prefix, max_swipes=12):
     expected = {f"+  {label.upper()}", f"-  {label.upper()}"}
     for attempt in range(max_swipes + 1):
@@ -499,7 +511,7 @@ def main():
         screenshot("toxifiles-settings-expanded")
 
         # Recycle Bin is a separate native screen; it must not expose the Settings page beneath it.
-        settings, recycle_row = scroll_until_text("Recycle Bin", "settings-recycle-bin-row", exact=True)
+        settings, recycle_row = scroll_until_text_down("Recycle Bin", "settings-recycle-bin-row", exact=True)
         tap_node(recycle_row)
         time.sleep(0.55)
         recycle_screen = dump("toxifiles-recycle-bin-screen")
