@@ -176,6 +176,44 @@ def container_with_text_and_description(root, text, description):
     return min(candidates, key=lambda item: item[0])[1]
 
 
+def assert_no_sibling_view_overlap(root, label):
+    """Reject intersecting visible siblings in native LinearLayout containers.
+
+    FrameLayout siblings are intentionally allowed to overlap (for example, an icon
+    centered over its background). LinearLayout siblings are not: intersecting bounds
+    there indicate that one section or row is drawing into another.
+    """
+    checked_pairs = 0
+    for parent in root.iter("node"):
+        if parent.attrib.get("class") != "android.widget.LinearLayout":
+            continue
+        siblings = []
+        for child in parent:
+            if child.tag != "node" or not node_is_visible(child):
+                continue
+            rect = parse_bounds(child)
+            if not rect:
+                continue
+            left, top, right, bottom = rect
+            if right <= left or bottom <= top or bottom <= 0 or top >= SCREEN_H:
+                continue
+            label_text = (child.attrib.get("text", "").strip()
+                          or child.attrib.get("content-desc", "").strip()
+                          or child.attrib.get("class", "").rsplit(".", 1)[-1])
+            siblings.append((label_text, rect))
+        for index, (first_label, first) in enumerate(siblings):
+            for second_label, second in siblings[index + 1:]:
+                checked_pairs += 1
+                overlap_w = min(first[2], second[2]) - max(first[0], second[0])
+                overlap_h = min(first[3], second[3]) - max(first[1], second[1])
+                if overlap_w > 2 and overlap_h > 2:
+                    raise AssertionError(
+                        f"{label}: sibling layout bounds overlap: {first_label!r} {first} "
+                        f"with {second_label!r} {second}"
+                    )
+    record(f"PASS: no overlapping sibling layout bounds on {label} ({checked_pairs} pairs checked)")
+
+
 def assert_no_text_overlap(root, label):
     text_nodes = []
     for node in root.iter("node"):
@@ -199,6 +237,7 @@ def assert_no_text_overlap(root, label):
             if overlap_w > 2 and overlap_h > 2:
                 raise AssertionError(f"{label}: text bounds overlap: {first_text!r} {first} with {second_text!r} {second}")
     record(f"PASS: no overlapping visible text bounds on {label} ({len(text_nodes)} text controls checked)")
+    assert_no_sibling_view_overlap(root, label)
 
 
 def scroll_until_text(needle, prefix, exact=False, max_swipes=12):
@@ -366,7 +405,7 @@ def main():
 
         # Exercise every supported cyber palette in the actual native theme screen.
         theme_names = ("Neon Cyan", "Matrix Green", "Quantum Violet", "Plasma Blue", "Cyber Magenta")
-        original_theme = next((name for name in theme_names if find_text(settings, name, exact=True)), None)
+        original_theme = next((name for name in theme_names if find_text(settings, name, exact=True) is not None), None)
         if original_theme is None:
             raise AssertionError("The current cyber theme is missing from Settings")
         theme_row = find_text(settings, "Color theme", exact=True)

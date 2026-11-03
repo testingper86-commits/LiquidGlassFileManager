@@ -166,7 +166,9 @@ def main():
             'EditText and shared labels use one density-aware bounded typography policy')
     require(not any(marker in settings for marker in ('â', 'Ã', 'Â', 'ï¸', 'ð', '�')),
             'MainActivity source has no mojibake text or symbol sequences')
-    require('assert_no_text_overlap' in runtime_layout_test and 'font_scale' in runtime_layout_test
+    require('assert_no_text_overlap' in runtime_layout_test and 'assert_no_sibling_view_overlap' in runtime_layout_test
+            and 'find_text(settings, name, exact=True) is not None' in runtime_layout_test
+            and 'font_scale' in runtime_layout_test
             and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test
             and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test
             and 'assert_absent' in runtime_layout_test and 'find_last_text' in runtime_layout_test
