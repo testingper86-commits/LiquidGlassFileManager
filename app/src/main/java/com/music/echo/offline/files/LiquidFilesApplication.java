@@ -10,10 +10,10 @@ public final class LiquidFilesApplication extends Application {
         CrashLogger.install(this);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(Activity activity, Bundle state) {}
-            @Override public void onActivityStarted(Activity activity) {
-                if (activity instanceof MainActivity) DynamicIslandView.attach(activity);
+            @Override public void onActivityStarted(Activity activity) {}
+            @Override public void onActivityResumed(Activity activity) {
+                if (activity instanceof MainActivity) ((MainActivity) activity).syncDynamicIsland();
             }
-            @Override public void onActivityResumed(Activity activity) {}
             @Override public void onActivityPaused(Activity activity) {}
             @Override public void onActivityStopped(Activity activity) {
                 if (activity instanceof MainActivity) DynamicIslandView.detach(activity);

@@ -28,6 +28,7 @@ public final class BackgroundAudioService extends Service {
     public static final String ACTION_STOP = "com.liquidfiles.offline.audio.STOP";
     public static volatile String activePath = "";
     public static volatile int latestPosition = 0;
+    public static volatile boolean playbackActive = false;
     private static final String CHANNEL = "liquidfiles_playback";
     private static final int NOTIFICATION_ID = 4812;
     private MediaPlayer player;
@@ -342,6 +343,7 @@ public final class BackgroundAudioService extends Service {
         } catch (Exception ignored) { }
         player = null;
         prepared = false;
+        playbackActive = false;
         crossfadeActive = false;
     }
 
@@ -350,6 +352,7 @@ public final class BackgroundAudioService extends Service {
         boolean playing = false; long pos = latestPosition;
         try { if (player != null && prepared) { playing=player.isPlaying(); pos=player.getCurrentPosition(); latestPosition=(int)pos; } } catch (Exception ignored) {}
         long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        playbackActive = playing;
         session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, pos, playing ? 1f : 0f, SystemClock.elapsedRealtime()).build());
     }
 

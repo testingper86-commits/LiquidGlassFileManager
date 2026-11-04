@@ -74,22 +74,41 @@ final class DynamicIslandView extends View {
         setOnLongClickListener(v -> { openControlCentre(); return true; });
     }
 
-    static void attach(Activity activity) {
-        if (!(activity instanceof MainActivity) || activity.isFinishing()) return;
+    static void sync(Activity activity, boolean active) {
+        if (!(activity instanceof MainActivity) || activity.isFinishing() || activity.isDestroyed()) return;
         View content = activity.findViewById(android.R.id.content);
         if (!(content instanceof ViewGroup)) return;
         ViewGroup parent = (ViewGroup) content;
+        DynamicIslandView current = null;
         for (int i = parent.getChildCount() - 1; i >= 0; i--) {
             View child = parent.getChildAt(i);
-            if (child instanceof DynamicIslandView) parent.removeView(child);
+            if (child instanceof DynamicIslandView) {
+                if (current == null) current = (DynamicIslandView) child;
+                else parent.removeView(child);
+            }
         }
+        if (!active) {
+            if (current != null) parent.removeView(current);
+            return;
+        }
+        if (current != null) return;
         DynamicIslandView island = new DynamicIslandView((MainActivity) activity);
         island.setTag("toxifiles_dynamic_island");
-        // Keep the complete touch target inside Android's 24dp status-bar inset.
-        // The content starts below this inset; a taller view steals taps from the first row.
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(24), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         lp.topMargin = 0;
         parent.addView(island, lp);
+    }
+
+    static void refresh(MainActivity activity) {
+        if (activity != null) activity.syncDynamicIsland();
+        View content = activity == null ? null : activity.findViewById(android.R.id.content);
+        if (content instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) content;
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                View child = parent.getChildAt(i);
+                if (child instanceof DynamicIslandView) ((DynamicIslandView) child).restartAnimation();
+            }
+        }
     }
 
     static void detach(Activity activity) {
@@ -113,6 +132,8 @@ final class DynamicIslandView extends View {
         stopAnimation();
         super.onDetachedFromWindow();
     }
+
+    void restartAnimation() { startAnimation(); invalidate(); }
 
     private void startAnimation() {
         stopAnimation();
@@ -326,9 +347,6 @@ final class DynamicIslandView extends View {
                 () -> host.receiveViaWifi(),
                 () -> { FileOps.requestCancel(); LanTransfer.cancel(); android.widget.Toast.makeText(host, "Cancellation requested", android.widget.Toast.LENGTH_SHORT).show(); }
         });
-        section(groups, "SETTINGS", "Tune the Island without changing the app theme", new String[]{"Island appearance settings"}, new Runnable[]{
-                () -> openIslandSettings()
-        });
         scroll.addView(groups);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, dp(390)));
 
@@ -357,50 +375,6 @@ final class DynamicIslandView extends View {
         for (Entry entry : Indexer.I.all) if (!entry.dir && entry.kind == FileKinds.APK) apks.add(entry);
         host.listView.setList("APK Files", apks, false, false);
         host.showOverlay(host.listView);
-    }
-
-    private void openIslandSettings() {
-        LinearLayout box = new LinearLayout(host);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(12), dp(18), dp(8));
-        addSwitch(box, "RGB gradient animation", "island_rgb", true);
-        addSwitch(box, "Glowing border", "island_glow", true);
-        addSwitch(box, "Liquid touch haptics", "island_haptics", true);
-        addSwitch(box, "Reduce motion", "island_reduce_motion", false);
-        TextView opacity = text("Glass opacity", 13, true);
-        opacity.setPadding(0, dp(12), 0, dp(4));
-        box.addView(opacity);
-        SeekBar seek = new SeekBar(host);
-        seek.setMax(100);
-        seek.setProgress(Ui.sp.getInt("island_transparency", 88));
-        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
-                if (fromUser) Ui.sp.edit().putInt("island_transparency", Math.max(49, value)).apply();
-                invalidate();
-            }
-            @Override public void onStartTrackingTouch(SeekBar bar) {}
-            @Override public void onStopTrackingTouch(SeekBar bar) {}
-        });
-        box.addView(seek);
-        TextView speed = text("Animation speed", 13, true);
-        speed.setPadding(0, dp(12), 0, dp(4));
-        box.addView(speed);
-        String[] speeds = {"Slow", "Normal", "Fast"};
-        int[] durations = {9500, 6500, 3600};
-        android.widget.Spinner spinner = new android.widget.Spinner(host);
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, speeds);
-        spinner.setAdapter(adapter);
-        int current = Ui.sp.getInt("island_speed", 6500);
-        spinner.setSelection(current >= 8000 ? 0 : current <= 4000 ? 2 : 1);
-        spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                Ui.sp.edit().putInt("island_speed", durations[position]).apply();
-                startAnimation();
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-        });
-        box.addView(spinner);
-        new AlertDialog.Builder(host).setTitle("Dynamic Island settings").setView(box).setPositiveButton("Done", (d, w) -> invalidate()).show();
     }
 
     private void addSwitch(LinearLayout parent, String title, String key, boolean defaultValue) {

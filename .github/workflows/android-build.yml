@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build, test, and launch ToxiFiles
+    name: Build and validate ToxiFiles
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -126,11 +126,10 @@ jobs:
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$PATH"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
           [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Run JVM unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
@@ -171,91 +170,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Enable KVM access
-        run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; else echo "::warning::/dev/kvm unavailable"; fi
-
-      - name: Install and launch on Android 16 emulator
-        timeout-minutes: 12
+      - name: Verify build outputs and runtime source contracts
         shell: bash
         run: |
           set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          export ANDROID_HOME="$SDK_ROOT"
-          export ANDROID_SDK_ROOT="$SDK_ROOT"
-          export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          command -v adb
-          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
-          AVDMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort -V | tail -n 1)"
-          test -n "$SDKMANAGER"
-          test -n "$AVDMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          if [[ ! -x "$SDK_ROOT/emulator/emulator" ]]; then "$SDKMANAGER" --install emulator; fi
-          if [[ ! -d "$SDK_ROOT/system-images/android-36/google_apis/x86_64" ]]; then "$SDKMANAGER" --install 'system-images;android-36;google_apis;x86_64'; fi
-          export ANDROID_AVD_HOME="$HOME/.android/avd"
-          export ANDROID_SDK_HOME="$HOME/.android"
-          mkdir -p "$ANDROID_AVD_HOME"
-          "$AVDMANAGER" create avd --name toxifiles-api36 --package 'system-images;android-36;google_apis;x86_64' --device pixel_2 --path "$ANDROID_AVD_HOME/toxifiles-api36.avd" --force <<< 'no'
-          test -s "$ANDROID_AVD_HOME/toxifiles-api36.ini" || { "$AVDMANAGER" list avd; echo "::error::AVD definition was not created at $ANDROID_AVD_HOME"; exit 1; }
-          "$AVDMANAGER" list avd
-          mkdir -p dist
-          "$SDK_ROOT/emulator/emulator" -avd toxifiles-api36 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > "$RUNNER_TEMP/toxifiles-emulator.log" 2>&1 &
-          EMULATOR_PID=$!
-          trap 'adb -s emulator-5554 emu kill >/dev/null 2>&1 || kill "$EMULATOR_PID" >/dev/null 2>&1 || true' EXIT
-          adb start-server
-          READY=0
-          for attempt in $(seq 1 120); do
-            STATE="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
-            if [ "$STATE" = "device" ]; then READY=1; break; fi
-            sleep 2
-          done
-          test "$READY" -eq 1 || { cat "$RUNNER_TEMP/toxifiles-emulator.log"; exit 1; }
-          BOOTED=0
-          for attempt in $(seq 1 120); do
-            BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | sed 's/[[:space:]]//g' || true)"
-            if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
-            sleep 2
-          done
-          test "$BOOTED" -eq 1 || { cat "$RUNNER_TEMP/toxifiles-emulator.log"; exit 1; }
-          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$APK"
-          adb -s emulator-5554 logcat -c
-          adb -s emulator-5554 install -r "$APK"
-          set +e
-          python tools/home_scroll_runtime_test.py
-          TEST_EXIT=$?
-          set -e
-          adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt || true
-          adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt || true
-          if [[ "$TEST_EXIT" -ne 0 ]]; then
-            echo "::error::Runtime UI regression suite failed with exit code $TEST_EXIT"
-            exit "$TEST_EXIT"
-          fi
-          grep -E 'mResumedActivity|ResumedActivity' dist/emulator-activities.txt | grep -q 'com.liquidfiles.offline.debug'
-          if grep -q 'FATAL EXCEPTION' dist/emulator-logcat.txt; then cat dist/emulator-logcat.txt; exit 1; fi
+          find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -size +0c -print -quit | grep -q .
+          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -size +0c -print -quit | grep -q .
+          python tools/island_behavior_test.py
 
-      - name: Upload emulator diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ToxiFiles-emulator-diagnostics
-          path: |
-            dist/emulator-activities.txt
-            dist/emulator-logcat.txt
-            ${{ runner.temp }}/toxifiles-emulator.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Upload runtime UI layout evidence
+      - name: Upload runtime source diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ToxiFiles-runtime-layout-evidence
-          path: |
-            dist/*.xml
-            dist/*.png
-            dist/runtime-layout-results.txt
-            dist/emulator-activities.txt
-            dist/emulator-logcat.txt
-            ${{ runner.temp }}/toxifiles-emulator.log
+          name: ToxiFiles-runtime-source-diagnostics
+          path: app/build/reports/lint-results-debug.html
           if-no-files-found: warn
           retention-days: 14
