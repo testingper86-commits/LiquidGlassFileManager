@@ -359,14 +359,14 @@ public final class BackgroundAudioService extends Service {
         crossfadeActive = false;
         playbackActive = false;
         latestDuration = 0;
-        DynamicIslandView.setPlayerActive(false);
+
     }
 
     private void updateState() {
         boolean playing = false; long pos = latestPosition;
         try { if (player != null && prepared) { playing=player.isPlaying(); pos=player.getCurrentPosition(); latestPosition=(int)pos; latestDuration=player.getDuration(); } } catch (Exception ignored) {}
         playbackActive = playing;
-        DynamicIslandView.setPlayerActive(playing);
+
         if (session == null) return;
         long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
         session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, pos, playing ? 1f : 0f, SystemClock.elapsedRealtime()).build());
@@ -407,7 +407,7 @@ public final class BackgroundAudioService extends Service {
             else if (audioManager != null && focusListener != null) audioManager.abandonAudioFocus(focusListener);
         } catch (Exception ignored) {}
         if (session != null) { session.setActive(false); session.release(); session=null; }
-        activePath=""; latestPosition=0; playbackActive=false; DynamicIslandView.setPlayerActive(false); super.onDestroy();
+        activePath=""; latestPosition=0; playbackActive=false; super.onDestroy();
     }
     @Override public IBinder onBind(Intent intent) { return null; }
 }

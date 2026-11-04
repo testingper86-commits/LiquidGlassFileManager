@@ -341,6 +341,9 @@ public class MainActivity extends Activity {
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
 
+    /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
+    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+
     // ---------------- opening things ----------------
     void openDir(File dir) {
         closeOverlay();
