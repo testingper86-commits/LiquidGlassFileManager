@@ -343,16 +343,18 @@ public final class BackgroundAudioService extends Service {
         } catch (Exception ignored) { }
         player = null;
         prepared = false;
-        playbackActive = false;
         crossfadeActive = false;
+        playbackActive = false;
+        DynamicIslandView.setPlayerActive(false);
     }
 
     private void updateState() {
-        if (session == null) return;
         boolean playing = false; long pos = latestPosition;
         try { if (player != null && prepared) { playing=player.isPlaying(); pos=player.getCurrentPosition(); latestPosition=(int)pos; } } catch (Exception ignored) {}
-        long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
         playbackActive = playing;
+        DynamicIslandView.setPlayerActive(playing);
+        if (session == null) return;
+        long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS;
         session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, pos, playing ? 1f : 0f, SystemClock.elapsedRealtime()).build());
     }
 
@@ -391,7 +393,7 @@ public final class BackgroundAudioService extends Service {
             else if (audioManager != null && focusListener != null) audioManager.abandonAudioFocus(focusListener);
         } catch (Exception ignored) {}
         if (session != null) { session.setActive(false); session.release(); session=null; }
-        activePath=""; latestPosition=0; super.onDestroy();
+        activePath=""; latestPosition=0; playbackActive=false; DynamicIslandView.setPlayerActive(false); super.onDestroy();
     }
     @Override public IBinder onBind(Intent intent) { return null; }
 }

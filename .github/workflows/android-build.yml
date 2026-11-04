@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and validate ToxiFiles
+    name: Build, test, and package ToxiFiles
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -103,6 +103,7 @@ jobs:
           set -euo pipefail
           python tools/project_smoke_test.py
           python tools/video_lifecycle_regression_test.py
+          python tools/dynamic_island_regression_test.py
           python - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
@@ -126,10 +127,11 @@ jobs:
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export PATH="$SDK_ROOT/platform-tools:$PATH"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
           [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;36.0.0'
+          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Run JVM unit tests
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
@@ -169,20 +171,3 @@ jobs:
             app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
           if-no-files-found: warn
           retention-days: 7
-
-      - name: Verify build outputs and runtime source contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -size +0c -print -quit | grep -q .
-          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -size +0c -print -quit | grep -q .
-          python tools/island_behavior_test.py
-
-      - name: Upload runtime source diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ToxiFiles-runtime-source-diagnostics
-          path: app/build/reports/lint-results-debug.html
-          if-no-files-found: warn
-          retention-days: 14

@@ -3,6 +3,7 @@ package com.music.echo.offline.files;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -51,6 +52,8 @@ final class DynamicIslandView extends View {
     private boolean pressed;
     private boolean panelOpen;
     private AlertDialog activeDialog;
+    private static volatile DynamicIslandView activeInstance;
+    private static volatile boolean playerActive;
 
     DynamicIslandView(MainActivity activity) {
         super(activity);
@@ -74,41 +77,28 @@ final class DynamicIslandView extends View {
         setOnLongClickListener(v -> { openControlCentre(); return true; });
     }
 
-    static void sync(Activity activity, boolean active) {
-        if (!(activity instanceof MainActivity) || activity.isFinishing() || activity.isDestroyed()) return;
+    static void attach(Activity activity) {
+        if (!(activity instanceof MainActivity) || activity.isFinishing()) return;
         View content = activity.findViewById(android.R.id.content);
         if (!(content instanceof ViewGroup)) return;
         ViewGroup parent = (ViewGroup) content;
-        DynamicIslandView current = null;
         for (int i = parent.getChildCount() - 1; i >= 0; i--) {
             View child = parent.getChildAt(i);
             if (child instanceof DynamicIslandView) {
-                if (current == null) current = (DynamicIslandView) child;
-                else parent.removeView(child);
+                if (activeInstance == child) activeInstance = null;
+                parent.removeView(child);
             }
         }
-        if (!active) {
-            if (current != null) parent.removeView(current);
-            return;
-        }
-        if (current != null) return;
         DynamicIslandView island = new DynamicIslandView((MainActivity) activity);
         island.setTag("toxifiles_dynamic_island");
+        island.setVisibility(View.GONE);
+        activeInstance = island;
+        // Keep the complete touch target inside Android's 24dp status-bar inset.
+        // The content starts below this inset; a taller view steals taps from the first row.
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(24), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         lp.topMargin = 0;
         parent.addView(island, lp);
-    }
-
-    static void refresh(MainActivity activity) {
-        if (activity != null) activity.syncDynamicIsland();
-        View content = activity == null ? null : activity.findViewById(android.R.id.content);
-        if (content instanceof ViewGroup) {
-            ViewGroup parent = (ViewGroup) content;
-            for (int i = 0; i < parent.getChildCount(); i++) {
-                View child = parent.getChildAt(i);
-                if (child instanceof DynamicIslandView) ((DynamicIslandView) child).restartAnimation();
-            }
-        }
+        refresh((MainActivity) activity);
     }
 
     static void detach(Activity activity) {
@@ -121,11 +111,41 @@ final class DynamicIslandView extends View {
         }
     }
 
+    static void refresh(MainActivity activity) {
+        DynamicIslandView island = activeInstance;
+        if (island == null || island.host != activity) return;
+        island.post(() -> {
+            boolean visible = activity.busyCount > 0 || playerActive;
+            int target = visible ? View.VISIBLE : View.GONE;
+            if (island.getVisibility() != target) {
+                island.setVisibility(target);
+                if (visible) island.startAnimation(); else island.stopAnimation();
+            }
+            island.invalidate();
+        });
+    }
+
+    static void setPlayerActive(boolean active) {
+        playerActive = active;
+        DynamicIslandView island = activeInstance;
+        if (island != null) refresh(island.host);
+    }
+
+    static void refreshAppearance() {
+        DynamicIslandView island = activeInstance;
+        if (island != null) island.post(() -> { island.invalidate(); island.startAnimation(); });
+    }
+
+    static void showSettings(MainActivity activity) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+        new DynamicIslandView(activity).openIslandSettings();
+    }
+
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        startAnimation();
+        if (getVisibility() == View.VISIBLE) startAnimation();
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -133,11 +153,9 @@ final class DynamicIslandView extends View {
         super.onDetachedFromWindow();
     }
 
-    void restartAnimation() { startAnimation(); invalidate(); }
-
     private void startAnimation() {
         stopAnimation();
-        if (host.isFinishing() || host.isDestroyed() || !Ui.bool("island_rgb", true) || Ui.bool("island_reduce_motion", false)) {
+        if (getVisibility() != View.VISIBLE || host.isFinishing() || host.isDestroyed() || !Ui.bool("island_rgb", true) || Ui.bool("island_reduce_motion", false)) {
             invalidate();
             return;
         }
@@ -204,9 +222,8 @@ final class DynamicIslandView extends View {
             postInvalidateOnAnimation();
         }
 
-        String status = host.busyCount > 0 && host.busyTv != null && host.busyTv.getVisibility() == VISIBLE
-                ? "ACTIVE  ·  " + Math.min(host.busyCount, 99)
-                : "TOXIFILES";
+        String status = playerActive ? "NOW PLAYING"
+                : host.busyCount > 0 ? "ACTIVE  ·  " + Math.min(host.busyCount, 99) : "TOXIFILES";
         label.setTextSize(dp(10));
         canvas.drawText(status, pill.centerX(), pill.centerY() + dp(3.5f), label);
     }
@@ -347,6 +364,13 @@ final class DynamicIslandView extends View {
                 () -> host.receiveViaWifi(),
                 () -> { FileOps.requestCancel(); LanTransfer.cancel(); android.widget.Toast.makeText(host, "Cancellation requested", android.widget.Toast.LENGTH_SHORT).show(); }
         });
+        if (playerActive) {
+            section(groups, "PLAYER", "Control the active local audio session", new String[]{"Play / resume", "Pause playback", "Stop playback"}, new Runnable[]{
+                    () -> host.startService(new Intent(host, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_PLAY)),
+                    () -> host.startService(new Intent(host, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_PAUSE)),
+                    () -> host.startService(new Intent(host, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_STOP))
+            });
+        }
         scroll.addView(groups);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, dp(390)));
 
@@ -377,6 +401,51 @@ final class DynamicIslandView extends View {
         host.showOverlay(host.listView);
     }
 
+    private void openIslandSettings() {
+        LinearLayout box = new LinearLayout(host);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(12), dp(18), dp(8));
+        addSwitch(box, "RGB gradient animation", "island_rgb", true);
+        addSwitch(box, "Glowing border", "island_glow", true);
+        addSwitch(box, "Liquid touch haptics", "island_haptics", true);
+        addSwitch(box, "Reduce motion", "island_reduce_motion", false);
+        TextView opacity = text("Glass opacity", 13, true);
+        opacity.setPadding(0, dp(12), 0, dp(4));
+        box.addView(opacity);
+        SeekBar seek = new SeekBar(host);
+        seek.setMax(100);
+        seek.setProgress(Ui.sp.getInt("island_transparency", 88));
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (fromUser) Ui.sp.edit().putInt("island_transparency", Math.max(49, value)).apply();
+                DynamicIslandView.refresh(host);
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        box.addView(seek);
+        TextView speed = text("Animation speed", 13, true);
+        speed.setPadding(0, dp(12), 0, dp(4));
+        box.addView(speed);
+        String[] speeds = {"Slow", "Normal", "Fast"};
+        int[] durations = {9500, 6500, 3600};
+        android.widget.Spinner spinner = new android.widget.Spinner(host);
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, speeds);
+        spinner.setAdapter(adapter);
+        int current = Ui.sp.getInt("island_speed", 6500);
+        spinner.setSelection(current >= 8000 ? 0 : current <= 4000 ? 2 : 1);
+        spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                Ui.sp.edit().putInt("island_speed", durations[position]).apply();
+                DynamicIslandView.refresh(host);
+                DynamicIslandView.refreshAppearance();
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+        box.addView(spinner);
+        new AlertDialog.Builder(host).setTitle("Dynamic Island settings").setView(box).setPositiveButton("Done", (d, w) -> invalidate()).show();
+    }
+
     private void addSwitch(LinearLayout parent, String title, String key, boolean defaultValue) {
         Switch sw = new Switch(host);
         sw.setText(title);
@@ -384,8 +453,8 @@ final class DynamicIslandView extends View {
         sw.setChecked(Ui.bool(key, defaultValue));
         sw.setOnCheckedChangeListener((button, checked) -> {
             Ui.set(key, checked);
-            if ("island_rgb".equals(key) || "island_reduce_motion".equals(key)) startAnimation();
-            invalidate();
+            DynamicIslandView.refresh(host);
+            DynamicIslandView.refreshAppearance();
         });
         parent.addView(sw);
     }

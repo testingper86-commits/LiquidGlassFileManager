@@ -272,6 +272,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (AppLock.enabled(this) && !unlocked) showAppLock();
+        DynamicIslandView.refresh(this);
         if (hasAccess() != accessOk) onAccessChanged();
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
     }
@@ -331,22 +332,17 @@ public class MainActivity extends Activity {
     void removeFavs(List<File> fs) { for (File f : fs) favs.remove(f.getAbsolutePath()); saveFavs(); }
     void renameFav(File from, File to) { if (favs.remove(from.getAbsolutePath())) { favs.add(to.getAbsolutePath()); saveFavs(); } }
 
-    void syncDynamicIsland() {
-        if (isFinishing() || isDestroyed()) return;
-        DynamicIslandView.sync(this, busyCount > 0 || BackgroundAudioService.playbackActive);
-    }
-
     void busy(boolean on) {
         busyCount = Math.max(0, busyCount + (on ? 1 : -1));
         busyTv.setVisibility(busyCount > 0 ? View.VISIBLE : View.GONE);
         GlowRing.attach(busyTv);
         GlowRing.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
-        syncDynamicIsland();
+        DynamicIslandView.refresh(this);
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text + " \u00B7 tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+    void progress(String text) { busyTv.setText(text + " \u00B7 tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); DynamicIslandView.refresh(this); }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {
@@ -1104,13 +1100,7 @@ public class MainActivity extends Activity {
         settings.addView(section("Appearance"));
         settings.addView(row(Glyphs.PALETTE, "Color theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(section("Dynamic Island"));
-        settings.addView(switchRow(Glyphs.SPARKLE, "RGB gradient animation", "Animate the Island border while it is visible", "island_rgb", true, () -> DynamicIslandView.refresh(this)), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SPARKLE, "Glowing border", "Enable the liquid-glass edge glow", "island_glow", true, () -> DynamicIslandView.refresh(this)), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.VIBRATE, "Island touch haptics", "Gentle feedback when the Island is tapped", "island_haptics", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.INFO, "Reduce Island motion", "Stop decorative border animation", "island_reduce_motion", false, () -> DynamicIslandView.refresh(this)), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.PALETTE, "Island glass opacity", Ui.sp.getInt("island_transparency", 88) + "%", null, v -> islandOpacityDialog()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.REFRESH, "Island animation speed", islandSpeedLabel(), null, v -> islandSpeedDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(Glyphs.SPARKLE, "Dynamic Island", "Show only during active file operations or audio playback; configure its appearance", null, v -> DynamicIslandView.showSettings(this)), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Files & Folders"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1209,46 +1199,6 @@ public class MainActivity extends Activity {
                 child.setVisibility(appearanceSection ? View.VISIBLE : View.GONE);
             }
         }
-    }
-
-    String islandSpeedLabel() {
-        int speed = Ui.sp.getInt("island_speed", 6500);
-        return speed >= 8000 ? "Slow" : speed <= 4000 ? "Fast" : "Normal";
-    }
-
-    void islandOpacityDialog() {
-        android.widget.SeekBar seek = new android.widget.SeekBar(this);
-        seek.setMax(51);
-        seek.setProgress(Math.max(0, Math.min(51, Ui.sp.getInt("island_transparency", 88) - 49)));
-        TextView value = Ui.tv(this, Ui.sp.getInt("island_transparency", 88) + "%", 14, Ui.WHITE, true);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(Ui.dp(22), Ui.dp(12), Ui.dp(22), Ui.dp(8));
-        box.addView(value);
-        box.addView(seek);
-        seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(android.widget.SeekBar bar, int progress, boolean fromUser) {
-                int opacity = progress + 49;
-                value.setText(opacity + "%");
-                if (fromUser) { Ui.sp.edit().putInt("island_transparency", opacity).apply(); DynamicIslandView.refresh(MainActivity.this); }
-            }
-            @Override public void onStartTrackingTouch(android.widget.SeekBar bar) {}
-            @Override public void onStopTrackingTouch(android.widget.SeekBar bar) {}
-        });
-        new AlertDialog.Builder(this).setTitle("Island glass opacity").setView(box).setPositiveButton("Done", null).show();
-    }
-
-    void islandSpeedDialog() {
-        String[] labels = {"Slow", "Normal", "Fast"};
-        int[] values = {9500, 6500, 3600};
-        int current = Ui.sp.getInt("island_speed", 6500);
-        int selected = current >= 8000 ? 0 : current <= 4000 ? 2 : 1;
-        new AlertDialog.Builder(this).setTitle("Island animation speed").setSingleChoiceItems(labels, selected, (dialog, which) -> {
-            Ui.sp.edit().putInt("island_speed", values[which]).apply();
-            DynamicIslandView.refresh(this);
-            dialog.dismiss();
-            buildSettings();
-        }).setNegativeButton("Cancel", null).show();
     }
 
     // ---------------- STORAGE ANALYZER ----------------
