@@ -37,6 +37,10 @@
         </activity>
         <service android:name=".files.BackgroundAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <activity
+            android:name=".files.HtmlViewerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+        <activity
             android:name=".files.ViewerActivity"
             android:exported="false"
             android:supportsPictureInPicture="true"

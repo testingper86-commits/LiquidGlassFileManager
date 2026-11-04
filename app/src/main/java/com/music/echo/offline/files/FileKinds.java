@@ -28,6 +28,12 @@ final class FileKinds {
     private static void put(int k, String s) { for (String e : s.split(" ")) M.put(e, k); }
 
     static int kindOfExt(String e) { Integer k = M.get(e); return k == null ? OTHER : k; }
+    static boolean isHtmlExtension(String extension) {
+        if (extension == null) return false;
+        String normalized = extension.trim().toLowerCase(java.util.Locale.ROOT);
+        return "html".equals(normalized) || "htm".equals(normalized);
+    }
+
 
     static int color(int k) {
         switch (k) {

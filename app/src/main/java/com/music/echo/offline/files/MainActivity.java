@@ -354,6 +354,13 @@ public class MainActivity extends Activity {
     void openFile(Entry e, List<Entry> ctx) {
         if (e.dir) { openDir(e.f); return; }
         int k = e.kind;
+        // HTML files always use the hidden built-in offline viewer.
+        if (FileKinds.isHtmlExtension(e.ext)) {
+            Intent html = new Intent(this, HtmlViewerActivity.class);
+            html.putExtra(HtmlViewerActivity.EXTRA_FILE_PATH, e.f.getAbsolutePath());
+            startActivity(html);
+            return;
+        }
         boolean inApp = Ui.bool("inapp", true);
         if (inApp && (k == FileKinds.IMAGE || k == FileKinds.VIDEO || k == FileKinds.AUDIO || k == FileKinds.TEXT || k == FileKinds.PDF)) {
             ArrayList<String> ps = new ArrayList<>();

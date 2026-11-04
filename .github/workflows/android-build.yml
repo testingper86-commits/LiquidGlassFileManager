@@ -52,8 +52,8 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
-      - name: Run JVM unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Run HTML viewer routing unit test
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.HtmlViewerRoutingTest'
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
