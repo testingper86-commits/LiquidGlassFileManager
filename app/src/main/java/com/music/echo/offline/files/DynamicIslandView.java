@@ -181,11 +181,16 @@ final class DynamicIslandView extends View {
         float radius = pill.height() / 2f;
         int transparency = Ui.sp.getInt("island_transparency", 88);
         int alpha = Math.max(125, Math.min(245, Math.round(255f * transparency / 100f)));
-        fill.setColor(Color.argb(alpha, 9, 12, 24));
+        int blueLevel = Math.max(0, Math.min(100, Ui.sp.getInt("island_blue_intensity", 55)));
+        int blue = 24 + Math.round(1.65f * blueLevel);
+        fill.setColor(Color.argb(alpha, 7, 12, blue));
         canvas.drawRoundRect(pill, radius, radius, fill);
 
         if (Ui.bool("island_glow", true)) {
-            Shader glow = new SweepGradient(pill.centerX(), pill.centerY(), rgb, null);
+            int[] activeMusicColors = playerActive
+                    ? new int[]{Color.rgb(0, 235, 255), Color.rgb(45, 110, 255), Color.rgb(175, 65, 255), Color.rgb(255, 70, 175), Color.rgb(0, 235, 255)}
+                    : rgb;
+            Shader glow = new SweepGradient(pill.centerX(), pill.centerY(), activeMusicColors, null);
             android.graphics.Matrix matrix = new android.graphics.Matrix();
             matrix.setRotate(phase, pill.centerX(), pill.centerY());
             glow.setLocalMatrix(matrix);
@@ -404,7 +409,12 @@ final class DynamicIslandView extends View {
     private void openIslandSettings() {
         LinearLayout box = new LinearLayout(host);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(16), dp(8), dp(16), dp(8));
+        box.setPadding(dp(18), dp(12), dp(18), dp(14));
+        GradientDrawable settingsSurface = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.rgb(27, 43, 72), Color.rgb(12, 20, 38), Color.rgb(10, 15, 29)});
+        settingsSurface.setCornerRadius(dp(20));
+        settingsSurface.setStroke(dp(1), Color.argb(95, 105, 190, 255));
+        box.setBackground(settingsSurface);
         addSwitch(box, "RGB gradient animation", "island_rgb", true);
         addSwitch(box, "Glowing border", "island_glow", true);
         addSwitch(box, "Liquid touch haptics", "island_haptics", true);
@@ -424,14 +434,46 @@ final class DynamicIslandView extends View {
             @Override public void onStopTrackingTouch(SeekBar bar) {}
         });
         box.addView(seek);
+        TextView blueLevel = text("Island blue intensity", 13, true);
+        blueLevel.setPadding(0, dp(14), 0, dp(4));
+        box.addView(blueLevel);
+        SeekBar blueSeek = new SeekBar(host);
+        blueSeek.setMax(100);
+        blueSeek.setProgress(Ui.sp.getInt("island_blue_intensity", 55));
+        blueSeek.setContentDescription("Island blue intensity");
+        blueSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (fromUser) Ui.sp.edit().putInt("island_blue_intensity", value).apply();
+                DynamicIslandView.refreshAppearance();
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        box.addView(blueSeek, new LinearLayout.LayoutParams(-1, dp(48)));
         TextView speed = text("Animation speed", 13, true);
         speed.setPadding(0, dp(12), 0, dp(4));
         box.addView(speed);
         String[] speeds = {"Slow", "Normal", "Fast"};
         int[] durations = {9500, 6500, 3600};
         android.widget.Spinner spinner = new android.widget.Spinner(host);
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, speeds);
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(host, android.R.layout.simple_spinner_item, speeds) {
+            @Override public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView item = (TextView) super.getView(position, convertView, parent);
+                item.setTextColor(Color.WHITE);
+                item.setTextSize(14);
+                item.setPadding(dp(12), dp(8), dp(12), dp(8));
+                return item;
+            }
+            @Override public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView item = (TextView) super.getDropDownView(position, convertView, parent);
+                item.setTextColor(Color.WHITE);
+                item.setBackgroundColor(Color.rgb(20, 31, 52));
+                item.setPadding(dp(14), dp(12), dp(14), dp(12));
+                return item;
+            }
+        };
         spinner.setAdapter(adapter);
+        spinner.setBackground(round(Color.argb(75, 100, 155, 225), dp(12)));
         int current = Ui.sp.getInt("island_speed", 6500);
         spinner.setSelection(current >= 8000 ? 0 : current <= 4000 ? 2 : 1);
         spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
@@ -442,7 +484,9 @@ final class DynamicIslandView extends View {
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
-        box.addView(spinner);
+        LinearLayout.LayoutParams spinnerLp = new LinearLayout.LayoutParams(-1, dp(52));
+        spinnerLp.topMargin = dp(4);
+        box.addView(spinner, spinnerLp);
         ScrollView scroll = new ScrollView(host);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);

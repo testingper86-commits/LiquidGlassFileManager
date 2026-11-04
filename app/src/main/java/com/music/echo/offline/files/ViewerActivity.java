@@ -68,7 +68,9 @@ public class ViewerActivity extends Activity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
-    TextView titleTv, counterTv, editImageBtn, playbackIsland;
+    TextView titleTv, counterTv, editImageBtn;
+    LinearLayout playbackIsland;
+    TextView playbackToggleIsland;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
@@ -203,37 +205,72 @@ public class ViewerActivity extends Activity {
 
     private void syncPlaybackIsland() {
         boolean playing = false;
-        try { playing = !destroyed && mp != null && mp.isPlaying(); } catch (RuntimeException ignored) { }
+        int duration = 0;
+        int position = 0;
+        try {
+            playing = !destroyed && mp != null && mp.isPlaying();
+            if (mp != null) { duration = mp.getDuration(); position = mp.getCurrentPosition(); }
+        } catch (RuntimeException ignored) { }
         if (playbackIsland == null && root != null) {
-            playbackIsland = new TextView(this);
-            playbackIsland.setTextColor(Color.WHITE);
-            playbackIsland.setTextSize(11);
-            playbackIsland.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+            playbackIsland = new LinearLayout(this);
+            playbackIsland.setOrientation(LinearLayout.HORIZONTAL);
             playbackIsland.setGravity(Gravity.CENTER);
-            playbackIsland.setPadding(Ui.dp(18), Ui.dp(7), Ui.dp(18), Ui.dp(7));
-            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-            bg.setColor(Color.argb(238, 9, 14, 28));
-            bg.setCornerRadius(Ui.dp(22));
-            bg.setStroke(Ui.dp(1), Color.rgb(0, 210, 245));
+            playbackIsland.setPadding(Ui.dp(7), Ui.dp(3), Ui.dp(7), Ui.dp(3));
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{Color.rgb(0, 190, 225), Color.rgb(65, 95, 235), Color.rgb(145, 65, 225)});
+            bg.setCornerRadius(Ui.dp(24));
+            bg.setStroke(Ui.dp(1), Color.argb(190, 190, 235, 255));
             playbackIsland.setBackground(bg);
             playbackIsland.setElevation(Ui.dp(12));
-            playbackIsland.setOnClickListener(v -> {
-                try {
-                    if (mp != null) {
-                        if (mp.isPlaying()) mp.pause(); else mp.start();
-                        syncPlaybackIsland();
-                    }
-                } catch (RuntimeException ignored) { }
+            playbackIsland.addView(islandTransportButton("‹", "Previous track", () -> go(-1)));
+            playbackIsland.addView(islandTransportButton("−10", "Seek backward ten seconds", () -> seekIsland(-10000)));
+            playbackToggleIsland = islandTransportButton("Ⅱ", "Pause playback", () -> {
+                try { if (mp != null) { if (mp.isPlaying()) mp.pause(); else mp.start(); syncPlaybackIsland(); } }
+                catch (RuntimeException ignored) { }
             });
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, Ui.dp(34), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            playbackIsland.addView(playbackToggleIsland);
+            playbackIsland.addView(islandTransportButton("+10", "Seek forward ten seconds", () -> seekIsland(10000)));
+            playbackIsland.addView(islandTransportButton("›", "Next track", () -> go(1)));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, Ui.dp(40), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             lp.topMargin = Math.max(topInset + Ui.dp(64), Ui.dp(72));
             root.addView(playbackIsland, lp);
         }
         if (playbackIsland != null) {
-            playbackIsland.setText(playing ? "Ⅱ   NOW PLAYING   ·   TAP TO PAUSE" : "▶   PLAYBACK PAUSED");
             playbackIsland.setVisibility(playing ? View.VISIBLE : View.GONE);
-            playbackIsland.setContentDescription(playing ? "Music playing. Tap to pause." : "Music paused.");
+            if (playbackToggleIsland != null) {
+                playbackToggleIsland.setText(playing ? "Ⅱ" : "▶");
+                playbackToggleIsland.setContentDescription(playing ? "Pause playback" : "Resume playback");
+            }
+            playbackIsland.setContentDescription("Music controls. " + (playing ? "Playing" : "Paused")
+                    + ". Position " + Math.max(0, position / 1000) + " of " + Math.max(0, duration / 1000) + " seconds.");
         }
+    }
+
+    private TextView islandTransportButton(String symbol, String description, Runnable action) {
+        TextView button = new TextView(this);
+        button.setText(symbol);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(12);
+        button.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        button.setGravity(Gravity.CENTER);
+        button.setMinWidth(Ui.dp(42));
+        button.setMinHeight(Ui.dp(32));
+        button.setContentDescription(description);
+        button.setFocusable(true);
+        button.setClickable(true);
+        button.setOnClickListener(v -> action.run());
+        return button;
+    }
+
+    private void seekIsland(int deltaMs) {
+        MediaPlayer player = mp;
+        if (player == null) return;
+        try {
+            int target = Math.max(0, Math.min(player.getDuration(), player.getCurrentPosition() + deltaMs));
+            player.seekTo(target);
+            syncPlaybackIsland();
+        } catch (RuntimeException ignored) { }
     }
 
     void cleanup() {
