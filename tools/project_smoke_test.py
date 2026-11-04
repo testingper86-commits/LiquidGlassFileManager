@@ -271,4 +271,27 @@ def main():
             'LiquidDrive dashboard shortcut and activity are removed')
     require('Cyber Theme Studio' in main_activity and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Matrix Green' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
             'appearance chooser provides selectable cyber themes')
-    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/mu¢ëiºÛkºwµç_ºYhºÚn¶Æ¯yÛhşiíıø¥zÏÜ¢jh²*?¢ëiºßŞÅçŠYlµÚ.¶ÜmN‹â{ayû¥–‹­¦ëkºw(uê)zæßßŠW¬ıÊ&¦‹"£ú.¶›­ıì^q¸¥–Ë]¢ëmÆÚŞiÓ«ºÇ‚8ÃÎHƒ!Ó8âÜjßæßßŠW¬ıÊ&¦‹"£ú.¶›­ıì^q¸¥–Ë]¢ëmÆßáy§g×M?š{~)^³÷(šš,ŠèºÚn·÷±yÆâ–[-v‹­·µ¨¥Ÿ]4şiíıø¥zÏÜ¢jh²*?¢ëiºßŞÅçŠYlµÚ.¶Üm
+    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'five-theme cyber palette is installed')
+    require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
+            'built-in text editor can edit and save supported small text files')
+    require('Ui.bool("reduce_motion", true)' in main_activity,
+            'decorative motion is reduced by default')
+    manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+    crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
+    crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
+    require('android:name=".files.LiquidFilesApplication"' in manifest and 'CrashLogger.install(this)' in crash_app,
+            'uncaught crash logging is installed at application startup')
+    require('FATAL EXCEPTION' in crash_logger and 'latest_crash.txt' in crash_logger and 'printStackTrace' in crash_logger,
+            'crash logger persists Java exception stack traces locally')
+    require('Crash logs & diagnostics' in settings and 'maybeOfferCrashReport' in settings and 'shareCrashReport' in settings,
+            'crash reports can be offered after restart and manually shared from settings')
+    require('<files-path name="crash_logs" path="crash-logs/" />' in (ROOT / 'app/src/main/res/xml/file_paths.xml').read_text(),
+            'private crash report path is shareable through FileProvider')
+    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as exc:
+        print(f'FAIL: {exc}', file=sys.stderr)
+        sys.exit(1)
