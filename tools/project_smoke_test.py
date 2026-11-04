@@ -202,9 +202,10 @@ def main():
             'CI runs on pull requests and compiles debug APK')
     require('project ZIP not found' not in workflow and 'unzip -q' not in workflow,
             'CI builds source at repository root, not a nested ZIP')
-    require('set +e\n          python tools/home_scroll_runtime_test.py\n          TEST_EXIT=$?\n          set -e' in workflow
-             and 'adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt' in workflow,
-             'emulator activity and logcat diagnostics are captured before propagating runtime UI test failures')
+    require('python tools/island_behavior_test.py' in workflow
+            and 'Install and launch on Android 16 emulator' not in workflow
+            and 'Enable KVM access' not in workflow,
+            'CI runs native Dynamic Island source-contract checks without provisioning or launching an emulator')
 
     service_path = ROOT / 'app/src/main/java/com/music/echo/offline/files/BackgroundAudioService.java'
     service = service_path.read_text()
