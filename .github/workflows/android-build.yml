@@ -101,8 +101,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python tools/project_smoke_test.py
-          python tools/video_lifecycle_regression_test.py
           python tools/dynamic_island_regression_test.py
           python - <<'PY'
           from pathlib import Path

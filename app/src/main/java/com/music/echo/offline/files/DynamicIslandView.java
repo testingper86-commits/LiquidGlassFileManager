@@ -404,7 +404,7 @@ final class DynamicIslandView extends View {
     private void openIslandSettings() {
         LinearLayout box = new LinearLayout(host);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(12), dp(18), dp(8));
+        box.setPadding(dp(16), dp(8), dp(16), dp(8));
         addSwitch(box, "RGB gradient animation", "island_rgb", true);
         addSwitch(box, "Glowing border", "island_glow", true);
         addSwitch(box, "Liquid touch haptics", "island_haptics", true);
@@ -443,7 +443,20 @@ final class DynamicIslandView extends View {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
         box.addView(spinner);
-        new AlertDialog.Builder(host).setTitle("Dynamic Island settings").setView(box).setPositiveButton("Done", (d, w) -> invalidate()).show();
+        ScrollView scroll = new ScrollView(host);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        scroll.addView(box, new ScrollView.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(host).setTitle("Dynamic Island settings").setView(scroll)
+                .setPositiveButton("Done", (d, w) -> invalidate()).create();
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                int available = host.getResources().getDisplayMetrics().widthPixels - dp(32);
+                dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+                dialog.getWindow().setLayout(Math.min(available, dp(420)), -2);
+            }
+        });
+        dialog.show();
     }
 
     private void addSwitch(LinearLayout parent, String title, String key, boolean defaultValue) {
@@ -456,6 +469,8 @@ final class DynamicIslandView extends View {
             DynamicIslandView.refresh(host);
             DynamicIslandView.refreshAppearance();
         });
-        parent.addView(sw);
+        sw.setMinHeight(dp(48));
+        sw.setPadding(0, dp(8), 0, dp(8));
+        parent.addView(sw, new LinearLayout.LayoutParams(-1, -2));
     }
 }

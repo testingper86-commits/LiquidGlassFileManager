@@ -68,7 +68,7 @@ public class ViewerActivity extends Activity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
-    TextView titleTv, counterTv, editImageBtn;
+    TextView titleTv, counterTv, editImageBtn, playbackIsland;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
@@ -201,7 +201,43 @@ public class ViewerActivity extends Activity {
         show();
     }
 
+    private void syncPlaybackIsland() {
+        boolean playing = false;
+        try { playing = !destroyed && mp != null && mp.isPlaying(); } catch (RuntimeException ignored) { }
+        if (playbackIsland == null && root != null) {
+            playbackIsland = new TextView(this);
+            playbackIsland.setTextColor(Color.WHITE);
+            playbackIsland.setTextSize(11);
+            playbackIsland.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+            playbackIsland.setGravity(Gravity.CENTER);
+            playbackIsland.setPadding(Ui.dp(18), Ui.dp(7), Ui.dp(18), Ui.dp(7));
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setColor(Color.argb(238, 9, 14, 28));
+            bg.setCornerRadius(Ui.dp(22));
+            bg.setStroke(Ui.dp(1), Color.rgb(0, 210, 245));
+            playbackIsland.setBackground(bg);
+            playbackIsland.setElevation(Ui.dp(12));
+            playbackIsland.setOnClickListener(v -> {
+                try {
+                    if (mp != null) {
+                        if (mp.isPlaying()) mp.pause(); else mp.start();
+                        syncPlaybackIsland();
+                    }
+                } catch (RuntimeException ignored) { }
+            });
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, Ui.dp(34), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = Math.max(topInset + Ui.dp(64), Ui.dp(72));
+            root.addView(playbackIsland, lp);
+        }
+        if (playbackIsland != null) {
+            playbackIsland.setText(playing ? "Ⅱ   NOW PLAYING   ·   TAP TO PAUSE" : "▶   PLAYBACK PAUSED");
+            playbackIsland.setVisibility(playing ? View.VISIBLE : View.GONE);
+            playbackIsland.setContentDescription(playing ? "Music playing. Tap to pause." : "Music paused.");
+        }
+    }
+
     void cleanup() {
+        if (playbackIsland != null) playbackIsland.setVisibility(View.GONE);
         if (sleepStopper != null) { sleepHandler.removeCallbacks(sleepStopper); sleepStopper = null; }
         if (ticker != null) { h.removeCallbacks(ticker); ticker = null; }
         if (videoTicker != null) { h.removeCallbacks(videoTicker); videoTicker = null; }
@@ -1215,6 +1251,7 @@ public class ViewerActivity extends Activity {
                 try { m.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {}
                 try { if (Build.VERSION.SDK_INT >= 23) m.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); } catch (Exception ignored) {}
                 m.start();
+                syncPlaybackIsland();
                 GlowRing.setActive(art, true);
                 GlowRing.setActive(pp, true);
                 initAudioEffects(m.getAudioSessionId());
@@ -1223,15 +1260,15 @@ public class ViewerActivity extends Activity {
             });
             mp.setOnCompletionListener(m -> {
                 if (audioRepeatMode == 1) {
-                    try { m.seekTo(0); m.start(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
+                    try { m.seekTo(0); m.start(); syncPlaybackIsland(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
                     catch (Exception ignored) { GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
                 } else if (paths.size() > 1 && audioShuffle) {
                     go(1);
                 } else if (idx < paths.size() - 1) go(1);
                 else if (audioRepeatMode == 2 && paths.size() > 0) { idx = 0; show(); }
-                else { GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
+                else { syncPlaybackIsland(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
             });
-            mp.setOnErrorListener((m, w, x) -> { Ui.toast(this, "Can't play this audio file"); return true; });
+            mp.setOnErrorListener((m, w, x) -> { syncPlaybackIsland(); Ui.toast(this, "Can't play this audio file"); return true; });
             mp.prepareAsync();
         } catch (Exception ex) {
             Ui.toast(this, "Can't play this audio file");
@@ -1239,8 +1276,8 @@ public class ViewerActivity extends Activity {
         pp.setOnClickListener(v -> {
             if (mp == null) return;
             try {
-                if (mp.isPlaying()) { mp.pause(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
-                else { mp.start(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
+                if (mp.isPlaying()) { mp.pause(); syncPlaybackIsland(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
+                else { mp.start(); syncPlaybackIsland(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
             } catch (Exception ignored) { }
         });
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -1595,7 +1632,7 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
-        try { audioWasPlayingBeforeBackground = mp != null && mp.isPlaying(); if (mp != null && mp.isPlaying()) mp.pause(); } catch (Exception ignored) { }
+        try { audioWasPlayingBeforeBackground = mp != null && mp.isPlaying(); if (mp != null && mp.isPlaying()) mp.pause(); syncPlaybackIsland(); } catch (Exception ignored) { }
         try { if (videoPlayer != null && paths != null && idx >= 0 && idx < paths.size()) { getPreferences(MODE_PRIVATE).edit().putInt("video_pos_" + paths.get(idx), videoPlayer.getCurrentPosition()).apply(); if (videoPlayer.isPlaying() && !(Build.VERSION.SDK_INT >= 26 && (isInPictureInPictureMode() || videoPipRequested))) { videoPlayer.pause(); videoUserWantsPlayback = false; } } } catch (Exception ignored) { }
     }
 
@@ -1624,6 +1661,7 @@ public class ViewerActivity extends Activity {
                     .putExtra("path", paths.get(idx)).putExtra("position", pos).putExtra("queue", new java.util.ArrayList<>(paths)).putExtra("index", idx).putExtra("repeatAll", audioRepeatMode == 2).putExtra("repeatOne", audioRepeatMode == 1).putExtra("shuffle", audioShuffle).putExtra("sleepRemaining", Math.max(0L, sleepDeadlineElapsed - android.os.SystemClock.elapsedRealtime())).putExtra("volume", audioVolume);
                 if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
                 backgroundAudioHandoff = true;
+                syncPlaybackIsland();
             }
         } catch (Exception ex) { android.util.Log.w("LiquidFiles", "Background audio handoff failed", ex); }
     }
@@ -1680,6 +1718,7 @@ public class ViewerActivity extends Activity {
                 } else if (mp != null && paths != null && idx >= 0 && idx < paths.size() && paths.get(idx).equals(servicePath)) {
                     if (servicePosition > 0) mp.seekTo(servicePosition);
                     if (audioWasPlayingBeforeBackground) mp.start();
+                    syncPlaybackIsland();
                 }
             } catch (Exception ex) { android.util.Log.w("LiquidFiles", "Returning from background playback failed", ex); }
             backgroundAudioHandoff = false;
