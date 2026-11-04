@@ -12,7 +12,7 @@ public final class LiquidFilesApplication extends Application {
             @Override public void onActivityCreated(Activity activity, Bundle state) {}
             @Override public void onActivityStarted(Activity activity) {}
             @Override public void onActivityResumed(Activity activity) {
-                if (activity instanceof MainActivity) ((MainActivity) activity).syncDynamicIsland();
+                if (activity instanceof MainActivity) DynamicIslandView.refresh((MainActivity) activity);
             }
             @Override public void onActivityPaused(Activity activity) {}
             @Override public void onActivityStopped(Activity activity) {
