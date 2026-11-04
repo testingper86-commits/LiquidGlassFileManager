@@ -69,14 +69,11 @@ public class ViewerActivity extends Activity {
     int idx;
     FrameLayout root, stage;
     TextView titleTv, counterTv, editImageBtn;
-    LinearLayout playbackIsland;
-    TextView playbackToggleIsland;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
     final ExecutorService io = Executors.newSingleThreadExecutor();
     final Handler h = new Handler(Looper.getMainLooper());
-    MediaPlayer mp;
     MediaPlayer videoPlayer;
     Equalizer equalizer;
     BassBoost bassBoost;
@@ -105,7 +102,6 @@ public class ViewerActivity extends Activity {
     boolean videoControlsLocked = false;
     final Handler levelOverlayHandler = new Handler(Looper.getMainLooper());
     Runnable hideLevelOverlays;
-    boolean audioWasPlayingBeforeBackground = false, backgroundAudioHandoff = false;
     final Handler subtitleHandler = new Handler(Looper.getMainLooper());
     final java.util.ArrayList<Long> lyricTimes = new java.util.ArrayList<>();
     final java.util.ArrayList<String> lyricText = new java.util.ArrayList<>();
@@ -203,85 +199,13 @@ public class ViewerActivity extends Activity {
         show();
     }
 
-    private void syncPlaybackIsland() {
-        boolean playing = false;
-        int duration = 0;
-        int position = 0;
-        try {
-            playing = !destroyed && mp != null && mp.isPlaying();
-            if (mp != null) { duration = mp.getDuration(); position = mp.getCurrentPosition(); }
-        } catch (RuntimeException ignored) { }
-        if (playbackIsland == null && root != null) {
-            playbackIsland = new LinearLayout(this);
-            playbackIsland.setOrientation(LinearLayout.HORIZONTAL);
-            playbackIsland.setGravity(Gravity.CENTER);
-            playbackIsland.setPadding(Ui.dp(7), Ui.dp(3), Ui.dp(7), Ui.dp(3));
-            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                    new int[]{Color.rgb(0, 190, 225), Color.rgb(65, 95, 235), Color.rgb(145, 65, 225)});
-            bg.setCornerRadius(Ui.dp(24));
-            bg.setStroke(Ui.dp(1), Color.argb(190, 190, 235, 255));
-            playbackIsland.setBackground(bg);
-            playbackIsland.setElevation(Ui.dp(12));
-            playbackIsland.addView(islandTransportButton("‹", "Previous track", () -> go(-1)));
-            playbackIsland.addView(islandTransportButton("−10", "Seek backward ten seconds", () -> seekIsland(-10000)));
-            playbackToggleIsland = islandTransportButton("Ⅱ", "Pause playback", () -> {
-                try { if (mp != null) { if (mp.isPlaying()) mp.pause(); else mp.start(); syncPlaybackIsland(); } }
-                catch (RuntimeException ignored) { }
-            });
-            playbackIsland.addView(playbackToggleIsland);
-            playbackIsland.addView(islandTransportButton("+10", "Seek forward ten seconds", () -> seekIsland(10000)));
-            playbackIsland.addView(islandTransportButton("›", "Next track", () -> go(1)));
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, Ui.dp(40), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-            lp.topMargin = Math.max(topInset + Ui.dp(64), Ui.dp(72));
-            root.addView(playbackIsland, lp);
-        }
-        if (playbackIsland != null) {
-            playbackIsland.setVisibility(playing ? View.VISIBLE : View.GONE);
-            if (playbackToggleIsland != null) {
-                playbackToggleIsland.setText(playing ? "Ⅱ" : "▶");
-                playbackToggleIsland.setContentDescription(playing ? "Pause playback" : "Resume playback");
-            }
-            playbackIsland.setContentDescription("Music controls. " + (playing ? "Playing" : "Paused")
-                    + ". Position " + Math.max(0, position / 1000) + " of " + Math.max(0, duration / 1000) + " seconds.");
-        }
-    }
-
-    private TextView islandTransportButton(String symbol, String description, Runnable action) {
-        TextView button = new TextView(this);
-        button.setText(symbol);
-        button.setTextColor(Color.WHITE);
-        button.setTextSize(12);
-        button.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        button.setGravity(Gravity.CENTER);
-        button.setMinWidth(Ui.dp(42));
-        button.setMinHeight(Ui.dp(32));
-        button.setContentDescription(description);
-        button.setFocusable(true);
-        button.setClickable(true);
-        button.setOnClickListener(v -> action.run());
-        return button;
-    }
-
-    private void seekIsland(int deltaMs) {
-        MediaPlayer player = mp;
-        if (player == null) return;
-        try {
-            int target = Math.max(0, Math.min(player.getDuration(), player.getCurrentPosition() + deltaMs));
-            player.seekTo(target);
-            syncPlaybackIsland();
-        } catch (RuntimeException ignored) { }
-    }
-
     void cleanup() {
-        if (playbackIsland != null) playbackIsland.setVisibility(View.GONE);
         if (sleepStopper != null) { sleepHandler.removeCallbacks(sleepStopper); sleepStopper = null; }
         if (ticker != null) { h.removeCallbacks(ticker); ticker = null; }
         if (videoTicker != null) { h.removeCallbacks(videoTicker); videoTicker = null; }
         if (lyricTicker != null) { subtitleHandler.removeCallbacks(lyricTicker); lyricTicker = null; }
         lyricTimes.clear(); lyricText.clear();
         videoControlsLocked = false;
-        if (mp != null) { releaseAudioEffects(); try { mp.release(); } catch (Exception ignored) { } mp = null; }
         if (videoPlayer != null) { try { videoPlayer.setOnPreparedListener(null); videoPlayer.setOnCompletionListener(null); videoPlayer.setOnErrorListener(null); videoPlayer.setOnVideoSizeChangedListener(null); videoPlayer.setSurface(null); videoPlayer.release(); } catch (Exception ignored) { } videoPlayer = null; }
         videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPipRequested = false; videoPendingPosition = 0;
         if (videoSurface != null) { try { videoSurface.release(); } catch (Exception ignored) { } videoSurface = null; }
@@ -1047,287 +971,29 @@ public class ViewerActivity extends Activity {
 
     // ---------------- audio ----------------
     void showAudio(File f, Entry e) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setBackground(Ui.glass(30, true));
-        card.setPadding(Ui.dp(22), Ui.dp(24), Ui.dp(22), Ui.dp(20));
-        card.setElevation(Ui.dp(10));
-        TextView nowPlaying = Ui.tv(this, "NOW PLAYING", 10.5f, Ui.accent, true);
-        nowPlaying.setLetterSpacing(0.16f);
-        nowPlaying.setPadding(0, 0, 0, Ui.dp(14));
-        card.addView(nowPlaying);
-        final ImageView art = new ImageView(this);
-        art.setImageDrawable(Glyphs.tile(FileKinds.AUDIO));
-        art.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        art.setBackground(Ui.glass(28, true));
-        art.setPadding(Ui.dp(8), Ui.dp(8), Ui.dp(8), Ui.dp(8));
-        Ui.round(art, 28);
-        card.addView(art, new LinearLayout.LayoutParams(Ui.dp(180), Ui.dp(180)));
-        TextView nm = Ui.tv(this, f.getName(), 18, Ui.WHITE, true);
-        nm.setMaxLines(2);
-        nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        nm.setGravity(Gravity.CENTER);
-        nm.setPadding(0, Ui.dp(18), 0, 0);
-        card.addView(nm, new LinearLayout.LayoutParams(-1, -2));
-        final TextView meta = Ui.tv(this, "", 13, Ui.SUB, false);
-        meta.setGravity(Gravity.CENTER);
-        meta.setPadding(0, Ui.dp(6), 0, Ui.dp(14));
-        card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
-        final SeekBar sb = new SquigglySeekBar(this);
-        card.addView(sb, new LinearLayout.LayoutParams(-1, -2));
-        final TextView time = Ui.tv(this, "0:00 / 0:00", 12, Ui.SUB, false);
-        time.setContentDescription("Playback position and duration");
-        time.setGravity(Gravity.CENTER);
-        time.setPadding(0, Ui.dp(4), 0, Ui.dp(4));
-        card.addView(time, new LinearLayout.LayoutParams(-1, -2));
-
-        // Keep playback options inside the built-in player; no separate player app is launched.
-        LinearLayout modes = new LinearLayout(this);
-        modes.setGravity(Gravity.CENTER);
-        modes.setPadding(0, Ui.dp(8), 0, Ui.dp(2));
-        final TextView repeat = Ui.tv(this, repeatLabel(), 12.5f, Ui.WHITE, true);
-        final TextView shuffle = Ui.tv(this, audioShuffle ? "⤨ Shuffle: On" : "⤨ Shuffle", 12.5f, Ui.WHITE, true);
-        final TextView abRepeat = Ui.tv(this, "Set A", 12.5f, Ui.WHITE, true);
-        repeat.setGravity(Gravity.CENTER);
-        shuffle.setGravity(Gravity.CENTER); abRepeat.setGravity(Gravity.CENTER);
-        repeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        shuffle.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        abRepeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        repeat.setBackground(audioRepeatMode != 0 ? Ui.accentPill(20) : Ui.glass(20, false));
-        shuffle.setBackground(audioShuffle ? Ui.accentPill(20) : Ui.glass(20, false));
-        abRepeat.setBackground(Ui.glass(20, false));
-        abRepeat.setContentDescription("A-B loop is off. Tap to mark loop start A.");
-        repeat.setContentDescription("Repeat mode " + repeatLabel());
-        shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
-        repeat.setOnClickListener(v -> {
-            audioRepeatMode = (audioRepeatMode + 1) % 3;
-            audioRepeat = audioRepeatMode == 1;
-            repeat.setText(repeatLabel());
-            repeat.setBackground(audioRepeatMode != 0 ? Ui.accentPill(20) : Ui.glass(20, false));
-            repeat.setContentDescription("Repeat mode " + repeatLabel());
-            Ui.tick(v);
-        });
-        shuffle.setOnClickListener(v -> {
-            audioShuffle = !audioShuffle;
-            shuffle.setText(audioShuffle ? "⤨ Shuffle: On" : "⤨ Shuffle");
-            shuffle.setBackground(audioShuffle ? Ui.accentPill(20) : Ui.glass(20, false));
-            shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
-            Ui.tick(v);
-        });
-        abRepeat.setOnClickListener(v -> {
-            if (mp == null) return;
-            try {
-                int position = mp.getCurrentPosition();
-                if (audioLoopStartMs < 0) { audioLoopStartMs = position; audioLoopEndMs = -1; Ui.toast(this, "Loop start A set at " + fmt(position)); }
-                else if (audioLoopEndMs < 0) {
-                    if (position <= audioLoopStartMs + 500) { Ui.toast(this, "Set point B at least half a second after A"); return; }
-                    audioLoopEndMs = position; Ui.toast(this, "A–B loop enabled");
-                } else { audioLoopStartMs = -1; audioLoopEndMs = -1; Ui.toast(this, "A–B loop cleared"); }
-                abRepeat.setText(audioLoopStartMs < 0 ? "Set A" : audioLoopEndMs < 0 ? "Set B" : "A–B On");
-                abRepeat.setBackground(audioLoopEndMs >= 0 ? Ui.accentPill(20) : Ui.glass(20, false));
-                abRepeat.setContentDescription(audioLoopStartMs < 0 ? "A-B loop off. Tap to mark point A" : audioLoopEndMs < 0 ? "Point A set. Tap to mark point B" : "A-B loop enabled. Tap to clear loop");
-            } catch (Exception ignored) { Ui.toast(this, "A–B repeat is unavailable"); }
-            Ui.tick(v);
-        });
-        Ui.press(repeat); Ui.press(shuffle); Ui.press(abRepeat);
-        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(-2, -2);
-        modeLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(repeat, modeLp);
-        LinearLayout.LayoutParams shuffleLp = new LinearLayout.LayoutParams(-2, -2);
-        shuffleLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(shuffle, shuffleLp);
-        LinearLayout.LayoutParams abLp = new LinearLayout.LayoutParams(-2, -2);
-        abLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(abRepeat, abLp);
-        card.addView(modes, new LinearLayout.LayoutParams(-1, -2));
-
-        LinearLayout extras = new LinearLayout(this);
-        extras.setOrientation(LinearLayout.VERTICAL);
-        extras.setGravity(Gravity.CENTER);
-        extras.setPadding(0, Ui.dp(7), 0, Ui.dp(2));
-        LinearLayout extrasTop = new LinearLayout(this);
-        LinearLayout extrasBottom = new LinearLayout(this);
-        extrasTop.setGravity(Gravity.CENTER);
-        extrasBottom.setGravity(Gravity.CENTER);
-        TextView speedBtn = Ui.tv(this, "1.0× Speed", 12, Ui.WHITE, true);
-        TextView sleepBtn = Ui.tv(this, "Sleep timer", 12, Ui.WHITE, true);
-        TextView lyricsBtn = Ui.tv(this, "Lyrics", 12, Ui.WHITE, true);
-        TextView eqBtn = Ui.tv(this, "EQ / Bass", 12, Ui.WHITE, true);
-        TextView queueBtn = Ui.tv(this, "Queue", 12, Ui.WHITE, true);
-        TextView[] extraButtons = {speedBtn, sleepBtn, lyricsBtn, eqBtn, queueBtn};
-        for (int i = 0; i < extraButtons.length; i++) {
-            TextView b = extraButtons[i];
-            b.setGravity(Gravity.CENTER);
-            b.setMinHeight(Ui.dp(42));
-            b.setSingleLine(true);
-            b.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            b.setPadding(Ui.dp(7), Ui.dp(9), Ui.dp(7), Ui.dp(9));
-            b.setBackground(Ui.glass(16, false));
-            LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(0, -2, i < 3 ? 1f : 1f);
-            ep.setMargins(Ui.dp(3), 0, Ui.dp(3), Ui.dp(0));
-            if (i >= 3) ep.width = Ui.dp(118);
-            (i < 3 ? extrasTop : extrasBottom).addView(b, ep);
-            Ui.press(b);
-        }
-        extras.addView(extrasTop, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout.LayoutParams extrasBottomLp = new LinearLayout.LayoutParams(-1, -2);
-        extrasBottomLp.topMargin = Ui.dp(6);
-        extras.addView(extrasBottom, extrasBottomLp);
-        // Balance the second row's two actions around the center.
-        extrasBottom.setGravity(Gravity.CENTER);
-        speedBtn.setOnClickListener(v -> {
-            audioSpeed = audioSpeed >= 2.0f ? 0.75f : audioSpeed == 1.0f ? 1.25f : audioSpeed == 1.25f ? 1.5f : audioSpeed == 1.5f ? 2.0f : 1.0f;
-            speedBtn.setText(audioSpeed + "×");
-            try { if (Build.VERSION.SDK_INT >= 23 && mp != null) mp.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); else Ui.toast(this, "Playback speed requires Android 6 or newer"); }
-            catch (Exception ex) { Ui.toast(this, "Speed change is not supported for this file"); }
-        });
-        sleepBtn.setOnClickListener(v -> {
-            String[] choices = {"Off", "15 minutes", "30 minutes", "45 minutes", "60 minutes"};
-            new android.app.AlertDialog.Builder(this).setTitle("Sleep timer").setItems(choices, (d, which) -> {
-                if (sleepStopper != null) sleepHandler.removeCallbacks(sleepStopper);
-                sleepStopper = null;
-                if (which > 0) {
-                    long delay = which * 15L * 60L * 1000L;
-                    sleepDeadlineElapsed = android.os.SystemClock.elapsedRealtime() + delay;
-                    sleepStopper = () -> {
-                        try { if (mp != null && mp.isPlaying()) mp.pause(); } catch (Exception ignored) {}
-                        try { if (!BackgroundAudioService.activePath.isEmpty()) startService(new Intent(this, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_PAUSE)); } catch (Exception ignored) {}
-                        sleepDeadlineElapsed = 0L;
-                    };
-                    sleepHandler.postDelayed(sleepStopper, delay);
-                    Ui.toast(this, "Sleep timer set: " + choices[which]);
-                } else { sleepDeadlineElapsed = 0L; Ui.toast(this, "Sleep timer off"); }
-            }).show();
-        });
-        lyricsBtn.setOnClickListener(v -> showLocalLyrics(f));
-        eqBtn.setOnClickListener(v -> showAudioEffects());
-        queueBtn.setOnClickListener(v -> {
-            if (paths == null || paths.isEmpty()) { Ui.toast(this, "No files in this playback list"); return; }
-            showQueueEditor();
-        });
-        card.addView(extras, new LinearLayout.LayoutParams(-1, -2));
-
-        LinearLayout volumeHeader = new LinearLayout(this);
-        volumeHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView volLabel = Ui.tv(this, "VOLUME", 10.5f, Ui.SUB, true);
-        TextView volValue = Ui.tv(this, "100%", 10.5f, Ui.SUB, false);
-        volumeHeader.addView(volLabel, new LinearLayout.LayoutParams(0, -2, 1f));
-        volumeHeader.addView(volValue, new LinearLayout.LayoutParams(-2, -2));
-        LinearLayout.LayoutParams volumeHeaderLp = new LinearLayout.LayoutParams(-1, -2);
-        volumeHeaderLp.topMargin = Ui.dp(7);
-        card.addView(volumeHeader, volumeHeaderLp);
-        SeekBar volume = new SeekBar(this);
-        audioVolume = getPreferences(MODE_PRIVATE).getInt("audio_volume", 100) / 100f;
-        volume.setMax(100); volume.setProgress(Math.round(audioVolume * 100));
-        volValue.setText(Math.round(audioVolume * 100) + "%");
-        volume.getProgressDrawable().setTint(Ui.accent); volume.getThumb().setTint(Ui.accent);
-        volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar seek, int value, boolean fromUser) { volValue.setText(value + "%"); if (fromUser) { audioVolume = value / 100f; getPreferences(MODE_PRIVATE).edit().putInt("audio_volume", value).apply(); if (mp != null) try { mp.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {} } }
-            public void onStartTrackingTouch(SeekBar seek) {} public void onStopTrackingTouch(SeekBar seek) {}
-        });
-        card.addView(volume, new LinearLayout.LayoutParams(-1, Ui.dp(38)));
-
-        LinearLayout ctl = new LinearLayout(this);
-        ctl.setGravity(Gravity.CENTER);
-        ImageView pv = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
-        final PlayAnimationImageView pp = new PlayAnimationImageView(this);
-        pp.setPlaying(true);
-        ImageView nx = Ui.iconBtn(this, Glyphs.NEXT, Ui.WHITE);
-        pp.setBackground(Ui.accentPill(30));
-        pv.setContentDescription("Previous track");
-        pp.setContentDescription("Play or pause");
-        nx.setContentDescription("Next track");
-        pv.setOnClickListener(v -> { if (mp != null) { try { if (mp.getCurrentPosition() > 3000) { mp.seekTo(0); return; } } catch (Exception ignored) {} } go(-1); });
-        nx.setOnClickListener(v -> go(1));
-        ctl.addView(pv, new LinearLayout.LayoutParams(Ui.dp(52), Ui.dp(52)));
-        LinearLayout.LayoutParams ppl = new LinearLayout.LayoutParams(Ui.dp(64), Ui.dp(64));
-        ppl.setMargins(Ui.dp(18), 0, Ui.dp(18), 0);
-        ctl.addView(pp, ppl);
-        ctl.addView(nx, new LinearLayout.LayoutParams(Ui.dp(52), Ui.dp(52)));
-        LinearLayout.LayoutParams cll = new LinearLayout.LayoutParams(-1, -2);
-        cll.topMargin = Ui.dp(10);
-        card.addView(ctl, cll);
-        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        fp.setMargins(Ui.dp(22), 0, Ui.dp(22), 0);
-        stage.addView(card, fp);
-        GlowRing.attach(art);
-        GlowRing.setActive(art, false);
-        GlowRing.attach(pp);
-        GlowRing.setActive(pp, false);
-
-        final int my = idx;
-        io.execute(() -> {
-            String info = "";
-            Bitmap cover = null;
-            MediaMetadataRetriever r = new MediaMetadataRetriever();
-            try {
-                r.setDataSource(f.getAbsolutePath());
-                String ar = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
-                String al = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
-                info = (ar != null ? ar : "") + (ar != null && al != null ? " • " : "") + (al != null ? al : "");
-                byte[] pic = r.getEmbeddedPicture();
-                if (pic != null) cover = BitmapFactory.decodeByteArray(pic, 0, pic.length);
-            } catch (Throwable ignored) { } finally { try { r.release(); } catch (Throwable ignored) { } }
-            final String fi = info.isEmpty() ? Ui.size(e.len) : info;
-            final Bitmap fc = cover;
-            h.post(() -> { if (destroyed || my != idx) return; meta.setText(fi); if (fc != null) art.setImageBitmap(fc); });
-        });
-
-        try {
-            mp = new MediaPlayer();
-            mp.setAudioAttributes(new android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build());
-            mp.setDataSource(f.getAbsolutePath());
-            mp.setOnPreparedListener(m -> {
-                sb.setMax(m.getDuration());
-                    int savedPosition = getPreferences(MODE_PRIVATE).getInt("audio_pos_" + f.getAbsolutePath(), 0);
-                if (savedPosition > 0 && savedPosition < m.getDuration() - 3000) { try { m.seekTo(savedPosition); } catch (Exception ignored) {} }
-                try { m.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {}
-                try { if (Build.VERSION.SDK_INT >= 23) m.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); } catch (Exception ignored) {}
-                m.start();
-                syncPlaybackIsland();
-                GlowRing.setActive(art, true);
-                GlowRing.setActive(pp, true);
-                initAudioEffects(m.getAudioSessionId());
-                pp.setPlaying(true);
-                startTicker(sb, time);
-            });
-            mp.setOnCompletionListener(m -> {
-                if (audioRepeatMode == 1) {
-                    try { m.seekTo(0); m.start(); syncPlaybackIsland(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
-                    catch (Exception ignored) { GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
-                } else if (paths.size() > 1 && audioShuffle) {
-                    go(1);
-                } else if (idx < paths.size() - 1) go(1);
-                else if (audioRepeatMode == 2 && paths.size() > 0) { idx = 0; show(); }
-                else { syncPlaybackIsland(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
-            });
-            mp.setOnErrorListener((m, w, x) -> { syncPlaybackIsland(); Ui.toast(this, "Can't play this audio file"); return true; });
-            mp.prepareAsync();
-        } catch (Exception ex) {
-            Ui.toast(this, "Can't play this audio file");
-        }
-        pp.setOnClickListener(v -> {
-            if (mp == null) return;
-            try {
-                if (mp.isPlaying()) { mp.pause(); syncPlaybackIsland(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
-                else { mp.start(); syncPlaybackIsland(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
-            } catch (Exception ignored) { }
-        });
-        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar s, int p, boolean user) {
-                if (user) {
-                    int duration = s.getMax();
-                            if (mp != null) try { mp.seekTo(p); } catch (Exception ignored) { }
-                }
-            }
-            @Override public void onStartTrackingTouch(SeekBar s) { }
-            @Override public void onStopTrackingTouch(SeekBar s) { }
-        });
+        LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setGravity(Gravity.CENTER_HORIZONTAL); card.setBackground(Ui.glass(30, true)); card.setPadding(Ui.dp(22), Ui.dp(24), Ui.dp(22), Ui.dp(20));
+        TextView heading=Ui.tv(this,"NOW PLAYING",11,Ui.accent,true); card.addView(heading);
+        ImageView art=new ImageView(this); art.setImageDrawable(Glyphs.tile(FileKinds.AUDIO)); art.setScaleType(ImageView.ScaleType.CENTER_INSIDE); card.addView(art,new LinearLayout.LayoutParams(Ui.dp(168),Ui.dp(168)));
+        TextView name=Ui.tv(this,f.getName(),17,Ui.WHITE,true); name.setGravity(Gravity.CENTER); card.addView(name,new LinearLayout.LayoutParams(-1,-2));
+        TextView meta=Ui.tv(this,"Shared playback session",12,Ui.SUB,false); meta.setGravity(Gravity.CENTER); card.addView(meta);
+        SeekBar seek=new SquigglySeekBar(this); seek.setMax(Math.max(1,BackgroundAudioService.latestDuration)); seek.setProgress(Math.max(0,BackgroundAudioService.latestPosition)); card.addView(seek,new LinearLayout.LayoutParams(-1,-2));
+        TextView time=Ui.tv(this,"0:00 / 0:00",12,Ui.SUB,false); time.setGravity(Gravity.CENTER); card.addView(time);
+        LinearLayout controls=new LinearLayout(this); controls.setGravity(Gravity.CENTER);
+        TextView prev=Ui.tv(this,"|◀",22,Ui.WHITE,true), toggle=Ui.tv(this,BackgroundAudioService.playbackActive?"Ⅱ":"▶",25,Ui.WHITE,true), next=Ui.tv(this,"▶|",22,Ui.WHITE,true);
+        for(TextView button:new TextView[]{prev,toggle,next}){button.setGravity(Gravity.CENTER);button.setBackground(Ui.glass(24,false));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(Ui.dp(58),Ui.dp(52));lp.setMargins(Ui.dp(7),Ui.dp(8),Ui.dp(7),Ui.dp(8));controls.addView(button,lp);Ui.press(button);} card.addView(controls);
+        prev.setOnClickListener(view->{if(BackgroundAudioService.latestPosition>3000)sendAudioCommand(BackgroundAudioService.ACTION_SEEK,"position",0);else sendAudioCommand("com.liquidfiles.offline.audio.PREVIOUS",null,0);});
+        next.setOnClickListener(view->sendAudioCommand("com.liquidfiles.offline.audio.NEXT",null,0));
+        toggle.setOnClickListener(view->sendAudioCommand(BackgroundAudioService.playbackActive?BackgroundAudioService.ACTION_PAUSE:BackgroundAudioService.ACTION_PLAY,null,0));
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar bar,int value,boolean fromUser){if(fromUser)sendAudioCommand(BackgroundAudioService.ACTION_SEEK,"position",value);}public void onStartTrackingTouch(SeekBar bar){}public void onStopTrackingTouch(SeekBar bar){}});
+        FrameLayout.LayoutParams fp=new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER);fp.setMargins(Ui.dp(22),0,Ui.dp(22),0);stage.addView(card,fp);
+        String path=f.getAbsolutePath(); if(!path.equals(BackgroundAudioService.activePath)){
+            Intent start=new Intent(this,BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_START).putExtra("path",path).putExtra("position",getPreferences(MODE_PRIVATE).getInt("audio_pos_"+path,0)).putExtra("queue",new ArrayList<>(paths)).putExtra("index",idx).putExtra("repeatAll",audioRepeatMode==2).putExtra("repeatOne",audioRepeatMode==1).putExtra("shuffle",audioShuffle).putExtra("volume",audioVolume);
+            if(Build.VERSION.SDK_INT>=26)startForegroundService(start);else startService(start);
+        } else updateServiceQueue();
+        startTicker(seek,time);
     }
+    private void sendAudioCommand(String action,String extra,int value){Intent i=new Intent(this,BackgroundAudioService.class).setAction(action);if(extra!=null)i.putExtra(extra,value);startService(i);}
+    private void updateServiceQueue(){if(BackgroundAudioService.activePath.isEmpty())return;Intent i=new Intent(this,BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_START).putExtra("path",BackgroundAudioService.activePath).putExtra("queue",new ArrayList<>(paths)).putExtra("index",idx).putExtra("repeatAll",audioRepeatMode==2).putExtra("repeatOne",audioRepeatMode==1).putExtra("shuffle",audioShuffle).putExtra("volume",audioVolume);startService(i);}
 
     String repeatLabel() {
         if (audioRepeatMode == 1) return "↻ Repeat One";
@@ -1426,7 +1092,7 @@ public class ViewerActivity extends Activity {
                 if (!lyricTimes.isEmpty()) {
                     lyricTicker = new Runnable() { @Override public void run() {
                         if (!dialog.isShowing()) return;
-                        int pos = 0; try { if (mp != null) pos = mp.getCurrentPosition(); } catch (Exception ignored) { }
+                        int pos = 0; try { pos = BackgroundAudioService.latestPosition; } catch (Exception ignored) { }
                         String active = "♪  " + (lyricText.isEmpty() ? "" : lyricText.get(0));
                         for (int i = 0; i < lyricTimes.size(); i++) if (lyricTimes.get(i) <= pos) active = "♪  " + lyricText.get(i); else break;
                         current.setText(active); subtitleHandler.postDelayed(this, 300);
@@ -1442,14 +1108,14 @@ public class ViewerActivity extends Activity {
     void startTicker(final SeekBar sb, final TextView time) {
         ticker = new Runnable() {
             @Override public void run() {
-                if (mp == null || destroyed) return;
+                if (BackgroundAudioService.activePath.isEmpty() || destroyed) return;
                 try {
-                    int p = mp.getCurrentPosition();
-                    if (audioLoopStartMs >= 0 && audioLoopEndMs > audioLoopStartMs && p >= audioLoopEndMs && mp.isPlaying()) {
-                        mp.seekTo(audioLoopStartMs); p = audioLoopStartMs;
+                    int p = BackgroundAudioService.latestPosition;
+                    if (audioLoopStartMs >= 0 && audioLoopEndMs > audioLoopStartMs && p >= audioLoopEndMs && BackgroundAudioService.playbackActive) {
+                        sendAudioCommand(BackgroundAudioService.ACTION_SEEK,"position",audioLoopStartMs); p = audioLoopStartMs;
                     }
                     sb.setProgress(p);
-                    int duration = mp.getDuration();
+                    int duration = BackgroundAudioService.latestDuration;
                             time.setText(fmt(p) + " / " + fmt(duration));
                     getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + paths.get(idx), p).apply();
                 } catch (Exception ignored) { }
@@ -1649,7 +1315,7 @@ public class ViewerActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        // Back from the viewer must return to the file list, never leave a hidden player alive.
+        // Back returns to the file list; audio remains in its shared foreground playback session.
         try {
             if (videoPlayer != null) {
                 int pos = videoPlayer.getCurrentPosition();
@@ -1660,7 +1326,6 @@ public class ViewerActivity extends Activity {
                 videoUserWantsPlayback = false;
                 videoPipRequested = false;
             }
-            if (mp != null && mp.isPlaying()) mp.pause();
         } catch (Exception ex) {
             android.util.Log.w("LiquidFiles", "Playback cleanup on Back failed", ex);
         }
@@ -1669,7 +1334,6 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
-        try { audioWasPlayingBeforeBackground = mp != null && mp.isPlaying(); if (mp != null && mp.isPlaying()) mp.pause(); syncPlaybackIsland(); } catch (Exception ignored) { }
         try { if (videoPlayer != null && paths != null && idx >= 0 && idx < paths.size()) { getPreferences(MODE_PRIVATE).edit().putInt("video_pos_" + paths.get(idx), videoPlayer.getCurrentPosition()).apply(); if (videoPlayer.isPlaying() && !(Build.VERSION.SDK_INT >= 26 && (isInPictureInPictureMode() || videoPipRequested))) { videoPlayer.pause(); videoUserWantsPlayback = false; } } } catch (Exception ignored) { }
     }
 
@@ -1690,17 +1354,7 @@ public class ViewerActivity extends Activity {
                 }
             }
         } catch (RuntimeException ex) { android.util.Log.w("LiquidFiles", "Stopping background video failed", ex); }
-        try {
-            if (audioWasPlayingBeforeBackground && mp != null && paths != null && idx >= 0 && idx < paths.size()) {
-                int pos = mp.getCurrentPosition();
-                getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + paths.get(idx), pos).apply();
-                Intent service = new Intent(this, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_START)
-                    .putExtra("path", paths.get(idx)).putExtra("position", pos).putExtra("queue", new java.util.ArrayList<>(paths)).putExtra("index", idx).putExtra("repeatAll", audioRepeatMode == 2).putExtra("repeatOne", audioRepeatMode == 1).putExtra("shuffle", audioShuffle).putExtra("sleepRemaining", Math.max(0L, sleepDeadlineElapsed - android.os.SystemClock.elapsedRealtime())).putExtra("volume", audioVolume);
-                if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
-                backgroundAudioHandoff = true;
-                syncPlaybackIsland();
-            }
-        } catch (Exception ex) { android.util.Log.w("LiquidFiles", "Background audio handoff failed", ex); }
+
     }
 
     @Override public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
@@ -1742,24 +1396,7 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        if (backgroundAudioHandoff) {
-            try {
-                String servicePath = BackgroundAudioService.activePath;
-                int servicePosition = BackgroundAudioService.latestPosition;
-                startService(new Intent(this, BackgroundAudioService.class).setAction(BackgroundAudioService.ACTION_STOP));
-                int serviceIndex = paths == null ? -1 : paths.indexOf(servicePath);
-                if (serviceIndex >= 0 && serviceIndex != idx) {
-                    idx = serviceIndex;
-                    getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + servicePath, servicePosition).apply();
-                    show();
-                } else if (mp != null && paths != null && idx >= 0 && idx < paths.size() && paths.get(idx).equals(servicePath)) {
-                    if (servicePosition > 0) mp.seekTo(servicePosition);
-                    if (audioWasPlayingBeforeBackground) mp.start();
-                    syncPlaybackIsland();
-                }
-            } catch (Exception ex) { android.util.Log.w("LiquidFiles", "Returning from background playback failed", ex); }
-            backgroundAudioHandoff = false;
-        }
+
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {

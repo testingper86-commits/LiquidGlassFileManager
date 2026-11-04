@@ -50,6 +50,9 @@ final class DynamicIslandView extends View {
     private float rippleX, rippleY, rippleRadius;
     private int rippleAlpha;
     private boolean pressed;
+    private float downRawX, downRawY;
+    private int startLeft, startTop;
+    private boolean dragged;
     private boolean panelOpen;
     private AlertDialog activeDialog;
     private static volatile DynamicIslandView activeInstance;
@@ -95,8 +98,11 @@ final class DynamicIslandView extends View {
         activeInstance = island;
         // Keep the complete touch target inside Android's 24dp status-bar inset.
         // The content starts below this inset; a taller view steals taps from the first row.
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(24), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        lp.topMargin = 0;
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(24), Gravity.TOP | Gravity.LEFT);
+        int savedX = Ui.sp.getInt("island_position_x", -1);
+        int savedY = Ui.sp.getInt("island_position_y", 0);
+        lp.leftMargin = savedX < 0 ? Math.max(0, (parent.getWidth() - island.dp(174)) / 2) : savedX;
+        lp.topMargin = Math.max(0, savedY);
         parent.addView(island, lp);
         refresh((MainActivity) activity);
     }
@@ -181,9 +187,7 @@ final class DynamicIslandView extends View {
         float radius = pill.height() / 2f;
         int transparency = Ui.sp.getInt("island_transparency", 88);
         int alpha = Math.max(125, Math.min(245, Math.round(255f * transparency / 100f)));
-        int blueLevel = Math.max(0, Math.min(100, Ui.sp.getInt("island_blue_intensity", 55)));
-        int blue = 24 + Math.round(1.65f * blueLevel);
-        fill.setColor(Color.argb(alpha, 7, 12, blue));
+        fill.setColor(Color.argb(alpha, 10, 16, 30));
         canvas.drawRoundRect(pill, radius, radius, fill);
 
         if (Ui.bool("island_glow", true)) {
@@ -236,23 +240,33 @@ final class DynamicIslandView extends View {
     @Override public boolean onTouchEvent(MotionEvent event) {
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                pressed = true;
-                rippleX = event.getX(); rippleY = event.getY();
-                rippleRadius = dp(3); rippleAlpha = 80;
-                invalidate();
+                pressed = true; dragged = false;
+                downRawX = event.getRawX(); downRawY = event.getRawY();
+                android.view.ViewGroup.LayoutParams raw = getLayoutParams();
+                if (raw instanceof FrameLayout.LayoutParams) { startLeft = ((FrameLayout.LayoutParams) raw).leftMargin; startTop = ((FrameLayout.LayoutParams) raw).topMargin; }
+                rippleX = event.getX(); rippleY = event.getY(); rippleRadius = dp(3); rippleAlpha = 80; invalidate(); return true;
+            case MotionEvent.ACTION_MOVE:
+                if (pressed) {
+                    float dx = event.getRawX() - downRawX, dy = event.getRawY() - downRawY;
+                    if (!dragged && Math.hypot(dx, dy) > dp(7)) dragged = true;
+                    if (dragged && getParent() instanceof ViewGroup) {
+                        ViewGroup parent = (ViewGroup) getParent();
+                        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) getLayoutParams();
+                        lp.leftMargin = Math.max(0, Math.min(parent.getWidth() - getWidth(), startLeft + Math.round(dx)));
+                        lp.topMargin = Math.max(0, Math.min(parent.getHeight() - getHeight(), startTop + Math.round(dy)));
+                        setLayoutParams(lp);
+                    }
+                }
                 return true;
             case MotionEvent.ACTION_UP:
                 if (pressed) {
                     pressed = false;
-                    performClick();
-                    if (Ui.bool("island_haptics", true)) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                    if (dragged) Ui.sp.edit().putInt("island_position_x", ((FrameLayout.LayoutParams)getLayoutParams()).leftMargin).putInt("island_position_y", ((FrameLayout.LayoutParams)getLayoutParams()).topMargin).apply();
+                    else { performClick(); if (Ui.bool("island_haptics", true)) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); }
                 }
                 return true;
-            case MotionEvent.ACTION_CANCEL:
-                pressed = false;
-                return true;
-            default:
-                return true;
+            case MotionEvent.ACTION_CANCEL: pressed = false; return true;
+            default: return true;
         }
     }
 
@@ -434,22 +448,6 @@ final class DynamicIslandView extends View {
             @Override public void onStopTrackingTouch(SeekBar bar) {}
         });
         box.addView(seek);
-        TextView blueLevel = text("Island blue intensity", 13, true);
-        blueLevel.setPadding(0, dp(14), 0, dp(4));
-        box.addView(blueLevel);
-        SeekBar blueSeek = new SeekBar(host);
-        blueSeek.setMax(100);
-        blueSeek.setProgress(Ui.sp.getInt("island_blue_intensity", 55));
-        blueSeek.setContentDescription("Island blue intensity");
-        blueSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
-                if (fromUser) Ui.sp.edit().putInt("island_blue_intensity", value).apply();
-                DynamicIslandView.refreshAppearance();
-            }
-            @Override public void onStartTrackingTouch(SeekBar bar) {}
-            @Override public void onStopTrackingTouch(SeekBar bar) {}
-        });
-        box.addView(blueSeek, new LinearLayout.LayoutParams(-1, dp(48)));
         TextView speed = text("Animation speed", 13, true);
         speed.setPadding(0, dp(12), 0, dp(4));
         box.addView(speed);

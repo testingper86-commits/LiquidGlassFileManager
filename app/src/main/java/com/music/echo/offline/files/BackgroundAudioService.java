@@ -26,8 +26,12 @@ public final class BackgroundAudioService extends Service {
     public static final String ACTION_PLAY = "com.liquidfiles.offline.audio.PLAY";
     public static final String ACTION_PAUSE = "com.liquidfiles.offline.audio.PAUSE";
     public static final String ACTION_STOP = "com.liquidfiles.offline.audio.STOP";
+    public static final String ACTION_SEEK = "com.liquidfiles.offline.audio.SEEK";
+    public static final String ACTION_VOLUME = "com.liquidfiles.offline.audio.VOLUME";
+    public static final String ACTION_SPEED = "com.liquidfiles.offline.audio.SPEED";
     public static volatile String activePath = "";
     public static volatile int latestPosition = 0;
+    public static volatile int latestDuration = 0;
     public static volatile boolean playbackActive = false;
     private static final String CHANNEL = "liquidfiles_playback";
     private static final int NOTIFICATION_ID = 4812;
@@ -61,6 +65,7 @@ public final class BackgroundAudioService extends Service {
             if (player != null && prepared) {
                 if (player.isPlaying()) {
                     latestPosition = player.getCurrentPosition();
+                    latestDuration = player.getDuration();
                     maybeCrossfade();
                 }
                 updateState();
@@ -112,6 +117,9 @@ public final class BackgroundAudioService extends Service {
         else if (ACTION_PLAY.equals(action)) { pausedForTransientFocusLoss = false; resume(); }
         else if ("com.liquidfiles.offline.audio.NEXT".equals(action)) skip(1);
         else if ("com.liquidfiles.offline.audio.PREVIOUS".equals(action)) skip(-1);
+        else if (ACTION_SEEK.equals(action)) seekTo(intent.getIntExtra("position", 0));
+        else if (ACTION_VOLUME.equals(action)) setVolume(intent.getFloatExtra("volume", 1f));
+        else if (ACTION_SPEED.equals(action)) setSpeed(intent.getFloatExtra("speed", 1f));
         else if (ACTION_START.equals(action)) {
             String requested = intent == null ? null : intent.getStringExtra("path");
             int position = intent == null ? 0 : intent.getIntExtra("position", 0);
@@ -145,7 +153,7 @@ public final class BackgroundAudioService extends Service {
 
     private void load(String file, int position) {
         pausedForTransientFocusLoss = false;
-        stopPlayback(); path = file; activePath = file; latestPosition = Math.max(0, position); prepared = false;
+        stopPlayback(); path = file; activePath = file; latestPosition = Math.max(0, position); latestDuration = 0; prepared = false;
         try {
             player = new MediaPlayer();
             // Keep decoding alive while the screen is off during legitimate background playback.
@@ -156,6 +164,7 @@ public final class BackgroundAudioService extends Service {
                 // Ignore callbacks from a player replaced by a rapid skip/stop.
                 if (player != mp) { try { mp.release(); } catch (Exception ignored) {} return; }
                 prepared = true;
+                latestDuration = mp.getDuration();
                 boolean focusGranted = false;
                 try {
                     int result;
@@ -308,6 +317,10 @@ public final class BackgroundAudioService extends Service {
         startForeground(NOTIFICATION_ID, notification());
     }
 
+    private void seekTo(int position) { try { if (player != null && prepared) { latestPosition = Math.max(0, Math.min(player.getDuration(), position)); player.seekTo(latestPosition); updateState(); updateNotification(); } } catch (Exception ignored) {} }
+    private void setVolume(float volume) { playbackVolume = Math.max(0f, Math.min(1f, volume)); try { if (player != null && prepared) player.setVolume(playbackVolume, playbackVolume); } catch (Exception ignored) {} }
+    private void setSpeed(float speed) { try { if (Build.VERSION.SDK_INT >= 23 && player != null && prepared) player.setPlaybackParams(new android.media.PlaybackParams().setSpeed(Math.max(0.5f, Math.min(2f, speed)))); } catch (Exception ignored) {} }
+
     private void resume() {
         try {
             if (player != null && prepared && !player.isPlaying()) player.start();
@@ -345,12 +358,13 @@ public final class BackgroundAudioService extends Service {
         prepared = false;
         crossfadeActive = false;
         playbackActive = false;
+        latestDuration = 0;
         DynamicIslandView.setPlayerActive(false);
     }
 
     private void updateState() {
         boolean playing = false; long pos = latestPosition;
-        try { if (player != null && prepared) { playing=player.isPlaying(); pos=player.getCurrentPosition(); latestPosition=(int)pos; } } catch (Exception ignored) {}
+        try { if (player != null && prepared) { playing=player.isPlaying(); pos=player.getCurrentPosition(); latestPosition=(int)pos; latestDuration=player.getDuration(); } } catch (Exception ignored) {}
         playbackActive = playing;
         DynamicIslandView.setPlayerActive(playing);
         if (session == null) return;
