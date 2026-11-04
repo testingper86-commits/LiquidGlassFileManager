@@ -68,6 +68,7 @@ public class ViewerActivity extends Activity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
+    DynamicIslandView dynamicIsland;
     TextView titleTv, counterTv, editImageBtn;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
@@ -160,6 +161,9 @@ public class ViewerActivity extends Activity {
         nextBtn = edge(Glyphs.NEXT, Gravity.END | Gravity.CENTER_VERTICAL, 1);
 
         setContentView(root);
+        dynamicIsland = new DynamicIslandView(this);
+        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
+        dynamicIsland.setVisibility(View.GONE);
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -787,8 +791,9 @@ public class ViewerActivity extends Activity {
                         else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) GlowRing.setActive(stage, false);
                         return false;
                     });
-                    player.setOnCompletionListener(completed -> { if (!videoLoop) advanceToNextVideo(); });
+                    player.setOnCompletionListener(completed -> { if(dynamicIsland!=null)dynamicIsland.update("Video finished",100); if (!videoLoop) advanceToNextVideo(); });
                     player.setOnErrorListener((failed, what, extra) -> {
+                        if(dynamicIsland!=null){dynamicIsland.update("Video playback failed",-1);dynamicIsland.setAction(null,null);}
                         android.util.Log.e("LiquidFiles", "MediaPlayer error what=" + what + " extra=" + extra);
                         Ui.toast(ViewerActivity.this, "This video can't be played here. Try Open with.");
                         releaseVideoPlayer(failed);
@@ -1699,6 +1704,13 @@ public class ViewerActivity extends Activity {
         cleanup();
         io.shutdown();
         super.onDestroy();
+    }
+
+    private void toggleIslandVideo() {
+        MediaPlayer player=videoPlayer;
+        if(player==null||!videoPrepared)return;
+        try { if(player.isPlaying()){player.pause();videoUserWantsPlayback=false;}else{player.start();videoUserWantsPlayback=true;} }
+        catch(IllegalStateException ex){Ui.toast(this,"Video control is temporarily unavailable");}
     }
 
     private void setVideoPlayAnimation(TextView button, boolean playing) {

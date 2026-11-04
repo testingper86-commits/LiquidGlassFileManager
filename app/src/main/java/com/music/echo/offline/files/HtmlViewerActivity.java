@@ -124,6 +124,8 @@ public final class HtmlViewerActivity extends Activity {
         });
         column.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(root);
+        DynamicIslandView island = new DynamicIslandView(this);
+        root.addView(island, new FrameLayout.LayoutParams(-1,-1));
         webView.loadUrl("https://" + ASSET_HOST + "/local/" + Uri.encode(document.getName()));
     }
 

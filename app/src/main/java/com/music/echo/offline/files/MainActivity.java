@@ -90,6 +90,7 @@ public class MainActivity extends Activity {
     ImageView[] navIc = new ImageView[3];
     TextView[] navTx = new TextView[3];
     TextView busyTv;
+    DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     View overlayView;
     View overlayBackgroundScreen;
@@ -196,6 +197,8 @@ public class MainActivity extends Activity {
         root.addView(busyTv, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         setContentView(root);
+        dynamicIsland = new DynamicIslandView(this);
+        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -302,10 +305,12 @@ public class MainActivity extends Activity {
     // ---------------- index ----------------
     void startIndex() {
         if (!hasAccess()) return;
+        if(dynamicIsland!=null)dynamicIsland.update("Scanning storage",-1);
         Indexer.I.start(this::onIndexDone);
     }
 
     void onIndexDone() {
+        if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);
         String[] names = Indexer.CAT_NAMES;
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], Indexer.I.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", Indexer.I.all, true, true); pendingCat = -1; }
@@ -337,12 +342,13 @@ public class MainActivity extends Activity {
         GlowRing.attach(busyTv);
         GlowRing.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
+        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" · tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{FileOps.requestCancel();Ui.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); if(dynamicIsland!=null)dynamicIsland.update(text,-1); }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {
@@ -1081,6 +1087,27 @@ public class MainActivity extends Activity {
         return row(glyph, title, sub, s, v -> s.toggle());
     }
 
+    void addDynamicIslandSettings() {
+        final android.content.SharedPreferences p = DynamicIslandView.preferences(this);
+        Switch enabled = new Switch(this); enabled.setChecked(p.getBoolean("enabled",true));
+        enabled.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean("enabled",on).apply();if(dynamicIsland!=null)dynamicIsland.setEnabledFromSettings();});
+        settings.addView(row(Glyphs.SPARKLE,"Enable Dynamic Island","Show the draggable in-app RGB activity capsule",enabled,v->enabled.toggle()),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(Glyphs.PALETTE,"RGB colour style",new String[]{"Full spectrum","Cool spectrum","Warm spectrum","Blue-violet spectrum"}[Math.max(0,Math.min(3,p.getInt("palette",0)))],null,v->new AlertDialog.Builder(this).setTitle("RGB colour style").setSingleChoiceItems(new String[]{"Full spectrum","Cool spectrum","Warm spectrum","Blue-violet spectrum"},p.getInt("palette",0),(d,w)->{p.edit().putInt("palette",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
+        addIslandSlider(p,"Glow intensity","glow",0,100,65);
+        addIslandSlider(p,"Transparency","transparency",80,255,225);
+        addIslandSlider(p,"Animation speed","speed",90,420,180);
+        settings.addView(row(Glyphs.INFO,"Capsule size",p.getInt("size",0)==0?"Compact":"Large",null,v->new AlertDialog.Builder(this).setTitle("Capsule size").setSingleChoiceItems(new String[]{"Compact","Large"},p.getInt("size",0),(d,w)->{p.edit().putInt("size",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(Glyphs.TUNE,"Position alignment","Choose an edge or drag anywhere",null,v->new AlertDialog.Builder(this).setTitle("Island alignment").setItems(new String[]{"Left edge","Center","Right edge"},(d,w)->{if(dynamicIsland!=null)dynamicIsland.align(w);else p.edit().putFloat("x",w==0?0f:w==1?0.5f:1f).apply();}).show()),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show file operations","show_operations",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show video playback","show_playback",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show storage scanning","show_scan",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Haptic feedback","haptics",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Automatic activity expansion","auto_expand",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(Glyphs.REFRESH,"Reset Dynamic Island preferences","Restore its default appearance and position",null,v->new AlertDialog.Builder(this).setTitle("Reset Dynamic Island?").setMessage("Only Dynamic Island preferences will be reset.").setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->{p.edit().clear().apply();if(dynamicIsland!=null){dynamicIsland.setEnabledFromSettings();dynamicIsland.refreshStyle();}buildSettings();}).show()),lpm(-1,-2,16,0,16,8));
+    }
+    View islandSwitch(android.content.SharedPreferences p,String title,String key,boolean def){Switch sw=new Switch(this);sw.setChecked(p.getBoolean(key,def));sw.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean(key,on).apply();if(dynamicIsland!=null)dynamicIsland.refreshStyle();});return row(Glyphs.SPARKLE,title,null,sw,v->sw.toggle());}
+    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(Ui.dp(16),Ui.dp(8),Ui.dp(16),Ui.dp(8));TextView label=Ui.tv(this,title+" · "+p.getInt(key,def),13,Ui.WHITE,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(this);seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" · "+n);if(dynamicIsland!=null)dynamicIsland.refreshStyle();}});box.addView(seek);settings.addView(box,lpm(-1,-2,16,0,16,8));}
+
     void buildSettings() {
         settings.removeAllViews();
         TextView t = Ui.tv(this, "Settings", 30, Ui.WHITE, true);
@@ -1107,6 +1134,9 @@ public class MainActivity extends Activity {
         settings.addView(section("Appearance"));
         settings.addView(row(Glyphs.PALETTE, "Color theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
+
+        settings.addView(section("Dynamic Island"));
+        addDynamicIslandSettings();
 
         settings.addView(section("Files & Folders"));
         settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
