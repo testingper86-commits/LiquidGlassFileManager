@@ -11,7 +11,7 @@ workflow = (ROOT / ".github/workflows/android-build.yml").read_text()
 
 assert "busyCount > 0 || BackgroundAudioService.playbackActive" in main
 assert "DynamicIslandView.sync(this" in main
-assert "settings.addView(section(\"Dynamic Island\"))" in main
+assert 'settings.addView(section("Dynamic Island"))' in main
 for key in ("island_rgb", "island_glow", "island_haptics", "island_reduce_motion", "island_transparency", "island_speed"):
     assert key in main, f"Missing main Settings control: {key}"
 assert "static void sync(Activity activity, boolean active)" in island
