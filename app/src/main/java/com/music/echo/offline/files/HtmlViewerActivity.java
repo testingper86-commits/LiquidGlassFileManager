@@ -156,29 +156,41 @@ public final class HtmlViewerActivity extends Activity {
         private final String rootPrefix;
 
         ConfinedDirectoryHandler(File directory) {
-            root = directory;
-            String base;
-            try { base = directory.getCanonicalPath(); }
-            catch (IOException ex) { base = directory.getAbsolutePath(); }
-            rootPrefix = base.endsWith(File.separator) ? base : base + File.separator;
+            File canonicalDirectory;
+            try {
+                canonicalDirectory = directory == null ? null : directory.getCanonicalFile();
+            } catch (IOException | SecurityException ex) {
+                canonicalDirectory = null;
+            }
+            root = canonicalDirectory;
+            String base = canonicalDirectory == null ? null : canonicalDirectory.getPath();
+            rootPrefix = base == null ? null
+                    : (base.endsWith(File.separator) ? base : base + File.separator);
         }
 
-        @Override public WebResourceResponse handle(String path) throws IOException {
-            if (path == null || path.isEmpty() || path.indexOf((char) 0) >= 0
-                    || path.indexOf('\\') >= 0) return null;
-            String decoded = Uri.decode(path);
-            if (decoded.startsWith("/") || decoded.equals("..") || decoded.equals(".")
-                    || decoded.contains("../") || decoded.contains("/..") || decoded.contains("./")) return null;
-            File requested = new File(root, decoded);
-            String canonical = requested.getCanonicalPath();
-            if (!canonical.startsWith(rootPrefix) || !requested.isFile() || !requested.canRead()) return null;
-            String extension = extensionOf(requested).toLowerCase(Locale.ROOT);
-            String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-            if (mime == null) mime = "application/octet-stream";
-            String charset = mime.startsWith("text/") || mime.contains("javascript")
-                    || mime.contains("json") || mime.contains("xml") ? "UTF-8" : null;
-            InputStream stream = new FileInputStream(requested);
-            return new WebResourceResponse(mime, charset, stream);
+        @Override public WebResourceResponse handle(String path) {
+            if (root == null || rootPrefix == null || path == null || path.isEmpty()
+                    || path.indexOf((char) 0) >= 0 || path.indexOf(92) >= 0) return null;
+            try {
+                String decoded = Uri.decode(path);
+                if (decoded.isEmpty() || decoded.indexOf((char) 0) >= 0 || decoded.indexOf(92) >= 0
+                        || decoded.startsWith("/") || decoded.equals("..") || decoded.equals(".")
+                        || decoded.contains("../") || decoded.contains("/..") || decoded.contains("./")) {
+                    return null;
+                }
+                File requested = new File(root, decoded);
+                String canonical = requested.getCanonicalPath();
+                if (!canonical.startsWith(rootPrefix) || !requested.isFile() || !requested.canRead()) return null;
+                String extension = extensionOf(requested).toLowerCase(Locale.ROOT);
+                String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+                if (mime == null) mime = "application/octet-stream";
+                String charset = mime.startsWith("text/") || mime.contains("javascript")
+                        || mime.contains("json") || mime.contains("xml") ? "UTF-8" : null;
+                InputStream stream = new FileInputStream(requested);
+                return new WebResourceResponse(mime, charset, stream);
+            } catch (IOException | SecurityException ex) {
+                return null;
+            }
         }
     }
 
