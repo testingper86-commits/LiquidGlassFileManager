@@ -161,6 +161,17 @@ def swipe_down():
     time.sleep(0.45)
 
 
+def assert_dynamic_island_confined_to_status_bar(root, label):
+    for node in root.iter("node"):
+        if node.attrib.get("content-desc", "").strip().startswith("ToxiFiles Dynamic Island"):
+            rect = parse_bounds(node)
+            if rect is None or rect[1] < 0 or rect[3] > 48:
+                raise AssertionError(f"{label}: Dynamic Island touch bounds must stay inside the 24dp status bar; got {rect}")
+            record(f"PASS: Dynamic Island touch bounds stay inside the status bar on {label}: {rect}")
+            return
+    raise AssertionError(f"{label}: Dynamic Island accessibility node is missing")
+
+
 def assert_visible(root, text, exact=False):
     if find_text(root, text, exact=exact) is None:
         raise AssertionError(f"Expected visible text not found: {text!r}")
@@ -312,6 +323,7 @@ def open_settings():
     tap_node(button)
     time.sleep(0.65)
     root = dump("settings-open")
+    assert_dynamic_island_confined_to_status_bar(root, "Settings")
     assert_navigation(root, False, "Settings")
     return root
 
@@ -512,6 +524,7 @@ def main():
 
         # Recycle Bin is a separate native screen; it must not expose the Settings page beneath it.
         settings, recycle_row = scroll_until_text_down("Recycle Bin", "settings-recycle-bin-row", exact=True)
+        assert_dynamic_island_confined_to_status_bar(settings, "Settings before opening Recycle Bin")
         tap_node(recycle_row)
         time.sleep(0.55)
         recycle_screen = dump("toxifiles-recycle-bin-screen")

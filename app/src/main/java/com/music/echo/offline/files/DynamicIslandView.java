@@ -85,8 +85,10 @@ final class DynamicIslandView extends View {
         }
         DynamicIslandView island = new DynamicIslandView((MainActivity) activity);
         island.setTag("toxifiles_dynamic_island");
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(38), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        lp.topMargin = island.dp(1);
+        // Keep the complete touch target inside Android's 24dp status-bar inset.
+        // The content starts below this inset; a taller view steals taps from the first row.
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(island.dp(174), island.dp(24), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        lp.topMargin = 0;
         parent.addView(island, lp);
     }
 
