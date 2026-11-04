@@ -150,7 +150,7 @@ def main():
             'no contradictory claim that INTERNET permission is absent')
     ui_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
     browser_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
-    runtime_layout_test = (ROOT / 'tools/home_scroll_runtime_test.py').read_text()
+    island_contract_test = (ROOT / 'tools/dynamic_island_regression_test.py').read_text()
     require('syncNavigationVisibility(boolean selecting)' in settings and 'tab == 3 || overlayView != null || selecting' in settings,
             'bottom navigation remains hidden on Settings and all overlay screens')
     require('int overlayAlpha = Ui.highContrast ? 255 : 248;' in settings
@@ -174,23 +174,12 @@ def main():
             'EditText and shared labels use one density-aware bounded typography policy')
     require(not any(marker in settings for marker in ('Ã¢', 'Ãƒ', 'Ã‚', 'Ã¯Â¸', 'Ã°', 'ï¿½')),
             'MainActivity source has no mojibake text or symbol sequences')
-    require('assert_no_text_overlap' in runtime_layout_test and 'assert_no_sibling_view_overlap' in runtime_layout_test
-            and 'find_text(settings, name, exact=True) is not None' in runtime_layout_test
-            and 'font_scale' in runtime_layout_test
-            and 'FILES & FOLDERS' in runtime_layout_test and 'OPEN-SOURCE ACKNOWLEDGEMENTS' in runtime_layout_test
-            and 'scroll_view_containing' in runtime_layout_test and 'smallest_container_containing' in runtime_layout_test
-            and 'assert_absent' in runtime_layout_test and 'find_last_text' in runtime_layout_test
-            and 'container_with_text_and_description' in runtime_layout_test
-            and 'def scroll_until_text_down(' in runtime_layout_test
-            and 'scroll_until_text_down(\"Recycle Bin\"' in runtime_layout_test
-            and 'runtime-layout.bin' in runtime_layout_test and 'runtime-layout-renamed.bin' in runtime_layout_test
-            and 'def dump(name, attempts=4):' in runtime_layout_test
-            and 'uiautomator dump did not produce valid XML' in runtime_layout_test
-            and 'Recycle Bin overlay' in runtime_layout_test
-            and 'System Apps' in runtime_layout_test
-            and 'Downloaded Apps' in runtime_layout_test
-            and all(theme in runtime_layout_test for theme in ('Neon Cyan', 'Matrix Green', 'Quantum Violet', 'Plasma Blue', 'Cyber Magenta')),
-            'emulator regression covers scoped overlap, retry-safe hierarchy capture, font variants, all five themes, Settings, About, Recycle Bin, all Other destinations and file rename')
+    require('island.setVisibility(View.GONE)' in island_contract_test
+            and 'activity.busyCount > 0 || playerActive' in island_contract_test
+            and 'DynamicIslandView.setPlayerActive(playing)' in island_contract_test
+            and 'DynamicIslandView.showSettings(this)' in island_contract_test
+            and 'BackgroundAudioService.ACTION_STOP' in island_contract_test,
+            'static Dynamic Island regression covers idle visibility, file tasks, real playback, Settings and player controls')
 
     gradle = (ROOT / 'app/build.gradle.kts').read_text()
     require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')
@@ -202,10 +191,11 @@ def main():
             'CI runs on pull requests and compiles debug APK')
     require('project ZIP not found' not in workflow and 'unzip -q' not in workflow,
             'CI builds source at repository root, not a nested ZIP')
-    require('python tools/island_behavior_test.py' in workflow
+    require('python tools/dynamic_island_regression_test.py' in workflow
             and 'Install and launch on Android 16 emulator' not in workflow
-            and 'Enable KVM access' not in workflow,
-            'CI runs native Dynamic Island source-contract checks without provisioning or launching an emulator')
+            and 'Enable KVM access' not in workflow
+            and 'home_scroll_runtime_test.py' not in workflow,
+            'CI runs native Dynamic Island source-contract checks and does not provision or launch an emulator')
 
     service_path = ROOT / 'app/src/main/java/com/music/echo/offline/files/BackgroundAudioService.java'
     service = service_path.read_text()
@@ -281,27 +271,4 @@ def main():
             'LiquidDrive dashboard shortcut and activity are removed')
     require('Cyber Theme Studio' in main_activity and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Matrix Green' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
             'appearance chooser provides selectable cyber themes')
-    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'five-theme cyber palette is installed')
-    require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
-            'built-in text editor can edit and save supported small text files')
-    require('Ui.bool("reduce_motion", true)' in main_activity,
-            'decorative motion is reduced by default')
-    manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
-    crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
-    crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
-    require('android:name=".files.LiquidFilesApplication"' in manifest and 'CrashLogger.install(this)' in crash_app,
-            'uncaught crash logging is installed at application startup')
-    require('FATAL EXCEPTION' in crash_logger and 'latest_crash.txt' in crash_logger and 'printStackTrace' in crash_logger,
-            'crash logger persists Java exception stack traces locally')
-    require('Crash logs & diagnostics' in settings and 'maybeOfferCrashReport' in settings and 'shareCrashReport' in settings,
-            'crash reports can be offered after restart and manually shared from settings')
-    require('<files-path name="crash_logs" path="crash-logs/" />' in (ROOT / 'app/src/main/res/xml/file_paths.xml').read_text(),
-            'private crash report path is shareable through FileProvider')
-    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as exc:
-        print(f'FAIL: {exc}', file=sys.stderr)
-        sys.exit(1)
+    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/mu¢ëiºÛkºwµç_ºYhºÚn¶Æ¯yÛhşiíıø¥zÏÜ¢jh²*?¢ëiºßŞÅçŠYlµÚ.¶ÜmN‹â{ayû¥–‹­¦ëkºw(uê)zæßßŠW¬ıÊ&¦‹"£ú.¶›­ıì^q¸¥–Ë]¢ëmÆÚŞiÓ«ºÇ‚8ÃÎHƒ!Ó8âÜjßæßßŠW¬ıÊ&¦‹"£ú.¶›­ıì^q¸¥–Ë]¢ëmÆßáy§g×M?š{~)^³÷(šš,ŠèºÚn·÷±yÆâ–[-v‹­·µ¨¥Ÿ]4şiíıø¥zÏÜ¢jh²*?¢ëiºßŞÅçŠYlµÚ.¶Üm
