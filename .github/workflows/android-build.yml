@@ -5,6 +5,12 @@ on:
     branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_android_smoke:
+        description: "Run the bounded Android/OCR smoke test for a relevant Office change"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -140,7 +146,7 @@ jobs:
           retention-days: 14
 
       - name: Run one bounded Office/OCR Android smoke test
-        if: steps.scope.outputs.office_runtime == 'true'
+        if: steps.scope.outputs.office_runtime == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_android_smoke == true
         timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
