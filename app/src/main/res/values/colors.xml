@@ -1,4 +1,5 @@
 <resources>
-    <color name="ic_launcher_background">#10162B</color>
+    <color name="toxifiles_canvas">#090D13</color>
+    <color name="toxifiles_signal">#8FE8C2</color>
     <color name="transparent">#00000000</color>
 </resources>

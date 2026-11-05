@@ -32,8 +32,17 @@ jobs:
           test -s gradle/wrapper/gradle-wrapper.jar
           test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
           test -s app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
-          test -s app/src/main/java/com/music/echo/offline/files/OfflineToolUi.java
-          test -s app/src/test/java/com/music/echo/offline/files/OfflineToolUiTest.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiIcons.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiMotion.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiProgressSeekBar.java
+          test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
+          test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
+          test -s app/src/main/res/drawable/ic_toxifiles_app_icon.xml
+          test -s app/src/main/res/drawable/ic_toxifiles_notification.xml
+          test -s app/src/main/res/drawable/toxifiles_splash.xml
           test -s app/build.gradle.kts
           test -s settings.gradle || test -s settings.gradle.kts
           chmod +x gradlew
@@ -59,7 +68,10 @@ jobs:
           set -o pipefail
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
-      - name: Run focused offline tool UI tests
+      - name: Verify complete visual replacement
+        run: python3 tools/toxifiles_visual_replacement_test.py
+
+      - name: Run Android unit tests
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Build debug APK

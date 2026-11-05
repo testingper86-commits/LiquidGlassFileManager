@@ -13,7 +13,7 @@ import java.security.MessageDigest;
 final class AppLock {
     static SharedPreferences sp(Context c) { return c.getSharedPreferences("lg_applock", Context.MODE_PRIVATE); }
     static boolean hasPin(Context c) { return sp(c).contains("pinhash"); }
-    static boolean enabled(Context c) { return Ui.bool("applock_on", false) && hasPin(c); }
+    static boolean enabled(Context c) { return ToxiVisualSystem.booleanPreference("applock_on", false) && hasPin(c); }
 
     static void setPin(Context c, String pin) {
         sp(c).edit().putString("pinhash", PinHash.create(pin)).putInt("failed_attempts", 0).putLong("blocked_until", 0L).apply();

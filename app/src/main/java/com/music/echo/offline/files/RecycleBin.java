@@ -19,7 +19,7 @@ import java.util.List;
  */
 final class RecycleBin {
     /** Days before auto-purge; user-configurable in Settings (default 30). */
-    static long maxAgeMs() { return Ui.sp.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
+    static long maxAgeMs() { return ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
 
     static final class Item {
         final File file;           // the real file/folder, kept under its original name

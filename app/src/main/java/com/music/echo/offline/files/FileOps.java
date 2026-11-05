@@ -173,7 +173,7 @@ final class FileOps {
             Enumeration<? extends ZipEntry> en = z.entries();
             while (en.hasMoreElements() && out.size() < 400) {
                 ZipEntry e = en.nextElement();
-                out.add(e.isDirectory() ? e.getName() : e.getName() + "   (" + Ui.size(e.getSize()) + ")");
+                out.add(e.isDirectory() ? e.getName() : e.getName() + "   (" + ToxiVisualSystem.formatSize(e.getSize()) + ")");
             }
         }
         return out;
@@ -254,14 +254,14 @@ final class FileOps {
                 i.setClipData(ClipData.newRawUri("", u));
                 i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 a.startActivity(Intent.createChooser(i, "Open with"));
-            } catch (Exception e2) { Ui.toast(a, "No app installed that can open this file"); }
-        } catch (Exception ex) { Ui.toast(a, "Can't open this file"); }
+            } catch (Exception e2) { ToxiVisualSystem.toast(a, "No app installed that can open this file"); }
+        } catch (Exception ex) { ToxiVisualSystem.toast(a, "Can't open this file"); }
     }
 
     static void install(Activity a, File f) {
         try {
             if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
-                Ui.toast(a, "Allow \"Install unknown apps\" for this app, then tap the APK again");
+                ToxiVisualSystem.toast(a, "Allow \"Install unknown apps\" for this app, then tap the APK again");
                 a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.getPackageName())));
                 return;
             }
@@ -269,7 +269,7 @@ final class FileOps {
             i.setDataAndType(uri(a, f), "application/vnd.android.package-archive");
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             a.startActivity(i);
-        } catch (Exception ex) { Ui.toast(a, "Can't install this APK"); }
+        } catch (Exception ex) { ToxiVisualSystem.toast(a, "Can't install this APK"); }
     }
 
     static void share(Activity a, List<File> fs) {
@@ -277,7 +277,7 @@ final class FileOps {
             ArrayList<Uri> uris = new ArrayList<>();
             File first = null;
             for (File f : fs) if (f.isFile()) { if (first == null) first = f; uris.add(uri(a, f)); }
-            if (uris.isEmpty()) { Ui.toast(a, "Folders can't be shared — compress them first"); return; }
+            if (uris.isEmpty()) { ToxiVisualSystem.toast(a, "Folders can't be shared — compress them first"); return; }
             Intent i;
             if (uris.size() == 1) {
                 i = new Intent(Intent.ACTION_SEND);
@@ -290,6 +290,6 @@ final class FileOps {
             }
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             a.startActivity(Intent.createChooser(i, "Share"));
-        } catch (Exception ex) { Ui.toast(a, "Can't share this file"); }
+        } catch (Exception ex) { ToxiVisualSystem.toast(a, "Can't share this file"); }
     }
 }

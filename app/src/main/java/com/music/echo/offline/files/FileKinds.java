@@ -37,28 +37,29 @@ final class FileKinds {
 
     static int color(int kind) {
         switch (kind) {
-            case DIR: return Color.rgb(255, 176, 64);
-            case IMAGE: return Color.rgb(46, 196, 140);
-            case VIDEO: return Color.rgb(236, 72, 130);
-            case AUDIO: return Color.rgb(160, 90, 250);
-            case PDF: return Color.rgb(232, 66, 66);
-            case TEXT: return Color.rgb(100, 125, 160);
-            case ARCHIVE: return Color.rgb(214, 150, 40);
-            case APK: return Color.rgb(70, 190, 110);
-            default: return Color.rgb(112, 122, 148);
+            case DIR: return 0xFFB9C7D8;
+            case IMAGE: return 0xFF6ACFB0;
+            case VIDEO: return 0xFFFF8C72;
+            case AUDIO: return 0xFFB49AFF;
+            case PDF: return 0xFFFA6F68;
+            case TEXT: return 0xFF77B8E8;
+            case ARCHIVE: return 0xFFE2B66F;
+            case APK: return 0xFF9BCB78;
+            default: return 0xFF9AA8B7;
         }
     }
 
     static int glyph(int kind) {
         switch (kind) {
-            case DIR: return Glyphs.FOLDER;
-            case IMAGE: return Glyphs.IMAGE;
-            case VIDEO: return Glyphs.VIDEO;
-            case AUDIO: return Glyphs.AUDIO;
-            case PDF: case TEXT: return Glyphs.DOC;
-            case ARCHIVE: return Glyphs.ARCHIVE;
-            case APK: return Glyphs.APK;
-            default: return Glyphs.FILE;
+            case DIR: return ToxiIcons.FOLDER;
+            case IMAGE: return ToxiIcons.IMAGE;
+            case VIDEO: return ToxiIcons.VIDEO;
+            case AUDIO: return ToxiIcons.AUDIO;
+            case PDF: return ToxiIcons.PDF;
+            case TEXT: return ToxiIcons.TEXT;
+            case ARCHIVE: return ToxiIcons.ARCHIVE;
+            case APK: return ToxiIcons.APK;
+            default: return ToxiIcons.FILE;
         }
     }
 

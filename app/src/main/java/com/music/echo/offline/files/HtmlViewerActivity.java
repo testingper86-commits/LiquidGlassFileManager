@@ -32,7 +32,7 @@ public final class HtmlViewerActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        Ui.init(this);
+        ToxiVisualSystem.initialize(this);
         if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
 
         String rawPath = getIntent().getStringExtra(EXTRA_FILE_PATH);
@@ -45,7 +45,7 @@ public final class HtmlViewerActivity extends Activity {
                 throw new IOException("Unsupported or unreadable HTML document");
             }
         } catch (IOException | SecurityException ex) {
-            Ui.toast(this, "Can't open this HTML file");
+            ToxiVisualSystem.toast(this, "Can't open this HTML file");
             finish();
             return;
         }
@@ -53,7 +53,7 @@ public final class HtmlViewerActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF05070C);
+        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
@@ -64,23 +64,23 @@ public final class HtmlViewerActivity extends Activity {
 
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackground(Ui.glass(24, true));
-        bar.setPadding(Ui.dp(5), 0, Ui.dp(12), 0);
-        TextView back = Ui.tv(this, "‹", 30, Ui.WHITE, false);
-        back.setGravity(Gravity.CENTER);
+        bar.setBackground(ToxiVisualSystem.surface(24, true));
+        bar.setPadding(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(12), 0);
+        ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back to file manager");
         back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(52)));
-        TextView title = Ui.tv(this, document.getName(), 14, Ui.WHITE, true);
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
+        TextView title = ToxiVisualSystem.text(this, document.getName(), 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
         bar.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView reload = Ui.tv(this, "↻", 23, Ui.WHITE, false);
-        reload.setGravity(Gravity.CENTER);
+        ImageView reload = ToxiVisualSystem.iconButton(this, ToxiIcons.REFRESH, ToxiVisualSystem.TEXT_PRIMARY);
         reload.setContentDescription("Reload HTML document");
         reload.setOnClickListener(v -> webView.reload());
-        bar.addView(reload, new LinearLayout.LayoutParams(Ui.dp(42), Ui.dp(48)));
-        column.addView(bar, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(44), ToxiVisualSystem.dp(44));
+        reloadLp.leftMargin = ToxiVisualSystem.dp(6);
+        bar.addView(reload, reloadLp);
+        column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(56)));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);

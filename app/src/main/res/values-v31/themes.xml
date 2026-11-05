@@ -1,0 +1,16 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/toxifiles_canvas</item>
+        <item name="android:navigationBarColor">@color/toxifiles_canvas</item>
+        <item name="android:colorAccent">@color/toxifiles_signal</item>
+        <item name="android:windowBackground">@color/toxifiles_canvas</item>
+        <item name="android:windowSplashScreenBackground">@color/toxifiles_canvas</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_toxifiles_brand_mark</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#14221D</item>
+        <item name="android:windowSplashScreenAnimationDuration">240</item>
+        <item name="android:alertDialogTheme">@style/ToxiDialogTheme</item>
+    </style>
+</resources>

@@ -40,7 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
-/** A glass file list: used for the Files tab, Favorites, categories and global search. */
+/** Device-first file browser used for Files, Favorites, categories and global search. */
 final class BrowserView extends FrameLayout {
     static final int DIR = 0, LIST = 1;
     final MainActivity a;
@@ -56,7 +56,7 @@ final class BrowserView extends FrameLayout {
     boolean selecting;
     String rangeAnchor;
     long selectionSummaryToken;
-    int columns = Ui.bool("grid", false) ? 3 : 1;
+    int columns = 1;
 
     final ListView lv;
     final BaseAdapter ad;
@@ -72,6 +72,8 @@ final class BrowserView extends FrameLayout {
         a = act;
         this.overlay = overlay;
         this.isFavs = favs;
+        columns = ToxiVisualSystem.booleanPreference("grid", false)
+                ? (act.getResources().getConfiguration().screenWidthDp >= 600 ? 4 : 3) : 1;
         mode = favs ? LIST : DIR;
         if (favs) listTitle = "Favorites";
 
@@ -81,46 +83,46 @@ final class BrowserView extends FrameLayout {
 
         header = new LinearLayout(a);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(Ui.dp(12), Ui.dp(4), Ui.dp(12), Ui.dp(4));
-        back = Ui.iconBtn(a, Glyphs.BACK, Ui.WHITE);
+        header.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4));
+        back = ToxiVisualSystem.iconButton(a, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(v -> { if (selecting) endSelect(); else handleBack(); });
-        title = Ui.tv(a, "", 24, Ui.WHITE, true);
+        title = ToxiVisualSystem.text(a, "", 24, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
-        searchBtn = Ui.iconBtn(a, Glyphs.SEARCH, Ui.WHITE);
+        searchBtn = ToxiVisualSystem.iconButton(a, ToxiIcons.SEARCH, ToxiVisualSystem.TEXT_PRIMARY);
         searchBtn.setOnClickListener(v -> toggleSearch());
-        moreBtn = Ui.iconBtn(a, Glyphs.MORE, Ui.WHITE);
+        moreBtn = ToxiVisualSystem.iconButton(a, ToxiIcons.MORE, ToxiVisualSystem.TEXT_PRIMARY);
         moreBtn.setOnClickListener(v -> headerMenu());
-        header.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
-        tl.leftMargin = Ui.dp(4);
+        tl.leftMargin = ToxiVisualSystem.dp(4);
         header.addView(title, tl);
-        header.addView(searchBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        header.addView(moreBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        header.setBackground(Ui.glass(22, false));
-        header.setMinimumHeight(Ui.dp(60));
+        header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.setBackground(ToxiVisualSystem.surface(22, false));
+        header.setMinimumHeight(ToxiVisualSystem.dp(60));
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.setMargins(Ui.dp(12), Ui.dp(6), Ui.dp(12), Ui.dp(8));
+        headerLp.setMargins(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(8));
         col.addView(header, headerLp);
 
-        pathTv = Ui.tv(a, "", 12, Ui.SUB, false);
+        pathTv = ToxiVisualSystem.text(a, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         pathTv.setSingleLine(true);
         pathTv.setEllipsize(TextUtils.TruncateAt.START);
-        pathTv.setBackground(Ui.glass(16, false));
-        pathTv.setPadding(Ui.dp(14), Ui.dp(9), Ui.dp(14), Ui.dp(9));
+        pathTv.setBackground(ToxiVisualSystem.surface(16, false));
+        pathTv.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9));
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
-        pl.setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(8));
+        pl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
         col.addView(pathTv, pl);
 
         search = new EditText(a);
         search.setSingleLine(true);
         search.setHint("Search files, or .pdf for a type");
-        search.setHintTextColor(Ui.SUB);
-        search.setTextColor(Ui.WHITE);
-        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.textSizePx(a, 15));
+        search.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY);
+        search.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
+        search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, ToxiVisualSystem.textSizePx(a, 15));
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        search.setBackground(Ui.glass(18, true));
-        search.setPadding(Ui.dp(16), Ui.dp(10), Ui.dp(16), Ui.dp(10));
+        search.setBackground(ToxiVisualSystem.surface(18, true));
+        search.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10));
         search.setVisibility(GONE);
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int af) { }
@@ -131,15 +133,14 @@ final class BrowserView extends FrameLayout {
             }
         });
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
-        sl.setMargins(Ui.dp(16), Ui.dp(2), Ui.dp(16), Ui.dp(8));
+        sl.setMargins(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
         col.addView(search, sl);
-        GlowRing.watchFocus(search);
 
         lv = new ListView(a);
         lv.setDivider(null);
         lv.setDividerHeight(0);
         lv.setClipToPadding(false);
-        lv.setPadding(0, Ui.dp(4), 0, Ui.dp(120));
+        lv.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(120));
         lv.setVerticalScrollBarEnabled(false);
         lv.setSelector(new ColorDrawable(Color.TRANSPARENT));
         lv.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -156,13 +157,13 @@ final class BrowserView extends FrameLayout {
             @Override public long getItemId(int i) { return i; }
             @Override public View getView(int i, View cv, ViewGroup p) {
                 if (columns <= 1) {
-                    if (cv == null) cv = Rows.build(a);
-                    Rows.H h = (Rows.H) cv.getTag();
+                    if (cv == null) cv = ToxiFileRow.create(a);
+                    ToxiFileRow.Holder h = (ToxiFileRow.Holder) cv.getTag();
                     Entry e = shown.get(i);
                     String extra = null;
                     if (mode == LIST) { File par = e.f.getParentFile(); extra = par == null ? "" : par.getName(); }
-                    Rows.bind(h, e, selecting, sel.contains(e), extra);
-                    Rows.setLabel(h, Labels.get(a, e.f));
+                    ToxiFileRow.bind(h, e, selecting, sel.contains(e), extra);
+                    ToxiFileRow.applyLabel(h, Labels.get(a, e.f));
                     h.more.setTag(e);
                     h.more.setOnClickListener(moreL);
                     return cv;
@@ -177,7 +178,7 @@ final class BrowserView extends FrameLayout {
                     if (idx >= shown.size()) { tile.setVisibility(View.INVISIBLE); tile.setOnClickListener(null); tile.setOnLongClickListener(null); continue; }
                     tile.setVisibility(View.VISIBLE);
                     final Entry e = shown.get(idx);
-                    Thumbs.bind(thumb, e, Ui.dp(96));
+                    Thumbs.bind(thumb, e, ToxiVisualSystem.dp(96));
                     nameTv.setText(e.name);
                     check.setVisibility(selecting && sel.contains(e) ? View.VISIBLE : View.GONE);
                     tile.setOnClickListener(v -> { if (selecting) toggle(e); else open(e); });
@@ -197,7 +198,7 @@ final class BrowserView extends FrameLayout {
             return true;
         });
 
-        empty = Ui.tv(a, "", 15, Ui.SUB, false);
+        empty = ToxiVisualSystem.text(a, "", 15, ToxiVisualSystem.TEXT_SECONDARY, false);
         empty.setGravity(Gravity.CENTER);
         empty.setVisibility(GONE);
         addView(empty, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
@@ -205,62 +206,76 @@ final class BrowserView extends FrameLayout {
 
         prog = new ProgressBar(a);
         prog.setIndeterminate(true);
-        prog.setIndeterminateTintList(ColorStateList.valueOf(Ui.accent));
+        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
         prog.setVisibility(GONE);
-        addView(prog, new FrameLayout.LayoutParams(Ui.dp(40), Ui.dp(40), Gravity.CENTER));
-        GlowRing.attach(prog);
-        GlowRing.setActive(prog, false);
+        addView(prog, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40), Gravity.CENTER));
 
         selBar = new LinearLayout(a);
         selBar.setOrientation(LinearLayout.HORIZONTAL);
         selBar.setGravity(Gravity.CENTER);
-        selBar.setBackground(Ui.glass(28, true));
+        selBar.setBackground(ToxiVisualSystem.surface(28, true));
         selBar.setVisibility(GONE);
-        selBar.addView(selBtn(Glyphs.COPY, "Copy", () -> copySel(false)));
-        selBar.addView(selBtn(Glyphs.CUT, "Cut", () -> copySel(true)));
-        selBar.addView(selBtn(Glyphs.TRASH, "Delete", () -> confirmSelectionDelete(new ArrayList<>(sel))));
-        selBar.addView(selBtn(Glyphs.SHARE, "Share", () -> FileOps.share(a, files(sel))));
-        selBar.addView(selBtn(Glyphs.MORE, "More", this::selMore));
-        FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, Ui.dp(68), Gravity.BOTTOM);
-        bl.setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(12));
+        selBar.addView(selBtn(ToxiIcons.COPY, "Copy", () -> copySel(false)));
+        selBar.addView(selBtn(ToxiIcons.CUT, "Cut", () -> copySel(true)));
+        selBar.addView(selBtn(ToxiIcons.TRASH, "Delete", () -> confirmSelectionDelete(new ArrayList<>(sel))));
+        selBar.addView(selBtn(ToxiIcons.SHARE, "Share", () -> FileOps.share(a, files(sel))));
+        selBar.addView(selBtn(ToxiIcons.MORE, "More", this::selMore));
+        FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(68), Gravity.BOTTOM);
+        bl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
         addView(selBar, bl);
 
-        pasteBtn = Ui.tv(a, "Paste here", 14, Ui.WHITE, true);
-        pasteBtn.setBackground(Ui.accentPill(24));
-        pasteBtn.setPadding(Ui.dp(20), Ui.dp(13), Ui.dp(20), Ui.dp(13));
+        pasteBtn = ToxiVisualSystem.text(a, "Paste here", 14, ToxiVisualSystem.TEXT_PRIMARY, true);
+        pasteBtn.setBackground(ToxiVisualSystem.accentSurface(24));
+        pasteBtn.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(13));
         pasteBtn.setVisibility(GONE);
-        Ui.press(pasteBtn);
+        ToxiVisualSystem.interactive(pasteBtn);
         pasteBtn.setOnClickListener(v -> paste());
         FrameLayout.LayoutParams pb = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
-        pb.setMargins(0, 0, Ui.dp(20), Ui.dp(100));
+        pb.setMargins(0, 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(100));
         addView(pasteBtn, pb);
 
         updateHeader();
     }
 
-    View selBtn(int glyph, String label, final Runnable r) {
-        LinearLayout b = new LinearLayout(a);
-        b.setOrientation(LinearLayout.VERTICAL);
-        b.setGravity(Gravity.CENTER);
-        ImageView ic = new ImageView(a);
-        ic.setImageDrawable(Glyphs.get(glyph, Ui.WHITE));
-        b.addView(ic, new LinearLayout.LayoutParams(Ui.dp(24), Ui.dp(24)));
-        TextView t = Ui.tv(a, label, 10.5f, Ui.SUB, false);
-        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
-        tp.topMargin = Ui.dp(4);
-        b.addView(t, tp);
-        b.setOnClickListener(v -> r.run());
-        Ui.press(b);
-        b.setLayoutParams(new LinearLayout.LayoutParams(0, -1, 1f));
-        return b;
+    View selBtn(int glyph, String label, final Runnable action) {
+        LinearLayout button = new LinearLayout(a);
+        button.setOrientation(LinearLayout.HORIZONTAL);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(ToxiVisualSystem.dp(6), 0, ToxiVisualSystem.dp(6), 0);
+        ImageView symbol = new ImageView(a);
+        symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.TEXT_PRIMARY));
+        button.addView(symbol, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(19), ToxiVisualSystem.dp(19)));
+        TextView caption = ToxiVisualSystem.text(a, label, 10.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        LinearLayout.LayoutParams captionLp = new LinearLayout.LayoutParams(-2, -2);
+        captionLp.leftMargin = ToxiVisualSystem.dp(5);
+        button.addView(caption, captionLp);
+        button.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); action.run(); });
+        ToxiVisualSystem.interactive(button);
+        button.setLayoutParams(new LinearLayout.LayoutParams(0, -1, 1f));
+        return button;
     }
 
     void applyInsets() {
-        lv.setPadding(0, Ui.dp(4), 0, Ui.dp(112) + Ui.bottom);
-        ((FrameLayout.LayoutParams) selBar.getLayoutParams()).bottomMargin = Ui.bottom + Ui.dp(12);
-        ((FrameLayout.LayoutParams) pasteBtn.getLayoutParams()).bottomMargin = Ui.bottom + Ui.dp(100);
+        lv.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(112) + ToxiVisualSystem.BOTTOM_INSET);
+        ((FrameLayout.LayoutParams) selBar.getLayoutParams()).bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
+        ((FrameLayout.LayoutParams) pasteBtn.getLayoutParams()).bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(100);
         selBar.requestLayout();
         pasteBtn.requestLayout();
+    }
+
+    void recolor() {
+        setBackgroundColor(ToxiVisualSystem.CANVAS);
+        header.setBackground(ToxiVisualSystem.surface(22, false));
+        back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY));
+        searchBtn.setImageDrawable(ToxiIcons.symbol(ToxiIcons.SEARCH, ToxiVisualSystem.TEXT_PRIMARY));
+        moreBtn.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE, ToxiVisualSystem.TEXT_PRIMARY));
+        pathTv.setBackground(ToxiVisualSystem.surface(16, false));
+        search.setBackground(ToxiVisualSystem.surface(18, true));
+        selBar.setBackground(ToxiVisualSystem.surface(18, true));
+        pasteBtn.setBackground(ToxiVisualSystem.accentSurface(18));
+        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
+        empty.setTextColor(ToxiVisualSystem.TEXT_SECONDARY);
+        ad.notifyDataSetChanged();
     }
 
     // ---------- loading ----------
@@ -287,8 +302,8 @@ final class BrowserView extends FrameLayout {
     }
 
     Comparator<Entry> comparator() {
-        final int k = Ui.sp.getInt("sort", 0);
-        final boolean asc = Ui.sp.getBoolean("asc", true);
+        final int k = ToxiVisualSystem.PREFERENCES.getInt("sort", 0);
+        final boolean asc = ToxiVisualSystem.PREFERENCES.getBoolean("asc", true);
         return (x, y) -> {
             if (x.dir != y.dir) return x.dir ? -1 : 1;
             int r;
@@ -311,7 +326,7 @@ final class BrowserView extends FrameLayout {
         a.io.execute(() -> {
             final List<Entry> res = new ArrayList<>();
             File[] fs = d.listFiles();
-            boolean hid = Ui.bool("hidden", false);
+            boolean hid = ToxiVisualSystem.booleanPreference("hidden", false);
             if (fs != null) for (File f : fs) { if (!hid && f.getName().startsWith(".")) continue; res.add(new Entry(f)); }
             Collections.sort(res, cmp);
             post(() -> {
@@ -340,7 +355,7 @@ final class BrowserView extends FrameLayout {
         listTitle = t;
         String normalizedTitle = t == null ? "" : t.toLowerCase(Locale.ROOT);
         if (normalizedTitle.contains("image") || normalizedTitle.contains("photo") || normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")) columns = 3;
-        else columns = Ui.bool("grid", false) ? 3 : 1;
+        else columns = ToxiVisualSystem.booleanPreference("grid", false) ? 3 : 1;
         limit = limited;
         selecting = false;
         sel.clear();
@@ -380,14 +395,14 @@ final class BrowserView extends FrameLayout {
     }
 
     void updateEmpty() {
-        GlowRing.setActive(prog, loading);
+        ToxiMotion.setActive(prog, loading);
         if (loading) { empty.setVisibility(GONE); prog.setVisibility(VISIBLE); return; }
         prog.setVisibility(GONE);
         if (mode == DIR && !a.hasAccess()) {
             empty.setText("Allow access to all files\nTap here to open settings");
             empty.setVisibility(VISIBLE);
         } else if (shown.isEmpty()) {
-            empty.setText((!query.isEmpty() || (mode == LIST && "Search".equals(listTitle) && hasAdvancedFilters())) ? "No results for the current search and filters" : mode == DIR ? "This folder is empty" : isFavs ? "No favorites yet\nUse ⋮ on a file to add one" : "Nothing here yet");
+            empty.setText((!query.isEmpty() || (mode == LIST && "Search".equals(listTitle) && hasAdvancedFilters())) ? "No results for the current search and filters" : mode == DIR ? "This folder is empty" : isFavs ? "No favorites yet\nUse the file action menu to add one" : "Nothing here yet");
             empty.setVisibility(VISIBLE);
         } else empty.setVisibility(GONE);
     }
@@ -395,14 +410,14 @@ final class BrowserView extends FrameLayout {
     void updateHeader() {
         if (selecting) {
             title.setText(sel.size() + " selected");
-            back.setImageDrawable(Glyphs.get(Glyphs.CLOSE, Ui.WHITE));
+            back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.CLOSE, ToxiVisualSystem.TEXT_PRIMARY));
             back.setVisibility(VISIBLE);
             searchBtn.setVisibility(GONE);
             pathTv.setVisibility(GONE);
             return;
         }
         searchBtn.setVisibility(VISIBLE);
-        back.setImageDrawable(Glyphs.get(Glyphs.BACK, Ui.WHITE));
+        back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY));
         if (mode == DIR) {
             title.setText(atRoot() ? "Internal Storage" : (cur == null ? "" : cur.getName()));
             back.setVisibility(atRoot() ? GONE : VISIBLE);
@@ -416,7 +431,7 @@ final class BrowserView extends FrameLayout {
             back.setVisibility(overlay ? VISIBLE : GONE);
             pathTv.setVisibility(GONE);
         }
-        title.setPadding(back.getVisibility() == VISIBLE ? 0 : Ui.dp(10), 0, 0, 0);
+        title.setPadding(back.getVisibility() == VISIBLE ? 0 : ToxiVisualSystem.dp(10), 0, 0, 0);
     }
 
     // ---------- search ----------
@@ -470,7 +485,7 @@ final class BrowserView extends FrameLayout {
         updateSel();
     }
 
-    void startSelect(Entry e) { selecting = true; sel.clear(); sel.add(e); rangeAnchor = e.f.getAbsolutePath(); Ui.tick(this); updateSel(); }
+    void startSelect(Entry e) { selecting = true; sel.clear(); sel.add(e); rangeAnchor = e.f.getAbsolutePath(); ToxiVisualSystem.feedback(this); updateSel(); }
     void toggle(Entry e) { if (!sel.remove(e)) { sel.add(e); if (rangeAnchor == null) rangeAnchor = e.f.getAbsolutePath(); } if (sel.isEmpty()) endSelect(); else updateSel(); }
     void selectRange(Entry end) {
         if (!selecting) { startSelect(end); return; }
@@ -499,14 +514,14 @@ final class BrowserView extends FrameLayout {
             long[] totals = new long[2];
             for (File f : snapshot) { if (token != selectionSummaryToken) return; if (f.exists()) FileOps.treeSize(f, totals); }
             final long bytes = totals[0];
-            post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + Ui.size(bytes)); });
+            post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + ToxiVisualSystem.formatSize(bytes)); });
         });
     }
 
     void selectionStudio() {
         if (sel.isEmpty()) return;
-        final TextView details = Ui.tv(a, sel.size() + " selected items\nLong-press another item to select a range.\nCalculating combined size…", 15, Ui.WHITE, true);
-        details.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(18));
+        final TextView details = ToxiVisualSystem.text(a, sel.size() + " selected items\nLong-press another item to select a range.\nCalculating combined size…", 15, ToxiVisualSystem.TEXT_PRIMARY, true);
+        details.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
         AlertDialog dialog = new AlertDialog.Builder(a).setTitle("Selection Studio").setView(details)
                 .setNeutralButton("Deselect all", (d,w) -> deselectAll())
                 .setNegativeButton("Close", null)
@@ -514,7 +529,7 @@ final class BrowserView extends FrameLayout {
         final List<File> snapshot = files(sel);
         dialog.setOnShowListener(d -> {
             a.io.execute(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
-                final String value = snapshot.size() + " selected items\n" + Ui.size(total[0]) + " combined file size\n" + total[1] + " files";
+                final String value = snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files";
                 post(() -> { if (dialog.isShowing()) details.setText(value); });
             });
         });
@@ -540,7 +555,7 @@ final class BrowserView extends FrameLayout {
     void copySel(boolean cut) {
         List<File> l = files(sel);
         a.setClip(l.toArray(new File[0]), cut);
-        Ui.toast(a, (cut ? "Cut " : "Copied ") + l.size() + " — open a folder and tap Paste");
+        ToxiVisualSystem.toast(a, (cut ? "Cut " : "Copied ") + l.size() + " — open a folder and tap Paste");
         endSelect();
     }
 
@@ -556,7 +571,7 @@ final class BrowserView extends FrameLayout {
         final boolean cut = a.clipCut;
         FileOps.Done done = msg -> {
             if (cut) a.setClip(null, false);
-            Ui.toast(a, msg);
+            ToxiVisualSystem.toast(a, msg);
             a.afterOps();
         };
         if (cut) new AlertDialog.Builder(a).setTitle("Move " + src.length + " items?")
@@ -587,36 +602,39 @@ final class BrowserView extends FrameLayout {
     LinearLayout buildGridRow() {
         LinearLayout row = new LinearLayout(a);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < columns; i++) {
             FrameLayout tile = new FrameLayout(a);
+            tile.setBackground(ToxiVisualSystem.surface(15, false));
+            tile.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
             ImageView thumb = new ImageView(a);
             thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            thumb.setBackground(Ui.glass(16, false));
-            Ui.round(thumb, 16);
-            tile.addView(thumb, new FrameLayout.LayoutParams(-1, Ui.dp(96)));
-            TextView nameTv = Ui.tv(a, "", 11, Ui.WHITE, false);
-            nameTv.setMaxLines(1);
+            thumb.setBackground(ToxiVisualSystem.surface(12, true));
+            ToxiVisualSystem.clipRound(thumb, 12);
+            FrameLayout.LayoutParams thumbLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(68), ToxiVisualSystem.dp(68), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            tile.addView(thumb, thumbLp);
+            TextView nameTv = ToxiVisualSystem.text(a, "", 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+            nameTv.setMaxLines(2);
             nameTv.setEllipsize(TextUtils.TruncateAt.END);
-            nameTv.setGravity(Gravity.CENTER_HORIZONTAL);
-            FrameLayout.LayoutParams np = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
-            np.setMargins(Ui.dp(4), 0, Ui.dp(4), Ui.dp(4));
-            tile.addView(nameTv, np);
+            nameTv.setGravity(Gravity.CENTER);
+            FrameLayout.LayoutParams nameLp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+            nameLp.setMargins(ToxiVisualSystem.dp(2), 0, ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(2));
+            tile.addView(nameTv, nameLp);
             View check = new View(a);
-            check.setBackground(Ui.accentPill(10));
+            check.setBackground(ToxiVisualSystem.accentSurface(9));
             check.setVisibility(GONE);
-            FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(Ui.dp(16), Ui.dp(16), Gravity.TOP | Gravity.END);
-            cp.setMargins(0, Ui.dp(6), Ui.dp(6), 0);
-            tile.addView(check, cp);
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, -2, 1f);
-            tp.setMargins(Ui.dp(5), Ui.dp(5), Ui.dp(5), Ui.dp(5));
-            row.addView(tile, tp);
+            FrameLayout.LayoutParams checkLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(17), Gravity.TOP | Gravity.END);
+            checkLp.setMargins(0, ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), 0);
+            tile.addView(check, checkLp);
+            LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(126), 1f);
+            tileLp.setMargins(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+            row.addView(tile, tileLp);
         }
         return row;
     }
 
     void toggleView() {
-        columns = columns > 1 ? 1 : 3;
-        Ui.set("grid", columns > 1);
+        columns = columns > 1 ? 1 : (a.getResources().getConfiguration().screenWidthDp >= 600 ? 4 : 3);
+        ToxiVisualSystem.setBooleanPreference("grid", columns > 1);
         ad.notifyDataSetChanged();
     }
 
@@ -625,7 +643,7 @@ final class BrowserView extends FrameLayout {
         List<Runnable> r = new ArrayList<>();
         if (mode == DIR && !selecting) add(l, r, "New folder", this::newFolder);
         if (mode == DIR && !selecting) add(l, r, "Choose SD/USB storage…", a::openOtherStorage);
-        if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { Ui.sp.edit().putString("default_folder", cur.getAbsolutePath()).apply(); Ui.toast(a, "Set as default: " + cur.getAbsolutePath()); });
+        if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { ToxiVisualSystem.PREFERENCES.edit().putString("default_folder", cur.getAbsolutePath()).apply(); ToxiVisualSystem.toast(a, "Set as default: " + cur.getAbsolutePath()); });
         add(l, r, columns > 1 ? "List view" : "Grid view", this::toggleView);
         add(l, r, "Sort by…", this::sortDialog);
         if (mode == LIST && "Search".equals(listTitle)) add(l, r, "Advanced search filters…", this::advancedSearchDialog);
@@ -634,8 +652,8 @@ final class BrowserView extends FrameLayout {
             add(l, r, "Deselect all", this::deselectAll);
         } else if (!shown.isEmpty()) add(l, r, "Select all", this::selectAll);
         if (mode == DIR) {
-            boolean on = Ui.bool("hidden", false);
-            add(l, r, on ? "Hide hidden files" : "Show hidden files", () -> { Ui.set("hidden", !on); reload(); });
+            boolean on = ToxiVisualSystem.booleanPreference("hidden", false);
+            add(l, r, on ? "Hide hidden files" : "Show hidden files", () -> { ToxiVisualSystem.setBooleanPreference("hidden", !on); reload(); });
             if (a.clip != null) add(l, r, "Paste here", this::paste);
             add(l, r, "Refresh", this::reload);
         }
@@ -652,15 +670,15 @@ final class BrowserView extends FrameLayout {
 
     void advancedSearchDialog() {
         LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), Ui.dp(8));
+        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
         String[] types = {"Any type", "Images", "Videos", "Audio", "Documents", "Archives", "APK packages", "Folders", "Other files"};
         String[] sizes = {"Any size", "At least 1 MB", "At least 10 MB", "At least 100 MB"};
         String[] dates = {"Any date", "Modified in last 7 days", "Modified in last 30 days", "Modified in last 365 days"};
-        panel.addView(Ui.tv(a, "File type", 12, Ui.SUB, true));
+        panel.addView(ToxiVisualSystem.text(a, "File type", 12, ToxiVisualSystem.TEXT_SECONDARY, true));
         Spinner typeSpinner = filterSpinner(types, searchTypeFilter); panel.addView(typeSpinner);
-        panel.addView(Ui.tv(a, "Minimum size", 12, Ui.SUB, true));
+        panel.addView(ToxiVisualSystem.text(a, "Minimum size", 12, ToxiVisualSystem.TEXT_SECONDARY, true));
         Spinner sizeSpinner = filterSpinner(sizes, searchSizeFilter); panel.addView(sizeSpinner);
-        panel.addView(Ui.tv(a, "Modified date", 12, Ui.SUB, true));
+        panel.addView(ToxiVisualSystem.text(a, "Modified date", 12, ToxiVisualSystem.TEXT_SECONDARY, true));
         Spinner dateSpinner = filterSpinner(dates, searchDateFilter); panel.addView(dateSpinner);
         new AlertDialog.Builder(a).setTitle("Advanced search")
                 .setMessage("Filters apply to the indexed search results. Open a folder directly to browse files outside the global index limit.")
@@ -698,7 +716,7 @@ final class BrowserView extends FrameLayout {
     private boolean hasAdvancedFilters() { return searchTypeFilter != 0 || searchSizeFilter != 0 || searchDateFilter != 0; }
 
     void sortDialog() {
-        final String[] names = {"Name (A → Z)", "Name (Z → A)", "Newest first", "Oldest first", "Largest first", "Smallest first", "Type"};
+        final String[] names = {"Name A to Z", "Name Z to A", "Newest first", "Oldest first", "Largest first", "Smallest first", "Type"};
         new AlertDialog.Builder(a).setTitle("Sort by").setItems(names, (d, w) -> {
             int k; boolean asc;
             switch (w) {
@@ -710,7 +728,7 @@ final class BrowserView extends FrameLayout {
                 case 5: k = 2; asc = true; break;
                 default: k = 3; asc = true;
             }
-            Ui.sp.edit().putInt("sort", k).putBoolean("asc", asc).apply();
+            ToxiVisualSystem.PREFERENCES.edit().putInt("sort", k).putBoolean("asc", asc).apply();
             final Comparator<Entry> cmp = comparator();
             Collections.sort(all, cmp);
             applyFilter();
@@ -750,18 +768,18 @@ final class BrowserView extends FrameLayout {
         final EditText start = input("1");
         final EditText increment = input("1");
         final EditText padding = input("1");
-        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(Ui.WHITE);
-        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(Ui.WHITE); preserve.setChecked(true);
+        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
+        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setChecked(true);
         final Spinner capitalization = new Spinner(a);
         ArrayAdapter<String> cases = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"});
         cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);
-        final TextView preview = Ui.tv(a, "Enter rename rules to preview the result.", 12, Ui.SUB, false);
-        preview.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(Ui.dp(16),Ui.dp(8),Ui.dp(16),Ui.dp(12));
+        final TextView preview = ToxiVisualSystem.text(a, "Enter rename rules to preview the result.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        preview.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(ToxiVisualSystem.dp(16),ToxiVisualSystem.dp(8),ToxiVisualSystem.dp(16),ToxiVisualSystem.dp(12));
         addRenameField(panel,"Prefix",prefix); addRenameField(panel,"Suffix",suffix); addRenameField(panel,"Find text (blank = none)",find); addRenameField(panel,"Replace with (blank removes matches)",replacement);
         addRenameField(panel,"First number",start); addRenameField(panel,"Number increment",increment); addRenameField(panel,"Number padding (digits)",padding);
         addRenameField(panel,"Capitalization",capitalization); panel.addView(numbering); panel.addView(preserve);
-        TextView previewTitle = Ui.tv(a,"LIVE BEFORE / AFTER PREVIEW",11,Ui.accent,true); previewTitle.setPadding(0,Ui.dp(12),0,Ui.dp(4)); panel.addView(previewTitle); panel.addView(preview);
+        TextView previewTitle = ToxiVisualSystem.text(a,"LIVE BEFORE / AFTER PREVIEW",11,ToxiVisualSystem.ACCENT,true); previewTitle.setPadding(0,ToxiVisualSystem.dp(12),0,ToxiVisualSystem.dp(4)); panel.addView(previewTitle); panel.addView(preview);
         ScrollView scroll = new ScrollView(a); scroll.setFillViewport(false); scroll.addView(panel);
         final long[] previewGeneration = {0};
         final Runnable[] pendingPreview = {null};
@@ -774,7 +792,7 @@ final class BrowserView extends FrameLayout {
                 a.io.execute(() -> {
                     List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                     StringBuilder text = new StringBuilder(); int shownCount = Math.min(12,plan.size());
-                    for(int i=0;i<shownCount;i++){ BatchRenameEngine.Item item=plan.get(i); text.append(item.source == null ? "(missing)" : item.source.getName()).append("\n  → ").append(item.target == null ? "(invalid)" : item.target.getName()); if(!item.valid()) text.append("\n  ! ").append(item.problem); text.append("\n\n"); }
+                    for(int i=0;i<shownCount;i++){ BatchRenameEngine.Item item=plan.get(i); text.append(item.source == null ? "(missing)" : item.source.getName()).append("\n  to ").append(item.target == null ? "(invalid)" : item.target.getName()); if(!item.valid()) text.append("\n  ! ").append(item.problem); text.append("\n\n"); }
                     if(plan.size()>shownCount) text.append("… and ").append(plan.size()-shownCount).append(" more\n");
                     long invalid=plan.stream().filter(item -> !item.valid()).count();
                     text.append("\n").append(plan.size()).append(" items · ").append(invalid).append(" conflict(s)");
@@ -799,7 +817,7 @@ final class BrowserView extends FrameLayout {
             a.io.execute(() -> {
                 List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                 List<String> problems = new ArrayList<>(); for(BatchRenameEngine.Item item:plan) if(!item.valid()) problems.add((item.source==null?"Missing file":item.source.getName())+": "+item.problem);
-                StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) summary.append(plan.get(i).source.getName()).append(" → ").append(plan.get(i).target.getName()).append("\n");
+                StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) summary.append(plan.get(i).source.getName()).append(" to ").append(plan.get(i).target.getName()).append("\n");
                 if(plan.size()>20) summary.append("… and ").append(plan.size()-20).append(" more");
                 final String reviewText=summary.toString();
                 post(() -> {
@@ -817,9 +835,9 @@ final class BrowserView extends FrameLayout {
     }
 
     private void addRenameField(LinearLayout panel,String label,View field) {
-        TextView title=Ui.tv(a,label,12,Ui.SUB,true); title.setPadding(0,Ui.dp(7),0,Ui.dp(3)); panel.addView(title);
-        if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(Ui.WHITE); edit.setHintTextColor(Ui.SUB); edit.setBackground(Ui.glass(12,true)); edit.setPadding(Ui.dp(12),Ui.dp(9),Ui.dp(12),Ui.dp(9)); }
-        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? Ui.dp(48) : -2));
+        TextView title=ToxiVisualSystem.text(a,label,12,ToxiVisualSystem.TEXT_SECONDARY,true); title.setPadding(0,ToxiVisualSystem.dp(7),0,ToxiVisualSystem.dp(3)); panel.addView(title);
+        if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); edit.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY); edit.setBackground(ToxiVisualSystem.surface(12,true)); edit.setPadding(ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(9),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(9)); }
+        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? ToxiVisualSystem.dp(48) : -2));
     }
 
     private BatchRenameEngine.Options renameOptions(EditText prefix,EditText suffix,EditText find,EditText replacement,EditText start,EditText increment,EditText padding,Spinner capitalization,CheckBox numbering,CheckBox preserve) {
@@ -868,7 +886,7 @@ final class BrowserView extends FrameLayout {
         }).show();
     }
 
-    /** One-tap move to a common folder, no need to cut → navigate → paste. */
+    /** One-tap move to a common folder; no need to cut, navigate, then paste. */
     void confirmSelectionMove(final List<Entry> list) {
         if (list == null || list.isEmpty()) return;
         new AlertDialog.Builder(a).setTitle("Move " + list.size() + " selected items?")
@@ -884,18 +902,18 @@ final class BrowserView extends FrameLayout {
         dirs[dirs.length - 1] = root;
         new AlertDialog.Builder(a).setTitle("Move to").setItems(names, (d, w) -> {
             File dest = dirs[w];
-            if (!dest.isDirectory()) { Ui.toast(a, "That folder doesn't exist on this device"); return; }
-            pasteWithConflictPrompt(files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
+            if (!dest.isDirectory()) { ToxiVisualSystem.toast(a, "That folder doesn't exist on this device"); return; }
+            pasteWithConflictPrompt(files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); ToxiVisualSystem.toast(a, msg); a.afterOps(); });
         }).show();
     }
 
     void vaultMove(final List<Entry> list) {
-        if (!Vault.hasPin(a)) { Ui.toast(a, "Set a Vault PIN first — Settings → Vault"); return; }
+        if (!Vault.hasPin(a)) { ToxiVisualSystem.toast(a, "Set a Vault PIN first in Settings, under Vault"); return; }
         new AlertDialog.Builder(a).setTitle("Move " + list.size() + " item" + (list.size() > 1 ? "s" : "") + " to Vault?")
                 .setMessage("Encrypted at rest with AES-GCM using Android Keystore. Keep your Vault PIN private; loss of device Keystore keys can make vault data unrecoverable.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (d, w) -> Vault.moveIn(a, files(list), msg -> {
-                    a.removeFavs(files(list)); endSelect(); a.afterOps(); Ui.toast(a, msg);
+                    a.removeFavs(files(list)); endSelect(); a.afterOps(); ToxiVisualSystem.toast(a, msg);
                 })).show();
     }
 
@@ -905,8 +923,8 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Open", () -> open(e));
         if (!e.dir) add(l, r, "Open with…", () -> FileOps.external(a, e.f, true));
         add(l, r, "Rename", () -> rename(e));
-        add(l, r, "Copy", () -> { a.setClip(new File[]{e.f}, false); Ui.toast(a, "Copied — open a folder and tap Paste"); });
-        add(l, r, "Cut", () -> { a.setClip(new File[]{e.f}, true); Ui.toast(a, "Cut — open a folder and tap Paste"); });
+        add(l, r, "Copy", () -> { a.setClip(new File[]{e.f}, false); ToxiVisualSystem.toast(a, "Copied — open a folder and tap Paste"); });
+        add(l, r, "Cut", () -> { a.setClip(new File[]{e.f}, true); ToxiVisualSystem.toast(a, "Cut — open a folder and tap Paste"); });
         add(l, r, "Move to…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); moveToQuick(one); });
         add(l, r, "Send via Wi-Fi…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); a.sendViaWifi(files(one)); });
         if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> { List<File> one = new ArrayList<>(); one.add(e.f); a.copyToSafTree(one); });
@@ -928,10 +946,10 @@ final class BrowserView extends FrameLayout {
         new AlertDialog.Builder(a).setTitle("New folder").setView(wrap(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Create", (d, w) -> {
                     String n = in.getText().toString().trim();
-                    if (n.isEmpty() || n.contains("/")) { Ui.toast(a, "Invalid name"); return; }
+                    if (n.isEmpty() || n.contains("/")) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
                     File f = new File(cur, n);
-                    if (f.exists()) Ui.toast(a, "Already exists");
-                    else if (!f.mkdirs()) Ui.toast(a, "Couldn't create folder");
+                    if (f.exists()) ToxiVisualSystem.toast(a, "Already exists");
+                    else if (!f.mkdirs()) ToxiVisualSystem.toast(a, "Couldn't create folder");
                     a.afterOps();
                 }).show();
     }
@@ -943,9 +961,9 @@ final class BrowserView extends FrameLayout {
                     String n = in.getText().toString().trim();
                     if (n.isEmpty() || n.contains("/") || n.equals(e.name)) return;
                     File t = new File(e.f.getParentFile(), n);
-                    if (t.exists()) { Ui.toast(a, "A file with that name exists"); return; }
+                    if (t.exists()) { ToxiVisualSystem.toast(a, "A file with that name exists"); return; }
                     if (e.f.renameTo(t)) { a.renameFav(e.f, t); endSelect(); a.afterOps(); }
-                    else Ui.toast(a, "Rename failed");
+                    else ToxiVisualSystem.toast(a, "Rename failed");
                 }).show();
         in.post(() -> {
             int dot = e.name.lastIndexOf('.');
@@ -955,7 +973,7 @@ final class BrowserView extends FrameLayout {
 
     EditText input(String text) {
         EditText in = new EditText(a);
-        GlowRing.watchFocus(in);
+        ToxiMotion.watchFocus(in);
         in.setSingleLine(true);
         in.setText(text);
         return in;
@@ -963,21 +981,21 @@ final class BrowserView extends FrameLayout {
 
     View wrap(View v) {
         FrameLayout f = new FrameLayout(a);
-        f.setPadding(Ui.dp(22), Ui.dp(8), Ui.dp(22), 0);
+        f.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(22), 0);
         f.addView(v, new FrameLayout.LayoutParams(-1, -2));
         return f;
     }
 
     private void deleteEntries(final List<Entry> list, final boolean useBin) {
         final List<File> fs = files(list);
-        FileOps.Done after = msg -> { a.removeFavs(fs); endSelect(); a.afterOps(); Ui.toast(a, msg); };
+        FileOps.Done after = msg -> { a.removeFavs(fs); endSelect(); a.afterOps(); ToxiVisualSystem.toast(a, msg); };
         if (useBin) RecycleBin.moveToBin(a, fs, after); else FileOps.delete(a, fs, after);
     }
 
     void confirmDelete(final List<Entry> list) {
         if (list.isEmpty()) return;
-        final boolean useBin = Ui.bool("recyclebin", true);
-        if (!Ui.bool("confirm", true)) { deleteEntries(list,useBin); return; }
+        final boolean useBin = ToxiVisualSystem.booleanPreference("recyclebin", true);
+        if (!ToxiVisualSystem.booleanPreference("confirm", true)) { deleteEntries(list,useBin); return; }
         new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " item" + (list.size() > 1 ? "s" : "") + "?")
                 .setMessage(useBin ? "Moved to Recycle Bin — you can restore it later." : "This can't be undone.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
@@ -985,7 +1003,7 @@ final class BrowserView extends FrameLayout {
 
     void confirmSelectionDelete(final List<Entry> list) {
         if (list == null || list.isEmpty()) return;
-        final boolean useBin = Ui.bool("recyclebin", true);
+        final boolean useBin = ToxiVisualSystem.booleanPreference("recyclebin", true);
         new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " selected item" + (list.size() > 1 ? "s" : "") + "?")
                 .setMessage(useBin ? "The selected items will be moved to Recycle Bin and can be restored." : "This permanently deletes the selected items and cannot be undone.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
@@ -994,10 +1012,10 @@ final class BrowserView extends FrameLayout {
     void zip(List<Entry> list) {
         List<File> fs = files(list);
         File dest = (mode == DIR && cur != null) ? cur : fs.get(0).getParentFile();
-        FileOps.zip(a, fs, dest, msg -> { endSelect(); Ui.toast(a, msg); a.afterOps(); });
+        FileOps.zip(a, fs, dest, msg -> { endSelect(); ToxiVisualSystem.toast(a, msg); a.afterOps(); });
     }
 
-    void unzip(File z) { FileOps.unzip(a, z, msg -> { Ui.toast(a, msg); a.afterOps(); }); }
+    void unzip(File z) { FileOps.unzip(a, z, msg -> { ToxiVisualSystem.toast(a, msg); a.afterOps(); }); }
 
     private boolean isExifImage(String ext) {
         return "jpg".equals(ext) || "jpeg".equals(ext) || "png".equals(ext) || "webp".equals(ext)
@@ -1031,14 +1049,14 @@ final class BrowserView extends FrameLayout {
                             result = "GPS metadata removal failed: " + ex.getMessage();
                         }
                         final String message = result;
-                        a.runOnUiThread(() -> { a.busy(false); Ui.toast(a, message); a.afterOps(); });
+                        a.runOnUiThread(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
                     });
                 }).show();
     }
 
     String propText(Entry e, String size, String hash) {
         return "Path: " + e.f.getAbsolutePath() + "\nType: " + (e.dir ? "Folder" : e.ext.isEmpty() ? "File" : e.ext.toUpperCase(Locale.ROOT) + " file")
-                + "\nSize: " + size + "\nModified: " + Ui.date(e.mod)
+                + "\nSize: " + size + "\nModified: " + ToxiVisualSystem.formatDate(e.mod)
                 + (e.dir ? "" : "\nSHA-256: " + hash);
     }
 
@@ -1056,7 +1074,7 @@ final class BrowserView extends FrameLayout {
     void properties(final Entry e) {
         final String[] digest = {null};
         final AlertDialog dlg = new AlertDialog.Builder(a).setTitle(e.name)
-                .setMessage(propText(e, e.dir ? "calculating…" : Ui.size(e.len), e.dir ? "" : "calculating…"))
+                .setMessage(propText(e, e.dir ? "calculating…" : ToxiVisualSystem.formatSize(e.len), e.dir ? "" : "calculating…"))
                 .setNeutralButton(e.dir ? "" : "Copy SHA-256", null).setPositiveButton("Close", null).show();
         final android.widget.Button copyHash = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);
         if (e.dir) copyHash.setVisibility(View.GONE); else {
@@ -1064,18 +1082,18 @@ final class BrowserView extends FrameLayout {
             copyHash.setOnClickListener(v -> {
                 if (digest[0] == null || "unavailable".equals(digest[0])) return;
                 android.content.ClipboardManager cm = (android.content.ClipboardManager) a.getSystemService(Context.CLIPBOARD_SERVICE);
-                if (cm != null) { cm.setPrimaryClip(android.content.ClipData.newPlainText("SHA-256", digest[0])); Ui.toast(a, "SHA-256 copied"); }
+                if (cm != null) { cm.setPrimaryClip(android.content.ClipData.newPlainText("SHA-256", digest[0])); ToxiVisualSystem.toast(a, "SHA-256 copied"); }
             });
         }
         if (e.dir) a.io.execute(() -> {
             final long[] t = new long[2];
             FileOps.treeSize(e.f, t);
-            a.runOnUiThread(() -> dlg.setMessage(propText(e, Ui.size(t[0]) + " • " + t[1] + " files", "")));
+            a.runOnUiThread(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
         }); else a.io.execute(() -> {
             digest[0] = sha256(e.f);
             a.runOnUiThread(() -> {
                 if (!dlg.isShowing()) return;
-                dlg.setMessage(propText(e, Ui.size(e.f.length()), digest[0]));
+                dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(e.f.length()), digest[0]));
                 copyHash.setEnabled(!"unavailable".equals(digest[0]));
             });
         });

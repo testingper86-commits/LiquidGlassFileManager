@@ -1,7 +1,6 @@
 package com.music.echo.offline.files;
 
 import android.app.Activity;
-import android.animation.ValueAnimator;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -10,9 +9,7 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.graphics.SweepGradient;
 import android.graphics.ColorFilter;
-import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.os.Build;
 import android.graphics.drawable.Drawable;
@@ -27,6 +24,8 @@ import android.view.ViewConfiguration;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
+import com.music.echo.offline.R;
+import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -35,29 +34,23 @@ import android.widget.TextView;
 /**
  * Native, in-window Dynamic Island for ToxiFiles.
  *
- * The collapsed state is a black sensor-style pill with a subtle camera lens.
+ * The collapsed state is a theme-bound activity capsule with the original ToxiFiles aperture mark.
  * Active state uses compact activity information; tapping/long-pressing expands
  * into a detailed card with progress and a real host-provided action.
  */
 final class DynamicIslandView extends FrameLayout {
     private static final String PREFS = "toxifiles_dynamic_island";
-    private static final int[][] ACCENTS = {
-        {0xFF00E5FF,0xFF1677FF,0xFF843BFF,0xFFD12BFF,0xFFFF2878,0xFFFF4D36},
-        {0xFF00E5FF,0xFF1677FF,0xFF00BFA5,0xFF00E5FF,0xFF1677FF,0xFF843BFF},
-        {0xFFFF4D36,0xFFFF2878,0xFFD12BFF,0xFFFF4D36,0xFFFF2878,0xFFD12BFF},
-        {0xFF1677FF,0xFF843BFF,0xFFD12BFF,0xFF1677FF,0xFF843BFF,0xFFD12BFF}
-    };
 
     private final Activity host;
     private final SharedPreferences prefs;
     private final LinearLayout shell, pill, expanded, titleRow, actionRow;
-    private final TextView lens, statusIcon, label, title, subtitle, action;
+    private final ImageView lens, statusIcon;
+    private final TextView label, title, subtitle, action;
     private final ProgressBar progressBar;
-    private final GlowBackgroundDrawable pillGlow;
-    private final GlowBackgroundDrawable cardGlow;
-    private ValueAnimator glowAnimator;
-    private float glowPhase;
-    private boolean activeGlow;
+    private final IslandSurfaceDrawable pillSurface;
+    private final IslandSurfaceDrawable cardSurface;
+    private float statePhase;
+    private boolean activeState;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable longPress;
     private Runnable actionCallback;
@@ -90,27 +83,29 @@ final class DynamicIslandView extends FrameLayout {
         pill.setOrientation(LinearLayout.HORIZONTAL);
         pill.setGravity(Gravity.CENTER_VERTICAL);
         pill.setPadding(dp(13), 0, dp(13), 0);
-        pillGlow = new GlowBackgroundDrawable(host, prefs, false);
-        pill.setBackground(pillGlow);
-        pill.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        pillSurface = new IslandSurfaceDrawable(host, prefs, false);
+        pill.setBackground(pillSurface);
         pill.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         pill.setElevation(dp(12));
         pill.setMinimumHeight(dp(prefs.getInt("size", 0) == 0 ? 36 : 42));
 
-        lens = text("●", 9, 0xFF637080, true);
-        lens.setGravity(Gravity.CENTER);
+        lens = new ImageView(host);
+        lens.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        lens.setContentDescription("ToxiFiles activity mark");
+        lens.setPadding(dp(2), dp(2), dp(2), dp(2));
         GradientDrawable lensBg = new GradientDrawable();
         lensBg.setShape(GradientDrawable.OVAL);
-        lensBg.setColor(0xFF101923);
-        lensBg.setStroke(dp(1), 0xFF35404B);
+        lensBg.setColor(ToxiThemeSystem.SOFT_ACCENTS[ToxiVisualSystem.THEME_INDEX]);
+        lensBg.setStroke(dp(1), ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         lens.setBackground(lensBg);
-        LinearLayout.LayoutParams lensLp = new LinearLayout.LayoutParams(dp(15), dp(15));
+        LinearLayout.LayoutParams lensLp = new LinearLayout.LayoutParams(dp(20), dp(20));
         lensLp.rightMargin = dp(8);
         pill.addView(lens, lensLp);
 
-        statusIcon = text("◆", 10, accent(), true);
-        statusIcon.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(14), dp(20));
+        statusIcon = new ImageView(host);
+        statusIcon.setImageDrawable(ToxiIcons.symbol(ToxiIcons.ANALYTICS, accent()));
+        statusIcon.setContentDescription("Activity status");
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(15), dp(20));
         iconLp.rightMargin = dp(5);
         pill.addView(statusIcon, iconLp);
 
@@ -120,14 +115,14 @@ final class DynamicIslandView extends FrameLayout {
         pill.addView(label, new LinearLayout.LayoutParams(-2, -2));
         pill.setOnTouchListener(this::handleTouch);
         pill.setOnClickListener(v -> toggleExpanded());
+        ToxiVisualSystem.interactive(pill);
         shell.addView(pill, new LinearLayout.LayoutParams(dp(132), dp(prefs.getInt("size", 0) == 0 ? 36 : 42)));
 
         expanded = new LinearLayout(host);
         expanded.setOrientation(LinearLayout.VERTICAL);
         expanded.setPadding(dp(16), dp(13), dp(16), dp(12));
-        cardGlow = new GlowBackgroundDrawable(host, prefs, true);
-        expanded.setBackground(cardGlow);
-        expanded.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        cardSurface = new IslandSurfaceDrawable(host, prefs, true);
+        expanded.setBackground(cardSurface);
         expanded.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         expanded.setElevation(dp(16));
         LinearLayout.LayoutParams expandedLp = new LinearLayout.LayoutParams(islandWidth, -2);
@@ -140,13 +135,11 @@ final class DynamicIslandView extends FrameLayout {
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         expanded.addView(titleRow, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView appMark = text("T", 15, Color.WHITE, true);
-        appMark.setGravity(Gravity.CENTER);
-        GradientDrawable markBg = new GradientDrawable();
-        markBg.setShape(GradientDrawable.OVAL);
-        markBg.setColor(0xFF202833);
-        markBg.setStroke(dp(1), 0xFF536171);
-        appMark.setBackground(markBg);
+        ImageView appMark = new ImageView(host);
+        appMark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        appMark.setPadding(dp(5), dp(5), dp(5), dp(5));
+        appMark.setBackground(ToxiVisualSystem.surface(10, true));
+        appMark.setContentDescription("ToxiFiles brand symbol");
         titleRow.addView(appMark, new LinearLayout.LayoutParams(dp(30), dp(30)));
 
         LinearLayout textColumn = new LinearLayout(host);
@@ -164,9 +157,12 @@ final class DynamicIslandView extends FrameLayout {
         subLp.topMargin = dp(2);
         textColumn.addView(subtitle, subLp);
 
-        TextView close = text("⌃", 18, 0xFFB8C4D2, true);
-        close.setGravity(Gravity.CENTER);
+        ImageView close = new ImageView(host);
+        close.setImageDrawable(ToxiIcons.symbol(ToxiIcons.COLLAPSE, ToxiVisualSystem.TEXT_PRIMARY));
+        close.setContentDescription("Collapse activity panel");
+        close.setPadding(dp(5), dp(5), dp(5), dp(5));
         close.setOnClickListener(v -> collapse());
+        ToxiVisualSystem.interactive(close);
         titleRow.addView(close, new LinearLayout.LayoutParams(dp(30), dp(30)));
 
         progressBar = new ProgressBar(host, null, android.R.attr.progressBarStyleHorizontal);
@@ -187,6 +183,7 @@ final class DynamicIslandView extends FrameLayout {
         action.setGravity(Gravity.CENTER);
         action.setPadding(dp(13), dp(7), dp(13), dp(7));
         action.setBackground(actionBackground());
+        ToxiVisualSystem.interactive(action);
         action.setOnClickListener(v -> {
             Runnable callback = actionCallback;
             if (callback != null) callback.run();
@@ -207,19 +204,24 @@ final class DynamicIslandView extends FrameLayout {
         v.setText(value);
         v.setTextSize(size);
         v.setTextColor(color);
-        v.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
+        v.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), bold ? Typeface.BOLD : Typeface.NORMAL));
         v.setIncludeFontPadding(false);
         return v;
     }
-    private int accent() {
-        int palette = Math.max(0, Math.min(ACCENTS.length - 1, prefs.getInt("palette", 0)));
-        return ACCENTS[palette][0];
+    private int accent() { return themedAccent(prefs); }
+    private static int themedAccent(SharedPreferences preferences) {
+        int treatment = Math.max(0, Math.min(3, preferences.getInt("palette", 0)));
+        int theme = ToxiVisualSystem.THEME_INDEX;
+        if (treatment == 1) return ToxiThemeSystem.ACCENT_ENDS[theme];
+        if (treatment == 2) return ToxiThemeSystem.MUTED[theme];
+        if (treatment == 3) return ToxiThemeSystem.EDGES[theme];
+        return ToxiThemeSystem.ACCENTS[theme];
     }
     private GradientDrawable actionBackground() {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(0xFF1A222D);
-        d.setCornerRadius(dp(18));
-        d.setStroke(dp(1), accent());
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{accent(), ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX]});
+        d.setCornerRadius(dp(14));
+        d.setStroke(dp(1), ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         return d;
     }
     private boolean isEnabledPreference() { return prefs.getBoolean("enabled", true); }
@@ -257,53 +259,34 @@ final class DynamicIslandView extends FrameLayout {
     }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (getVisibility() == VISIBLE) startGlowAnimation();
+        if (getVisibility() == VISIBLE) refreshStateAccent();
     }
 
     @Override protected void onDetachedFromWindow() {
         handler.removeCallbacksAndMessages(null);
         shell.animate().cancel();
-        stopGlowAnimation();
+        clearStateAccent();
         super.onDetachedFromWindow();
     }
 
-    private void startGlowAnimation() {
-        stopGlowAnimation();
-        if (prefs.getInt("glow", 65) <= 0 || !isEnabledPreference()) {
-            setGlowPhase(0f);
-            return;
-        }
-        glowAnimator = ValueAnimator.ofFloat(0f, 1f);
-        glowAnimator.setDuration(activeGlow ? 2600L : 4200L);
-        glowAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        glowAnimator.setRepeatMode(ValueAnimator.REVERSE);
-        glowAnimator.setInterpolator(new LinearInterpolator());
-        glowAnimator.addUpdateListener(animation -> {
-            float phase = (Float) animation.getAnimatedValue();
-            setGlowPhase(phase);
-        });
-        glowAnimator.start();
+    private void refreshStateAccent() {
+        clearStateAccent();
+        setStatePhase(0f);
     }
 
-    private void stopGlowAnimation() {
-        if (glowAnimator != null) {
-            glowAnimator.cancel();
-            glowAnimator.removeAllUpdateListeners();
-            glowAnimator = null;
-        }
-    }
+    private void clearStateAccent() { }
 
-    private void setGlowPhase(float phase) {
-        glowPhase = phase;
-        pillGlow.setGlow(activeGlow, phase);
-        cardGlow.setGlow(activeGlow, phase);
+    private void setStatePhase(float phase) {
+        statePhase = phase;
+        pillSurface.setState(activeState, phase);
+        cardSurface.setState(activeState, phase);
     }
 
     private void updateGlowActivity(boolean active) {
-        if (activeGlow == active) return;
-        activeGlow = active;
-        if (getVisibility() == VISIBLE) startGlowAnimation();
-        else setGlowPhase(0f);
+        if (activeState == active) return;
+        activeState = active;
+        if (getVisibility() == VISIBLE) refreshStateAccent();
+        else setStatePhase(0f);
     }
 
     private boolean handleTouch(View view, MotionEvent event) {
@@ -375,18 +358,30 @@ final class DynamicIslandView extends FrameLayout {
         if (!isEnabledPreference() || expanded.getVisibility() == VISIBLE) return;
         expanded.setVisibility(VISIBLE);
         render();
-        shell.setScaleX(0.94f);
-        shell.setScaleY(0.94f);
-        shell.setAlpha(0.92f);
-        shell.animate().scaleX(1f).scaleY(1f).alpha(1f)
-            .setDuration(Math.max(100, prefs.getInt("speed", 180)))
-            .setInterpolator(new DecelerateInterpolator()).start();
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) {
+            shell.setScaleX(1f);
+            shell.setScaleY(1f);
+            shell.setAlpha(1f);
+        } else {
+            shell.setScaleX(0.94f);
+            shell.setScaleY(0.94f);
+            shell.setAlpha(0.92f);
+            shell.animate().scaleX(1f).scaleY(1f).alpha(1f)
+                .setDuration(Math.max(100, prefs.getInt("speed", 180)))
+                .setInterpolator(new DecelerateInterpolator()).start();
+        }
         post(this::applyPosition);
     }
     private void collapse() {
         expanded.setVisibility(GONE);
-        shell.animate().scaleX(1f).scaleY(1f).alpha(1f)
-            .setDuration(Math.max(80, prefs.getInt("speed", 180) / 2)).start();
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) {
+            shell.setScaleX(1f);
+            shell.setScaleY(1f);
+            shell.setAlpha(1f);
+        } else {
+            shell.animate().scaleX(1f).scaleY(1f).alpha(1f)
+                .setDuration(Math.max(80, prefs.getInt("speed", 180) / 2)).start();
+        }
         post(this::applyPosition);
     }
 
@@ -420,7 +415,7 @@ final class DynamicIslandView extends FrameLayout {
 
         if (getVisibility() != VISIBLE) {
             setVisibility(VISIBLE);
-            startGlowAnimation();
+            refreshStateAccent();
         }
         updateGlowActivity(!terminal && !pausedPlayback);
         render();
@@ -467,9 +462,9 @@ final class DynamicIslandView extends FrameLayout {
         actionCallback = null;
         action.setVisibility(GONE);
         actionRow.setVisibility(GONE);
-        activeGlow = false;
-        setGlowPhase(0f);
-        stopGlowAnimation();
+        activeState = false;
+        setStatePhase(0f);
+        clearStateAccent();
         setVisibility(GONE);
         suppressedStatus = activity;
         activity = "ToxiFiles ready";
@@ -490,8 +485,8 @@ final class DynamicIslandView extends FrameLayout {
             }
         }
         label.setText(active ? compactStatus : "ToxiFiles");
-        statusIcon.setText(active ? "●" : "◆");
-        statusIcon.setTextColor(active ? accent() : 0xFF8995A4);
+        statusIcon.setImageDrawable(ToxiIcons.symbol(active ? ToxiIcons.ANALYTICS : ToxiIcons.CHECK, active ? accent() : ToxiVisualSystem.TEXT_SECONDARY));
+        statusIcon.setContentDescription(active ? "Activity in progress" : "Activity complete");
         title.setText(activity);
         java.util.regex.Matcher items = java.util.regex.Pattern.compile("([0-9]+)[ ]+of[ ]+([0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(activity);
         if (lower.contains("video")) {
@@ -564,108 +559,60 @@ final class DynamicIslandView extends FrameLayout {
         pill.setElevation(dp(10 + prefs.getInt("glow", 65) / 12));
         expanded.setElevation(dp(12 + prefs.getInt("glow", 65) / 10));
         refreshOutlineShadows();
-        if (getVisibility() == VISIBLE) startGlowAnimation();
-        else { stopGlowAnimation(); setGlowPhase(0f); }
+        if (getVisibility() == VISIBLE) refreshStateAccent();
+        else { clearStateAccent(); setStatePhase(0f); }
         post(this::applyPosition);
     }
-    /**
-     * Black glass surface with a continuously blended six-colour RGB perimeter.
-     * A soft coloured halo breathes around the edge; intensity is controlled by
-     * the existing Glow intensity preference (0 disables it).
-     */
-    private static final class GlowBackgroundDrawable extends Drawable {
+    /** Theme-bound matte panel used by the compact and expanded island states. */
+    private static final class IslandSurfaceDrawable extends Drawable {
         private final Activity host;
         private final SharedPreferences prefs;
         private final boolean card;
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint accentLine = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
-        private float phase;
         private boolean active;
 
-        GlowBackgroundDrawable(Activity host, SharedPreferences prefs, boolean card) {
+        IslandSurfaceDrawable(Activity host, SharedPreferences prefs, boolean card) {
             this.host = host;
             this.prefs = prefs;
             this.card = card;
             fill.setStyle(Paint.Style.FILL);
-            halo.setStyle(Paint.Style.STROKE);
             edge.setStyle(Paint.Style.STROKE);
+            accentLine.setStyle(Paint.Style.STROKE);
+            accentLine.setStrokeCap(Paint.Cap.ROUND);
         }
 
-        private float dp(float value) {
-            return value * host.getResources().getDisplayMetrics().density;
-        }
-
-        void setGlow(boolean active, float phase) {
-            this.active = active;
-            this.phase = phase;
-            invalidateSelf();
-        }
+        private float dp(float value) { return value * host.getResources().getDisplayMetrics().density; }
+        void setState(boolean active, float ignoredPhase) { this.active = active; invalidateSelf(); }
 
         @Override public void draw(Canvas canvas) {
-            RectF b = new RectF(getBounds());
-            if (b.isEmpty()) return;
-            float intensity = Math.max(0, Math.min(100, prefs.getInt("glow", 65))) / 100f;
-            float pulse = 0.78f + 0.22f * (float)Math.sin(phase * Math.PI);
-            float strength = intensity * pulse * (active ? 1.22f : 0.82f);
-            float radius = card ? dp(25) : dp(30);
-            rect.set(b.left + dp(2), b.top + dp(2), b.right - dp(2), b.bottom - dp(2));
-
-            fill.setColor(card ? ((Math.max(80, Math.min(255, prefs.getInt("transparency", 225))) << 24) | 0x00090D13) : 0xF5070A0F);
+            Rect bounds = getBounds();
+            if (bounds.isEmpty()) return;
+            rect.set(bounds.left + dp(1), bounds.top + dp(1), bounds.right - dp(1), bounds.bottom - dp(1));
+            int theme = ToxiVisualSystem.THEME_INDEX;
+            int base = card ? ToxiThemeSystem.RAISED[theme] : ToxiThemeSystem.SURFACES[theme];
+            int opacity = Math.max(80, Math.min(255, prefs.getInt("transparency", 225)));
+            fill.setColor((opacity << 24) | (base & 0x00FFFFFF));
             fill.setShader(null);
-            fill.clearShadowLayer();
-            canvas.drawRoundRect(rect, radius, radius, fill);
-
-            int palette = Math.max(0, Math.min(ACCENTS.length - 1, prefs.getInt("palette", 0)));
-            int[] colors = ACCENTS[palette];
-            int[] sweepColors = new int[colors.length + 1];
-            System.arraycopy(colors, 0, sweepColors, 0, colors.length);
-            sweepColors[sweepColors.length - 1] = colors[0];
-            SweepGradient gradient = new SweepGradient(rect.centerX(), rect.centerY(), sweepColors, null);
-            Matrix rotation = new Matrix();
-            rotation.setRotate(phase * 360f, rect.centerX(), rect.centerY());
-            gradient.setLocalMatrix(rotation);
-
-            float edgeWidth = dp(1.35f + intensity * 0.9f);
-            if (intensity > 0f) {
-                halo.setShader(null);
-                halo.setStrokeWidth(dp(2.2f));
-                halo.setColor(Color.WHITE);
-                halo.setAlpha((int)(Math.min(255, 36f + 86f * strength)));
-                int haloColor = colors[Math.min(colors.length - 1, (int)(phase * colors.length))];
-                halo.setShadowLayer(dp(3f + 13f * strength), 0f, 0f,
-                        Color.argb((int)(45f + 130f * strength), Color.red(haloColor), Color.green(haloColor), Color.blue(haloColor)));
-                canvas.drawRoundRect(rect, radius, radius, halo);
-                halo.clearShadowLayer();
-                halo.setAlpha(255);
-            }
-
-            edge.setShader(intensity > 0f ? gradient : null);
-            edge.setColor(intensity > 0f ? Color.WHITE : 0xFF303943);
-            edge.setStrokeWidth(edgeWidth);
-            edge.clearShadowLayer();
-            canvas.drawRoundRect(rect, radius, radius, edge);
-            edge.setShader(null);
+            canvas.drawRoundRect(rect, dp(card ? 21 : 18), dp(card ? 21 : 18), fill);
+            edge.setColor(ToxiThemeSystem.EDGES[theme]);
+            edge.setStrokeWidth(dp(1));
+            canvas.drawRoundRect(rect, dp(card ? 21 : 18), dp(card ? 21 : 18), edge);
+            float intensity = Math.max(0, Math.min(100, prefs.getInt("glow", 65))) / 100f;
+            accentLine.setColor(themedAccent(prefs));
+            accentLine.setAlpha((int)((active ? 150 : 70) * intensity));
+            accentLine.setStrokeWidth(dp(active ? 1.6f : 1f));
+            canvas.drawLine(rect.left + dp(12), rect.top + dp(1), rect.right - dp(12), rect.top + dp(1), accentLine);
         }
 
         @Override public void getOutline(Outline outline) {
-            RectF b = getBounds().isEmpty() ? new RectF() : new RectF(getBounds());
-            outline.setRoundRect(Math.round(b.left), Math.round(b.top), Math.round(b.right),
-                    Math.round(b.bottom), dp(card ? 25f : 30f));
+            Rect bounds = getBounds();
+            outline.setRoundRect(bounds, dp(card ? 21f : 18f));
         }
-
-        @Override public void setAlpha(int alpha) {
-            fill.setAlpha(alpha);
-            invalidateSelf();
-        }
-
-        @Override public void setColorFilter(ColorFilter colorFilter) {
-            fill.setColorFilter(colorFilter);
-            edge.setColorFilter(colorFilter);
-            invalidateSelf();
-        }
-
+        @Override public void setAlpha(int alpha) { fill.setAlpha(alpha); invalidateSelf(); }
+        @Override public void setColorFilter(ColorFilter filter) { fill.setColorFilter(filter); edge.setColorFilter(filter); invalidateSelf(); }
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 

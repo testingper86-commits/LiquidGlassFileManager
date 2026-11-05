@@ -388,7 +388,7 @@ public final class BackgroundAudioService extends Service {
         PendingIntent contentIntent = PendingIntent.getActivity(this, 9, openViewer,
             PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
         Notification.Builder b = new Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.mipmap.ic_launcher).setContentTitle(name).setContentText("LiquidFiles · offline playback")
+            .setSmallIcon(R.drawable.ic_toxifiles_notification).setContentTitle(name).setContentText("LiquidFiles · offline playback")
             .setContentIntent(contentIntent).setOngoing(playing).setOnlyAlertOnce(true).setVisibility(Notification.VISIBILITY_PUBLIC)
             .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0,1));
         b.addAction(new Notification.Action.Builder(android.R.drawable.ic_media_previous, "Previous", action("com.liquidfiles.offline.audio.PREVIOUS", 10)).build());

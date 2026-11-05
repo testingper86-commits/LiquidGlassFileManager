@@ -24,22 +24,19 @@ final class Thumbs {
         final String key = e.f.getAbsolutePath() + "|" + e.mod;
         iv.setTag(key);
         boolean needsThumbnail = e.kind == FileKinds.IMAGE || e.kind == FileKinds.VIDEO;
-        if (needsThumbnail) { GlowRing.attach(iv); GlowRing.setActive(iv, true); }
-        else GlowRing.detach(iv);
         Bitmap cached = CACHE.get(key);
         if (cached != null) {
             iv.setImageBitmap(cached);
-            GlowRing.setActive(iv, false);
             return;
         }
-        iv.setImageDrawable(Glyphs.tile(e.kind));
+        iv.setImageDrawable(ToxiIcons.fileTile(e.kind));
         if (!needsThumbnail) return;
         EX.execute(() -> {
             if (!key.equals(iv.getTag())) return;
             final Bitmap t = e.kind == FileKinds.IMAGE ? image(e, px) : video(e, px);
-            if (t == null) { UI.post(() -> { if (key.equals(iv.getTag())) GlowRing.setActive(iv, false); }); return; }
+            if (t == null) return;
             CACHE.put(key, t);
-            UI.post(() -> { if (key.equals(iv.getTag())) { iv.setImageBitmap(t); GlowRing.setActive(iv, false); } });
+            UI.post(() -> { if (key.equals(iv.getTag())) { iv.setImageBitmap(t); } });
         });
     }
 
