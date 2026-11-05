@@ -517,7 +517,7 @@ public class ViewerActivity extends Activity {
         TextView durationTv = ToxiVisualSystem.text(this, "0:00", 11, ToxiVisualSystem.TEXT_SECONDARY, false);
         durationTv.setGravity(Gravity.CENTER);
         durationTv.setMinWidth(ToxiVisualSystem.dp(36));
-        SquigglySeekBar seekBar = new SquigglySeekBar(this);
+        ToxiWaveSeekBar seekBar = new ToxiWaveSeekBar(this);
         seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         seekBar.setMax(1);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(34), 1f);
@@ -1038,7 +1038,7 @@ public class ViewerActivity extends Activity {
         meta.setGravity(Gravity.CENTER);
         meta.setPadding(0, ToxiVisualSystem.dp(6), 0, ToxiVisualSystem.dp(14));
         card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
-        final SquigglySeekBar sb = new SquigglySeekBar(this);
+        final ToxiWaveSeekBar sb = new ToxiWaveSeekBar(this);
         sb.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         card.addView(sb, new LinearLayout.LayoutParams(-1, -2));
         final TextView time = ToxiVisualSystem.text(this, "0:00 / 0:00", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
@@ -1416,7 +1416,7 @@ public class ViewerActivity extends Activity {
                         mp.seekTo(audioLoopStartMs); p = audioLoopStartMs;
                     }
                     sb.setProgress(p);
-                    if (sb instanceof SquigglySeekBar) ((SquigglySeekBar) sb).setPlaying(mp.isPlaying());
+                    if (sb instanceof ToxiWaveSeekBar) ((ToxiWaveSeekBar) sb).setPlaying(mp.isPlaying());
                     int duration = mp.getDuration();
                             time.setText(fmt(p) + " / " + fmt(duration));
                     getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + paths.get(idx), p).apply();

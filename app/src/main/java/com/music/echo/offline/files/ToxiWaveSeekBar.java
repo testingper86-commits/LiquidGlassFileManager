@@ -12,7 +12,7 @@ import android.animation.ValueAnimator;
 import android.view.animation.LinearInterpolator;
 
 /** Single-layer squiggly playback control. Native SeekBar input/accessibility is retained. */
-public final class SquigglySeekBar extends SeekBar {
+public final class ToxiWaveSeekBar extends SeekBar {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
     private int played = 0xFFB9A4FF;
@@ -20,9 +20,9 @@ public final class SquigglySeekBar extends SeekBar {
     private float density;
     private float phase;
     private ValueAnimator waveAnimator;
-    public SquigglySeekBar(Context c) { super(c); init(c); }
-    public SquigglySeekBar(Context c, AttributeSet a) { super(c,a); init(c); }
-    public SquigglySeekBar(Context c, AttributeSet a, int d) { super(c,a,d); init(c); }
+    public ToxiWaveSeekBar(Context c) { super(c); init(c); }
+    public ToxiWaveSeekBar(Context c, AttributeSet a) { super(c,a); init(c); }
+    public ToxiWaveSeekBar(Context c, AttributeSet a, int d) { super(c,a,d); init(c); }
     private void init(Context c) {
         density = c.getResources().getDisplayMetrics().density;
         setSplitTrack(false);
