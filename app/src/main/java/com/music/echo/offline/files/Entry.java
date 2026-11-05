@@ -24,8 +24,7 @@ final class Entry {
         this.len = len;
         this.name = f.getName();
         this.lname = name.toLowerCase(Locale.ROOT);
-        int i = name.lastIndexOf('.');
-        this.ext = (i > 0 && i < name.length() - 1) ? name.substring(i + 1).toLowerCase(Locale.ROOT) : "";
+        this.ext = FileKinds.extensionOf(f);
         this.kind = d ? FileKinds.DIR : FileKinds.kindOfExt(ext);
     }
 }

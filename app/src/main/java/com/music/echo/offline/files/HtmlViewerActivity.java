@@ -42,7 +42,7 @@ public final class HtmlViewerActivity extends Activity {
             if (rawPath == null || rawPath.trim().isEmpty()) throw new IOException("Missing document path");
             document = new File(rawPath).getCanonicalFile();
             if (!document.isFile() || !document.canRead()
-                    || !FileKinds.isHtmlExtension(extensionOf(document))) {
+                    || !FileKinds.isHtmlExtension(FileKinds.extensionOf(document))) {
                 throw new IOException("Unsupported or unreadable HTML document");
             }
         } catch (IOException | SecurityException ex) {

@@ -15,7 +15,7 @@ final class FileKinds {
         put(VIDEO, "mp4 mkv webm 3gp mov avi m4v ts flv wmv mpg mpeg");
         put(AUDIO, "mp3 wav ogg m4a flac aac opus amr wma mid midi");
         put(PDF, "pdf");
-        put(TEXT, "txt md log json xml html htm css js java kt py c cpp h sh ini conf yml yaml srt vcf");
+        put(TEXT, "txt md log json xml html htm xhtml xht shtml shtm css js java kt py c cpp h sh ini conf yml yaml srt vcf");
         put(ARCHIVE, "zip rar 7z tar gz tgz bz2 xz");
         put(APK, "apk");
     }
@@ -24,15 +24,36 @@ final class FileKinds {
         for (String extension : extensions.split(" ")) M.put(extension, kind);
     }
 
+    static String extensionOf(java.io.File file) {
+        if (file == null) return "";
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        return dot > 0 && dot < name.length() - 1
+                ? name.substring(dot + 1).trim().toLowerCase(java.util.Locale.ROOT) : "";
+    }
+
     static int kindOfExt(String extension) {
-        Integer kind = M.get(extension);
+        if (extension == null) return OTHER;
+        Integer kind = M.get(extension.trim().toLowerCase(java.util.Locale.ROOT));
         return kind == null ? OTHER : kind;
+    }
+
+    static int kindOfFile(java.io.File file) {
+        if (file == null) return OTHER;
+        if (file.isDirectory()) return DIR;
+        return kindOfExt(extensionOf(file));
+    }
+
+    static boolean isPdfExtension(String extension) {
+        return "pdf".equals(extension == null ? "" : extension.trim().toLowerCase(java.util.Locale.ROOT));
     }
 
     static boolean isHtmlExtension(String extension) {
         if (extension == null) return false;
         String normalized = extension.trim().toLowerCase(java.util.Locale.ROOT);
-        return "html".equals(normalized) || "htm".equals(normalized);
+        return "html".equals(normalized) || "htm".equals(normalized)
+                || "xhtml".equals(normalized) || "xht".equals(normalized)
+                || "shtml".equals(normalized) || "shtm".equals(normalized);
     }
 
     static int color(int kind) {
@@ -64,6 +85,8 @@ final class FileKinds {
     }
 
     static String mime(Entry entry) {
+        if (isPdfExtension(entry.ext)) return "application/pdf";
+        if (isHtmlExtension(entry.ext)) return "text/html";
         if (entry.kind == APK) return "application/vnd.android.package-archive";
         String mime = entry.ext.isEmpty() ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(entry.ext);
         if (mime != null) return mime;

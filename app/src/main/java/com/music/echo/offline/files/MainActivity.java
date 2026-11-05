@@ -370,36 +370,72 @@ public class MainActivity extends Activity {
     }
 
     void openFile(Entry e, List<Entry> ctx) {
-        if (e.dir) { openDir(e.f); return; }
-        int k = e.kind;
-        // HTML files always use the hidden built-in offline viewer.
-        if (FileKinds.isHtmlExtension(e.ext)) {
+        if (e == null || e.f == null) {
+            ToxiVisualSystem.toast(this, "This file is no longer available");
+            return;
+        }
+        if (e.dir || e.f.isDirectory()) { openDir(e.f); return; }
+        File file = e.f;
+        if (!file.isFile() || !file.canRead()) {
+            ToxiVisualSystem.toast(this, "This file is missing or cannot be read");
+            return;
+        }
+
+        // Built-in document viewers are mandatory for supported document extensions.
+        // Do not let the optional media in-app preference divert PDF/HTML to an external chooser.
+        String extension = FileKinds.extensionOf(file);
+        if (FileKinds.isHtmlExtension(extension)) {
             Intent html = new Intent(this, HtmlViewerActivity.class);
-            html.putExtra(HtmlViewerActivity.EXTRA_FILE_PATH, e.f.getAbsolutePath());
+            html.putExtra(HtmlViewerActivity.EXTRA_FILE_PATH, file.getAbsolutePath());
             startActivity(html);
             return;
         }
+
+        int kind = FileKinds.kindOfFile(file);
+        if (kind == FileKinds.PDF) {
+            openBuiltInViewer(file, 0);
+            return;
+        }
+
         boolean inApp = ToxiVisualSystem.booleanPreference("inapp", true);
-        if (inApp && (k == FileKinds.IMAGE || k == FileKinds.VIDEO || k == FileKinds.AUDIO || k == FileKinds.TEXT || k == FileKinds.PDF)) {
+        if (inApp && (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO
+                || kind == FileKinds.AUDIO || kind == FileKinds.TEXT)) {
             ArrayList<String> ps = new ArrayList<>();
             int idx = 0;
-            if (k == FileKinds.IMAGE || k == FileKinds.VIDEO || k == FileKinds.AUDIO) {
-                for (Entry x : ctx) if (x.kind == k) { if (x == e) idx = ps.size(); ps.add(x.f.getAbsolutePath()); }
+            if (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO || kind == FileKinds.AUDIO) {
+                if (ctx != null) for (Entry x : ctx) {
+                    if (x != null && !x.dir && FileKinds.kindOfFile(x.f) == kind && x.f.isFile()) {
+                        if (x.f.equals(file)) idx = ps.size();
+                        ps.add(x.f.getAbsolutePath());
+                    }
+                }
+                if (ps.isEmpty()) ps.add(file.getAbsolutePath());
                 if (ps.size() > 400) {
                     int from = Math.max(0, Math.min(idx - 200, ps.size() - 400));
                     ps = new ArrayList<>(ps.subList(from, from + 400));
                     idx -= from;
                 }
-            } else ps.add(e.f.getAbsolutePath());
+            } else {
+                ps.add(file.getAbsolutePath());
+            }
             Intent i = new Intent(this, ViewerActivity.class);
             i.putStringArrayListExtra("paths", ps);
             i.putExtra("index", idx);
             startActivity(i);
             return;
         }
-        if (k == FileKinds.ARCHIVE && e.ext.equals("zip")) { showZip(e.f); return; }
-        if (k == FileKinds.APK) { FileOps.install(this, e.f); return; }
-        FileOps.external(this, e.f, false);
+        if (kind == FileKinds.ARCHIVE && "zip".equals(extension)) { showZip(file); return; }
+        if (kind == FileKinds.APK) { FileOps.install(this, file); return; }
+        FileOps.external(this, file, false);
+    }
+
+    private void openBuiltInViewer(File file, int index) {
+        ArrayList<String> paths = new ArrayList<>();
+        paths.add(file.getAbsolutePath());
+        Intent intent = new Intent(this, ViewerActivity.class);
+        intent.putStringArrayListExtra("paths", paths);
+        intent.putExtra("index", index);
+        startActivity(intent);
     }
 
     void showZip(final File z) {

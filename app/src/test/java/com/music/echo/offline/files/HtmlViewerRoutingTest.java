@@ -1,18 +1,34 @@
 package com.music.echo.offline.files;
 
 import org.junit.Test;
+import java.io.File;
 import static org.junit.Assert.*;
 
 public class HtmlViewerRoutingTest {
-    @Test public void recognizesOnlyHtmlAndHtmExtensionsCaseInsensitively() {
-        assertTrue(FileKinds.isHtmlExtension("html"));
-        assertTrue(FileKinds.isHtmlExtension("htm"));
-        assertTrue(FileKinds.isHtmlExtension("HTML"));
-        assertTrue(FileKinds.isHtmlExtension("HtM"));
-        assertFalse(FileKinds.isHtmlExtension("xhtml"));
-        assertFalse(FileKinds.isHtmlExtension("txt"));
-        assertFalse(FileKinds.isHtmlExtension(""));
-        assertFalse(FileKinds.isHtmlExtension(null));
+    @Test public void recognizesHtmlExtensionsCaseInsensitively() {
+        for (String extension : new String[]{"html", "htm", "HTML", "HtM", "xhtml", "xht", "shtml", "shtm"}) {
+            assertTrue(extension, FileKinds.isHtmlExtension(extension));
+        }
+        for (String extension : new String[]{"xhtmlx", "txt", "pdf", "", null}) {
+            assertFalse(String.valueOf(extension), FileKinds.isHtmlExtension(extension));
+        }
+    }
+
+    @Test public void normalizesFileExtensionsBeforeClassifying() {
+        assertEquals("pdf", FileKinds.extensionOf(new File("report.PDF")));
+        assertEquals("html", FileKinds.extensionOf(new File("page.HTML")));
+        assertEquals("htm", FileKinds.extensionOf(new File("page.htm ")));
+        assertEquals("", FileKinds.extensionOf(new File(".hidden")));
+        assertEquals("", FileKinds.extensionOf(new File("README")));
+    }
+
+    @Test public void pdfAndHtmlAreDetectedFromTheActualFileName() {
+        assertEquals(FileKinds.PDF, FileKinds.kindOfFile(new File("scan.PDF")));
+        assertEquals(FileKinds.PDF, FileKinds.kindOfFile(new File("report.pdf ")));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.HTML")));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.xhtml")));
+        assertTrue(FileKinds.isPdfExtension(" PDF "));
+        assertFalse(FileKinds.isPdfExtension("pdfx"));
     }
 
     @Test public void classifiesBuiltInViewerFileTypes() {
@@ -22,7 +38,5 @@ public class HtmlViewerRoutingTest {
         assertEquals(FileKinds.AUDIO, FileKinds.kindOfExt("mp3"));
         assertEquals(FileKinds.AUDIO, FileKinds.kindOfExt("flac"));
         assertEquals(FileKinds.IMAGE, FileKinds.kindOfExt("webp"));
-        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("html"));
-        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("htm"));
     }
 }
