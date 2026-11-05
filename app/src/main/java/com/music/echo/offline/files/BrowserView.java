@@ -17,6 +17,9 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.BaseAdapter;
+import android.widget.CheckBox;
+import android.widget.ScrollView;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -51,6 +54,8 @@ final class BrowserView extends FrameLayout {
     int searchTypeFilter = 0, searchSizeFilter = 0, searchDateFilter = 0;
     final LinkedHashSet<Entry> sel = new LinkedHashSet<>();
     boolean selecting;
+    String rangeAnchor;
+    long selectionSummaryToken;
     int columns = Ui.bool("grid", false) ? 3 : 1;
 
     final ListView lv;
@@ -176,7 +181,7 @@ final class BrowserView extends FrameLayout {
                     nameTv.setText(e.name);
                     check.setVisibility(selecting && sel.contains(e) ? View.VISIBLE : View.GONE);
                     tile.setOnClickListener(v -> { if (selecting) toggle(e); else open(e); });
-                    tile.setOnLongClickListener(v -> { if (!selecting) startSelect(e); return true; });
+                    tile.setOnLongClickListener(v -> { if (selecting) selectRange(e); else startSelect(e); return true; });
                 }
                 return row;
             }
@@ -188,7 +193,7 @@ final class BrowserView extends FrameLayout {
             if (selecting) toggle(e); else open(e);
         });
         lv.setOnItemLongClickListener((p, v, pos, id) -> {
-            if (columns <= 1 && pos < shown.size() && !selecting) startSelect(shown.get(pos));
+            if (columns <= 1 && pos < shown.size()) { if (selecting) selectRange(shown.get(pos)); else startSelect(shown.get(pos)); }
             return true;
         });
 
@@ -213,7 +218,7 @@ final class BrowserView extends FrameLayout {
         selBar.setVisibility(GONE);
         selBar.addView(selBtn(Glyphs.COPY, "Copy", () -> copySel(false)));
         selBar.addView(selBtn(Glyphs.CUT, "Cut", () -> copySel(true)));
-        selBar.addView(selBtn(Glyphs.TRASH, "Delete", () -> confirmDelete(new ArrayList<>(sel))));
+        selBar.addView(selBtn(Glyphs.TRASH, "Delete", () -> confirmSelectionDelete(new ArrayList<>(sel))));
         selBar.addView(selBtn(Glyphs.SHARE, "Share", () -> FileOps.share(a, files(sel))));
         selBar.addView(selBtn(Glyphs.MORE, "More", this::selMore));
         FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, Ui.dp(68), Gravity.BOTTOM);
@@ -267,6 +272,7 @@ final class BrowserView extends FrameLayout {
         closeSearch();
         selecting = false;
         sel.clear();
+        rangeAnchor = null;
         selBar.setVisibility(GONE);
         a.navForSelection(false);
         updateHeader();
@@ -298,7 +304,7 @@ final class BrowserView extends FrameLayout {
 
     void loadDir() {
         final File d = cur;
-        if (!a.hasAccess()) { loading = false; all = new ArrayList<>(); applyFilter(); return; }
+        if (!a.hasAccess()) { loading = false; all = new ArrayList<>(); sel.clear(); selecting = false; rangeAnchor = null; updateSel(); applyFilter(); return; }
         loading = true;
         updateEmpty();
         final Comparator<Entry> cmp = comparator();
@@ -312,6 +318,7 @@ final class BrowserView extends FrameLayout {
                 if (d != cur || mode != DIR) return;
                 loading = false;
                 all = res;
+                reconcileSelection();
                 applyFilter();
                 lv.setSelection(0);
             });
@@ -323,7 +330,7 @@ final class BrowserView extends FrameLayout {
         a.io.execute(() -> {
             final List<Entry> l = new ArrayList<>();
             for (String p : ps) { File f = new File(p); if (f.exists()) l.add(new Entry(f)); }
-            post(() -> { loading = false; all = l; applyFilter(); });
+            post(() -> { loading = false; all = l; reconcileSelection(); applyFilter(); });
         });
     }
 
@@ -337,6 +344,7 @@ final class BrowserView extends FrameLayout {
         limit = limited;
         selecting = false;
         sel.clear();
+        rangeAnchor = null;
         selBar.setVisibility(GONE);
         a.navForSelection(false);
         loading = list == null;
@@ -352,7 +360,7 @@ final class BrowserView extends FrameLayout {
         a.io.execute(() -> {
             final List<Entry> keep = new ArrayList<>();
             for (Entry e : snap) if (e.f.exists()) keep.add(e);
-            post(() -> { all = keep; applyFilter(); });
+            post(() -> { all = keep; reconcileSelection(); applyFilter(); });
         });
     }
 
@@ -447,15 +455,77 @@ final class BrowserView extends FrameLayout {
     }
 
     // ---------- selection ----------
-    void startSelect(Entry e) { selecting = true; sel.clear(); sel.add(e); Ui.tick(this); updateSel(); }
-    void toggle(Entry e) { if (!sel.remove(e)) sel.add(e); if (sel.isEmpty()) endSelect(); else updateSel(); }
-    void endSelect() { selecting = false; sel.clear(); updateSel(); }
-    void selectAll() { selecting = true; sel.addAll(shown); updateSel(); }
+    private List<String> selectedPaths() {
+        List<String> paths = new ArrayList<>();
+        for (Entry e : sel) paths.add(e.f.getAbsolutePath());
+        return paths;
+    }
+
+    private void reconcileSelection() {
+        if (sel.isEmpty()) return;
+        java.util.Set<String> paths = new java.util.HashSet<>(selectedPaths());
+        sel.clear();
+        for (Entry e : all) if (paths.contains(e.f.getAbsolutePath())) sel.add(e);
+        if (sel.isEmpty()) selecting = false;
+        updateSel();
+    }
+
+    void startSelect(Entry e) { selecting = true; sel.clear(); sel.add(e); rangeAnchor = e.f.getAbsolutePath(); Ui.tick(this); updateSel(); }
+    void toggle(Entry e) { if (!sel.remove(e)) { sel.add(e); if (rangeAnchor == null) rangeAnchor = e.f.getAbsolutePath(); } if (sel.isEmpty()) endSelect(); else updateSel(); }
+    void selectRange(Entry end) {
+        if (!selecting) { startSelect(end); return; }
+        int first = -1, last = -1;
+        for (int i=0;i<shown.size();i++) {
+            String path = shown.get(i).f.getAbsolutePath();
+            if (path.equals(rangeAnchor)) first = i;
+            if (path.equals(end.f.getAbsolutePath())) last = i;
+        }
+        if (first < 0 || last < 0) { toggle(end); return; }
+        for (int i=Math.min(first,last);i<=Math.max(first,last);i++) sel.add(shown.get(i));
+        updateSel();
+    }
+    void endSelect() { selecting = false; sel.clear(); rangeAnchor = null; updateSel(); }
+    void selectAll() { selecting = true; if (rangeAnchor == null && !shown.isEmpty()) rangeAnchor = shown.get(0).f.getAbsolutePath(); sel.addAll(shown); updateSel(); }
+    void deselectAll() { endSelect(); }
+
+    private void updateSelectionSummary() {
+        final long token = ++selectionSummaryToken;
+        final List<File> snapshot = files(sel);
+        final int count = snapshot.size();
+        if (count == 0) return;
+        title.setText(count + " selected · calculating size…");
+        a.io.execute(() -> {
+            if (token != selectionSummaryToken) return;
+            long[] totals = new long[2];
+            for (File f : snapshot) { if (token != selectionSummaryToken) return; if (f.exists()) FileOps.treeSize(f, totals); }
+            final long bytes = totals[0];
+            post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + Ui.size(bytes)); });
+        });
+    }
+
+    void selectionStudio() {
+        if (sel.isEmpty()) return;
+        final TextView details = Ui.tv(a, sel.size() + " selected items\nLong-press another item to select a range.\nCalculating combined size…", 15, Ui.WHITE, true);
+        details.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(18));
+        AlertDialog dialog = new AlertDialog.Builder(a).setTitle("Selection Studio").setView(details)
+                .setNeutralButton("Deselect all", (d,w) -> deselectAll())
+                .setNegativeButton("Close", null)
+                .setPositiveButton("Select all", (d,w) -> selectAll()).create();
+        final List<File> snapshot = files(sel);
+        dialog.setOnShowListener(d -> {
+            a.io.execute(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
+                final String value = snapshot.size() + " selected items\n" + Ui.size(total[0]) + " combined file size\n" + total[1] + " files";
+                post(() -> { if (dialog.isShowing()) details.setText(value); });
+            });
+        });
+        dialog.show();
+    }
 
     void updateSel() {
         selBar.setVisibility(selecting ? VISIBLE : GONE);
         a.navForSelection(selecting);
         updateHeader();
+        updateSelectionSummary();
         updatePaste();
         ad.notifyDataSetChanged();
     }
@@ -484,11 +554,15 @@ final class BrowserView extends FrameLayout {
         if (a.clip == null || cur == null) return;
         final File[] src = a.clip;
         final boolean cut = a.clipCut;
-        pasteWithConflictPrompt(src, cur, cut, msg -> {
+        FileOps.Done done = msg -> {
             if (cut) a.setClip(null, false);
             Ui.toast(a, msg);
             a.afterOps();
-        });
+        };
+        if (cut) new AlertDialog.Builder(a).setTitle("Move " + src.length + " items?")
+                .setMessage("The selected items will be moved out of their current folder. Continue?")
+                .setNegativeButton("Cancel", null).setPositiveButton("Continue", (d,w) -> pasteWithConflictPrompt(src,cur,true,done)).show();
+        else pasteWithConflictPrompt(src, cur, false, done);
     }
 
     void pasteWithConflictPrompt(final File[] src, final File destination, final boolean move, final FileOps.Done done) {
@@ -555,7 +629,10 @@ final class BrowserView extends FrameLayout {
         add(l, r, columns > 1 ? "List view" : "Grid view", this::toggleView);
         add(l, r, "Sort by…", this::sortDialog);
         if (mode == LIST && "Search".equals(listTitle)) add(l, r, "Advanced search filters…", this::advancedSearchDialog);
-        add(l, r, "Select all", this::selectAll);
+        if (selecting) {
+            add(l, r, "Selection Studio · count and size", this::selectionStudio);
+            add(l, r, "Deselect all", this::deselectAll);
+        } else if (!shown.isEmpty()) add(l, r, "Select all", this::selectAll);
         if (mode == DIR) {
             boolean on = Ui.bool("hidden", false);
             add(l, r, on ? "Hide hidden files" : "Show hidden files", () -> { Ui.set("hidden", !on); reload(); });
@@ -644,9 +721,11 @@ final class BrowserView extends FrameLayout {
         List<String> l = new ArrayList<>();
         List<Runnable> r = new ArrayList<>();
         final List<Entry> s = new ArrayList<>(sel);
+        add(l, r, "Selection Studio · count and size", this::selectionStudio);
         add(l, r, "Select all", this::selectAll);
+        add(l, r, "Deselect all", this::deselectAll);
         add(l, r, "Compress to ZIP", () -> zip(s));
-        add(l, r, "Move to…", () -> moveToQuick(s));
+        add(l, r, "Move to…", () -> confirmSelectionMove(s));
         add(l, r, "Send via Wi-Fi…", () -> a.sendViaWifi(files(s)));
         if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> a.copyToSafTree(files(s)));
         add(l, r, "Label", () -> labelDialog(s));
@@ -656,32 +735,126 @@ final class BrowserView extends FrameLayout {
             add(l, r, "Rename", () -> rename(e));
             add(l, r, a.isFav(e.f) ? "Remove from favorites" : "Add to favorites", () -> { a.toggleFav(e.f); endSelect(); a.afterOps(); });
             add(l, r, "Properties", () -> properties(e));
-        } else {
-            add(l, r, "Rename (batch)", () -> batchRename(s));
         }
+        add(l, r, "Batch Rename Studio", () -> batchRename(s));
         showMenu(a, "More", l, r);
     }
 
-    /** Applies "Pattern {n}" to every selected item; {n} becomes a running number, extension is kept. */
+    /** Native preview-first batch rename studio. All filesystem work runs on the existing ops executor. */
     void batchRename(final List<Entry> list) {
-        final EditText in = input("Photo {n}");
-        new AlertDialog.Builder(a).setTitle("Rename " + list.size() + " items")
-                .setMessage("Use {n} for a running number, e.g. \"Vacation {n}\"")
-                .setView(wrap(in)).setNegativeButton("Cancel", null)
-                .setPositiveButton("Rename", (d, w) -> {
-                    String pattern = in.getText().toString().trim();
-                    if (pattern.isEmpty()) return;
-                    int n = 1, ok = 0;
-                    for (Entry e : list) {
-                        String base = pattern.contains("{n}") ? pattern.replace("{n}", String.valueOf(n)) : pattern + " " + n;
-                        n++;
-                        String ext = e.dir ? "" : e.ext.isEmpty() ? "" : "." + e.ext;
-                        File t = FileOps.unique(e.f.getParentFile(), base + ext);
-                        if (e.f.renameTo(t)) { Labels.moved(a, e.f, t); a.renameFav(e.f, t); ok++; }
-                    }
-                    Ui.toast(a, "Renamed " + ok + " item" + (ok == 1 ? "" : "s"));
-                    endSelect(); a.afterOps();
-                }).show();
+        if (list == null || list.isEmpty()) return;
+        final EditText prefix = input("");
+        final EditText suffix = input("");
+        final EditText find = input("");
+        final EditText replacement = input("");
+        final EditText start = input("1");
+        final EditText increment = input("1");
+        final EditText padding = input("1");
+        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(Ui.WHITE);
+        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(Ui.WHITE); preserve.setChecked(true);
+        final Spinner capitalization = new Spinner(a);
+        ArrayAdapter<String> cases = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"});
+        cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);
+        final TextView preview = Ui.tv(a, "Enter rename rules to preview the result.", 12, Ui.SUB, false);
+        preview.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
+        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(Ui.dp(16),Ui.dp(8),Ui.dp(16),Ui.dp(12));
+        addRenameField(panel,"Prefix",prefix); addRenameField(panel,"Suffix",suffix); addRenameField(panel,"Find text (blank = none)",find); addRenameField(panel,"Replace with (blank removes matches)",replacement);
+        addRenameField(panel,"First number",start); addRenameField(panel,"Number increment",increment); addRenameField(panel,"Number padding (digits)",padding);
+        addRenameField(panel,"Capitalization",capitalization); panel.addView(numbering); panel.addView(preserve);
+        TextView previewTitle = Ui.tv(a,"LIVE BEFORE / AFTER PREVIEW",11,Ui.accent,true); previewTitle.setPadding(0,Ui.dp(12),0,Ui.dp(4)); panel.addView(previewTitle); panel.addView(preview);
+        ScrollView scroll = new ScrollView(a); scroll.setFillViewport(false); scroll.addView(panel);
+        final long[] previewGeneration = {0};
+        final Runnable[] pendingPreview = {null};
+        final Runnable refresh = () -> {
+            final long token = ++previewGeneration[0];
+            if (pendingPreview[0] != null) preview.removeCallbacks(pendingPreview[0]);
+            pendingPreview[0] = () -> {
+                final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
+                final List<File> sources = files(list);
+                a.io.execute(() -> {
+                    List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
+                    StringBuilder text = new StringBuilder(); int shownCount = Math.min(12,plan.size());
+                    for(int i=0;i<shownCount;i++){ BatchRenameEngine.Item item=plan.get(i); text.append(item.source == null ? "(missing)" : item.source.getName()).append("\n  → ").append(item.target == null ? "(invalid)" : item.target.getName()); if(!item.valid()) text.append("\n  ! ").append(item.problem); text.append("\n\n"); }
+                    if(plan.size()>shownCount) text.append("… and ").append(plan.size()-shownCount).append(" more\n");
+                    long invalid=plan.stream().filter(item -> !item.valid()).count();
+                    text.append("\n").append(plan.size()).append(" items · ").append(invalid).append(" conflict(s)");
+                    final String rendered=text.toString();
+                    post(() -> { if(token == previewGeneration[0]) preview.setText(rendered); });
+                });
+            };
+            preview.postDelayed(pendingPreview[0],160);
+        };
+        android.text.TextWatcher watcher = new android.text.TextWatcher(){ public void beforeTextChanged(CharSequence s,int st,int c,int a){} public void onTextChanged(CharSequence s,int st,int before,int count){refresh.run();} public void afterTextChanged(android.text.Editable e){} };
+        for(EditText edit : new EditText[]{prefix,suffix,find,replacement,start,increment,padding}) edit.addTextChangedListener(watcher);
+        capitalization.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){ public void onNothingSelected(AdapterView<?> p){} public void onItemSelected(AdapterView<?> p,View v,int pos,long id){refresh.run();} });
+        numbering.setOnCheckedChangeListener((b,c)->refresh.run()); preserve.setOnCheckedChangeListener((b,c)->refresh.run()); refresh.run();
+        AlertDialog editor = new AlertDialog.Builder(a).setTitle("Batch Rename Studio · " + list.size() + " items").setView(scroll).setNegativeButton("Cancel",null).setPositiveButton("Review rename",null).create();
+        editor.setOnShowListener(d -> editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            final long token = ++previewGeneration[0];
+            if (pendingPreview[0] != null) preview.removeCallbacks(pendingPreview[0]);
+            final android.widget.Button review = editor.getButton(AlertDialog.BUTTON_POSITIVE);
+            review.setEnabled(false); preview.setText("Validating destination names…");
+            final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
+            final List<File> sources = files(list);
+            a.io.execute(() -> {
+                List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
+                List<String> problems = new ArrayList<>(); for(BatchRenameEngine.Item item:plan) if(!item.valid()) problems.add((item.source==null?"Missing file":item.source.getName())+": "+item.problem);
+                StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) summary.append(plan.get(i).source.getName()).append(" → ").append(plan.get(i).target.getName()).append("\n");
+                if(plan.size()>20) summary.append("… and ").append(plan.size()-20).append(" more");
+                final String reviewText=summary.toString();
+                post(() -> {
+                    if (!editor.isShowing()) return;
+                    review.setEnabled(true);
+                    if (token != previewGeneration[0]) return;
+                    if(!problems.isEmpty()) { refresh.run(); new AlertDialog.Builder(a).setTitle("Resolve rename conflicts").setMessage(joinLines(problems,10)).setPositiveButton("Back to editor",null).show(); return; }
+                    preview.setText(reviewText + "\n" + plan.size() + " destinations validated · no overwrites");
+                    new AlertDialog.Builder(a).setTitle("Confirm batch rename").setMessage("Rename "+plan.size()+" items? Existing files will never be overwritten.\n\n"+reviewText)
+                            .setNegativeButton("Cancel",null).setPositiveButton("Rename",(dd,ww)->{editor.dismiss();executeBatchRename(plan);}).show();
+                });
+            });
+        }));
+        editor.show();
+    }
+
+    private void addRenameField(LinearLayout panel,String label,View field) {
+        TextView title=Ui.tv(a,label,12,Ui.SUB,true); title.setPadding(0,Ui.dp(7),0,Ui.dp(3)); panel.addView(title);
+        if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(Ui.WHITE); edit.setHintTextColor(Ui.SUB); edit.setBackground(Ui.glass(12,true)); edit.setPadding(Ui.dp(12),Ui.dp(9),Ui.dp(12),Ui.dp(9)); }
+        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? Ui.dp(48) : -2));
+    }
+
+    private BatchRenameEngine.Options renameOptions(EditText prefix,EditText suffix,EditText find,EditText replacement,EditText start,EditText increment,EditText padding,Spinner capitalization,CheckBox numbering,CheckBox preserve) {
+        BatchRenameEngine.Options o=new BatchRenameEngine.Options(); o.prefix=prefix.getText().toString(); o.suffix=suffix.getText().toString(); o.find=find.getText().toString(); o.replacement=replacement.getText().toString();
+        o.start=parseInt(start.getText().toString(),-1); o.increment=parseInt(increment.getText().toString(),0); o.padding=parseInt(padding.getText().toString(),0);
+        o.capitalization=capitalization.getSelectedItemPosition(); o.numbering=numbering.isChecked(); o.preserveExtension=preserve.isChecked(); return o;
+    }
+    private int parseInt(String value,int fallback){try{return Integer.parseInt(value.trim());}catch(Exception e){return fallback;}}
+    private String joinLines(List<String> lines,int max){StringBuilder b=new StringBuilder();for(int i=0;i<Math.min(max,lines.size());i++)b.append("• ").append(lines.get(i)).append("\n");if(lines.size()>max)b.append("… and ").append(lines.size()-max).append(" more");return b.toString();}
+
+    private void executeBatchRename(final List<BatchRenameEngine.Item> plan) {
+        a.busy(true);
+        a.ops.execute(() -> {
+            BatchRenameEngine.Result result=BatchRenameEngine.execute(plan);
+            a.runOnUiThread(() -> {
+                a.busy(false);
+                if(!result.completed.isEmpty()) for(BatchRenameEngine.Item item:result.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);}
+                if(result.success()) { endSelect(); a.afterOps(); showRenameResult(result,"Renamed "+result.completed.size()+" items."); }
+                else { a.afterOps(); showRenameResult(result,result.errors.isEmpty()?"Rename did not complete.":joinLines(result.errors,8)); }
+            });
+        });
+    }
+
+    private void showRenameResult(BatchRenameEngine.Result result,String message) {
+        AlertDialog.Builder b=new AlertDialog.Builder(a).setTitle(result.success()?"Batch rename complete":"Batch rename result").setMessage(message).setPositiveButton("Done",null);
+        if(!result.completed.isEmpty()) b.setNeutralButton("Undo",(d,w)->undoBatchRename(result));
+        b.show();
+    }
+
+    private void undoBatchRename(BatchRenameEngine.Result prior) {
+        a.busy(true); a.ops.execute(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runOnUiThread(() -> {
+            a.busy(false); for(BatchRenameEngine.Item item:undone.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);} a.afterOps();
+            String msg=undone.errors.isEmpty()?"Restored "+undone.completed.size()+" original names.":joinLines(undone.errors,8);
+            new AlertDialog.Builder(a).setTitle(undone.errors.isEmpty()?"Undo complete":"Undo incomplete").setMessage(msg).setPositiveButton("OK",null).show();
+        }); });
     }
 
     void labelDialog(final List<Entry> list) {
@@ -696,6 +869,13 @@ final class BrowserView extends FrameLayout {
     }
 
     /** One-tap move to a common folder, no need to cut → navigate → paste. */
+    void confirmSelectionMove(final List<Entry> list) {
+        if (list == null || list.isEmpty()) return;
+        new AlertDialog.Builder(a).setTitle("Move " + list.size() + " selected items?")
+                .setMessage("The selected items will leave their current location. Choose a destination only after confirming.")
+                .setNegativeButton("Cancel", null).setPositiveButton("Continue", (d,w) -> moveToQuick(list)).show();
+    }
+
     void moveToQuick(final List<Entry> list) {
         final File root = android.os.Environment.getExternalStorageDirectory();
         final String[] names = {"Download", "Documents", "DCIM", "Pictures", "Movies", "Music", "Internal storage (root)"};
@@ -788,19 +968,27 @@ final class BrowserView extends FrameLayout {
         return f;
     }
 
+    private void deleteEntries(final List<Entry> list, final boolean useBin) {
+        final List<File> fs = files(list);
+        FileOps.Done after = msg -> { a.removeFavs(fs); endSelect(); a.afterOps(); Ui.toast(a, msg); };
+        if (useBin) RecycleBin.moveToBin(a, fs, after); else FileOps.delete(a, fs, after);
+    }
+
     void confirmDelete(final List<Entry> list) {
         if (list.isEmpty()) return;
         final boolean useBin = Ui.bool("recyclebin", true);
-        final Runnable go = () -> {
-            final List<File> fs = files(list);
-            FileOps.Done after = msg -> { a.removeFavs(fs); endSelect(); a.afterOps(); Ui.toast(a, msg); };
-            if (useBin) RecycleBin.moveToBin(a, fs, after); else FileOps.delete(a, fs, after);
-        };
-        if (!Ui.bool("confirm", true)) { go.run(); return; }
+        if (!Ui.bool("confirm", true)) { deleteEntries(list,useBin); return; }
         new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " item" + (list.size() > 1 ? "s" : "") + "?")
                 .setMessage(useBin ? "Moved to Recycle Bin — you can restore it later." : "This can't be undone.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (d, w) -> go.run()).show();
+                .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
+    }
+
+    void confirmSelectionDelete(final List<Entry> list) {
+        if (list == null || list.isEmpty()) return;
+        final boolean useBin = Ui.bool("recyclebin", true);
+        new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " selected item" + (list.size() > 1 ? "s" : "") + "?")
+                .setMessage(useBin ? "The selected items will be moved to Recycle Bin and can be restored." : "This permanently deletes the selected items and cannot be undone.")
+                .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
     }
 
     void zip(List<Entry> list) {

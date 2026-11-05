@@ -56,6 +56,8 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.HtmlViewerRoutingTest'
       - name: Run eight-theme catalogue unit tests
         run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ThemeCatalogTest'
+      - name: Run Selection and Batch Rename engine tests
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.BatchRenameEngineTest'
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
