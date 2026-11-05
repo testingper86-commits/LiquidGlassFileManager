@@ -163,7 +163,6 @@ public class ViewerActivity extends Activity {
         setContentView(root);
         dynamicIsland = new DynamicIslandView(this);
         root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
-        dynamicIsland.setVisibility(View.GONE);
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -753,6 +752,10 @@ public class ViewerActivity extends Activity {
                             videoHeight = prepared.getVideoHeight();
                             fitVideoTexture();
                             prepared.start();
+                            if (dynamicIsland != null) {
+                                dynamicIsland.update("Playing video", initial > 0 && duration > 0 ? (int)(100L * initial / duration) : 0);
+                                dynamicIsland.setAction("Pause", ViewerActivity.this::toggleIslandVideo);
+                            }
                             setVideoPlayAnimation(playbackToggle, true);
                             if (videoTicker != null) h.removeCallbacks(videoTicker);
                             videoTicker = new Runnable() {
@@ -766,8 +769,14 @@ public class ViewerActivity extends Activity {
                                             currentTimeTv.setText(formatVideoTime(position));
                                         }
                                         int durationNow = active.getDuration();
-                                        float progressFraction = durationNow > 0 ? Math.max(0f, Math.min(1f, active.getCurrentPosition() / (float) durationNow)) : 0f;
-                                        playbackToggle.setText(active.isPlaying() ? "Pause" : "Play");
+                                        int positionNow = active.getCurrentPosition();
+                                        int percentNow = durationNow > 0 ? Math.max(0, Math.min(100, (int)(100L * positionNow / durationNow))) : -1;
+                                        boolean playingNow = active.isPlaying();
+                                        playbackToggle.setText(playingNow ? "Pause" : "Play");
+                                        if (dynamicIsland != null) {
+                                            dynamicIsland.update(playingNow ? "Playing video" : "Video paused", percentNow);
+                                            dynamicIsland.setAction(playingNow ? "Pause" : "Resume", ViewerActivity.this::toggleIslandVideo);
+                                        }
                                         h.postDelayed(this, 400);
                                     } catch (RuntimeException ex) {
                                         android.util.Log.w("LiquidFiles", "Video progress update stopped", ex);
@@ -791,7 +800,7 @@ public class ViewerActivity extends Activity {
                         else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) GlowRing.setActive(stage, false);
                         return false;
                     });
-                    player.setOnCompletionListener(completed -> { if(dynamicIsland!=null)dynamicIsland.update("Video finished",100); if (!videoLoop) advanceToNextVideo(); });
+                    player.setOnCompletionListener(completed -> { if(dynamicIsland!=null){dynamicIsland.update("Video finished",100);dynamicIsland.setAction(null,null);} if (!videoLoop) advanceToNextVideo(); });
                     player.setOnErrorListener((failed, what, extra) -> {
                         if(dynamicIsland!=null){dynamicIsland.update("Video playback failed",-1);dynamicIsland.setAction(null,null);}
                         android.util.Log.e("LiquidFiles", "MediaPlayer error what=" + what + " extra=" + extra);
@@ -854,7 +863,10 @@ public class ViewerActivity extends Activity {
 
     private void releaseVideoPlayer(MediaPlayer player) {
         if (player == null) return;
-        if (videoPlayer == player) { videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPendingPosition = 0; }
+        if (videoPlayer == player) {
+            videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPendingPosition = 0;
+            if (dynamicIsland != null) dynamicIsland.setAction(null, null);
+        }
         if (videoTicker != null) { h.removeCallbacks(videoTicker); videoTicker = null; }
         if (videoPlayer == player) videoPlayer = null;
         try { player.setOnPreparedListener(null); player.setOnCompletionListener(null); player.setOnErrorListener(null); } catch (RuntimeException ignored) { }

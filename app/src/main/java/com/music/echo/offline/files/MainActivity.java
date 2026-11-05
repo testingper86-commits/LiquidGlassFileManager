@@ -348,7 +348,20 @@ public class MainActivity extends Activity {
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); if(dynamicIsland!=null)dynamicIsland.update(text,-1); }
+    void progress(String text) {
+        busyTv.setText(text + " · tap to cancel");
+        GlowRing.attach(busyTv);
+        GlowRing.setActive(busyTv, true);
+        if (dynamicIsland != null) {
+            int percent = -1;
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)\\s+of\\s+(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text);
+            if (m.find()) {
+                int total = Math.max(1, Integer.parseInt(m.group(2)));
+                percent = Math.max(0, Math.min(100, (int)(100L * Integer.parseInt(m.group(1)) / total)));
+            }
+            dynamicIsland.update(text, percent);
+        }
+    }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {
