@@ -61,6 +61,11 @@ final class DynamicIslandView extends FrameLayout {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable longPress;
     private Runnable actionCallback;
+    private Runnable autoHide;
+    private String suppressedStatus;
+    private int safeTopInset;
+    private static final long COMPLETION_VISIBLE_MS = 2400L;
+    private static final long PAUSED_VISIBLE_MS = 5200L;
     private float downX, downY, startX, startY;
     private boolean dragging, longPressed;
     private String activity = "ToxiFiles ready";
@@ -78,6 +83,8 @@ final class DynamicIslandView extends FrameLayout {
         shell = new LinearLayout(host);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        int islandWidth = Math.max(1, Math.min(dp(344),
+                getResources().getDisplayMetrics().widthPixels - dp(24)));
 
         pill = new LinearLayout(host);
         pill.setOrientation(LinearLayout.HORIZONTAL);
@@ -123,7 +130,7 @@ final class DynamicIslandView extends FrameLayout {
         expanded.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         expanded.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         expanded.setElevation(dp(16));
-        LinearLayout.LayoutParams expandedLp = new LinearLayout.LayoutParams(dp(318), -2);
+        LinearLayout.LayoutParams expandedLp = new LinearLayout.LayoutParams(islandWidth, -2);
         expandedLp.topMargin = dp(8);
         shell.addView(expanded, expandedLp);
         expanded.setVisibility(GONE);
@@ -147,7 +154,11 @@ final class DynamicIslandView extends FrameLayout {
         textColumn.setPadding(dp(10), 0, dp(6), 0);
         titleRow.addView(textColumn, new LinearLayout.LayoutParams(0, -2, 1f));
         title = text("ToxiFiles", 13, Color.WHITE, true);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         subtitle = text("Ready", 11, 0xFF9AA6B5, false);
+        subtitle.setSingleLine(true);
+        subtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
         textColumn.addView(title);
         LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(-1, -2);
         subLp.topMargin = dp(2);
@@ -181,9 +192,10 @@ final class DynamicIslandView extends FrameLayout {
             if (callback != null) callback.run();
         });
         actionRow.addView(action, new LinearLayout.LayoutParams(-2, -2));
+        actionRow.setVisibility(GONE);
 
-        addView(shell, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
-        setVisibility(isEnabledPreference() ? VISIBLE : GONE);
+        addView(shell, new FrameLayout.LayoutParams(islandWidth, -2, Gravity.TOP | Gravity.START));
+        setVisibility(GONE);
         applyPosition();
         render();
         refreshOutlineShadows();
@@ -213,8 +225,14 @@ final class DynamicIslandView extends FrameLayout {
     private boolean isEnabledPreference() { return prefs.getBoolean("enabled", true); }
 
     private int statusBarHeight() {
+        if (safeTopInset > 0) return safeTopInset;
         int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
         return id > 0 ? getResources().getDimensionPixelSize(id) : dp(24);
+    }
+
+    void setSafeTopInset(int inset) {
+        safeTopInset = Math.max(0, inset);
+        if (getWidth() > 0) post(this::applyPosition);
     }
     private void applyPosition() {
         if (getWidth() <= 0 || shell.getMeasuredWidth() <= 0) {
@@ -224,7 +242,7 @@ final class DynamicIslandView extends FrameLayout {
         int maxX = Math.max(0, getWidth() - shell.getMeasuredWidth());
         int maxY = Math.max(statusBarHeight() + dp(4), getHeight() - shell.getMeasuredHeight());
         float nx = prefs.getFloat("x", 0.5f);
-        float ny = prefs.getFloat("y", Math.min(0.08f, (statusBarHeight() + dp(8)) / (float)Math.max(1, getHeight())));
+        float ny = prefs.getFloat("y", (statusBarHeight() + dp(6)) / (float)Math.max(1, getHeight()));
         int x = Math.round(Math.max(0f, Math.min(1f, nx)) * maxX);
         int y = Math.max(statusBarHeight() + dp(4), Math.min(maxY, Math.round(ny * getHeight())));
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams)shell.getLayoutParams();
@@ -239,7 +257,7 @@ final class DynamicIslandView extends FrameLayout {
     }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        startGlowAnimation();
+        if (getVisibility() == VISIBLE) startGlowAnimation();
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -284,7 +302,8 @@ final class DynamicIslandView extends FrameLayout {
     private void updateGlowActivity(boolean active) {
         if (activeGlow == active) return;
         activeGlow = active;
-        startGlowAnimation();
+        if (getVisibility() == VISIBLE) startGlowAnimation();
+        else setGlowPhase(0f);
     }
 
     private boolean handleTouch(View view, MotionEvent event) {
@@ -378,28 +397,113 @@ final class DynamicIslandView extends FrameLayout {
         }
         String next = status == null || status.trim().isEmpty() ? "ToxiFiles active" : status.trim();
         String lower = next.toLowerCase(java.util.Locale.ROOT);
+        if (next.equals(suppressedStatus)) {
+            activity = next;
+            progress = Math.max(-1, Math.min(100, percent));
+            return;
+        }
+        suppressedStatus = null;
+        if (!isEnabledPreference()) {
+            hideNow();
+            return;
+        }
         if ((lower.contains("copy") || lower.contains("mov") || lower.contains("delet") || lower.contains("zip") || lower.contains("extract"))
                 && !prefs.getBoolean("show_operations", true)) return;
         if ((lower.contains("video") || lower.contains("play")) && !prefs.getBoolean("show_playback", true)) return;
         if ((lower.contains("scan") || lower.contains("index")) && !prefs.getBoolean("show_scan", true)) return;
+
         boolean changed = !next.equals(activity);
+        boolean terminal = isTerminalStatus(lower);
+        boolean pausedPlayback = lower.contains("video paused");
         activity = next;
         progress = Math.max(-1, Math.min(100, percent));
-        String state = activity.toLowerCase(java.util.Locale.ROOT);
-        updateGlowActivity(!state.equals("toxifiles ready") && !state.equals("ready")
-                && !state.contains("finished") && !state.contains("complete"));
+
+        if (getVisibility() != VISIBLE) {
+            setVisibility(VISIBLE);
+            startGlowAnimation();
+        }
+        updateGlowActivity(!terminal && !pausedPlayback);
         render();
-        if (changed && isEnabledPreference() && prefs.getBoolean("auto_expand", true)
-                && !activity.equals("ToxiFiles ready") && !activity.equals("Ready")) expand();
+
+        if (terminal) {
+            if (lower.contains("finish") || lower.contains("complete") || lower.contains("success")) {
+                progress = 100;
+                render();
+            }
+            scheduleAutoHide(COMPLETION_VISIBLE_MS, changed);
+        } else if (pausedPlayback) {
+            scheduleAutoHide(PAUSED_VISIBLE_MS, changed);
+        } else {
+            cancelAutoHide();
+            if (changed && prefs.getBoolean("auto_expand", true)) expand();
+        }
     }
+
+    private boolean isTerminalStatus(String lower) {
+        return lower.equals("ready") || lower.equals("toxifiles ready")
+                || lower.contains("finished") || lower.contains("complete")
+                || lower.contains("cancelled") || lower.contains("canceled")
+                || lower.contains("failed") || lower.contains("error")
+                || lower.contains("success");
+    }
+
+    private void scheduleAutoHide(long delay, boolean reset) {
+        if (autoHide != null && !reset) return;
+        cancelAutoHide();
+        autoHide = this::hideNow;
+        handler.postDelayed(autoHide, delay);
+    }
+
+    private void cancelAutoHide() {
+        if (autoHide != null) {
+            handler.removeCallbacks(autoHide);
+            autoHide = null;
+        }
+    }
+
+    private void hideNow() {
+        cancelAutoHide();
+        collapse();
+        actionCallback = null;
+        action.setVisibility(GONE);
+        actionRow.setVisibility(GONE);
+        activeGlow = false;
+        setGlowPhase(0f);
+        stopGlowAnimation();
+        setVisibility(GONE);
+        suppressedStatus = activity;
+        activity = "ToxiFiles ready";
+        progress = -1;
+    }
+
     private void render() {
         String lower = activity.toLowerCase(java.util.Locale.ROOT);
-        boolean active = !lower.equals("toxifiles ready") && !lower.equals("ready");
-        label.setText(active ? compact(activity) : "ToxiFiles");
+        boolean active = !isTerminalStatus(lower);
+        String compactStatus = compact(activity);
+        if (progress >= 0 && active) {
+            if (lower.contains("video")) compactStatus = "Video " + progress + "%";
+            else {
+                int space = activity.indexOf(' ');
+                String task = space > 0 ? activity.substring(0, space) : activity;
+                if (task.length() > 8) task = task.substring(0, 8);
+                compactStatus = task + " " + progress + "%";
+            }
+        }
+        label.setText(active ? compactStatus : "ToxiFiles");
         statusIcon.setText(active ? "●" : "◆");
         statusIcon.setTextColor(active ? accent() : 0xFF8995A4);
         title.setText(activity);
-        subtitle.setText(progress >= 0 ? "In progress · " + progress + "%" : active ? "Activity in progress" : "Your files, under control");
+        java.util.regex.Matcher items = java.util.regex.Pattern.compile("([0-9]+)[ ]+of[ ]+([0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(activity);
+        if (lower.contains("video")) {
+            subtitle.setText(progress >= 0 ? "Video playback · " + progress + "%" : "Video playback");
+        } else if (items.find()) {
+            subtitle.setText(items.group(1) + " of " + items.group(2) + " items"
+                    + (progress >= 0 ? " · " + progress + "%" : ""));
+        } else if (progress >= 0) {
+            subtitle.setText("Task progress · " + progress + "%");
+        } else {
+            subtitle.setText(active ? "Working on your files" : "Your files, under control");
+        }
         progressBar.setIndeterminate(progress < 0 && active);
         progressBar.setProgress(progress < 0 ? 0 : progress);
         progressBar.setIndeterminateTintList(ColorStateList.valueOf(accent()));
@@ -419,21 +523,16 @@ final class DynamicIslandView extends FrameLayout {
         actionCallback = callback;
         if (titleText == null || titleText.trim().isEmpty() || callback == null) {
             action.setVisibility(GONE);
+            actionRow.setVisibility(GONE);
             actionCallback = null;
         } else {
             action.setText(titleText);
             action.setVisibility(VISIBLE);
+            actionRow.setVisibility(VISIBLE);
         }
     }
     void setEnabledFromSettings() {
-        setVisibility(isEnabledPreference() ? VISIBLE : GONE);
-        if (!isEnabledPreference()) {
-            collapse();
-            stopGlowAnimation();
-            setGlowPhase(0f);
-        } else {
-            startGlowAnimation();
-        }
+        if (!isEnabledPreference()) hideNow();
     }
     private void refreshOutlineShadows() {
         if (Build.VERSION.SDK_INT >= 28) {
@@ -446,6 +545,13 @@ final class DynamicIslandView extends FrameLayout {
     }
 
     void refreshStyle() {
+        String lower = activity.toLowerCase(java.util.Locale.ROOT);
+        if ((lower.contains("copy") || lower.contains("mov") || lower.contains("delet") || lower.contains("zip") || lower.contains("extract"))
+                && !prefs.getBoolean("show_operations", true)
+                || (lower.contains("video") || lower.contains("play")) && !prefs.getBoolean("show_playback", true)
+                || (lower.contains("scan") || lower.contains("index")) && !prefs.getBoolean("show_scan", true)) {
+            hideNow();
+        }
         action.setBackground(actionBackground());
         action.setTextColor(accent());
         progressBar.setProgressTintList(ColorStateList.valueOf(accent()));
@@ -454,10 +560,12 @@ final class DynamicIslandView extends FrameLayout {
         LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams)pill.getLayoutParams();
         lp.height = dp(prefs.getInt("size", 0) == 0 ? 36 : 42);
         pill.setLayoutParams(lp);
-        setElevation(dp(6 + prefs.getInt("glow", 65) / 10));
+        shell.setElevation(dp(2));
+        pill.setElevation(dp(10 + prefs.getInt("glow", 65) / 12));
+        expanded.setElevation(dp(12 + prefs.getInt("glow", 65) / 10));
         refreshOutlineShadows();
-        startGlowAnimation();
-        setGlowPhase(glowPhase);
+        if (getVisibility() == VISIBLE) startGlowAnimation();
+        else { stopGlowAnimation(); setGlowPhase(0f); }
         post(this::applyPosition);
     }
     /**
