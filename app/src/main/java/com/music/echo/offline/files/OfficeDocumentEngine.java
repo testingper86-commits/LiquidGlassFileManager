@@ -139,6 +139,12 @@ static String extractText(File file) throws Exception {
         org.w3c.dom.Document d=f.newDocumentBuilder().parse(new ByteArrayInputStream(bytes.toByteArray()));
         StringBuilder b=new StringBuilder();appendText(d.getDocumentElement(),b);return b.toString();
     }
+    private static void appendText(org.w3c.dom.Node node,StringBuilder out){
+        if(node==null)return;
+        if(node.getNodeType()==org.w3c.dom.Node.TEXT_NODE){String value=node.getNodeValue();if(value!=null&&!value.trim().isEmpty())out.append(value.trim()).append(' ');}
+        org.w3c.dom.NodeList children=node.getChildNodes();
+        for(int i=0;i<children.getLength();i++)appendText(children.item(i),out);
+    }
     static ArrayList<ArrayList<String>> parseDelimited(String input,char delimiter){ArrayList<ArrayList<String>> rows=new ArrayList<>();ArrayList<String> row=new ArrayList<>();StringBuilder cell=new StringBuilder();boolean quoted=false;for(int i=0;i<(input==null?0:input.length());i++){char c=input.charAt(i);if(c=='"'){if(quoted&&i+1<input.length()&&input.charAt(i+1)=='"'){cell.append('"');i++;}else quoted=!quoted;}else if(c==delimiter&&!quoted){row.add(cell.toString());cell.setLength(0);}else if((c=='\n'||c=='\r')&&!quoted){if(c=='\r'&&i+1<input.length()&&input.charAt(i+1)=='\n')i++;row.add(cell.toString());rows.add(row);row=new ArrayList<>();cell.setLength(0);}else cell.append(c);}boolean trailingLineBreak=input!=null&&!input.isEmpty()&&(input.charAt(input.length()-1)=='\n'||input.charAt(input.length()-1)=='\r')&&!quoted;row.add(cell.toString());if(!trailingLineBreak&&!row.isEmpty()&&!(row.size()==1&&row.get(0).isEmpty()&&rows.isEmpty()))rows.add(row);return rows;}
     static String toDelimited(List<? extends List<String>> rows,char delimiter){StringBuilder b=new StringBuilder();for(List<String> row:rows){for(int c=0;c<row.size();c++){if(c>0)b.append(delimiter);String v=row.get(c)==null?"":row.get(c);boolean q=v.indexOf(delimiter)>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0||v.indexOf('\r')>=0;if(q)b.append('"');b.append(q?v.replace("\"","\"\""):v);if(q)b.append('"');}b.append('\n');}return b.toString();}
     static ArrayList<SheetData> readSheets(File f)throws Exception{

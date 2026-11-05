@@ -24,7 +24,7 @@ final class OfficeDocumentStorage {
                     else target.delete();
                 }catch(IOException failure){target.delete();}
             }
-            File remaining=legacy.listFiles();if(remaining!=null&&remaining.length==0)legacy.delete();
+            File[] remaining=legacy.listFiles();if(remaining!=null&&remaining.length==0)legacy.delete();
         }
         return destination;
     }
