@@ -45,8 +45,11 @@ final class Ui {
     static int panelR = 10, panelG = 14, panelB = 26;
     static int hiTop = Color.argb(56, 255, 255, 255), hiBot = Color.argb(6, 255, 255, 255);
     static int edgeStroke = Color.argb(72, 255, 255, 255);
-    static final String[] THEMES = {"Neon Cyan", "Matrix Green", "Quantum Violet", "Plasma Blue", "Cyber Magenta"};
-    static final int[] DOTS = {0xFF19E6FF,0xFF39FF14,0xFFB967FF,0xFF2389FF,0xFFFF3CC7};
+    static final String[] THEMES = ThemeCatalog.NAMES;
+    static final int[] DOTS = ThemeCatalog.COLORS;
+    static final String[] THEME_NOTES = ThemeCatalog.NOTES;
+
+    static String themeNote(int index) { return ThemeCatalog.note(index); }
     static final SimpleDateFormat DF = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
 
     static void init(Context c) {

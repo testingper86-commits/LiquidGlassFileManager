@@ -2051,7 +2051,7 @@ public class MainActivity extends Activity {
         TextView title = Ui.tv(this, "Cyber Theme Studio", 28, Ui.WHITE, true);
         title.setPadding(Ui.dp(2), Ui.dp(4), Ui.dp(2), Ui.dp(2));
         panel.addView(title);
-        TextView subtitle = Ui.tv(this, "Five high-tech glass palettes. No extra themes.", 13, Ui.SUB, false);
+        TextView subtitle = Ui.tv(this, "Eight high-tech glass palettes. No extra themes.", 13, Ui.SUB, false);
         subtitle.setPadding(Ui.dp(3), 0, Ui.dp(3), Ui.dp(18)); panel.addView(subtitle);
 
         LinearLayout current = new LinearLayout(this);
@@ -2075,7 +2075,7 @@ public class MainActivity extends Activity {
 
         TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
         allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
-        String[] finishNotes = {"Neon cyan • cyber circuitry", "Toxic green • Matrix terminal", "Electric violet • quantum glass", "Plasma blue • high-voltage grid", "Cyber magenta • night protocol"};
+        String[] finishNotes = Ui.THEME_NOTES;
         for (int index = 0; index < Ui.THEMES.length; index++) {
             final int themeIndex = index;
             boolean selected = index == Ui.theme;
@@ -2094,7 +2094,7 @@ public class MainActivity extends Activity {
             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
             labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
             labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
-            TextView desc = Ui.tv(this, selected ? "Currently applied \u00B7 " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
+            TextView desc = Ui.tv(this, selected ? "Currently applied \u00B7 " + Ui.themeNote(index) : Ui.themeNote(index), 11, Ui.SUB, false);
             desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
             tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView status = Ui.tv(this, selected ? "\u2713" : "\u203A", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
