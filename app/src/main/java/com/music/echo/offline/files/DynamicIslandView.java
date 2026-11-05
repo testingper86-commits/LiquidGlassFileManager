@@ -1,9 +1,21 @@
 package com.music.echo.offline.files;
 
 import android.app.Activity;
+import android.animation.ValueAnimator;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.SweepGradient;
+import android.graphics.ColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Outline;
+import android.os.Build;
+import android.graphics.drawable.Drawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -12,7 +24,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -28,10 +42,10 @@ import android.widget.TextView;
 final class DynamicIslandView extends FrameLayout {
     private static final String PREFS = "toxifiles_dynamic_island";
     private static final int[][] ACCENTS = {
-        {0xFF00E5FF,0xFF1677FF,0xFF843BFF},
-        {0xFF00E5FF,0xFF1677FF,0xFF00BFA5},
-        {0xFFFF4D36,0xFFFF2878,0xFFD12BFF},
-        {0xFF1677FF,0xFF843BFF,0xFFD12BFF}
+        {0xFF00E5FF,0xFF1677FF,0xFF843BFF,0xFFD12BFF,0xFFFF2878,0xFFFF4D36},
+        {0xFF00E5FF,0xFF1677FF,0xFF00BFA5,0xFF00E5FF,0xFF1677FF,0xFF843BFF},
+        {0xFFFF4D36,0xFFFF2878,0xFFD12BFF,0xFFFF4D36,0xFFFF2878,0xFFD12BFF},
+        {0xFF1677FF,0xFF843BFF,0xFFD12BFF,0xFF1677FF,0xFF843BFF,0xFFD12BFF}
     };
 
     private final Activity host;
@@ -39,6 +53,11 @@ final class DynamicIslandView extends FrameLayout {
     private final LinearLayout shell, pill, expanded, titleRow, actionRow;
     private final TextView lens, statusIcon, label, title, subtitle, action;
     private final ProgressBar progressBar;
+    private final GlowBackgroundDrawable pillGlow;
+    private final GlowBackgroundDrawable cardGlow;
+    private ValueAnimator glowAnimator;
+    private float glowPhase;
+    private boolean activeGlow;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable longPress;
     private Runnable actionCallback;
@@ -64,7 +83,10 @@ final class DynamicIslandView extends FrameLayout {
         pill.setOrientation(LinearLayout.HORIZONTAL);
         pill.setGravity(Gravity.CENTER_VERTICAL);
         pill.setPadding(dp(13), 0, dp(13), 0);
-        pill.setBackground(pillBackground());
+        pillGlow = new GlowBackgroundDrawable(host, prefs, false);
+        pill.setBackground(pillGlow);
+        pill.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        pill.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         pill.setElevation(dp(12));
         pill.setMinimumHeight(dp(prefs.getInt("size", 0) == 0 ? 36 : 42));
 
@@ -96,7 +118,10 @@ final class DynamicIslandView extends FrameLayout {
         expanded = new LinearLayout(host);
         expanded.setOrientation(LinearLayout.VERTICAL);
         expanded.setPadding(dp(16), dp(13), dp(16), dp(12));
-        expanded.setBackground(cardBackground());
+        cardGlow = new GlowBackgroundDrawable(host, prefs, true);
+        expanded.setBackground(cardGlow);
+        expanded.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        expanded.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
         expanded.setElevation(dp(16));
         LinearLayout.LayoutParams expandedLp = new LinearLayout.LayoutParams(dp(318), -2);
         expandedLp.topMargin = dp(8);
@@ -161,6 +186,7 @@ final class DynamicIslandView extends FrameLayout {
         setVisibility(isEnabledPreference() ? VISIBLE : GONE);
         applyPosition();
         render();
+        refreshOutlineShadows();
     }
 
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -176,21 +202,6 @@ final class DynamicIslandView extends FrameLayout {
     private int accent() {
         int palette = Math.max(0, Math.min(ACCENTS.length - 1, prefs.getInt("palette", 0)));
         return ACCENTS[palette][0];
-    }
-    private GradientDrawable pillBackground() {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(0xF5070A0F);
-        d.setCornerRadius(dp(30));
-        d.setStroke(dp(1), 0xFF303943);
-        return d;
-    }
-    private GradientDrawable cardBackground() {
-        int alpha = Math.max(220, Math.min(255, prefs.getInt("transparency", 245)));
-        GradientDrawable d = new GradientDrawable();
-        d.setColor((alpha << 24) | 0x00090D13);
-        d.setCornerRadius(dp(25));
-        d.setStroke(dp(1), 0xFF303943);
-        return d;
     }
     private GradientDrawable actionBackground() {
         GradientDrawable d = new GradientDrawable();
@@ -226,10 +237,54 @@ final class DynamicIslandView extends FrameLayout {
         super.onSizeChanged(w, h, oldw, oldh);
         if (w > 0 && h > 0) post(this::applyPosition);
     }
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        startGlowAnimation();
+    }
+
     @Override protected void onDetachedFromWindow() {
         handler.removeCallbacksAndMessages(null);
         shell.animate().cancel();
+        stopGlowAnimation();
         super.onDetachedFromWindow();
+    }
+
+    private void startGlowAnimation() {
+        stopGlowAnimation();
+        if (prefs.getInt("glow", 65) <= 0 || !isEnabledPreference()) {
+            setGlowPhase(0f);
+            return;
+        }
+        glowAnimator = ValueAnimator.ofFloat(0f, 1f);
+        glowAnimator.setDuration(activeGlow ? 2600L : 4200L);
+        glowAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        glowAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        glowAnimator.setInterpolator(new LinearInterpolator());
+        glowAnimator.addUpdateListener(animation -> {
+            float phase = (Float) animation.getAnimatedValue();
+            setGlowPhase(phase);
+        });
+        glowAnimator.start();
+    }
+
+    private void stopGlowAnimation() {
+        if (glowAnimator != null) {
+            glowAnimator.cancel();
+            glowAnimator.removeAllUpdateListeners();
+            glowAnimator = null;
+        }
+    }
+
+    private void setGlowPhase(float phase) {
+        glowPhase = phase;
+        pillGlow.setGlow(activeGlow, phase);
+        cardGlow.setGlow(activeGlow, phase);
+    }
+
+    private void updateGlowActivity(boolean active) {
+        if (activeGlow == active) return;
+        activeGlow = active;
+        startGlowAnimation();
     }
 
     private boolean handleTouch(View view, MotionEvent event) {
@@ -330,6 +385,9 @@ final class DynamicIslandView extends FrameLayout {
         boolean changed = !next.equals(activity);
         activity = next;
         progress = Math.max(-1, Math.min(100, percent));
+        String state = activity.toLowerCase(java.util.Locale.ROOT);
+        updateGlowActivity(!state.equals("toxifiles ready") && !state.equals("ready")
+                && !state.contains("finished") && !state.contains("complete"));
         render();
         if (changed && isEnabledPreference() && prefs.getBoolean("auto_expand", true)
                 && !activity.equals("ToxiFiles ready") && !activity.equals("Ready")) expand();
@@ -369,11 +427,25 @@ final class DynamicIslandView extends FrameLayout {
     }
     void setEnabledFromSettings() {
         setVisibility(isEnabledPreference() ? VISIBLE : GONE);
-        if (!isEnabledPreference()) collapse();
+        if (!isEnabledPreference()) {
+            collapse();
+            stopGlowAnimation();
+            setGlowPhase(0f);
+        } else {
+            startGlowAnimation();
+        }
     }
+    private void refreshOutlineShadows() {
+        if (Build.VERSION.SDK_INT >= 28) {
+            int shadow = prefs.getInt("glow", 65) > 0 ? accent() : 0x55000000;
+            pill.setOutlineAmbientShadowColor(shadow);
+            pill.setOutlineSpotShadowColor(shadow);
+            expanded.setOutlineAmbientShadowColor(shadow);
+            expanded.setOutlineSpotShadowColor(shadow);
+        }
+    }
+
     void refreshStyle() {
-        pill.setBackground(pillBackground());
-        expanded.setBackground(cardBackground());
         action.setBackground(actionBackground());
         action.setTextColor(accent());
         progressBar.setProgressTintList(ColorStateList.valueOf(accent()));
@@ -383,8 +455,112 @@ final class DynamicIslandView extends FrameLayout {
         lp.height = dp(prefs.getInt("size", 0) == 0 ? 36 : 42);
         pill.setLayoutParams(lp);
         setElevation(dp(6 + prefs.getInt("glow", 65) / 10));
+        refreshOutlineShadows();
+        startGlowAnimation();
+        setGlowPhase(glowPhase);
         post(this::applyPosition);
     }
+    /**
+     * Black glass surface with a continuously blended six-colour RGB perimeter.
+     * A soft coloured halo breathes around the edge; intensity is controlled by
+     * the existing Glow intensity preference (0 disables it).
+     */
+    private static final class GlowBackgroundDrawable extends Drawable {
+        private final Activity host;
+        private final SharedPreferences prefs;
+        private final boolean card;
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF rect = new RectF();
+        private float phase;
+        private boolean active;
+
+        GlowBackgroundDrawable(Activity host, SharedPreferences prefs, boolean card) {
+            this.host = host;
+            this.prefs = prefs;
+            this.card = card;
+            fill.setStyle(Paint.Style.FILL);
+            halo.setStyle(Paint.Style.STROKE);
+            edge.setStyle(Paint.Style.STROKE);
+        }
+
+        private float dp(float value) {
+            return value * host.getResources().getDisplayMetrics().density;
+        }
+
+        void setGlow(boolean active, float phase) {
+            this.active = active;
+            this.phase = phase;
+            invalidateSelf();
+        }
+
+        @Override public void draw(Canvas canvas) {
+            RectF b = getBounds();
+            if (b.isEmpty()) return;
+            float intensity = Math.max(0, Math.min(100, prefs.getInt("glow", 65))) / 100f;
+            float pulse = 0.78f + 0.22f * (float)Math.sin(phase * Math.PI);
+            float strength = intensity * pulse * (active ? 1.22f : 0.82f);
+            float radius = card ? dp(25) : dp(30);
+            rect.set(b.left + dp(2), b.top + dp(2), b.right - dp(2), b.bottom - dp(2));
+
+            fill.setColor(card ? ((Math.max(80, Math.min(255, prefs.getInt("transparency", 225))) << 24) | 0x00090D13) : 0xF5070A0F);
+            fill.setShader(null);
+            fill.clearShadowLayer();
+            canvas.drawRoundRect(rect, radius, radius, fill);
+
+            int palette = Math.max(0, Math.min(ACCENTS.length - 1, prefs.getInt("palette", 0)));
+            int[] colors = ACCENTS[palette];
+            int[] sweepColors = new int[colors.length + 1];
+            System.arraycopy(colors, 0, sweepColors, 0, colors.length);
+            sweepColors[sweepColors.length - 1] = colors[0];
+            SweepGradient gradient = new SweepGradient(rect.centerX(), rect.centerY(), sweepColors, null);
+            Matrix rotation = new Matrix();
+            rotation.setRotate(phase * 360f, rect.centerX(), rect.centerY());
+            gradient.setLocalMatrix(rotation);
+
+            float edgeWidth = dp(1.35f + intensity * 0.9f);
+            if (intensity > 0f) {
+                halo.setShader(null);
+                halo.setStrokeWidth(dp(2.2f));
+                halo.setColor(Color.WHITE);
+                halo.setAlpha((int)(Math.min(255, 36f + 86f * strength)));
+                int haloColor = colors[Math.min(colors.length - 1, (int)(phase * colors.length))];
+                halo.setShadowLayer(dp(3f + 13f * strength), 0f, 0f,
+                        Color.argb((int)(45f + 130f * strength), Color.red(haloColor), Color.green(haloColor), Color.blue(haloColor)));
+                canvas.drawRoundRect(rect, radius, radius, halo);
+                halo.clearShadowLayer();
+                halo.setAlpha(255);
+            }
+
+            edge.setShader(intensity > 0f ? gradient : null);
+            edge.setColor(intensity > 0f ? Color.WHITE : 0xFF303943);
+            edge.setStrokeWidth(edgeWidth);
+            edge.clearShadowLayer();
+            canvas.drawRoundRect(rect, radius, radius, edge);
+            edge.setShader(null);
+        }
+
+        @Override public void getOutline(Outline outline) {
+            RectF b = getBounds().isEmpty() ? new RectF() : new RectF(getBounds());
+            outline.setRoundRect(Math.round(b.left), Math.round(b.top), Math.round(b.right),
+                    Math.round(b.bottom), dp(card ? 25f : 30f));
+        }
+
+        @Override public void setAlpha(int alpha) {
+            fill.setAlpha(alpha);
+            invalidateSelf();
+        }
+
+        @Override public void setColorFilter(ColorFilter colorFilter) {
+            fill.setColorFilter(colorFilter);
+            edge.setColorFilter(colorFilter);
+            invalidateSelf();
+        }
+
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
     static SharedPreferences preferences(Activity activity) {
         return activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
     }
