@@ -54,6 +54,8 @@ jobs:
 
       - name: Run HTML viewer routing unit test
         run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.HtmlViewerRoutingTest'
+      - name: Run eight-theme catalogue unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ThemeCatalogTest'
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
