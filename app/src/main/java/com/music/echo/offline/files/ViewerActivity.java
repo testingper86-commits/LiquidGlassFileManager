@@ -517,7 +517,8 @@ public class ViewerActivity extends Activity {
         TextView durationTv = ToxiVisualSystem.text(this, "0:00", 11, ToxiVisualSystem.TEXT_SECONDARY, false);
         durationTv.setGravity(Gravity.CENTER);
         durationTv.setMinWidth(ToxiVisualSystem.dp(36));
-        SeekBar seekBar = new ToxiProgressSeekBar(this);
+        SquigglySeekBar seekBar = new SquigglySeekBar(this);
+        seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         seekBar.setMax(1);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(34), 1f);
         seekParams.leftMargin = ToxiVisualSystem.dp(4);
@@ -618,7 +619,7 @@ public class ViewerActivity extends Activity {
         final LevelSlider brightnessSlider = new LevelSlider(this, "Brightness", 0.5f);
         final LevelSlider volumeSlider = new LevelSlider(this, "Volume", getMediaVolumeFraction());
         LinearLayout brightnessPanel = levelPanel(brightnessSlider, ToxiIcons.SUN);
-        LinearLayout volumePanel = levelPanel(volumeSlider, ToxiIcons.AUDIO);
+        LinearLayout volumePanel = levelPanel(volumeSlider, ToxiIcons.VOLUME);
         FrameLayout.LayoutParams leftLevelLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(58), ToxiVisualSystem.dp(210), Gravity.CENTER_VERTICAL | Gravity.LEFT);
         leftLevelLp.setMargins(ToxiVisualSystem.dp(12), 0, 0, 0);
         FrameLayout.LayoutParams rightLevelLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(58), ToxiVisualSystem.dp(210), Gravity.CENTER_VERTICAL | Gravity.RIGHT);
@@ -768,6 +769,7 @@ public class ViewerActivity extends Activity {
                                             seekBar.setProgress(position);
                                             currentTimeTv.setText(formatVideoTime(position));
                                         }
+                                        seekBar.setPlaying(active.isPlaying());
                                         int durationNow = active.getDuration();
                                         int positionNow = active.getCurrentPosition();
                                         int percentNow = durationNow > 0 ? Math.max(0, Math.min(100, (int)(100L * positionNow / durationNow))) : -1;
@@ -992,8 +994,9 @@ public class ViewerActivity extends Activity {
         android.graphics.drawable.Drawable icon = ToxiIcons.symbol(symbol, ToxiVisualSystem.TEXT_PRIMARY);
         int size = ToxiVisualSystem.dp(18);
         icon.setBounds(0, 0, size, size);
-        target.setCompoundDrawables(icon, null, null, null);
+        target.setCompoundDrawablesRelative(icon, null, null, null);
         target.setCompoundDrawablePadding(ToxiVisualSystem.dp(6));
+        target.setGravity(Gravity.CENTER);
     }
 
     private ImageView queueAction(int symbol, String description) {
@@ -1035,7 +1038,8 @@ public class ViewerActivity extends Activity {
         meta.setGravity(Gravity.CENTER);
         meta.setPadding(0, ToxiVisualSystem.dp(6), 0, ToxiVisualSystem.dp(14));
         card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
-        final SeekBar sb = new ToxiProgressSeekBar(this);
+        final SquigglySeekBar sb = new SquigglySeekBar(this);
+        sb.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         card.addView(sb, new LinearLayout.LayoutParams(-1, -2));
         final TextView time = ToxiVisualSystem.text(this, "0:00 / 0:00", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         time.setContentDescription("Playback position and duration");
@@ -1095,15 +1099,15 @@ public class ViewerActivity extends Activity {
             ToxiVisualSystem.feedback(v);
         });
         ToxiVisualSystem.interactive(repeat); ToxiVisualSystem.interactive(shuffle); ToxiVisualSystem.interactive(abRepeat);
-        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(-2, -2);
-        modeLp.setMargins(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(5), 0);
-        modes.addView(repeat, modeLp);
-        LinearLayout.LayoutParams shuffleLp = new LinearLayout.LayoutParams(-2, -2);
-        shuffleLp.setMargins(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(5), 0);
-        modes.addView(shuffle, shuffleLp);
-        LinearLayout.LayoutParams abLp = new LinearLayout.LayoutParams(-2, -2);
-        abLp.setMargins(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(5), 0);
-        modes.addView(abRepeat, abLp);
+        TextView[] modeActions = {repeat, shuffle, abRepeat};
+        for (TextView modeAction : modeActions) {
+            modeAction.setSingleLine(true);
+            modeAction.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            modeAction.setMinWidth(0);
+            LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, -2, 1f);
+            modeLp.setMargins(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), 0);
+            modes.addView(modeAction, modeLp);
+        }
         card.addView(modes, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout extras = new LinearLayout(this);
@@ -1130,7 +1134,7 @@ public class ViewerActivity extends Activity {
             b.setBackground(ToxiVisualSystem.surface(16, false));
             LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(0, -2, i < 3 ? 1f : 1f);
             ep.setMargins(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(0));
-            if (i >= 3) ep.width = ToxiVisualSystem.dp(118);
+            if (i >= 3) ep.width = 0;
             (i < 3 ? extrasTop : extrasBottom).addView(b, ep);
             ToxiVisualSystem.interactive(b);
         }
@@ -1181,11 +1185,11 @@ public class ViewerActivity extends Activity {
         LinearLayout.LayoutParams volumeHeaderLp = new LinearLayout.LayoutParams(-1, -2);
         volumeHeaderLp.topMargin = ToxiVisualSystem.dp(7);
         card.addView(volumeHeader, volumeHeaderLp);
-        SeekBar volume = new SeekBar(this);
+        ToxiProgressSeekBar volume = new ToxiProgressSeekBar(this);
+        volume.setProgressColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         audioVolume = getPreferences(MODE_PRIVATE).getInt("audio_volume", 100) / 100f;
         volume.setMax(100); volume.setProgress(Math.round(audioVolume * 100));
         volValue.setText(Math.round(audioVolume * 100) + "%");
-        volume.getProgressDrawable().setTint(ToxiVisualSystem.ACCENT); volume.getThumb().setTint(ToxiVisualSystem.ACCENT);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seek, int value, boolean fromUser) { volValue.setText(value + "%"); if (fromUser) { audioVolume = value / 100f; getPreferences(MODE_PRIVATE).edit().putInt("audio_volume", value).apply(); if (mp != null) try { mp.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {} } }
             public void onStartTrackingTouch(SeekBar seek) {} public void onStopTrackingTouch(SeekBar seek) {}
@@ -1412,6 +1416,7 @@ public class ViewerActivity extends Activity {
                         mp.seekTo(audioLoopStartMs); p = audioLoopStartMs;
                     }
                     sb.setProgress(p);
+                    if (sb instanceof SquigglySeekBar) ((SquigglySeekBar) sb).setPlaying(mp.isPlaying());
                     int duration = mp.getDuration();
                             time.setText(fmt(p) + " / " + fmt(duration));
                     getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + paths.get(idx), p).apply();
@@ -1487,6 +1492,10 @@ public class ViewerActivity extends Activity {
 
     // ---------------- pdf ----------------
     void showPdf(File f) {
+        if (f == null || !f.isFile() || !f.canRead() || f.length() <= 0L) {
+            ToxiVisualSystem.toast(this, "This PDF is missing, empty, or unreadable");
+            return;
+        }
         try {
             pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
             pdf = new PdfRenderer(pfd);
@@ -1495,9 +1504,18 @@ public class ViewerActivity extends Activity {
             return;
         }
         final PdfRenderer r = pdf;
-        final int count = r.getPageCount();
-        final int w = getResources().getDisplayMetrics().widthPixels;
-        final LruCache<Integer, Bitmap> cache = new LruCache<>(6);
+        final int count;
+        try { count = r.getPageCount(); }
+        catch (RuntimeException ex) { ToxiVisualSystem.toast(this, "This PDF could not be read"); cleanup(); return; }
+        if (count <= 0) { ToxiVisualSystem.toast(this, "This PDF contains no readable pages"); cleanup(); return; }
+        final int w = Math.max(1, Math.min(2400, stage.getWidth() > 0 ? stage.getWidth() : getResources().getDisplayMetrics().widthPixels));
+        final int cacheBudgetBytes = (int)Math.max(4L * 1024L * 1024L, Runtime.getRuntime().maxMemory() / 8L);
+        final LruCache<Integer, Bitmap> cache = new LruCache<Integer, Bitmap>(cacheBudgetBytes) {
+            @Override protected int sizeOf(Integer key, Bitmap value) {
+                return Math.max(1, value.getByteCount());
+            }
+        };
+        final boolean[] pageErrorShown = {false};
         ListView lv = new ListView(this);
         lv.setDivider(null);
         lv.setClipToPadding(false);
@@ -1525,7 +1543,15 @@ public class ViewerActivity extends Activity {
                     iv.setMinimumHeight((int) (w * 1.35f));
                     io.execute(() -> {
                         Bitmap bm = renderPage(r, pos, w);
-                        if (bm == null) return;
+                        if (bm == null) {
+                            h.post(() -> {
+                                if (!destroyed && !pageErrorShown[0]) {
+                                    pageErrorShown[0] = true;
+                                    ToxiVisualSystem.toast(ViewerActivity.this, "One or more PDF pages could not be rendered");
+                                }
+                            });
+                            return;
+                        }
                         cache.put(pos, bm);
                         h.post(() -> {
                             Object tg = iv.getTag();
@@ -1540,18 +1566,27 @@ public class ViewerActivity extends Activity {
     }
 
     static Bitmap renderPage(PdfRenderer r, int pos, int w) {
+        PdfRenderer.Page page = null;
+        Bitmap bitmap = null;
         try {
             synchronized (r) {
-                PdfRenderer.Page p = r.openPage(pos);
-                float sc = (float) w / p.getWidth();
-                Bitmap b = Bitmap.createBitmap(w, Math.max(1, (int) (p.getHeight() * sc)), Bitmap.Config.ARGB_8888);
-                b.eraseColor(Color.WHITE);
-                p.render(b, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                p.close();
-                return b;
+                if (pos < 0 || pos >= r.getPageCount()) return null;
+                page = r.openPage(pos);
+                int targetWidth = Math.max(1, w);
+                float scale = (float) targetWidth / Math.max(1, page.getWidth());
+                int targetHeight = Math.max(1, (int)(page.getHeight() * scale));
+                bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
+                bitmap.eraseColor(Color.WHITE);
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                Bitmap result = bitmap;
+                bitmap = null;
+                return result;
             }
-        } catch (Throwable t) {
+        } catch (Exception | OutOfMemoryError ex) {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
             return null;
+        } finally {
+            if (page != null) try { page.close(); } catch (Exception ignored) { }
         }
     }
 
@@ -1570,7 +1605,11 @@ public class ViewerActivity extends Activity {
         ImageView icon = new ImageView(this);
         icon.setImageDrawable(ToxiIcons.symbol(symbol, ToxiVisualSystem.TEXT_PRIMARY));
         icon.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
-        panel.addView(icon, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(28)));
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        icon.setAdjustViewBounds(false);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(28));
+        iconLp.gravity = Gravity.CENTER_HORIZONTAL;
+        panel.addView(icon, iconLp);
         panel.addView(slider, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView label = ToxiVisualSystem.text(this, slider.label, 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setGravity(Gravity.CENTER);

@@ -20,7 +20,7 @@ final class ToxiIcons {
         FOLDER_PLUS=23, SORT=24, OPEN=25, PLAY=26, PAUSE=27, PASTE=28,
         PALETTE=29, SPARKLE=30, VIBRATE=31, EYE=32, SHIELD=33, CLOCK=34,
         LOCK=35, WIFI=36, DATABASE=37, ANALYTICS=38, DOWNLOAD=39, CLOUD=40,
-        MUSIC=41, SUN=42, REFRESH=43, SETTINGS=44, PDF=45, TEXT=46, SHUFFLE=47, REPEAT=48, UP=49, DOWN=50, COLLAPSE=51;
+        MUSIC=41, SUN=42, REFRESH=43, SETTINGS=44, PDF=45, TEXT=46, SHUFFLE=47, REPEAT=48, UP=49, DOWN=50, COLLAPSE=51, VOLUME=52;
     private ToxiIcons() { }
     static String accessibilityLabel(int id) {
         switch(id) {
@@ -35,7 +35,7 @@ final class ToxiIcons {
             case SHIELD:return "Security"; case CLOCK:return "Recent"; case LOCK:return "Lock"; case WIFI:return "Wi-Fi transfer";
             case DATABASE:return "Storage"; case ANALYTICS:return "Analysis"; case DOWNLOAD:return "Download"; case CLOUD:return "Cloud";
             case MUSIC:return "Music"; case SUN:return "Light appearance"; case REFRESH:return "Refresh"; case SETTINGS:return "Settings";
-            case SHUFFLE:return "Shuffle playback"; case REPEAT:return "Repeat playback"; case UP:return "Move up"; case DOWN:return "Move down"; case COLLAPSE:return "Collapse";
+            case SHUFFLE:return "Shuffle playback"; case REPEAT:return "Repeat playback"; case UP:return "Move up"; case DOWN:return "Move down"; case COLLAPSE:return "Collapse"; case VOLUME:return "Media volume";
             default:return "Action";
         }
     }
@@ -63,6 +63,7 @@ final class ToxiIcons {
                 case IMAGE: rect(canvas,3,4,21,20,2); circle(canvas,8,9,1.6f); path(canvas,4.5f,17,9.5f,12,13,15,16,11,20,16); break;
                 case VIDEO: rect(canvas,2.5f,5,21.5f,19,3); path(canvas,10,8.5f,16,12,10,15.5f,10,8.5f); break;
                 case AUDIO: path(canvas,9,17,9,5,19,3,19,15); circle(canvas,6.5f,17,2.5f); circle(canvas,16.5f,15,2.5f); break;
+                case VOLUME: path(canvas,3,9,7,9,13,4,13,20,7,15,3,15,3,9); path(canvas,16,8,18,12,16,16); path(canvas,19,5,22,12,19,19); break;
                 case DOC: path(canvas,6,3,15,3,20,8,20,21,6,21,6,3); path(canvas,15,3,15,8,20,8); line(canvas,9,12,17,12); line(canvas,9,16,17,16); break;
                 case PDF: path(canvas,6,3,15,3,20,8,20,21,6,21,6,3); path(canvas,15,3,15,8,20,8); line(canvas,8,12,17,12); line(canvas,8,15,17,15); line(canvas,8,18,14,18); break;
                 case TEXT: path(canvas,6,3,15,3,20,8,20,21,6,21,6,3); path(canvas,15,3,15,8,20,8); line(canvas,9,12,17,12); line(canvas,9,15,17,15); line(canvas,9,18,15,18); break;

@@ -86,8 +86,8 @@ public final class HtmlViewerActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
         WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(false);
-        settings.setDomStorageEnabled(false);
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
