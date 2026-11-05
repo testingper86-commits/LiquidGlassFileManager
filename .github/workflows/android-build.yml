@@ -5,12 +5,6 @@ on:
     branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
   pull_request:
   workflow_dispatch:
-    inputs:
-      run_android_smoke:
-        description: "Run the bounded Android/OCR smoke test for a relevant Office change"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -23,14 +17,14 @@ jobs:
   build:
     name: Build ToxiFiles APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Detect affected Office verification scope
+      - name: Detect affected Office document tests
         id: scope
         shell: bash
         env:
@@ -46,30 +40,12 @@ jobs:
           else
             base="$(git rev-parse HEAD^ 2>/dev/null || true)"
           fi
-
-          if [[ -n "$base" ]]; then
-            changed="$(git diff --name-only "$base" "$GITHUB_SHA")"
-          else
-            changed="$(git ls-files)"
-          fi
-
+          if [[ -n "$base" ]]; then changed="$(git diff --name-only "$base" "$GITHUB_SHA")"; else changed="$(git ls-files)"; fi
           printf '%s\n' "$changed"
-          if grep -Eq '^(app/src/main/java/com/music/echo/offline/files/ToxiFiles360[^/]*\.java|app/src/test/java/com/music/echo/offline/files/ToxiFiles360(Engine|Storage)Test\.java|app/build\.gradle\.kts|build\.gradle\.kts|settings\.gradle(\.kts)?|gradle/libs\.versions\.toml|gradle/wrapper/.*)$' <<< "$changed"; then
+          if grep -Eq '^(app/src/main/java/com/music/echo/offline/files/(MainActivity|FileKinds|OfficeDocumentActivity|OfficeDocumentEngine|OfficeDocumentStorage)\.java|app/src/test/java/com/music/echo/offline/files/OfficeDocument(Engine|Storage)Test\.java|app/src/main/AndroidManifest\.xml|app/build\.gradle\.kts|build\.gradle\.kts|settings\.gradle(\.kts)?|gradle/libs\.versions\.toml|gradle/wrapper/.*)$' <<< "$changed"; then
             echo "office_unit=true" >> "$GITHUB_OUTPUT"
           else
             echo "office_unit=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '^(app/src/main/java/com/music/echo/offline/files/ToxiFiles360[^/]*\.java|app/src/androidTest/java/com/music/echo/offline/files/ToxiFiles360AndroidEngineTest\.java|app/src/main/assets/toxifiles360/|app/build\.gradle\.kts|build\.gradle\.kts|settings\.gradle(\.kts)?|gradle/libs\.versions\.toml|gradle/wrapper/.*)$' <<< "$changed"; then
-            echo "office_runtime=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "office_runtime=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -Eq '^app/src/main/assets/toxifiles360/' <<< "$changed"; then
-            echo "office_assets=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "office_assets=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Verify native Android project
@@ -79,6 +55,7 @@ jobs:
           test -s gradlew
           test -s gradle/wrapper/gradle-wrapper.jar
           test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/OfficeDocumentActivity.java
           test -s app/build.gradle.kts
           test -s settings.gradle || test -s settings.gradle.kts
           chmod +x gradlew
@@ -104,35 +81,9 @@ jobs:
           set -o pipefail
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
-      - name: Run focused Office and recovery unit tests
+      - name: Run focused Office document unit tests
         if: steps.scope.outputs.office_unit == 'true'
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ToxiFiles360EngineTest' --tests 'com.music.echo.offline.files.ToxiFiles360StorageTest'
-
-      - name: Verify changed ToxiFiles 360 offline assets
-        if: steps.scope.outputs.office_assets == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          for part in 00 01 02 03 04 05 06 07; do test -s "app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part${part}"; done
-          cat app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part00 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part01 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part02 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part03 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part04 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part05 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part06 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part07 > /tmp/eng.traineddata
-          test "$(wc -c < /tmp/eng.traineddata)" -eq 4113088
-          test -s app/src/main/assets/toxifiles360/templates/blank-presentation.pptx
-          test -s app/src/main/assets/toxifiles360/LICENSE-APACHE-2.0.txt
-          test -s app/src/main/assets/toxifiles360/THIRD_PARTY_NOTICES.md
-          unzip -tq app/src/main/assets/toxifiles360/templates/blank-presentation.pptx
-          echo "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2  /tmp/eng.traineddata" | sha256sum -c -
-          python3 - <<'PY'
-          from pathlib import Path
-          root = Path("app/src/main/assets/toxifiles360/icons")
-          formats = "docx doc docm dotx dot dotm rtf odt xlsx xls xlsm xlsb xltx xlt xltm csv tsv ods pptx ppt pptm ppsx pps ppsm potx pot potm pdf txt one onepkg vsdx vsd pub xps".split()
-          sections = "word excel powerpoint notes scanner converter collections history inspector".split()
-          actions = "new import search camera convert save export undo redo ocr bold italic underline heading bullet find-replace annotate scan-pdf slide-edit delete duplicate add-sheet restore".split()
-          required = formats + sections + actions
-          missing = [name for name in required if not (root / (name + ".png")).is_file()]
-          if missing:
-              raise SystemExit("Missing ToxiFiles 360 icons: " + ", ".join(missing))
-          print("Verified", len(required), "format/category/action icons")
-          PY
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.OfficeDocumentEngineTest' --tests 'com.music.echo.offline.files.OfficeDocumentStorageTest'
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
@@ -144,17 +95,3 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
-
-      - name: Run one bounded Office/OCR Android smoke test
-        if: steps.scope.outputs.office_runtime == 'true' && github.event_name == 'workflow_dispatch' && inputs.run_android_smoke == true
-        timeout-minutes: 15
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          script: |
-            adb shell svc wifi disable
-            adb shell svc data disable
-            ./gradlew --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.music.echo.offline.files.ToxiFiles360AndroidEngineTest

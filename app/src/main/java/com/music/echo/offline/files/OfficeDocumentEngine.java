@@ -29,11 +29,9 @@ import java.util.zip.ZipOutputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /** Offline format catalog and bounded Apache POI adapters. Macro content is never executed. */
-final class ToxiFiles360Engine {
+final class OfficeDocumentEngine {
     enum Level { FULL, PARTIAL, VIEW_ONLY, UNSUPPORTED }
     static final class FormatInfo {
         final String ext, category, label, details;
@@ -60,44 +58,18 @@ final class ToxiFiles360Engine {
     private static final List<FormatInfo> CATALOG;
     static {
         ArrayList<FormatInfo> f=new ArrayList<>();
-        add(f,"docx","Word","Word Open XML",Level.PARTIAL,"Text, paragraphs, basic bold/italic and new-document export; advanced layout, fields and embedded objects are not preserved by the simplified editor.");
-        add(f,"doc","Word","Legacy Word",Level.VIEW_ONLY,"Apache POI HWPF text extraction; complex layout and reliable editing are not supported.");
-        add(f,"docm","Word","Macro-enabled Word",Level.VIEW_ONLY,"Read-only extraction; macros are never executed or rewritten.");
-        add(f,"dotx","Word","Word template",Level.VIEW_ONLY,"Template text extraction; editing is exported as DOCX.");
-        add(f,"dot","Word","Legacy Word template",Level.VIEW_ONLY,"Read-only legacy extraction where POI can parse the document.");
-        add(f,"dotm","Word","Macro-enabled Word template",Level.VIEW_ONLY,"Read-only; macros are never executed.");
-        add(f,"rtf","Word","Rich Text Format",Level.PARTIAL,"Text extraction and plain-text RTF export; advanced styling is not retained.");
-        add(f,"odt","Word","OpenDocument Text",Level.VIEW_ONLY,"Safe text extraction from content.xml; editing/export is DOCX or TXT.");
-        add(f,"xlsx","Excel","Excel Open XML",Level.PARTIAL,"Workbook, worksheets, cell values and formula evaluation/editing; advanced charts, pivots and external links may be lost.");
-        add(f,"xls","Excel","Legacy Excel",Level.PARTIAL,"Apache POI HSSF workbook and cell editing; advanced charts, macros and unsupported BIFF records may not survive conversion.");
-        add(f,"xlsm","Excel","Macro-enabled Excel",Level.VIEW_ONLY,"Read-only extraction; macros are never executed or rewritten.");
-        add(f,"xlsb","Excel","Binary Excel",Level.UNSUPPORTED,"No verified safe Android editing engine is bundled for XLSB.");
-        add(f,"xltx","Excel","Excel template",Level.VIEW_ONLY,"Read-only extraction; export editable workbooks as XLSX.");
-        add(f,"xlt","Excel","Legacy Excel template",Level.VIEW_ONLY,"Read-only extraction.");
-        add(f,"xltm","Excel","Macro-enabled Excel template",Level.VIEW_ONLY,"Read-only; macros are never executed.");
-        add(f,"csv","Excel","Comma-separated values",Level.FULL,"Quoted CSV import/export and cell editing; single sheet, values only.");
-        add(f,"tsv","Excel","Tab-separated values",Level.FULL,"TSV import/export and cell editing; single sheet, values only.");
-        add(f,"ods","Excel","OpenDocument Spreadsheet",Level.VIEW_ONLY,"Safe text extraction from content.xml; editing/export is XLSX or CSV.");
-        add(f,"pptx","PowerPoint","PowerPoint Open XML",Level.PARTIAL,"Offline slide text editing in a copy while retaining existing slide theme, shapes and images; advanced geometry, transitions and animation editing are not supported.");
-        add(f,"ppt","PowerPoint","Legacy PowerPoint",Level.VIEW_ONLY,"Apache POI HSLF text extraction; binary slide layout and editing are not available in this workspace.");
-        add(f,"pptm","PowerPoint","Macro-enabled PowerPoint",Level.VIEW_ONLY,"Read-only text extraction; macros are never executed.");
-        add(f,"ppsx","PowerPoint","PowerPoint show",Level.PARTIAL,"Slide text can be exported as an editable PPTX copy; show playback and animation editing are not supported.");
-        add(f,"pps","PowerPoint","Legacy PowerPoint show",Level.VIEW_ONLY,"Apache POI HSLF text extraction; show playback and animation are not supported.");
-        add(f,"ppsm","PowerPoint","Macro-enabled show",Level.VIEW_ONLY,"Read-only; macros are never executed.");
-        add(f,"potx","PowerPoint","PowerPoint template",Level.PARTIAL,"Slide text can be exported as an editable PPTX copy; master layout editing is not supported.");
-        add(f,"pot","PowerPoint","Legacy PowerPoint template",Level.VIEW_ONLY,"Apache POI HSLF text extraction; template layout editing is not supported.");
-        add(f,"potm","PowerPoint","Macro-enabled template",Level.VIEW_ONLY,"Read-only; macros are never executed.");
-        add(f,"pdf","PDF","Portable Document Format",Level.PARTIAL,"Native Android PDF rendering and PDF creation. Search and in-place annotation editing are not available; notes are stored separately.");
-        add(f,"txt","Notes","Plain text",Level.FULL,"Read, edit, create and save locally.");
-        add(f,"one","Other","OneNote file",Level.UNSUPPORTED,"No compatible offline engine is bundled.");
-        add(f,"onepkg","Other","OneNote package",Level.UNSUPPORTED,"No compatible offline engine is bundled.");
-        add(f,"vsdx","Other","Visio Open XML",Level.UNSUPPORTED,"No verified diagram renderer is bundled.");
-        add(f,"vsd","Other","Legacy Visio",Level.UNSUPPORTED,"No verified diagram renderer is bundled.");
-        add(f,"pub","Other","Publisher",Level.UNSUPPORTED,"No verified Android layout/rendering engine is bundled.");
-        add(f,"xps","Other","XML Paper Specification",Level.UNSUPPORTED,"No compatible offline renderer is bundled.");
+        add(f,"docx","Word","Word document",Level.PARTIAL,"Edit text and basic character formatting; advanced layout, fields and embedded objects are not fully preserved.");
+        add(f,"doc","Word","Legacy Word",Level.VIEW_ONLY,"Read-only text extraction for legacy DOC files.");
+        add(f,"xlsx","Excel","Excel workbook",Level.PARTIAL,"Edit worksheets, cell values and supported formulas; advanced charts, pivots and external links may not be preserved.");
+        add(f,"xls","Excel","Legacy Excel",Level.PARTIAL,"Edit cell data and formulas; advanced charts, macros and unsupported BIFF records may not survive XLSX export.");
+        add(f,"csv","Excel","CSV spreadsheet",Level.FULL,"Edit a single worksheet and export as XLSX.");
+        add(f,"tsv","Excel","TSV spreadsheet",Level.FULL,"Edit a single worksheet and export as XLSX.");
+        add(f,"pptx","PowerPoint","PowerPoint presentation",Level.PARTIAL,"Edit slide text while retaining package assets; advanced layout, transitions and animations are not editable.");
+        add(f,"ppt","PowerPoint","Legacy PowerPoint",Level.VIEW_ONLY,"Read-only text extraction for legacy PPT files.");
+        add(f,"pdf","PDF","PDF document",Level.PARTIAL,"Open with the native Android PDF renderer; annotations are exported as a separate flattened copy.");
         CATALOG=Collections.unmodifiableList(f);
     }
-    private ToxiFiles360Engine() {}
+    private OfficeDocumentEngine() {}
     static {
         System.setProperty("org.apache.poi.javax.xml.stream.XMLInputFactory", "com.fasterxml.aalto.stax.InputFactoryImpl");
         System.setProperty("org.apache.poi.javax.xml.stream.XMLOutputFactory", "com.fasterxml.aalto.stax.OutputFactoryImpl");
@@ -110,25 +82,18 @@ final class ToxiFiles360Engine {
     private static void add(List<FormatInfo> f,String e,String c,String l,Level v,String d){f.add(new FormatInfo(e,c,l,v,d));}
     static List<FormatInfo> catalog(){return CATALOG;}
     static FormatInfo format(String name){if(name==null)return null; int p=name.lastIndexOf('.'); String e=(p>=0?name.substring(p+1):name).toLowerCase(Locale.ROOT); for(FormatInfo f:CATALOG)if(f.ext.equals(e))return f;return null;}
-    static boolean editable(String name){FormatInfo f=format(name);return f!=null&&(f.level==Level.FULL||f.level==Level.PARTIAL)&&Arrays.asList("txt","csv","tsv","rtf","docx","xlsx","xls").contains(f.ext);}
-    static String extractText(File file) throws Exception {
+static boolean editable(String name){FormatInfo f=format(name);return f!=null&&(f.level==Level.FULL||f.level==Level.PARTIAL)&&Arrays.asList("docx","xlsx","xls","csv","tsv").contains(f.ext);}
+static String extractText(File file) throws Exception {
         if(file==null||!file.isFile())throw new FileNotFoundException("Document is unavailable");
         if(file.length()>50L*1024*1024)throw new IOException("File exceeds the 50 MB processing limit");
-        FormatInfo info=format(file.getName()); if(info==null||info.level==Level.UNSUPPORTED)throw new IOException("Unsupported format");
-        String ext=info.ext;
-        if(ext.equals("txt"))return readText(file);
-        if(ext.equals("csv")||ext.equals("tsv"))return readText(file);
-        if(ext.equals("rtf"))return stripRtf(readText(file));
+        String ext=extension(file.getName());
         if(ext.equals("docx"))return readDocx(file);
-        if(ext.equals("doc")||ext.equals("dot"))return readDoc(file);
-        if(ext.equals("xlsx")||ext.equals("xls")||ext.equals("xlsm")||ext.equals("xltx")||ext.equals("xlt")||ext.equals("xltm"))return readWorkbook(file);
-        if(ext.equals("pptx")||ext.equals("ppsx")||ext.equals("potx"))return readPptx(file);
-        if(ext.equals("ppt")||ext.equals("pps")||ext.equals("pot"))return readLegacyPpt(file);
-        
-        if(ext.equals("odt")||ext.equals("ods"))return readOpenDocument(file);
-        if(ext.equals("docm")||ext.equals("dotx")||ext.equals("dotm")||ext.equals("xlsm")||ext.equals("pptm")||ext.equals("ppsm")||ext.equals("potm"))return readOoxmlText(file);
-        if(ext.equals("vsd")||ext.equals("vsdx"))return readOoxmlText(file);
-        throw new IOException("This format is not supported for text extraction");
+        if(ext.equals("doc"))return readDoc(file);
+        if(ext.equals("xlsx")||ext.equals("xls"))return readWorkbook(file);
+        if(ext.equals("csv")||ext.equals("tsv"))return readText(file);
+        if(ext.equals("pptx"))return readPptx(file);
+        if(ext.equals("ppt"))return readLegacyPpt(file);
+        throw new IOException("Unsupported document format");
     }
     private static String readText(File f)throws IOException{
         StringBuilder b=new StringBuilder(); try(BufferedReader r=new BufferedReader(new InputStreamReader(new FileInputStream(f),StandardCharsets.UTF_8))){char[] c=new char[8192];int n;while((n=r.read(c))>0){b.append(c,0,n);if(b.length()>5_000_000)throw new IOException("Text exceeds the 5 MB editor limit");}}return b.toString();
@@ -163,13 +128,6 @@ final class ToxiFiles360Engine {
             String text=extractor.getText();if(text==null)text="";if(text.length()>2_000_000)throw new IOException("Legacy presentation text exceeds the 2 MB preview limit");return text;
         }
     }
-    private static String readOpenDocument(File f)throws Exception{return extractZipXml(f,"content.xml");}
-    private static String readOoxmlText(File f)throws Exception{
-        try(ZipFile z=new ZipFile(f)){StringBuilder b=new StringBuilder();Enumeration<? extends ZipEntry> es=z.entries();while(es.hasMoreElements()){ZipEntry e=es.nextElement();if(e.isDirectory()||!e.getName().endsWith(".xml")||e.getSize()>8L*1024*1024)continue;String n=e.getName().toLowerCase(Locale.ROOT);if(!(n.contains("document")||n.contains("slide")||n.contains("sharedstrings")||n.contains("workbook")||n.contains("visio/pages/page")))continue;try(InputStream in=z.getInputStream(e)){b.append(xmlText(in)).append('\n');}if(b.length()>2_000_000)break;}if(b.length()==0)throw new IOException("No readable document text found");return b.toString();}
-    }
-    private static String extractZipXml(File f,String entry)throws Exception{
-        try(ZipFile z=new ZipFile(f)){ZipEntry e=z.getEntry(entry);if(e==null||e.getSize()>16L*1024*1024)throw new IOException("Invalid or oversized OpenDocument XML");try(InputStream in=z.getInputStream(e)){return xmlText(in);}}
-    }
     private static String xmlText(InputStream in)throws Exception{
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int count;long total=0;
         while((count=in.read(buffer))!=-1){total+=count;if(total>16L*1024*1024)throw new IOException("XML part exceeds the 16 MB safety limit");bytes.write(buffer,0,count);}
@@ -181,8 +139,6 @@ final class ToxiFiles360Engine {
         org.w3c.dom.Document d=f.newDocumentBuilder().parse(new ByteArrayInputStream(bytes.toByteArray()));
         StringBuilder b=new StringBuilder();appendText(d.getDocumentElement(),b);return b.toString();
     }
-    private static void appendText(Node n,StringBuilder b){if(n==null)return;if(n.getNodeType()==Node.TEXT_NODE){String s=n.getNodeValue();if(s!=null&&!s.trim().isEmpty())b.append(s.trim()).append(' ');}NodeList c=n.getChildNodes();for(int i=0;i<c.getLength();i++)appendText(c.item(i),b);}
-    static String stripRtf(String s){if(s==null)return "";return s.replaceAll("\\\\'[0-9a-fA-F]{2}"," ").replaceAll("\\\\[a-zA-Z]+-?\\d* ?"," ").replaceAll("[{}]"," ").replaceAll("\\s+"," ").trim();}
     static ArrayList<ArrayList<String>> parseDelimited(String input,char delimiter){ArrayList<ArrayList<String>> rows=new ArrayList<>();ArrayList<String> row=new ArrayList<>();StringBuilder cell=new StringBuilder();boolean quoted=false;for(int i=0;i<(input==null?0:input.length());i++){char c=input.charAt(i);if(c=='"'){if(quoted&&i+1<input.length()&&input.charAt(i+1)=='"'){cell.append('"');i++;}else quoted=!quoted;}else if(c==delimiter&&!quoted){row.add(cell.toString());cell.setLength(0);}else if((c=='\n'||c=='\r')&&!quoted){if(c=='\r'&&i+1<input.length()&&input.charAt(i+1)=='\n')i++;row.add(cell.toString());rows.add(row);row=new ArrayList<>();cell.setLength(0);}else cell.append(c);}boolean trailingLineBreak=input!=null&&!input.isEmpty()&&(input.charAt(input.length()-1)=='\n'||input.charAt(input.length()-1)=='\r')&&!quoted;row.add(cell.toString());if(!trailingLineBreak&&!row.isEmpty()&&!(row.size()==1&&row.get(0).isEmpty()&&rows.isEmpty()))rows.add(row);return rows;}
     static String toDelimited(List<? extends List<String>> rows,char delimiter){StringBuilder b=new StringBuilder();for(List<String> row:rows){for(int c=0;c<row.size();c++){if(c>0)b.append(delimiter);String v=row.get(c)==null?"":row.get(c);boolean q=v.indexOf(delimiter)>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0||v.indexOf('\r')>=0;if(q)b.append('"');b.append(q?v.replace("\"","\"\""):v);if(q)b.append('"');}b.append('\n');}return b.toString();}
     static ArrayList<SheetData> readSheets(File f)throws Exception{
@@ -197,7 +153,7 @@ final class ToxiFiles360Engine {
         try(XWPFDocument d=new XWPFDocument()){String value=text==null?"":text.toString();if(value.length()>5_000_000)throw new IOException("Word document exceeds the 5 MB editor limit");String[] lines=value.split("\\n",-1);Spanned sp=text instanceof Spanned?(Spanned)text:null;int offset=0;for(String line:lines){XWPFParagraph p=d.createParagraph();p.setAlignment(ParagraphAlignment.LEFT);if(line.isEmpty())p.createRun().setText("");else if(sp==null)p.createRun().setText(line);else{int pos=0;while(pos<line.length()){int flags=0;StyleSpan[] spans=sp.getSpans(offset+pos,offset+pos+1,StyleSpan.class);for(StyleSpan st:spans)flags|=st.getStyle();boolean underline=sp.getSpans(offset+pos,offset+pos+1,UnderlineSpan.class).length>0;float relative=1f;RelativeSizeSpan[] sizes=sp.getSpans(offset+pos,offset+pos+1,RelativeSizeSpan.class);if(sizes.length>0)relative=sizes[0].getSizeChange();int end=pos+1;while(end<line.length()){int f2=0;for(StyleSpan st:sp.getSpans(offset+end,offset+end+1,StyleSpan.class))f2|=st.getStyle();boolean u2=sp.getSpans(offset+end,offset+end+1,UnderlineSpan.class).length>0;float r2=1f;RelativeSizeSpan[] z2=sp.getSpans(offset+end,offset+end+1,RelativeSizeSpan.class);if(z2.length>0)r2=z2[0].getSizeChange();if(f2!=flags||u2!=underline||Math.abs(r2-relative)>.001f)break;end++;}XWPFRun run=p.createRun();run.setBold((flags&Typeface.BOLD)!=0);run.setItalic((flags&Typeface.ITALIC)!=0);run.setUnderline(underline?org.apache.poi.xwpf.usermodel.UnderlinePatterns.SINGLE:org.apache.poi.xwpf.usermodel.UnderlinePatterns.NONE);if(relative>1.01f)run.setFontSize(Math.max(10,Math.min(36,Math.round(11f*relative))));run.setText(line.substring(pos,end));pos=end;}}offset+=line.length()+1;}try(OutputStream os=new FileOutputStream(out)){d.write(os);}}
     }
     static PresentationData readPresentation(File f)throws Exception{
-        if(!extension(f.getName()).equals("pptx")&&!extension(f.getName()).equals("ppsx")&&!extension(f.getName()).equals("potx"))throw new IOException("Presentation format is view-only or unsupported");
+        if(!extension(f.getName()).equals("pptx"))throw new IOException("Presentation format is view-only or unsupported");
         PresentationData data=new PresentationData();
         try(ZipFile z=new ZipFile(f)){
             ArrayList<ZipEntry> slides=new ArrayList<>();Enumeration<? extends ZipEntry> entries=z.entries();
@@ -230,9 +186,7 @@ final class ToxiFiles360Engine {
                     if(entry.getSize()>50L*1024*1024)throw new IOException("Presentation contains an oversized package part");
                     out.putNextEntry(new ZipEntry(entry.getName()));
                     try(InputStream in=zip.getInputStream(entry)){
-                        if(entry.getName().equals("[Content_Types].xml")&&Arrays.asList("ppsx","potx").contains(extension(source.getName()))){
-                            ByteArrayOutputStream bytes=new ByteArrayOutputStream();int n;while((n=in.read(buffer))!=-1){total+=n;if(total>150L*1024*1024||bytes.size()+n>2L*1024*1024)throw new IOException("Presentation content types part exceeds its safe limit");bytes.write(buffer,0,n);}String types=new String(bytes.toByteArray(),StandardCharsets.UTF_8).replace("presentationml.slideshow.main+xml","presentationml.presentation.main+xml").replace("presentationml.template.main+xml","presentationml.presentation.main+xml");out.write(types.getBytes(StandardCharsets.UTF_8));
-                        }else if(entry.getName().equals(target)){
+                        if(entry.getName().equals(target)){
                             ByteArrayOutputStream bytes=new ByteArrayOutputStream();int n;while((n=in.read(buffer))!=-1){total+=n;if(total>150L*1024*1024||bytes.size()+n>8L*1024*1024)throw new IOException("Presentation package exceeds its safe processing limit");bytes.write(buffer,0,n);}
                             javax.xml.parsers.DocumentBuilderFactory factory=javax.xml.parsers.DocumentBuilderFactory.newInstance();factory.setNamespaceAware(true);factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl",true);factory.setFeature("http://xml.org/sax/features/external-general-entities",false);factory.setFeature("http://xml.org/sax/features/external-parameter-entities",false);factory.setXIncludeAware(false);factory.setExpandEntityReferences(false);
                             org.w3c.dom.Document doc=factory.newDocumentBuilder().parse(new ByteArrayInputStream(bytes.toByteArray()));org.w3c.dom.NodeList nodes=doc.getElementsByTagNameNS("http://schemas.openxmlformats.org/drawingml/2006/main","t");if(nodes.getLength()==0)throw new IOException("Selected slide has no editable text runs");
@@ -248,5 +202,4 @@ final class ToxiFiles360Engine {
     }
 
     static String extension(String name){int i=name==null?-1:name.lastIndexOf('.');return i<0?"":name.substring(i+1).toLowerCase(Locale.ROOT);}
-    static String exportRtf(String text){String s=text==null?"":text;return "{\\rtf1\\ansi\\deff0 "+s.replace("\\","\\\\").replace("{","\\{").replace("}","\\}").replace("\n","\\par\n")+"}";}
 }
