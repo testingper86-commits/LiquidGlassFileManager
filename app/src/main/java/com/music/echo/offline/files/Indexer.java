@@ -35,7 +35,7 @@ final class Indexer {
             case FileKinds.IMAGE: return 0;
             case FileKinds.VIDEO: return 1;
             case FileKinds.AUDIO: return 2;
-            case FileKinds.PDF: case FileKinds.DOC: case FileKinds.SHEET: case FileKinds.SLIDE: case FileKinds.TEXT: return 3;
+            case FileKinds.PDF: case FileKinds.TEXT: return 3;
             case FileKinds.ARCHIVE: return 4;
             case FileKinds.APK: return 6;
             default: return 6;

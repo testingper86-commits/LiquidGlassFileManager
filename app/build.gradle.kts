@@ -49,11 +49,6 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("androidx.webkit:webkit:1.12.1")
-    implementation(files("../poi-android-shadow/build/libs/poishadow-all.jar"))
-    implementation("org.apache.commons:commons-lang3:3.20.0")
-    implementation("commons-codec:commons-codec:1.20.0")
-    implementation("org.apache.commons:commons-text:1.15.0")
     testImplementation("junit:junit:4.13.2")
 }
 
-tasks.named("preBuild").configure { dependsOn(":poi-android-shadow:shadowJar") }

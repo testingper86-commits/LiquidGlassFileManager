@@ -681,7 +681,7 @@ final class BrowserView extends FrameLayout {
                 case 1: typeMatch = e.kind == FileKinds.IMAGE; break;
                 case 2: typeMatch = e.kind == FileKinds.VIDEO; break;
                 case 3: typeMatch = e.kind == FileKinds.AUDIO; break;
-                case 4: typeMatch = e.kind == FileKinds.PDF || e.kind == FileKinds.DOC || e.kind == FileKinds.SHEET || e.kind == FileKinds.SLIDE || e.kind == FileKinds.TEXT; break;
+                case 4: typeMatch = e.kind == FileKinds.PDF || e.kind == FileKinds.TEXT; break;
                 case 5: typeMatch = e.kind == FileKinds.ARCHIVE; break;
                 case 6: typeMatch = e.kind == FileKinds.APK; break;
                 case 7: typeMatch = e.dir; break;

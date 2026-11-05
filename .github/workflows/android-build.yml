@@ -24,30 +24,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect affected Office document tests
-        id: scope
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BEFORE_SHA: ${{ github.event.before }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "pull_request" && -n "$PR_BASE_SHA" ]]; then
-            base="$PR_BASE_SHA"
-          elif [[ "$EVENT_NAME" == "push" && "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
-            base="$BEFORE_SHA"
-          else
-            base="$(git rev-parse HEAD^ 2>/dev/null || true)"
-          fi
-          if [[ -n "$base" ]]; then changed="$(git diff --name-only "$base" "$GITHUB_SHA")"; else changed="$(git ls-files)"; fi
-          printf '%s\n' "$changed"
-          if grep -Eq '^(app/src/main/java/com/music/echo/offline/files/(MainActivity|FileKinds|OfficeDocumentActivity|OfficeDocumentEngine|OfficeDocumentStorage)\.java|app/src/test/java/com/music/echo/offline/files/OfficeDocument(Engine|Storage)Test\.java|app/src/main/AndroidManifest\.xml|app/build\.gradle\.kts|build\.gradle\.kts|settings\.gradle(\.kts)?|gradle/libs\.versions\.toml|gradle/wrapper/.*)$' <<< "$changed"; then
-            echo "office_unit=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "office_unit=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Verify native Android project
         shell: bash
         run: |
@@ -55,7 +31,7 @@ jobs:
           test -s gradlew
           test -s gradle/wrapper/gradle-wrapper.jar
           test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
-          test -s app/src/main/java/com/music/echo/offline/files/OfficeDocumentActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
           test -s app/build.gradle.kts
           test -s settings.gradle || test -s settings.gradle.kts
           chmod +x gradlew
@@ -80,10 +56,6 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null
           set -o pipefail
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
-
-      - name: Run focused Office document unit tests
-        if: steps.scope.outputs.office_unit == 'true'
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.OfficeDocumentEngineTest' --tests 'com.music.echo.offline.files.OfficeDocumentStorageTest'
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug

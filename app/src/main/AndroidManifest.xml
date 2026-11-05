@@ -37,38 +37,6 @@
         </activity>
         <service android:name=".files.BackgroundAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <activity
-            android:name=".files.OfficeDocumentActivity"
-            android:exported="true"
-            android:launchMode="singleTop">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="application/msword" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                <data android:mimeType="application/vnd.ms-excel" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-                <data android:mimeType="text/csv" />
-                <data android:mimeType="text/tab-separated-values" />
-                <data android:mimeType="application/vnd.ms-powerpoint" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="application/msword" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                <data android:mimeType="application/vnd.ms-excel" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-                <data android:mimeType="text/csv" />
-                <data android:mimeType="text/tab-separated-values" />
-                <data android:mimeType="application/vnd.ms-powerpoint" />
-                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name=".files.HtmlViewerActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />

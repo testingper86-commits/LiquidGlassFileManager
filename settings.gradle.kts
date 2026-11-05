@@ -15,4 +15,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "LiquidFilesOfflineManager"
 include(":app")
-include(":poi-android-shadow")

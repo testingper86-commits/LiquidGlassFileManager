@@ -373,13 +373,6 @@ public class MainActivity extends Activity {
     void openFile(Entry e, List<Entry> ctx) {
         if (e.dir) { openDir(e.f); return; }
         int k = e.kind;
-        String officeExt = e.ext == null ? "" : e.ext.toLowerCase(java.util.Locale.ROOT);
-        if (java.util.Arrays.asList("doc", "docx", "xls", "xlsx", "csv", "tsv", "ppt", "pptx", "pdf").contains(officeExt)) {
-            Intent office = new Intent(this, OfficeDocumentActivity.class);
-            office.putExtra(OfficeDocumentActivity.EXTRA_FILE_PATH, e.f.getAbsolutePath());
-            startActivity(office);
-            return;
-        }
         // HTML files always use the hidden built-in offline viewer.
         if (FileKinds.isHtmlExtension(e.ext)) {
             Intent html = new Intent(this, HtmlViewerActivity.class);
@@ -800,7 +793,7 @@ public class MainActivity extends Activity {
         home.addView(homeSection("Browse files"));
         // Keep every major media type directly accessible from Home, including audio.
         int[] categoryIndices = {0, 1, 2, 3, 4, 6};
-        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
+        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.PDF, FileKinds.ARCHIVE, FileKinds.OTHER};
         // Two-column cards provide room for labels and counts instead of compressing six categories.
         for (int r = 0; r < (categoryIndices.length + 1) / 2; r++) {
             LinearLayout row = new LinearLayout(this);
