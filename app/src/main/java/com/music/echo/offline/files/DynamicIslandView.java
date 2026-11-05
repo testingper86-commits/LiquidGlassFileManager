@@ -604,7 +604,7 @@ final class DynamicIslandView extends FrameLayout {
         }
 
         @Override public void draw(Canvas canvas) {
-            RectF b = getBounds();
+            RectF b = new RectF(getBounds());
             if (b.isEmpty()) return;
             float intensity = Math.max(0, Math.min(100, prefs.getInt("glow", 65))) / 100f;
             float pulse = 0.78f + 0.22f * (float)Math.sin(phase * Math.PI);
@@ -673,3 +673,4 @@ final class DynamicIslandView extends FrameLayout {
         return activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE);
     }
 }
+
