@@ -2,7 +2,7 @@ name: ToxiFiles Android Build
 
 on:
   push:
-    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui"]
+    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
   pull_request:
   workflow_dispatch:
 
