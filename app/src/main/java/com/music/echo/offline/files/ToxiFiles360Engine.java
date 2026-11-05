@@ -157,7 +157,9 @@ final class ToxiFiles360Engine {
     }
     private static String readLegacyPpt(File f)throws Exception{
         if(f.length()>50L*1024*1024)throw new IOException("Legacy presentation exceeds the 50 MB processing limit");
-        try(org.apache.poi.hslf.extractor.PowerPointExtractor extractor=new org.apache.poi.hslf.extractor.PowerPointExtractor(f.getAbsolutePath())){
+        try(org.apache.poi.sl.usermodel.SlideShow<?,?> slideshow=org.apache.poi.sl.usermodel.SlideShowFactory.create(f)){
+            org.apache.poi.sl.extractor.SlideShowExtractor extractor=new org.apache.poi.sl.extractor.SlideShowExtractor(slideshow);
+            extractor.setCloseFilesystem(false);
             String text=extractor.getText();if(text==null)text="";if(text.length()>2_000_000)throw new IOException("Legacy presentation text exceeds the 2 MB preview limit");return text;
         }
     }

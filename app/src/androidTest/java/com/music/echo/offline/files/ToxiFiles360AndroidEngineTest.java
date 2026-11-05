@@ -66,14 +66,15 @@ public class ToxiFiles360AndroidEngineTest {
         File dir=new File(context.getCacheDir(),"tox360-pdf-annotation");
         if(!dir.exists()&&!dir.mkdirs())throw new IllegalStateException("Cannot create PDF test directory");
         File source=new File(dir,"source.pdf"),output=new File(dir,"annotated.pdf");
-        try(PdfDocument pdf=new PdfDocument()) {
+        PdfDocument pdf=new PdfDocument();
+        try {
             for(int i=0;i<2;i++) {
                 PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(612,792,i+1).create());
                 Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(Color.BLACK);paint.setTextSize(28f);
                 page.getCanvas().drawText("Original PDF page "+(i+1),48,90,paint);pdf.finishPage(page);
             }
             try(FileOutputStream out=new FileOutputStream(source)){pdf.writeTo(out);}
-        }
+        } finally { pdf.close(); }
         final java.util.concurrent.atomic.AtomicReference<ToxiFiles360Activity> activityRef=new java.util.concurrent.atomic.AtomicReference<>();
         try(ActivityScenario<ToxiFiles360Activity> scenario=ActivityScenario.launch(ToxiFiles360Activity.class)) {
             scenario.onActivity(activityRef::set);
