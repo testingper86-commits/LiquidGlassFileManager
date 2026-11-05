@@ -2,7 +2,6 @@ package com.music.echo.offline.files;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -31,12 +30,12 @@ public final class OfflineToolUi {
             "Matrix Hacker", "Cyber Hacker", "Dark Web", "Ghost Protocol"
     };
 
-    private static final int COLOR_TEXT = Color.rgb(247, 249, 255);
-    private static final int COLOR_MUTED = Color.rgb(190, 198, 213);
-    private static final int COLOR_SUCCESS = Color.rgb(87, 220, 157);
-    private static final int COLOR_WARNING = Color.rgb(255, 190, 83);
-    private static final int COLOR_ERROR = Color.rgb(255, 105, 115);
-    private static final int COLOR_INFO = Color.rgb(111, 190, 255);
+    private static final int COLOR_TEXT = 0xFFF7F9FF;
+    private static final int COLOR_MUTED = 0xFFBEC6D5;
+    private static final int COLOR_SUCCESS = 0xFF57DC9D;
+    private static final int COLOR_WARNING = 0xFFFFBE53;
+    private static final int COLOR_ERROR = 0xFFFF6973;
+    private static final int COLOR_INFO = 0xFF6FBFFF;
 
     public enum State { INFO, SUCCESS, WARNING, ERROR }
 
