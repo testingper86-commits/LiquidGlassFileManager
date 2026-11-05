@@ -48,7 +48,7 @@ public class BatchRenameEngineTest {
         File d=dir(), a=file(d,"a.txt"), b=file(d,"b.txt"), occupied=file(d,"taken.txt");
         BatchRenameEngine.Options o=options(); o.find="a"; o.replacement="taken";
         assertEquals("Destination already exists",BatchRenameEngine.plan(Arrays.asList(a),o).get(0).problem);
-        File x=file(d,"same.txt"), y=file(d,"same.jpg"); o=options(); o.preserveExtension=false;
+        File x=file(d,"afoo.txt"), y=file(d,"fooa.txt"); o=options(); o.find="foo";
         List<BatchRenameEngine.Item> p=BatchRenameEngine.plan(Arrays.asList(x,y),o);
         assertTrue(p.stream().anyMatch(item -> "Duplicate destination in this batch".equals(item.problem)));
         assertTrue(occupied.exists());
