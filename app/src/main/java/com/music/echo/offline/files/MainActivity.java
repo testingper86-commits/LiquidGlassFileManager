@@ -789,6 +789,32 @@ public class MainActivity extends Activity {
         card.setOnClickListener(v -> openStorageAnalyzer());
         home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
 
+        // Dedicated ToxiFiles 360 entry; all Office workspaces remain isolated in their own Activity.
+        LinearLayout office360 = new LinearLayout(this);
+        office360.setGravity(Gravity.CENTER_VERTICAL);
+        office360.setPadding(Ui.dp(16), Ui.dp(13), Ui.dp(16), Ui.dp(13));
+        office360.setBackground(Ui.glass(20, true));
+        office360.setElevation(Ui.dp(2));
+        TextView officeMark = Ui.tv(this, "360", 20, Ui.accent, true);
+        officeMark.setGravity(Gravity.CENTER);
+        officeMark.setBackground(Ui.accentPill(14));
+        office360.addView(officeMark, new LinearLayout.LayoutParams(Ui.dp(58), Ui.dp(48)));
+        LinearLayout officeLabels = new LinearLayout(this);
+        officeLabels.setOrientation(LinearLayout.VERTICAL);
+        officeLabels.setPadding(Ui.dp(13), 0, 0, 0);
+        officeLabels.addView(Ui.tv(this, "ToxiFiles 360", 16, Ui.WHITE, true));
+        officeLabels.addView(Ui.tv(this, "Offline documents, spreadsheets, slides and tools", 11.5f, Ui.SUB, false));
+        office360.addView(officeLabels, new LinearLayout.LayoutParams(0, -2, 1f));
+        office360.addView(Ui.tv(this, "›", 26, Ui.WHITE, true));
+        office360.setContentDescription("ToxiFiles 360. Open the offline Office productivity workspace.");
+        office360.setFocusable(true);
+        office360.setOnClickListener(v -> {
+            Ui.tick(v);
+            startActivity(new Intent(MainActivity.this, ToxiFiles360Activity.class));
+        });
+        Ui.press(office360);
+        home.addView(office360, lpm(-1, -2, 16, 8, 16, 8));
+
         // categories
         home.addView(homeSection("Browse files"));
         // Keep every major media type directly accessible from Home, including audio.

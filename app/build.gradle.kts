@@ -17,6 +17,7 @@ android {
         targetSdk = 36
         versionCode = 3
         versionName = "1.2.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -49,5 +50,15 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("androidx.webkit:webkit:1.12.1")
+    implementation(files("../poi-android-shadow/build/libs/poishadow-all.jar"))
+    implementation("org.apache.commons:commons-lang3:3.20.0")
+    implementation("commons-codec:commons-codec:1.20.0")
+    implementation("org.apache.commons:commons-text:1.15.0")
+    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }
+
+tasks.named("preBuild").configure { dependsOn(":poi-android-shadow:shadowJar") }

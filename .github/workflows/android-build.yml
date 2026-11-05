@@ -17,7 +17,7 @@ jobs:
   build:
     name: Build ToxiFiles APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 55
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,6 +58,49 @@ jobs:
         run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ThemeCatalogTest'
       - name: Run Selection and Batch Rename engine tests
         run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.BatchRenameEngineTest'
+      - name: Run ToxiFiles 360 Office engine tests
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ToxiFiles360EngineTest'
+      - name: Run ToxiFiles 360 storage recovery tests
+        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ToxiFiles360StorageTest'
+      - name: Verify ToxiFiles 360 offline assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for part in 00 01 02 03 04 05 06 07; do test -s "app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part${part}"; done
+          cat app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part00 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part01 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part02 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part03 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part04 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part05 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part06 app/src/main/assets/toxifiles360/tessdata/eng.traineddata.part07 > /tmp/eng.traineddata
+          test "$(wc -c < /tmp/eng.traineddata)" -eq 4113088
+          test -s app/src/main/assets/toxifiles360/templates/blank-presentation.pptx
+          test -s app/src/main/assets/toxifiles360/LICENSE-APACHE-2.0.txt
+          test -s app/src/main/assets/toxifiles360/THIRD_PARTY_NOTICES.md
+          unzip -tq app/src/main/assets/toxifiles360/templates/blank-presentation.pptx
+          echo "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2  /tmp/eng.traineddata" | sha256sum -c -
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("app/src/main/assets/toxifiles360/icons")
+          formats = "docx doc docm dotx dot dotm rtf odt xlsx xls xlsm xlsb xltx xlt xltm csv tsv ods pptx ppt pptm ppsx pps ppsm potx pot potm pdf txt one onepkg vsdx vsd pub xps".split()
+          sections = "word excel powerpoint notes scanner converter collections history inspector".split()
+          actions = "new import search camera convert save export undo redo ocr bold italic delete duplicate add-sheet restore".split()
+          required = formats + sections + actions
+          missing = [name for name in required if not (root / (name + ".png")).is_file()]
+          if missing:
+              raise SystemExit("Missing ToxiFiles 360 icons: " + ", ".join(missing))
+          print("Verified", len(required), "format/category/action icons")
+          PY
+
+      - name: Run ToxiFiles 360 Android engine and offline OCR smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./gradlew --no-daemon connectedDebugAndroidTest
+
+      - name: Verify Android POI shaded engine was built
+        run: test -s poi-android-shadow/build/libs/poishadow-all.jar
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
