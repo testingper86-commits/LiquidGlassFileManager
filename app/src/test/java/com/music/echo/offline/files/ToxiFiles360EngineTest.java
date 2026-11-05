@@ -5,6 +5,9 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.*;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.usermodel.CellType;
 
 public class ToxiFiles360EngineTest {
     @Test public void catalogSeparatesActualCompatibilityLevels() {
@@ -36,6 +39,11 @@ public class ToxiFiles360EngineTest {
         ToxiFiles360Engine.writeWorkbook(xlsx,Collections.singletonList(sheet));
         assertTrue(ToxiFiles360Engine.extractText(xlsx).contains("Amount"));
         assertEquals("Budget",ToxiFiles360Engine.readSheets(xlsx).get(0).name);
+        try(Workbook workbook=WorkbookFactory.create(xlsx)) {
+            org.apache.poi.ss.usermodel.Cell formula=workbook.getSheetAt(0).getRow(2).getCell(0);
+            assertEquals(CellType.NUMERIC,formula.getCachedFormulaResultType());
+            assertEquals(5d,formula.getNumericCellValue(),0.001d);
+        }
     }
 
     @Test public void pptxSlideTextIsExtractedFromBoundedOoxmlParts() throws Exception {
@@ -49,6 +57,37 @@ public class ToxiFiles360EngineTest {
         assertEquals(2,read.slides.size());
         assertTrue(read.slides.get(0).contains("First slide"));
         assertTrue(ToxiFiles360Engine.extractText(pptx).contains("Second slide"));
+    }
+
+    @Test public void pptxSlideTextCanBeEditedWithoutChangingTheSourcePackage() throws Exception {
+        File dir=Files.createTempDirectory("tox360-slide-edit").toFile();
+        File source=new File(dir,"source.pptx"),edited=new File(dir,"edited.pptx");
+        try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(source))) {
+            putSlide(zip,"ppt/slides/slide1.xml","Original title");
+            putSlide(zip,"ppt/slides/slide2.xml","Second slide remains");
+        }
+        byte[] original=Files.readAllBytes(source.toPath());
+        ToxiFiles360Engine.writePresentationText(source,edited,0,"Edited title");
+        assertTrue(ToxiFiles360Engine.readPresentation(edited).slides.get(0).contains("Edited title"));
+        assertTrue(ToxiFiles360Engine.readPresentation(edited).slides.get(1).contains("Second slide remains"));
+        assertArrayEquals(original,Files.readAllBytes(source.toPath()));
+    }
+
+    @Test public void ppsxEditedCopyBecomesAnEditablePptxPackage() throws Exception {
+        File dir=Files.createTempDirectory("tox360-ppsx-edit").toFile();
+        File source=new File(dir,"source.ppsx"),edited=new File(dir,"edited.pptx");
+        try(java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(source))) {
+            zip.putNextEntry(new java.util.zip.ZipEntry("[Content_Types].xml"));
+            zip.write(("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml\"/></Types>").getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
+            putSlide(zip,"ppt/slides/slide1.xml","Show title");
+        }
+        ToxiFiles360Engine.writePresentationText(source,edited,0,"Editable title");
+        try(java.util.zip.ZipFile zip=new java.util.zip.ZipFile(edited)) {
+            String types=new String(zip.getInputStream(zip.getEntry("[Content_Types].xml")).readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(types.contains("presentationml.presentation.main+xml"));
+            assertFalse(types.contains("presentationml.slideshow.main+xml"));
+        }
+        assertTrue(ToxiFiles360Engine.readPresentation(edited).slides.get(0).contains("Editable title"));
     }
 
     private static void putSlide(java.util.zip.ZipOutputStream zip,String name,String text)throws Exception {

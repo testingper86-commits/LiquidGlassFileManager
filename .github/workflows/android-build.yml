@@ -54,16 +54,8 @@ jobs:
           set -o pipefail
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
-      - name: Run HTML viewer routing unit test
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.HtmlViewerRoutingTest'
-      - name: Run eight-theme catalogue unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ThemeCatalogTest'
-      - name: Run Selection and Batch Rename engine tests
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.BatchRenameEngineTest'
-      - name: Run ToxiFiles 360 Office engine tests
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ToxiFiles360EngineTest'
-      - name: Run ToxiFiles 360 storage recovery tests
-        run: ./gradlew --no-daemon testDebugUnitTest --tests 'com.music.echo.offline.files.ToxiFiles360StorageTest'
+      - name: Run focused Office and recovery unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
       - name: Verify ToxiFiles 360 offline assets
         shell: bash
         run: |
@@ -81,7 +73,7 @@ jobs:
           root = Path("app/src/main/assets/toxifiles360/icons")
           formats = "docx doc docm dotx dot dotm rtf odt xlsx xls xlsm xlsb xltx xlt xltm csv tsv ods pptx ppt pptm ppsx pps ppsm potx pot potm pdf txt one onepkg vsdx vsd pub xps".split()
           sections = "word excel powerpoint notes scanner converter collections history inspector".split()
-          actions = "new import search camera convert save export undo redo ocr bold italic delete duplicate add-sheet restore".split()
+          actions = "new import search camera convert save export undo redo ocr bold italic underline heading bullet find-replace annotate scan-pdf slide-edit delete duplicate add-sheet restore".split()
           required = formats + sections + actions
           missing = [name for name in required if not (root / (name + ".png")).is_file()]
           if missing:
@@ -99,7 +91,7 @@ jobs:
           script: |
             adb shell svc wifi disable
             adb shell svc data disable
-            ./gradlew --no-daemon connectedDebugAndroidTest
+            ./gradlew --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.music.echo.offline.files.ToxiFiles360AndroidEngineTest
 
       - name: Verify Android POI shaded engine was built
         run: test -s poi-android-shadow/build/libs/poishadow-all.jar

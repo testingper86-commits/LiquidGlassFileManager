@@ -5,6 +5,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.pdf.PdfDocument;
+import android.graphics.pdf.PdfRenderer;
+import android.os.ParcelFileDescriptor;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -58,6 +61,33 @@ public class ToxiFiles360AndroidEngineTest {
         assertTrue(ToxiFiles360Engine.extractText(pptx).contains("ToxiFiles 360 offline slide"));
     }
 
+    @Test public void pdfAnnotationWritesASeparateMultiPageCopy() throws Exception {
+        Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
+        File dir=new File(context.getCacheDir(),"tox360-pdf-annotation");
+        if(!dir.exists()&&!dir.mkdirs())throw new IllegalStateException("Cannot create PDF test directory");
+        File source=new File(dir,"source.pdf"),output=new File(dir,"annotated.pdf");
+        try(PdfDocument pdf=new PdfDocument()) {
+            for(int i=0;i<2;i++) {
+                PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(612,792,i+1).create());
+                Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(Color.BLACK);paint.setTextSize(28f);
+                page.getCanvas().drawText("Original PDF page "+(i+1),48,90,paint);pdf.finishPage(page);
+            }
+            try(FileOutputStream out=new FileOutputStream(source)){pdf.writeTo(out);}
+        }
+        final java.util.concurrent.atomic.AtomicReference<ToxiFiles360Activity> activityRef=new java.util.concurrent.atomic.AtomicReference<>();
+        try(ActivityScenario<ToxiFiles360Activity> scenario=ActivityScenario.launch(ToxiFiles360Activity.class)) {
+            scenario.onActivity(activityRef::set);
+            ToxiFiles360Activity activity=activityRef.get();
+            java.lang.reflect.Method method=ToxiFiles360Activity.class.getDeclaredMethod("annotatePdf",File.class,File.class,int.class,String.class);
+            method.setAccessible(true);method.invoke(activity,source,output,1,"Offline annotation smoke test");
+        }
+        assertTrue(output.isFile()&&output.length()>0);
+        assertTrue(source.isFile()&&source.length()>0);
+        try(ParcelFileDescriptor fd=ParcelFileDescriptor.open(output,ParcelFileDescriptor.MODE_READ_ONLY);PdfRenderer renderer=new PdfRenderer(fd)) {
+            assertEquals(2,renderer.getPageCount());
+        }
+    }
+
     @Test public void bundledEnglishTesseractRecognizesTextWithNetworkDisabled() throws Exception {
         Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
         File root=ToxiFiles360Storage.root(context.getFilesDir());
@@ -71,6 +101,7 @@ public class ToxiFiles360AndroidEngineTest {
                 out.flush();
             }
         });
+        }
         Bitmap image=Bitmap.createBitmap(1200,300,Bitmap.Config.ARGB_8888);
         Canvas canvas=new Canvas(image);canvas.drawColor(Color.WHITE);
         Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(Color.BLACK);paint.setTextSize(112f);paint.setTypeface(android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.BOLD));
