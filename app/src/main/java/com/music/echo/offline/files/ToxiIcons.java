@@ -74,7 +74,7 @@ final class ToxiIcons {
                 case ARCHIVE: rect(canvas,4,6,20,20,2); rect(canvas,3,4,21,8,1); line(canvas,12,8,12,17); path(canvas,9,14,12,17,15,14); break;
                 case APK: path(canvas,5,10,7,6,17,6,19,10,19,18,5,18,5,10); line(canvas,7,4,9,7); line(canvas,17,4,15,7); circle(canvas,9,11,0.6f); circle(canvas,15,11,0.6f); line(canvas,8,19,8,21); line(canvas,16,19,16,21); break;
                 case FILE: path(canvas,5,3,15,3,20,8,20,21,5,21,5,3); path(canvas,15,3,15,8,20,8); break;
-                case HOME: path(canvas,2.5f,11,12,3,21.5f,11); path(canvas,5,10,5,21,19,21,19,10); line(canvas,10,21,10,15,14,15,14,21); break;
+                case HOME: path(canvas,2.5f,11,12,3,21.5f,11); path(canvas,5,10,5,21,19,21,19,10); path(canvas,10,21,10,15,14,15,14,21); break;
                 case STAR: path(canvas,12,2.5f,14.8f,8.5f,21,9.3f,16.5f,13.7f,17.6f,20,12,17,6.4f,20,7.5f,13.7f,3,9.3f,9.2f,8.5f,12,2.5f); break;
                 case TUNE: line(canvas,4,6,20,6);line(canvas,4,12,20,12);line(canvas,4,18,20,18);circle(canvas,9,6,2);circle(canvas,15,12,2);circle(canvas,7,18,2); break;
                 case SEARCH: circle(canvas,10.5f,10.5f,6.5f);line(canvas,15.5f,15.5f,21,21);break;
