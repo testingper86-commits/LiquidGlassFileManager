@@ -2028,7 +2028,7 @@ public class MainActivity extends Activity {
             String msg;
             try {
                 java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-                try (InputStream in = getContentResolver().openInputStream(file)) {
+                try (InputStream in = ToxiUriPermissions.openInputStream(this, file)) {
                     if (in == null) throw new java.io.IOException("Unable to open settings file");
                     byte[] buffer = new byte[8192];
                     int n;

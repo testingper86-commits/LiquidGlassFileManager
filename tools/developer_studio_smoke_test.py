@@ -9,6 +9,7 @@ activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
 core = (BASE / "DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
 tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
+uri_permissions = (BASE / "ToxiUriPermissions.java").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
 TOOLS = [
@@ -43,6 +44,10 @@ require("SQLiteDatabase.OPEN_READONLY" in activity and "rawQuery" in activity,
         "SQLite inspector opens databases read-only and executes queries locally")
 require("ACTION_OPEN_DOCUMENT" in activity and "ACTION_OPEN_DOCUMENT_TREE" in activity,
         "file access uses Android document pickers and scoped URI grants")
+require("DocumentsContract.isDocumentUri" in uri_permissions and "DocumentsContract.isTreeUri" in uri_permissions and "requireSafUri" in uri_permissions,
+        "ContentResolver access is restricted to validated SAF document and tree URIs")
+require("ToxiUriPermissions.openInputStream(this,uri)" in activity and "ToxiUriPermissions.openInputStream(this,uri)" in tools_activity and "ToxiUriPermissions.openInputStream(this, file)" in main,
+        "Developer Studio, built-in tools and settings import use the validated SAF stream boundary")
 for forbidden in ("java.net.", "HttpURLConnection", "OkHttpClient", "WebView", "ProcessBuilder", "Runtime.getRuntime", "DexClassLoader"):
     require(forbidden not in activity and forbidden not in core,
             "no remote networking or inspected-code execution reference: " + forbidden)
