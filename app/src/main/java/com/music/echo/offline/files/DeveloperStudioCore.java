@@ -90,7 +90,7 @@ final class DeveloperStudioCore {
             if(c=='/'&&next=='/'){lineComment=true;if(lineStart){indent(out,depth);lineStart=false;}out.append("//");i++;continue;}
             if(c=='/'&&next=='*'){blockComment=true;if(lineStart){indent(out,depth);lineStart=false;}out.append("/*");i++;continue;}
             if(c=='\"'||c=='\''||c=='`'){if(lineStart){indent(out,depth);lineStart=false;}string=true;quote=c;out.append(c);continue;}
-            if(c=='\\r')continue;
+            if(c=='\r')continue;
             if(c=='\n'){while(out.length()>0&&(out.charAt(out.length()-1)==' '||out.charAt(out.length()-1)=='\t'))out.setLength(out.length()-1);if(out.length()==0||out.charAt(out.length()-1)!='\n')out.append('\n');lineStart=true;continue;}
             if(Character.isWhitespace(c)){if(!lineStart&&out.length()>0&&out.charAt(out.length()-1)!=' '&&out.charAt(out.length()-1)!='\n')out.append(' ');continue;}
             if(c=='}'){depth=Math.max(0,depth-1);if(!lineStart&&out.length()>0&&out.charAt(out.length()-1)!='\n')out.append('\n');indent(out,depth);out.append(c);lineStart=false;continue;}
