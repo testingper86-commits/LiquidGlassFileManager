@@ -981,7 +981,7 @@ final class BrowserView extends FrameLayout {
         new AlertDialog.Builder(a).setTitle("New folder").setView(wrap(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Create", (d, w) -> {
                     String n = in.getText().toString().trim();
-                    if (n.isEmpty() || n.contains("/")) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
+                    if (BatchRenameEngine.validateName(n) != null) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
                     File f = new File(cur, n);
                     if (f.exists()) ToxiVisualSystem.toast(a, "Already exists");
                     else if (!f.mkdirs()) ToxiVisualSystem.toast(a, "Couldn't create folder");
@@ -994,7 +994,7 @@ final class BrowserView extends FrameLayout {
         new AlertDialog.Builder(a).setTitle("Rename").setView(wrap(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Rename", (d, w) -> {
                     String n = in.getText().toString().trim();
-                    if (n.isEmpty() || n.contains("/") || n.equals(e.name)) return;
+                    if (BatchRenameEngine.validateName(n) != null || n.equals(e.name)) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
                     File t = new File(e.f.getParentFile(), n);
                     if (t.exists()) { ToxiVisualSystem.toast(a, "A file with that name exists"); return; }
                     if (e.f.renameTo(t)) { a.renameFav(e.f, t); endSelect(); a.afterOps(); }

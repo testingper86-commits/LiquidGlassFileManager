@@ -62,6 +62,17 @@ public class BatchRenameEngineTest {
         assertNotNull(BatchRenameEngine.plan(Arrays.asList(a),o).get(0).problem);
     }
 
+    @Test public void filenameValidationRejectsTraversalSeparatorsReservedAndControlCharacters() {
+        assertNotNull(BatchRenameEngine.validateName("../escape"));
+        assertNotNull(BatchRenameEngine.validateName("folder\\escape"));
+        assertNotNull(BatchRenameEngine.validateName("."));
+        assertNotNull(BatchRenameEngine.validateName(".."));
+        assertNotNull(BatchRenameEngine.validateName("bad\u0001name"));
+        assertNotNull(BatchRenameEngine.validateName("a".repeat(256)));
+        assertNull(BatchRenameEngine.validateName("Holiday photo 2026.jpg"));
+        assertNull(BatchRenameEngine.validateName("旅行の写真.jpg"));
+    }
+
     @Test public void executeAndUndoRestoreOriginalNamesWithoutOverwrite() throws Exception {
         File d=dir(), a=file(d,"a.txt"), b=file(d,"b.txt"); BatchRenameEngine.Options o=options(); o.prefix="new_";
         BatchRenameEngine.Result done=BatchRenameEngine.execute(BatchRenameEngine.plan(Arrays.asList(a,b),o));
