@@ -85,7 +85,7 @@ final class BrowserView extends FrameLayout {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4));
         back = ToxiVisualSystem.iconButton(a, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
-        back.setOnClickListener(v -> { if (selecting) endSelect(); else handleBack(); });
+        back.setOnClickListener(v -> { if (selecting) endSelect(); else if (!handleBack()) a.closeOverlay(); });
         title = ToxiVisualSystem.text(a, "", 24, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);

@@ -560,7 +560,8 @@ public class MainActivity extends Activity {
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
 
     @Override public void onBackPressed() {
-        if (overlayView == listView) { listView.handleBack(); return; }
+        // Consume Back only when the active list actually handled it. Otherwise close the overlay.
+        if (overlayView == listView && listView.handleBack()) return;
         if (overlayView != null) { closeOverlay(); return; }
         if (tab == 1 && filesView.handleBack()) return;
         if (tab == 2 && favView.handleBack()) return;
@@ -903,6 +904,32 @@ public class MainActivity extends Activity {
             home.addView(row, new LinearLayout.LayoutParams(-1, -2));
         }
 
+        // Dedicated Home section for the seven built-in utilities, placed alongside the media categories.
+        home.addView(homeSection("Built-in tools"));
+        LinearLayout toolsEntry = new LinearLayout(this);
+        toolsEntry.setGravity(Gravity.CENTER_VERTICAL);
+        toolsEntry.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13));
+        toolsEntry.setBackground(ToxiVisualSystem.surface(17, true));
+        ImageView toolsIcon = new ImageView(this);
+        toolsIcon.setImageDrawable(ToxiIcons.fileTile(FileKinds.OTHER));
+        toolsIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        toolsEntry.addView(toolsIcon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(42), ToxiVisualSystem.dp(42)));
+        LinearLayout toolsLabels = new LinearLayout(this);
+        toolsLabels.setOrientation(LinearLayout.VERTICAL);
+        toolsLabels.setPadding(ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(8), 0);
+        toolsLabels.addView(ToxiVisualSystem.text(this, "Seven built-in tools", 14, ToxiVisualSystem.TEXT_PRIMARY, true));
+        TextView toolsDescription = ToxiVisualSystem.text(this, "Dual-pane · Hex · Compare · Encoding · ZIP · Integrity · Text", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
+        toolsDescription.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
+        toolsLabels.addView(toolsDescription);
+        toolsEntry.addView(toolsLabels, new LinearLayout.LayoutParams(0, -2, 1f));
+        ImageView toolsArrow = new ImageView(this);
+        toolsArrow.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
+        toolsEntry.addView(toolsArrow, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28)));
+        toolsEntry.setContentDescription("Open seven built-in offline tools");
+        ToxiVisualSystem.interactive(toolsEntry);
+        toolsEntry.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); showBuiltInTools(); });
+        home.addView(toolsEntry, lpm(-1, -2, 16, 4, 16, 0));
+
         // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
 
         // A real child footer creates scroll range and keeps the final row above the floating navigation.
@@ -971,7 +998,7 @@ public class MainActivity extends Activity {
         outer.addView(title);
         outer.addView(subtitle);
         outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).create();
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).create();
         for (int i = 0; i < actions.size(); i++) {
             final int choice = i;
             actions.get(i).setOnClickListener(v -> {
@@ -1041,7 +1068,7 @@ public class MainActivity extends Activity {
         TextView heading = ToxiVisualSystem.text(this, system ? "System Apps" : "Downloaded Apps", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
         heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(8));
         LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showBuiltInTools() {
@@ -1060,7 +1087,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this); scroll.addView(list); LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL);
         TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
         outer.addView(heading); outer.addView(ToxiVisualSystem.text(this, "Seven offline utilities integrated into the existing file manager.", 12, ToxiVisualSystem.TEXT_SECONDARY, false)); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showUsageDiagnostics() {
