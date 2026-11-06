@@ -649,6 +649,7 @@ final class BrowserView extends FrameLayout {
     void headerMenu() {
         List<String> l = new ArrayList<>();
         List<Runnable> r = new ArrayList<>();
+        if (mode == DIR && !selecting && !isFavs) add(l, r, "Favorites", a::showFavorites);
         if (mode == DIR && !selecting) add(l, r, "New folder", this::newFolder);
         if (mode == DIR && !selecting) add(l, r, "Choose SD/USB storage…", a::openOtherStorage);
         if (mode == DIR && !selecting && cur != null) add(l, r, "Set as default start folder", () -> { ToxiVisualSystem.PREFERENCES.edit().putString("default_folder", cur.getAbsolutePath()).apply(); ToxiVisualSystem.toast(a, "Set as default: " + cur.getAbsolutePath()); });

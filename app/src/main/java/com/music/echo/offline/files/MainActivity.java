@@ -74,9 +74,9 @@ public class MainActivity extends Activity {
 
     FrameLayout root, content;
     BgView bg;
-    ScrollView homeScroll, settingsScroll, aboutScroll, recycleScroll, vaultScroll, themeScroll;
+    ScrollView homeScroll, toolsScroll, settingsScroll, aboutScroll, recycleScroll, vaultScroll, themeScroll;
     View homeScrollFooter;
-    LinearLayout home, settings, about, recycle, vault;
+    LinearLayout home, tools, settings, about, recycle, vault;
     static final int REQ_SAF_TREE = 501, REQ_IMPORT_SETTINGS = 502;
     Uri safTree;
     ScrollView dupScroll;
@@ -86,8 +86,8 @@ public class MainActivity extends Activity {
     View[] screens;
     FrameLayout nav;
     View hl;
-    ImageView[] navIc = new ImageView[3];
-    TextView[] navTx = new TextView[3];
+    NebulaHomeView.Glyph[] navIc = new NebulaHomeView.Glyph[4];
+    TextView[] navTx = new TextView[4];
     TextView busyTv;
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
@@ -145,6 +145,13 @@ public class MainActivity extends Activity {
         home = new LinearLayout(this);
         home.setOrientation(LinearLayout.VERTICAL);
         homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
+        toolsScroll = new ScrollView(this);
+        toolsScroll.setVerticalScrollBarEnabled(false);
+        toolsScroll.setClipToPadding(false);
+        toolsScroll.setFillViewport(true);
+        tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.VERTICAL);
+        toolsScroll.addView(tools, new FrameLayout.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
         settingsScroll.setVerticalScrollBarEnabled(false);
         settingsScroll.setClipToPadding(false);
@@ -180,10 +187,10 @@ public class MainActivity extends Activity {
         dupScroll.addView(dup, new FrameLayout.LayoutParams(-1, -2));
 
         filesView = new BrowserView(this, false, false);
-        favView = new BrowserView(this, false, true);
+        favView = new BrowserView(this, true, true);
         listView = new BrowserView(this, true, false);
-        screens = new View[]{homeScroll, filesView, favView, settingsScroll};
-        View[] all = {homeScroll, filesView, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
+        screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};
+        View[] all = {homeScroll, filesView, toolsScroll, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
         for (View v : all) { content.addView(v, new FrameLayout.LayoutParams(-1, -1)); v.setVisibility(View.GONE); }
 
         buildNav();
@@ -232,6 +239,7 @@ public class MainActivity extends Activity {
             homeScrollFooter.setLayoutParams(footerParams);
         }
         settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
@@ -481,7 +489,7 @@ public class MainActivity extends Activity {
                 filesView.showDir(start);
             }
         }
-        else if (i == 2) favView.refreshFavs();
+        else if (i == 2) buildTools();
         else buildSettings();
         moveHighlight(i);
     }
@@ -553,7 +561,7 @@ public class MainActivity extends Activity {
     }
 
     void syncNavigationVisibility(boolean selecting) {
-        boolean hidden = tab == 3 || overlayView != null || selecting;
+        boolean hidden = overlayView != null || selecting;
         nav.setVisibility(hidden ? View.GONE : View.VISIBLE);
     }
 
@@ -564,72 +572,79 @@ public class MainActivity extends Activity {
         if (overlayView == listView && listView.handleBack()) return;
         if (overlayView != null) { closeOverlay(); return; }
         if (tab == 1 && filesView.handleBack()) return;
-        if (tab == 2 && favView.handleBack()) return;
         if (tab != 0) { selectTab(0); return; }
         super.onBackPressed();
     }
 
     void buildNav() {
         nav = new FrameLayout(this);
-        nav.setBackground(ToxiVisualSystem.surface(19, true));
-        nav.setElevation(ToxiVisualSystem.dp(10));
-        nav.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+        nav.setBackground(NebulaHomeView.navigationSurface());
+        nav.setElevation(NebulaHomeView.dp(this, 8));
+        nav.setPadding(NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5));
         hl = new View(this);
-        hl.setBackground(ToxiVisualSystem.accentSurface(15));
+        hl.setBackground(NebulaHomeView.navigationHighlight());
         nav.addView(hl, new FrameLayout.LayoutParams(0, -1));
         LinearLayout items = new LinearLayout(this);
         items.setOrientation(LinearLayout.HORIZONTAL);
         items.setGravity(Gravity.CENTER_VERTICAL);
         nav.addView(items, new FrameLayout.LayoutParams(-1, -1));
-        int[] symbols = {ToxiIcons.HOME, ToxiIcons.FOLDER};
-        String[] labels = {"Home", "Files"};
-        for (int i = 0; i < 2; i++) {
+        String[] glyphs = {"house", "folder", "grid", "settings"};
+        String[] labels = {"Home", "Files", "Tools", "Settings"};
+        for (int i = 0; i < labels.length; i++) {
             final int index = i;
             LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.HORIZONTAL);
+            item.setOrientation(LinearLayout.VERTICAL);
             item.setGravity(Gravity.CENTER);
-            item.setPadding(ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(12), 0);
-            navIc[i] = new ImageView(this);
-            navIc[i].setImageDrawable(ToxiIcons.symbol(symbols[i], ToxiVisualSystem.TEXT_PRIMARY));
+            item.setMinimumHeight(NebulaHomeView.dp(this, 48));
+            item.setBackground(NebulaHomeView.navigationItemSurface());
+            navIc[i] = new NebulaHomeView.Glyph(this, glyphs[i], NebulaHomeView.TEXT);
             navIc[i].setContentDescription(labels[i]);
-            item.addView(navIc[i], new LinearLayout.LayoutParams(ToxiVisualSystem.dp(21), ToxiVisualSystem.dp(21)));
-            navTx[i] = ToxiVisualSystem.text(this, labels[i], 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+            item.addView(navIc[i], new LinearLayout.LayoutParams(NebulaHomeView.dp(this, 21), NebulaHomeView.dp(this, 21)));
+            navTx[i] = new TextView(this);
+            navTx[i].setText(labels[i]);
+            navTx[i].setTextSize(10);
+            navTx[i].setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            navTx[i].setTextColor(NebulaHomeView.MUTED);
             LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-2, -2);
-            labelLp.leftMargin = ToxiVisualSystem.dp(9);
+            labelLp.topMargin = NebulaHomeView.dp(this, 3);
             item.addView(navTx[i], labelLp);
-            item.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); selectTab(index); });
-            ToxiVisualSystem.interactive(item);
+            item.setContentDescription(labels[i]);
+            item.setOnClickListener(v -> selectTab(index));
             items.addView(item, new LinearLayout.LayoutParams(0, -1, 1f));
         }
-        FrameLayout.LayoutParams navLp = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(62), Gravity.BOTTOM);
-        navLp.setMargins(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(12));
+        FrameLayout.LayoutParams navLp = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(this, 66), Gravity.BOTTOM);
+        navLp.setMargins(NebulaHomeView.dp(this, 14), 0, NebulaHomeView.dp(this, 14), NebulaHomeView.dp(this, 12));
         root.addView(nav, navLp);
         nav.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            int itemWidth = (right - left - ToxiVisualSystem.dp(10)) / 2;
+            int itemWidth = Math.max(1, (right - left - NebulaHomeView.dp(this, 10)) / 4);
             FrameLayout.LayoutParams highlight = (FrameLayout.LayoutParams) hl.getLayoutParams();
             if (highlight.width != itemWidth) { highlight.width = itemWidth; hl.setLayoutParams(highlight); }
-            hl.setTranslationX(Math.min(tab, 1) * itemWidth);
+            hl.setTranslationX(Math.min(3, Math.max(0, tab)) * itemWidth);
         });
     }
 
     void moveHighlight(int i) {
         int iw = hl.getLayoutParams().width;
-        int visualIndex = Math.min(i, 1);
+        int visualIndex = Math.max(0, Math.min(3, i));
         if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
         else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
-        for (int k = 0; k < 2; k++) navTx[k].setTextColor(k == visualIndex ? ToxiVisualSystem.TEXT_PRIMARY : ToxiVisualSystem.TEXT_SECONDARY);
+        for (int k = 0; k < 4; k++) {
+            navTx[k].setTextColor(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
+            navIc[k].setTint(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
+        }
     }
 
     void recolor() {
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         bg.invalidate();
-        nav.setBackground(ToxiVisualSystem.surface(19, true));
-        hl.setBackground(ToxiVisualSystem.accentSurface(15));
+        nav.setBackground(NebulaHomeView.navigationSurface());
+        hl.setBackground(NebulaHomeView.navigationHighlight());
         moveHighlight(tab);
         filesView.recolor();
         favView.recolor();
         listView.recolor();
         buildHome();
+        buildTools();
         buildSettings();
         if (vault.getChildCount() > 0) buildVault();
         if (recycle.getChildCount() > 0) buildRecycleBin();
@@ -723,220 +738,33 @@ public class MainActivity extends Activity {
         return line;
     }
 
-    void buildHome() {
-        home.removeAllViews();
-        Indexer ix = Indexer.I;
-        LinearLayout brandBar = new LinearLayout(this);
-        brandBar.setGravity(Gravity.CENTER_VERTICAL);
-        brandBar.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
-        ImageView brandMark = new ImageView(this);
-        brandMark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
-        brandMark.setContentDescription("ToxiFiles brand symbol");
-        brandBar.addView(brandMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
-        LinearLayout brandCopy = new LinearLayout(this);
-        brandCopy.setOrientation(LinearLayout.VERTICAL);
-        brandCopy.setPadding(ToxiVisualSystem.dp(10), 0, 0, 0);
-        brandCopy.addView(ToxiVisualSystem.text(this, "ToxiFiles", 18, ToxiVisualSystem.TEXT_PRIMARY, true));
-        TextView brandCaption = ToxiVisualSystem.text(this, "LOCAL FILE WORKSPACE", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
-        brandCaption.setLetterSpacing(0.14f);
-        LinearLayout.LayoutParams captionLp = new LinearLayout.LayoutParams(-2, -2);
-        captionLp.topMargin = ToxiVisualSystem.dp(3);
-        brandCopy.addView(brandCaption, captionLp);
-        brandBar.addView(brandCopy, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView localBadge = ToxiVisualSystem.text(this, "ON DEVICE", 9, ToxiVisualSystem.ACCENT, true);
-        localBadge.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(7));
-        localBadge.setBackground(ToxiVisualSystem.surface(10, false));
-        brandBar.addView(localBadge);
-        home.addView(brandBar, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout heading = new LinearLayout(this);
-        heading.setGravity(Gravity.CENTER_VERTICAL);
-        heading.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(8));
-        LinearLayout headingCopy = new LinearLayout(this);
-        headingCopy.setOrientation(LinearLayout.VERTICAL);
-        headingCopy.addView(ToxiVisualSystem.text(this, "Your workspace", 27, ToxiVisualSystem.TEXT_PRIMARY, true));
-        TextView headingHint = ToxiVisualSystem.text(this, "Everything on this device, organized.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-2, -2);
-        hintLp.topMargin = ToxiVisualSystem.dp(5);
-        headingCopy.addView(headingHint, hintLp);
-        heading.addView(headingCopy, new LinearLayout.LayoutParams(0, -2, 1f));
-        ImageView settingsBtn = ToxiVisualSystem.iconButton(this, ToxiIcons.SETTINGS, ToxiVisualSystem.TEXT_PRIMARY);
-        settingsBtn.setContentDescription("Settings");
-        settingsBtn.setOnClickListener(v -> selectTab(3));
-        heading.addView(settingsBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
-        home.addView(heading, new LinearLayout.LayoutParams(-1, -2));
-        if (ix.ready && ix.truncated) {
-            TextView limitNotice = ToxiVisualSystem.text(this, "Large library: quick search and overview are limited to the first 150,000 indexed entries. Open folders directly to browse remaining files.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-            limitNotice.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(12));
-            limitNotice.setBackground(ToxiVisualSystem.surface(16, false));
-            limitNotice.setContentDescription("Indexing limit notice. Some files may not appear in global search.");
-            home.addView(limitNotice, lpm(-1, -2, 16, 4, 16, 8));
-        }
+    // NEBULA OS owns a separate visual system. The legacy brand resource remains for app-level identity,
+    // while existing file-management screens continue to use ToxiVisualSystem.surface and ToxiFileRow.
+    // ic_toxifiles_brand_mark is intentionally retained outside the new Home composition.
+    void buildHome() { NebulaHomeView.buildHome(this, home); }
 
-        if (!hasAccess()) {
-            LinearLayout c = new LinearLayout(this);
-            c.setOrientation(LinearLayout.VERTICAL);
-            c.setBackground(ToxiVisualSystem.surface(24, true));
-            c.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20));
-            c.addView(ToxiVisualSystem.text(this, "Allow access to your files", 18, ToxiVisualSystem.TEXT_PRIMARY, true));
-            TextView d = ToxiVisualSystem.text(this, "Grant \"All files access\" so ToxiFiles can browse, open and manage files on your phone.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-            d.setPadding(0, ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(14));
-            c.addView(d);
-            TextView btn = ToxiVisualSystem.text(this, "Grant access", 14, ToxiVisualSystem.TEXT_PRIMARY, true);
-            btn.setBackground(ToxiVisualSystem.accentSurface(22));
-            btn.setGravity(Gravity.CENTER);
-            btn.setPadding(0, ToxiVisualSystem.dp(13), 0, ToxiVisualSystem.dp(13));
-            btn.setOnClickListener(v -> showStorageAccess());
-            ToxiVisualSystem.interactive(btn);
-            c.addView(btn, new LinearLayout.LayoutParams(-1, -2));
-            home.addView(c, lpm(-1, -2, 16, 12, 16, 0));
+    void buildTools() { NebulaHomeView.buildTools(this, tools); }
+
+    void showFavorites() {
+        favView.refreshFavs();
+        showOverlay(favView);
+    }
+
+    void openDownloads() {
+        if (!hasAccess()) { showStorageAccess(); return; }
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (downloads == null || !downloads.isDirectory()) {
+            ToxiVisualSystem.toast(this, "Downloads folder is not available on this device");
             return;
         }
+        selectTab(1);
+        filesView.showDir(downloads);
+    }
 
-        // storage card
-        File root = Environment.getExternalStorageDirectory();
-        long total = root.getTotalSpace(), free = root.getFreeSpace(), used = Math.max(0, total - free);
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(ToxiVisualSystem.surface(26, true));
-        card.setElevation(ToxiVisualSystem.dp(5));
-        card.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(14));
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        int[] cc = {Color.rgb(46,196,140), Color.rgb(236,72,130), Color.rgb(160,90,250), Color.rgb(64,130,245), Color.rgb(255,176,64)};
-        long[] seg = new long[5];
-        if (ix.ready) {
-            seg[0] = ix.sizes[0]; seg[1] = ix.sizes[1]; seg[2] = ix.sizes[2]; seg[3] = ix.sizes[3];
-            seg[4] = ix.sizes[4] + ix.sizes[5] + ix.sizes[6];
-        }
-        DonutView dv = new DonutView(this);
-        float[] parts = new float[5];
-        if (total > 0) for (int i = 0; i < 5; i++) parts[i] = (float) ((double) seg[i] / total);
-        if (!ix.ready && total > 0) { parts = new float[]{(float) ((double) used / total)}; cc = new int[]{ToxiVisualSystem.ACCENT}; }
-        dv.set(parts, cc, total > 0 ? (int) (used * 100 / total) + "%" : "\u2014", "used");
-        top.addView(dv, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(104), ToxiVisualSystem.dp(104)));
-        LinearLayout info = new LinearLayout(this);
-        info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(ToxiVisualSystem.dp(16), 0, 0, 0);
-        info.addView(ToxiVisualSystem.text(this, "Main storage", 17, ToxiVisualSystem.TEXT_PRIMARY, true));
-        TextView u = ToxiVisualSystem.text(this, ToxiVisualSystem.formatSize(used) + " of " + ToxiVisualSystem.formatSize(total), 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-        u.setPadding(0, ToxiVisualSystem.dp(6), 0, 0);
-        info.addView(u);
-        TextView fr = ToxiVisualSystem.text(this, ToxiVisualSystem.formatSize(free) + " free", 14, ToxiVisualSystem.ACCENT, true);
-        fr.setPadding(0, ToxiVisualSystem.dp(6), 0, 0);
-        info.addView(fr);
-        if (ix.running) {
-            TextView sc = ToxiVisualSystem.text(this, "Scanning files\u2026", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-            sc.setPadding(0, ToxiVisualSystem.dp(8), 0, 0);
-            info.addView(sc);
-        }
-        top.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
-        card.addView(top, new LinearLayout.LayoutParams(-1, -2));
-        if (ix.ready) {
-            LinearLayout lg = new LinearLayout(this);
-            String[] ln = {"Images", "Videos", "Audio", "Docs", "Other"};
-            for (int i = 0; i < 5; i++) {
-                LinearLayout c1 = new LinearLayout(this);
-                c1.setOrientation(LinearLayout.VERTICAL);
-                c1.setGravity(Gravity.CENTER);
-                TextView n = ToxiVisualSystem.text(this, "• " + ln[i], 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-                SpannableHelper.dot(n, cc[i]);
-                TextView sz = ToxiVisualSystem.text(this, ToxiVisualSystem.formatSize(seg[i]), 11, ToxiVisualSystem.TEXT_PRIMARY, true);
-                sz.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
-                c1.addView(n);
-                c1.addView(sz);
-                lg.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
-            }
-            card.addView(lg, lpm(-1, -2, 0, 14, 0, 0));
-        }
-        card.setContentDescription("Internal storage usage. " + ToxiVisualSystem.formatSize(used) + " used of " + ToxiVisualSystem.formatSize(total) + ". Tap to open storage analysis.");
-        card.setFocusable(true);
-        card.setOnClickListener(v -> openStorageAnalyzer());
-        home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
-
-        // categories
-        home.addView(homeSection("Browse files"));
-        // Keep every major media type directly accessible from Home, including audio.
-        int[] categoryIndices = {0, 1, 2, 3, 4, 6};
-        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.PDF, FileKinds.ARCHIVE, FileKinds.OTHER};
-        int categoryColumns = getResources().getConfiguration().screenWidthDp >= 600 ? 4 : 3;
-        for (int r = 0; r < (categoryIndices.length + categoryColumns - 1) / categoryColumns; r++) {
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_HORIZONTAL);
-            for (int c = 0; c < categoryColumns; c++) {
-                final int position = r * categoryColumns + c;
-                if (position >= categoryIndices.length) {
-                    row.addView(new View(this), new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(1), 1f));
-                    continue;
-                }
-                final int cat = categoryIndices[position];
-                LinearLayout t = new LinearLayout(this);
-                t.setOrientation(LinearLayout.VERTICAL);
-                t.setGravity(Gravity.CENTER_HORIZONTAL);
-                t.setBackground(ToxiVisualSystem.surface(17, false));
-                t.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(10));
-                t.setMinimumHeight(ToxiVisualSystem.dp(116));
-                ImageView ic = new ImageView(this);
-                ic.setImageDrawable(ToxiIcons.fileTile(categoryKinds[position]));
-                ic.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                t.addView(ic, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
-                String categoryName = Indexer.CAT_NAMES[cat];
-                String categorySub = ix.ready ? ix.counts[cat] + " files" : "\u2026";
-                TextView nm = ToxiVisualSystem.text(this, categoryName, 12.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
-                nm.setMaxLines(2);
-                nm.setGravity(Gravity.CENTER);
-                nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                nm.setPadding(0, ToxiVisualSystem.dp(7), 0, 0);
-                t.addView(nm);
-                TextView sub = ToxiVisualSystem.text(this, categorySub, 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-                sub.setGravity(Gravity.CENTER);
-                sub.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
-                t.addView(sub);
-                t.setContentDescription(categoryName + ", " + categorySub + ". Open category");
-                ToxiVisualSystem.interactive(t);
-                t.setOnClickListener(v -> {
-                    ToxiVisualSystem.feedback(v);
-                    if (cat == 6) showOtherSections();
-                    else openCategory(cat);
-                });
-                row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == categoryColumns - 1 ? 16 : 4, 10));
-                ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
-            }
-            home.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        }
-
-        // Dedicated Home section for the seven built-in utilities, placed alongside the media categories.
-        home.addView(homeSection("Built-in tools"));
-        LinearLayout toolsEntry = new LinearLayout(this);
-        toolsEntry.setGravity(Gravity.CENTER_VERTICAL);
-        toolsEntry.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13));
-        toolsEntry.setBackground(ToxiVisualSystem.surface(17, true));
-        ImageView toolsIcon = new ImageView(this);
-        toolsIcon.setImageDrawable(ToxiIcons.fileTile(FileKinds.OTHER));
-        toolsIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        toolsEntry.addView(toolsIcon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(42), ToxiVisualSystem.dp(42)));
-        LinearLayout toolsLabels = new LinearLayout(this);
-        toolsLabels.setOrientation(LinearLayout.VERTICAL);
-        toolsLabels.setPadding(ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(8), 0);
-        toolsLabels.addView(ToxiVisualSystem.text(this, "Seven built-in tools", 14, ToxiVisualSystem.TEXT_PRIMARY, true));
-        TextView toolsDescription = ToxiVisualSystem.text(this, "Dual-pane · Hex · Compare · Encoding · ZIP · Integrity · Text", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-        toolsDescription.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
-        toolsLabels.addView(toolsDescription);
-        toolsEntry.addView(toolsLabels, new LinearLayout.LayoutParams(0, -2, 1f));
-        ImageView toolsArrow = new ImageView(this);
-        toolsArrow.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
-        toolsEntry.addView(toolsArrow, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28)));
-        toolsEntry.setContentDescription("Open seven built-in offline tools");
-        ToxiVisualSystem.interactive(toolsEntry);
-        toolsEntry.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); showBuiltInTools(); });
-        home.addView(toolsEntry, lpm(-1, -2, 16, 4, 16, 0));
-
-        // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
-
-        // A real child footer creates scroll range and keeps the final row above the floating navigation.
-        homeScrollFooter = new View(this);
-        homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        home.addView(homeScrollFooter, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(160) + ToxiVisualSystem.BOTTOM_INSET));
-        // Home stays focused on file categories without a recent-history panel.
+    void launchNebulaTool(int index) {
+        Intent launch = new Intent(this, ToxiToolsActivity.class);
+        launch.putExtra("tool_index", index);
+        startActivity(launch);
     }
 
     void showOtherSections() {
