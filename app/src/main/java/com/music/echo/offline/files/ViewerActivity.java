@@ -1461,33 +1461,13 @@ public class ViewerActivity extends Activity {
     }
 
     void openTextEditor(File file) {
-        if (!file.isFile() || file.length() > 1024 * 1024) { ToxiVisualSystem.toast(this, "For safety, the built-in editor supports text files up to 1 MB"); return; }
-        io.execute(() -> {
-            String content;
-            try (FileInputStream in = new FileInputStream(file)) {
-                byte[] bytes = new byte[(int) file.length()]; int n = in.read(bytes);
-                content = new String(bytes, 0, Math.max(0, n), "UTF-8");
-            } catch (Exception e) { h.post(() -> ToxiVisualSystem.toast(this, "Couldn't read this text file")); return; }
-            final String initial = content;
-            h.post(() -> {
-                EditText editor = new EditText(ViewerActivity.this);
-                editor.setText(initial); editor.setTextSize(13); editor.setTypeface(Typeface.MONOSPACE);
-                editor.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); editor.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY); editor.setGravity(Gravity.TOP | Gravity.LEFT);
-                editor.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-                editor.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(14));
-                editor.setBackground(ToxiVisualSystem.surface(18, true));
-                ScrollView wrap = new ScrollView(ViewerActivity.this); wrap.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), 0);
-                wrap.addView(editor, new ScrollView.LayoutParams(-1, ToxiVisualSystem.dp(380)));
-                new AlertDialog.Builder(ViewerActivity.this).setTitle("Edit · " + file.getName()).setView(wrap)
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Save", (d, w) -> io.execute(() -> {
-                        try (FileOutputStream out = new FileOutputStream(file, false)) {
-                            out.write(editor.getText().toString().getBytes("UTF-8")); out.flush();
-                            h.post(() -> { ToxiVisualSystem.toast(ViewerActivity.this, "Text file saved"); show(); });
-                        } catch (Exception ex) { h.post(() -> ToxiVisualSystem.toast(ViewerActivity.this, "Couldn't save this file. Check write access.")); }
-                    })).show();
-            });
-        });
+        if (file == null || !file.isFile() || !file.canRead()) {
+            ToxiVisualSystem.toast(this, "This text file is unavailable");
+            return;
+        }
+        Intent advanced = new Intent(this, ToxiToolsActivity.class);
+        advanced.putExtra(ToxiToolsActivity.EXTRA_FILE_PATH, file.getAbsolutePath());
+        startActivity(advanced);
     }
 
     // ---------------- pdf ----------------

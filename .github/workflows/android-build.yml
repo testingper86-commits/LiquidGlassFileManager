@@ -38,6 +38,9 @@ jobs:
           test -s app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java
           test -s app/src/main/java/com/music/echo/offline/files/ToxiMotion.java
           test -s app/src/main/java/com/music/echo/offline/files/ToxiProgressSeekBar.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
+          test -s app/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
           test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
           test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
           test -s app/src/main/res/drawable/ic_toxifiles_app_icon.xml

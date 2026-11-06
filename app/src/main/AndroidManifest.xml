@@ -40,6 +40,7 @@
             android:name=".files.HtmlViewerActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode" />
+        <activity android:name=".files.ToxiToolsActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
         <activity
             android:name=".files.ViewerActivity"
             android:exported="false"

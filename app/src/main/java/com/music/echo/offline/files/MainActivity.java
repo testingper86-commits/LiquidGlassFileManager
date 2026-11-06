@@ -439,15 +439,9 @@ public class MainActivity extends Activity {
     }
 
     void showZip(final File z) {
-        try {
-            List<String> names = FileOps.listZip(z);
-            android.widget.ListView lv = new android.widget.ListView(this);
-            lv.setAdapter(new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
-            new AlertDialog.Builder(this).setTitle(z.getName()).setView(lv).setNegativeButton("Close", null)
-                    .setPositiveButton("Extract", (d, w) -> FileOps.unzip(this, z, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); })).show();
-        } catch (Exception ex) {
-            ToxiVisualSystem.toast(this, "Can't read this ZIP file");
-        }
+        Intent tools = new Intent(this, ToxiToolsActivity.class);
+        tools.putExtra(ToxiToolsActivity.EXTRA_FILE_PATH, z.getAbsolutePath());
+        startActivity(tools);
     }
 
     void openCategory(int cat) {
@@ -1050,55 +1044,21 @@ public class MainActivity extends Activity {
     }
 
     void showBuiltInTools() {
-        String[] tools = {
-                "Built-in image viewer and image grid",
-                "Built-in video player",
-                "Built-in music player",
-                "Built-in text editor",
-                "ZIP archive inspection and extraction",
-                "PDF and document preview"
-        };
-        String[] details = {
-                "Opens image files inside ToxiFiles and displays image collections in a grid.",
-                "Plays supported local video files inside ToxiFiles.",
-                "Plays supported local audio files inside ToxiFiles.",
-                "Edits supported text files up to 1 MB and saves changes to the file.",
-                "Inspects ZIP contents and extracts supported ZIP archives.",
-                "Previews supported PDF and text documents inside the file manager."
-        };
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
+        String[] tools = {"Dual-Pane File Explorer", "Professional Hex Editor", "Folder Comparator", "Character Encoding Converter", "Advanced ZIP Editor", "File Integrity Verification Studio", "Advanced Text Editor"};
+        String[] details = {"Browse two folders side by side and copy, move or delete files.", "Inspect and edit binary data with hexadecimal offsets and ASCII.", "Compare folder trees and verify file content with SHA-256.", "Convert text between UTF-8, UTF-16, ASCII and legacy encodings.", "Rename, delete and add ZIP entries without extracting the archive.", "Calculate MD5, SHA-1, SHA-256, SHA-512 and CRC32.", "Regex search, encoding-aware save, syntax coloring and large-file limits."};
+        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
-        int[] icons = {ToxiIcons.IMAGE, ToxiIcons.VIDEO, ToxiIcons.AUDIO, ToxiIcons.DOC, ToxiIcons.ARCHIVE, ToxiIcons.FILE};
         for (int i = 0; i < tools.length; i++) {
-            LinearLayout item = new LinearLayout(this);
-            item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12));
-            item.setBackground(ToxiVisualSystem.surface(16, true));
-            ImageView icon = new ImageView(this);
-            icon.setImageDrawable(ToxiIcons.symbol(icons[i], ToxiVisualSystem.ACCENT));
-            item.addView(icon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(30), ToxiVisualSystem.dp(30)));
-            LinearLayout copy = new LinearLayout(this);
-            copy.setOrientation(LinearLayout.VERTICAL);
-            copy.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
-            copy.addView(ToxiVisualSystem.text(this, tools[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
-            TextView sub = ToxiVisualSystem.text(this, details[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-            sub.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
-            copy.addView(sub);
-            item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
+            final int index = i; LinearLayout item = new LinearLayout(this); item.setOrientation(LinearLayout.VERTICAL);
+            item.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13)); item.setBackground(ToxiVisualSystem.surface(16, true));
+            item.addView(ToxiVisualSystem.text(this, tools[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
+            TextView detail = ToxiVisualSystem.text(this, details[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false); detail.setPadding(0, ToxiVisualSystem.dp(4), 0, 0); item.addView(detail);
+            item.setOnClickListener(v -> { Intent launch = new Intent(this, ToxiToolsActivity.class); launch.putExtra("tool_index", index); startActivity(launch); });
             list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
         }
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(list);
-        LinearLayout outer = new LinearLayout(this);
-        outer.setOrientation(LinearLayout.VERTICAL);
-        TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true);
-        heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
-        TextView note = ToxiVisualSystem.text(this, "These features run inside the file manager. This list does not launch or manage your phone's separate apps.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        note.setPadding(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
-        outer.addView(heading);
-        outer.addView(note);
-        outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
+        ScrollView scroll = new ScrollView(this); scroll.addView(list); LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL);
+        TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
+        outer.addView(heading); outer.addView(ToxiVisualSystem.text(this, "Seven offline utilities integrated into the existing file manager.", 12, ToxiVisualSystem.TEXT_SECONDARY, false)); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
         new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
     }
 
