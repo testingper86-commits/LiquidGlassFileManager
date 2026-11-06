@@ -66,6 +66,7 @@ import androidx.documentfile.provider.DocumentFile;
 public class MainActivity extends Activity {
     private Object backInvokedCallback;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    final OperationCancellation cancellation = new OperationCancellation();
     final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
     final TaskCoordinator.ScopedExecutor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
     final Set<String> favs = new LinkedHashSet<>();
@@ -206,7 +207,7 @@ public class MainActivity extends Activity {
         busyTv.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
         busyTv.setVisibility(View.GONE);
         busyTv.setContentDescription("Operation progress. Tap to request cancellation.");
-        busyTv.setOnClickListener(v -> { FileOps.requestCancel(); LanTransfer.cancel(); ToxiVisualSystem.toast(this, "Cancellation requested"); });
+        busyTv.setOnClickListener(v -> { cancellation.cancelActive(); LanTransfer.cancel(); ToxiVisualSystem.toast(this, "Cancellation requested"); });
         root.addView(busyTv, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         setContentView(root);
@@ -361,7 +362,7 @@ public class MainActivity extends Activity {
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
-        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" · tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{FileOps.requestCancel();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
+        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" · tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
@@ -1650,23 +1651,26 @@ public class MainActivity extends Activity {
         if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
         final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
         if (rootDoc == null || !rootDoc.canWrite()) { ToxiVisualSystem.toast(this, "This storage location is not writable"); return; }
-        FileOps.cancelRequested = false;
         busy(true);
         ops.execute(() -> {
-            int ok = 0, failed = 0, idx = 0;
-            String error = "";
-            for (File file : files) {
-                if (FileOps.cancelRequested) { failed++; error = "Operation cancelled"; break; }
-                final int current = ++idx;
-                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
-                try { copyLocalToSaf(file, rootDoc); ok++; }
-                catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
-            }
-            final int copied = ok, failures = failed; final String detail = error;
-            runOnUiThread(() -> {
-                busy(false);
-                ToxiVisualSystem.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
-            });
+            OperationCancellation.Token operationToken = this.cancellation.begin();
+            try {
+                int ok = 0, failed = 0, idx = 0;
+                String error = "";
+                for (File file : files) {
+                    if (OperationCancellation.isCancelled()) { failed++; error = "Operation cancelled"; break; }
+                    final int current = ++idx;
+                    runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
+                    try { copyLocalToSaf(file, rootDoc); ok++; }
+                    catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
+                }
+                final int copied = ok, failures = failed; final String detail = error;
+                runOnUiThread(() -> {
+                    busy(false);
+                    ToxiVisualSystem.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
+                });
+
+            } finally { this.cancellation.finish(operationToken); }
         });
     }
 
@@ -1747,31 +1751,34 @@ public class MainActivity extends Activity {
     }
 
     void importSafDoc(final Uri doc, final String name) {
-        FileOps.cancelRequested = false;
         busy(true);
         ops.execute(() -> {
-            String msg;
-            File pending = null;
-            File dest = null;
+            OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
-                File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
-                dest = FileOps.unique(download, name);
-                pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
-                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
-                    if (in == null) throw new java.io.IOException("External storage returned no input stream");
-                    byte[] buf = new byte[65536]; int n;
-                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                String msg;
+                File pending = null;
+                File dest = null;
+                try {
+                    File download = new File(Environment.getExternalStorageDirectory(), "Download");
+                    if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
+                    dest = FileOps.unique(download, name);
+                    pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
+                    try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
+                        if (in == null) throw new java.io.IOException("External storage returned no input stream");
+                        byte[] buf = new byte[65536]; int n;
+                        while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                    }
+                    FileOps.checkCancelled();
+                    try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
+                    msg = "Imported to Download/" + dest.getName();
+                } catch (Exception ex) {
+                    if (pending != null) pending.delete();
+                    msg = "Import failed: " + ex.getMessage();
                 }
-                FileOps.checkCancelled();
-                try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
-                msg = "Imported to Download/" + dest.getName();
-            } catch (Exception ex) {
-                if (pending != null) pending.delete();
-                msg = "Import failed: " + ex.getMessage();
-            }
-            final String m = msg;
-            runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
+                final String m = msg;
+                runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
+
+            } finally { this.cancellation.finish(operationToken); }
         });
     }
 

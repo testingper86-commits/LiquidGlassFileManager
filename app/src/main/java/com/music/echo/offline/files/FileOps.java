@@ -24,9 +24,7 @@ import java.util.zip.ZipOutputStream;
 final class FileOps {
     interface Done { void run(String msg); }
 
-    static volatile boolean cancelRequested;
-    static void requestCancel() { cancelRequested = true; }
-    static void checkCancelled() throws IOException { if (cancelRequested) throw new IOException("Operation cancelled"); }
+    static void checkCancelled() throws IOException { OperationCancellation.checkCurrent(); }
 
     static File unique(File dir, String name) {
         if (dir == null || BatchRenameEngine.validateName(name) != null) {
@@ -129,91 +127,100 @@ final class FileOps {
     }
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
-        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            int ok = 0, fail = 0, skipped = 0;
-            String err = "";
-            int total = src.length, idx = 0;
-            for (File s : src) {
-                if (cancelRequested) { fail++; err = "Operation cancelled"; break; }
-                idx++;
-                final int fi = idx, ft = total;
-                final String nm = s.getName();
-                a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
-                try {
-                    if (move && dst.equals(s.getParentFile())) { ok++; continue; }
-                    if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
-                    if (s.isDirectory() && (dst.getCanonicalPath() + "/").startsWith(s.getCanonicalPath() + "/")) {
-                        fail++; err = "Can't put a folder inside itself"; continue;
-                    }
-                    File t = unique(dst, s.getName());
-                    if (move) {
-                        try {
-                            java.nio.file.Files.move(s.toPath(), t.toPath());
-                        } catch (IOException moveError) {
-                            copy(s, t);
-                            if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept", moveError);
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
+                int ok = 0, fail = 0, skipped = 0;
+                String err = "";
+                int total = src.length, idx = 0;
+                for (File s : src) {
+                    if (OperationCancellation.isCancelled()) { fail++; err = "Operation cancelled"; break; }
+                    idx++;
+                    final int fi = idx, ft = total;
+                    final String nm = s.getName();
+                    a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
+                    try {
+                        if (move && dst.equals(s.getParentFile())) { ok++; continue; }
+                        if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
+                        if (s.isDirectory() && (dst.getCanonicalPath() + "/").startsWith(s.getCanonicalPath() + "/")) {
+                            fail++; err = "Can't put a folder inside itself"; continue;
                         }
-                    } else copy(s, t);
-                    ok++;
-                } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
-            }
-            final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
-                    + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+                        File t = unique(dst, s.getName());
+                        if (move) {
+                            try {
+                                java.nio.file.Files.move(s.toPath(), t.toPath());
+                            } catch (IOException moveError) {
+                                copy(s, t);
+                                if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept", moveError);
+                            }
+                        } else copy(s, t);
+                        ok++;
+                    } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
+                }
+                final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
+                        + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
+                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void delete(final MainActivity a, final List<File> fs, final Done d) {
-        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            int ok = 0, failed = 0, total = fs.size(), idx = 0;
-            boolean cancelled = false;
-            for (File f : fs) {
-                if (cancelRequested) { cancelled = true; break; }
-                idx++;
-                final int fi = idx, ft = total;
-                final String nm = f.getName();
-                a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
-                if (deleteTree(f)) ok++; else failed++;
-            }
-            final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
-                    + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
+                int ok = 0, failed = 0, total = fs.size(), idx = 0;
+                boolean cancelled = false;
+                for (File f : fs) {
+                    if (OperationCancellation.isCancelled()) { cancelled = true; break; }
+                    idx++;
+                    final int fi = idx, ft = total;
+                    final String nm = f.getName();
+                    a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
+                    if (deleteTree(f)) ok++; else failed++;
+                }
+                final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
+                        + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
+                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void zip(final MainActivity a, final List<File> fs, final File destDir, final Done d) {
-        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            String msg;
-            File out = null;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
-                String base = fs.size() == 1 ? fs.get(0).getName() : "Archive";
-                int i = base.lastIndexOf('.');
-                if (fs.size() == 1 && i > 0 && !fs.get(0).isDirectory()) base = base.substring(0, i);
-                out = createUniqueFile(destDir, base + ".zip");
-                try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out, false)))) {
-                    Set<String> rootNames = new HashSet<>();
-                    for (File f : fs) {
-                        String entryName = f.getName();
-                        if (!rootNames.add(entryName)) {
-                            String rootBase = entryName, rootExt = "";
-                            int dot = entryName.lastIndexOf('.');
-                            if (dot > 0 && !f.isDirectory()) { rootBase = entryName.substring(0, dot); rootExt = entryName.substring(dot); }
-                            int suffix = 2;
-                            do { entryName = rootBase + " (" + suffix++ + ")" + rootExt; } while (!rootNames.add(entryName));
+                String msg;
+                File out = null;
+                try {
+                    String base = fs.size() == 1 ? fs.get(0).getName() : "Archive";
+                    int i = base.lastIndexOf('.');
+                    if (fs.size() == 1 && i > 0 && !fs.get(0).isDirectory()) base = base.substring(0, i);
+                    out = createUniqueFile(destDir, base + ".zip");
+                    try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out, false)))) {
+                        Set<String> rootNames = new HashSet<>();
+                        for (File f : fs) {
+                            String entryName = f.getName();
+                            if (!rootNames.add(entryName)) {
+                                String rootBase = entryName, rootExt = "";
+                                int dot = entryName.lastIndexOf('.');
+                                if (dot > 0 && !f.isDirectory()) { rootBase = entryName.substring(0, dot); rootExt = entryName.substring(dot); }
+                                int suffix = 2;
+                                do { entryName = rootBase + " (" + suffix++ + ")" + rootExt; } while (!rootNames.add(entryName));
+                            }
+                            addZip(z, f, entryName, out);
                         }
-                        addZip(z, f, entryName, out);
                     }
-                }
-                msg = "Created " + out.getName();
-            } catch (Exception ex) { if (out != null) deleteTree(out); msg = "Zip failed: " + ex.getMessage(); }
-            final String m = msg;
-            a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+                    msg = "Created " + out.getName();
+                } catch (Exception ex) { if (out != null) deleteTree(out); msg = "Zip failed: " + ex.getMessage(); }
+                final String m = msg;
+                a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
@@ -248,67 +255,70 @@ final class FileOps {
     }
 
     static void unzip(final MainActivity a, final File zip, final Done d) {
-        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            String msg;
-            File dest = null;
-            boolean destCreated = false;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
-                String base = zip.getName();
-                int i = base.lastIndexOf('.');
-                if (i > 0) base = base.substring(0, i);
-                dest = unique(zip.getParentFile(), base);
-                if (!dest.mkdir()) throw new IOException("Unable to reserve extraction folder without overwriting existing data");
-                destCreated = true;
-                String root = dest.getCanonicalPath();
-                long expanded = 0L;
-                final long initialFreeSpace = dest.getUsableSpace();
-                java.util.Set<String> extractedPaths = new java.util.HashSet<>();
-                try (ZipFile z = new ZipFile(zip)) {
-                    int total = z.size(), idx = 0;
-                    if (total > 20_000) throw new IOException("Archive has too many entries");
-                    Enumeration<? extends ZipEntry> en = z.entries();
-                    while (en.hasMoreElements()) {
-                        checkCancelled();
-                        ZipEntry e = en.nextElement();
-                        idx++;
-                        final int fi = idx, ft = total;
-                        final String nm = e.getName();
-                        a.runOnUiThread(() -> a.progress("Extracting " + fi + " of " + ft + ": " + nm));
-                        String entryName = e.getName();
-                        if (entryName == null || entryName.isEmpty() || entryName.startsWith("/") || entryName.startsWith("\\") || entryName.matches("^[A-Za-z]:.*")) continue;
-                        String normalizedName = ArchivePath.normalize(entryName, e.isDirectory());
-                        if (!extractedPaths.add(normalizedName)) throw new IOException("Archive contains duplicate entry paths");
-                        File o = new File(dest, normalizedName);
-                        String cp = o.getCanonicalPath();
-                        if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
-                        if (e.isDirectory()) {
-                            if (java.nio.file.Files.isSymbolicLink(o.toPath())) throw new IOException("Archive directory path is a symbolic link");
-                            if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder");
-                            continue;
-                        }
-                        if (e.getSize() > 0 && e.getSize() > 2L * 1024 * 1024 * 1024) throw new IOException("Archive entry exceeds 2 GB limit");
-                        if (o.getParentFile() != null && !o.getParentFile().mkdirs() && !o.getParentFile().isDirectory()) throw new IOException("Unable to create archive parent folder");
-                        if (java.nio.file.Files.isSymbolicLink(o.toPath()) || !o.createNewFile()) throw new IOException("Archive destination already exists or is unsafe");
-                        long entryBytes = 0L;
-                        try (InputStream in = z.getInputStream(e); OutputStream out = new FileOutputStream(o, false)) {
-                            byte[] buf = new byte[65536];
-                            int n;
-                            while ((n = in.read(buf)) > 0) {
-                                checkCancelled();
-                                entryBytes += n; expanded += n;
-                                if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
-                                if (expanded > initialFreeSpace) throw new IOException("Not enough free space to extract archive");
-                                out.write(buf, 0, n);
+                String msg;
+                File dest = null;
+                boolean destCreated = false;
+                try {
+                    String base = zip.getName();
+                    int i = base.lastIndexOf('.');
+                    if (i > 0) base = base.substring(0, i);
+                    dest = unique(zip.getParentFile(), base);
+                    if (!dest.mkdir()) throw new IOException("Unable to reserve extraction folder without overwriting existing data");
+                    destCreated = true;
+                    String root = dest.getCanonicalPath();
+                    long expanded = 0L;
+                    final long initialFreeSpace = dest.getUsableSpace();
+                    java.util.Set<String> extractedPaths = new java.util.HashSet<>();
+                    try (ZipFile z = new ZipFile(zip)) {
+                        int total = z.size(), idx = 0;
+                        if (total > 20_000) throw new IOException("Archive has too many entries");
+                        Enumeration<? extends ZipEntry> en = z.entries();
+                        while (en.hasMoreElements()) {
+                            checkCancelled();
+                            ZipEntry e = en.nextElement();
+                            idx++;
+                            final int fi = idx, ft = total;
+                            final String nm = e.getName();
+                            a.runOnUiThread(() -> a.progress("Extracting " + fi + " of " + ft + ": " + nm));
+                            String entryName = e.getName();
+                            if (entryName == null || entryName.isEmpty() || entryName.startsWith("/") || entryName.startsWith("\\") || entryName.matches("^[A-Za-z]:.*")) continue;
+                            String normalizedName = ArchivePath.normalize(entryName, e.isDirectory());
+                            if (!extractedPaths.add(normalizedName)) throw new IOException("Archive contains duplicate entry paths");
+                            File o = new File(dest, normalizedName);
+                            String cp = o.getCanonicalPath();
+                            if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
+                            if (e.isDirectory()) {
+                                if (java.nio.file.Files.isSymbolicLink(o.toPath())) throw new IOException("Archive directory path is a symbolic link");
+                                if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder");
+                                continue;
                             }
-                        } catch (Exception writeError) { o.delete(); throw writeError; }
+                            if (e.getSize() > 0 && e.getSize() > 2L * 1024 * 1024 * 1024) throw new IOException("Archive entry exceeds 2 GB limit");
+                            if (o.getParentFile() != null && !o.getParentFile().mkdirs() && !o.getParentFile().isDirectory()) throw new IOException("Unable to create archive parent folder");
+                            if (java.nio.file.Files.isSymbolicLink(o.toPath()) || !o.createNewFile()) throw new IOException("Archive destination already exists or is unsafe");
+                            long entryBytes = 0L;
+                            try (InputStream in = z.getInputStream(e); OutputStream out = new FileOutputStream(o, false)) {
+                                byte[] buf = new byte[65536];
+                                int n;
+                                while ((n = in.read(buf)) > 0) {
+                                    checkCancelled();
+                                    entryBytes += n; expanded += n;
+                                    if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
+                                    if (expanded > initialFreeSpace) throw new IOException("Not enough free space to extract archive");
+                                    out.write(buf, 0, n);
+                                }
+                            } catch (Exception writeError) { o.delete(); throw writeError; }
+                        }
                     }
-                }
-                msg = "Extracted to " + dest.getName();
-            } catch (Exception ex) { if (destCreated && dest != null) deleteTree(dest); msg = "Extract failed: " + ex.getMessage(); }
-            final String m = msg;
-            a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+                    msg = "Extracted to " + dest.getName();
+                } catch (Exception ex) { if (destCreated && dest != null) deleteTree(dest); msg = "Extract failed: " + ex.getMessage(); }
+                final String m = msg;
+                a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
