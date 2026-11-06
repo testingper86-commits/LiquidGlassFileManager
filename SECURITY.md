@@ -14,6 +14,7 @@ Please report security issues privately to the repository owner before publishin
 - FileProvider is non-exported and grants access through specific shared URIs. Do not change it to expose the filesystem root.
 - Settings import is size-limited and only accepts a small allowlist of portable preferences; security preferences are intentionally excluded.
 - Recursive operations reject symbolic links. Archive extraction limits entry count and expanded size, checks destination containment, and removes partial output after failure.
+- APK installation is an explicit user-initiated `ACTION_INSTALL_PACKAGE` handoff for readable regular `.apk` files; symlink inputs are rejected. Android's package installer enforces unknown-source permission and the final installation confirmation. ToxiFiles does not silently install APKs.
 - ToxiFiles uses sensitive Android permissions for core file-management and APK-install workflows. Permission grants remain under Android's control, and distribution policy must be reviewed for the intended channel.
 
 ## Known limitations

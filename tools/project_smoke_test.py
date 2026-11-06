@@ -158,6 +158,8 @@ def main():
     require('static File resolveChild(File parent, String name)' in rename_engine and 'candidate.getParentFile()' in rename_engine and 'canonicalParent.equals(actualParent)' in rename_engine, "User-derived child paths are checked against canonical parent boundaries")
     require('BatchRenameEngine.resolveChild(cur, n)' in browser and 'BatchRenameEngine.resolveChild(e.f.getParentFile(), n)' in browser, "Folder creation and rename use canonical path containment")
     require('BatchRenameEngine.resolveChild(dir, candidate)' in file_ops and 'safeChild(dir, name)' in file_ops, "File operations resolve generated destination names through the safe child helper")
+    apk_install = file_ops.split('static void install(Activity a, File f)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
+    require('Intent.ACTION_INSTALL_PACKAGE' in apk_install and 'Intent.ACTION_VIEW' not in apk_install and 'Files.isSymbolicLink(f.toPath())' in apk_install and 'endsWith(".apk")' in apk_install and 'canRequestPackageInstalls()' in apk_install, "APK install is explicit, user-confirmed, regular-file-only and rejects symlink inputs")
     rename_tests = source("app/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java")
     require('resolveChildRejectsTraversalAndSymlinkEscapes' in rename_tests, "canonical path resolution has traversal and symlink-escape regression tests")
     require('static DocumentFile findDocumentInTree(Context context, Uri tree, Uri target)' in saf_operations and 'DocumentFile.fromTreeUri(context, tree)' in saf_operations and 'current.listFiles()' in saf_operations, "SAF recursive operations resolve tree-aware DocumentFile wrappers")

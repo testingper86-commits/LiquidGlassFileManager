@@ -353,17 +353,30 @@ final class FileOps {
     }
 
     static void install(Activity a, File f) {
+        if (a == null) return;
         try {
-            if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
-                ToxiVisualSystem.toast(a, "Allow \"Install unknown apps\" for this app, then tap the APK again");
-                a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.getPackageName())));
+            if (f == null || !f.isFile() || !f.canRead()
+                    || !f.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".apk")
+                    || Files.isSymbolicLink(f.toPath())) {
+                ToxiVisualSystem.toast(a, "Select a readable APK file");
                 return;
             }
-            Intent i = new Intent(Intent.ACTION_VIEW);
-            i.setDataAndType(uri(a, f), "application/vnd.android.package-archive");
-            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            a.startActivity(i);
-        } catch (Exception ex) { ToxiVisualSystem.toast(a, "Can't install this APK"); }
+            if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
+                ToxiVisualSystem.toast(a, "Allow \"Install unknown apps\" for this app, then tap the APK again");
+                a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + a.getPackageName())));
+                return;
+            }
+            // Explicit user-selected APK handoff. Android's package installer owns the final confirmation.
+            Uri apkUri = uri(a, f);
+            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            intent.setClipData(ClipData.newRawUri("", apkUri));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            a.startActivity(intent);
+        } catch (Exception ex) {
+            ToxiVisualSystem.toast(a, "Can't install this APK");
+        }
     }
 
     static void share(Activity a, List<File> fs) {
