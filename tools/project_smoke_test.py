@@ -99,6 +99,13 @@ def main():
     require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
+    java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
+    legacy_cancel_callers = [str(path.relative_to(ROOT)) for path in java_sources if "FileOps.cancelRequested" in path.read_text(encoding="utf-8")]
+    require(not legacy_cancel_callers, "no legacy global file-cancellation references remain anywhere in Java sources")
+    toxi_tools = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
+    lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
+    require(toxi_tools.count('OperationCancellation.Token operationToken') == 3 and 'cancellation.cancelActive()' in toxi_tools, "Developer file tools cancel and clean up their own worker operations")
+    require(lan_transfer.count('OperationCancellation.Token operationToken') == 2 and 'cancellation.cancelActive()' in lan_transfer and lan_transfer.count('session.cancellation.finish(operationToken)') == 2, "LAN transfer cancellation reaches authenticated receive commit work")
     browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
     vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
     recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")

@@ -124,6 +124,7 @@ final class LanTransfer {
 
     private static final class Session {
         private final Listener listener;
+        private final OperationCancellation cancellation = new OperationCancellation();
         private final AtomicBoolean cancellationReported = new AtomicBoolean();
         private ServerSocket server;
         private Socket socket;
@@ -157,6 +158,7 @@ final class LanTransfer {
             Socket connected;
             synchronized (this) {
                 cancelled = true;
+                cancellation.cancelActive();
                 pending = future;
                 listening = server;
                 connected = socket;
@@ -202,6 +204,8 @@ final class LanTransfer {
         final Session session = begin(l);
         if (session == null) return;
         try { session.setFuture(TaskCoordinator.submit(TaskCoordinator.Lane.NETWORK, () -> {
+            OperationCancellation.Token operationToken = session.cancellation.begin();
+            try {
             ServerSocket server = null;
             try {
                 server = new ServerSocket(PORT);
@@ -306,6 +310,8 @@ final class LanTransfer {
             } finally {
                 finish(session);
             }
+        
+            } finally { session.cancellation.finish(operationToken); }
         })); } catch (RuntimeException rejected) {
             session.cancel();
             ACTIVE.compareAndSet(session, null);
@@ -318,6 +324,8 @@ final class LanTransfer {
         final Session session = begin(l);
         if (session == null) return;
         try { session.setFuture(TaskCoordinator.submit(TaskCoordinator.Lane.NETWORK, () -> {
+            OperationCancellation.Token operationToken = session.cancellation.begin();
+            try {
             Socket sock = null;
             try {
                 sock = new Socket();
@@ -385,6 +393,8 @@ final class LanTransfer {
             } finally {
                 finish(session);
             }
+        
+            } finally { session.cancellation.finish(operationToken); }
         })); } catch (RuntimeException rejected) {
             session.cancel();
             ACTIVE.compareAndSet(session, null);
