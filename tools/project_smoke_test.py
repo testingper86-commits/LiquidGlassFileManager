@@ -147,8 +147,10 @@ def main():
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
     saf_operations = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    require('static DocumentFile findDocumentInTree(Context context, Uri tree, Uri target)' in saf_operations and 'DocumentFile.fromTreeUri(context, tree)' in saf_operations and 'current.listFiles()' in saf_operations, "SAF recursive operations resolve tree-aware DocumentFile wrappers")
     require('static DocumentFile moveDocumentWithFallback(Context context' in saf_operations and 'if (context == null || resolver == null || source == null' in saf_operations, "SAF move validates the Context required to wrap provider-returned document URIs")
     require('static Uri moveDocument(ContentResolver resolver' in saf_operations and 'if (context == null || resolver == null || source == null' not in saf_operations.split('static Uri moveDocument(ContentResolver resolver', 1)[1].split('static DocumentFile moveDocumentWithFallback', 1)[0], "SAF native move does not reference an out-of-scope Context")
+    require('"Duplicate here"' in main and 'SafStorageOperations.copyDocumentTree(getContentResolver(), source, destination)' in main, "Other Storage supports recursive directory duplication")
     require('"Move to folder"' in main and 'showSafMoveFolderPicker(tree, parent, document, parent, title, name);' in main and 'SafStorageOperations.moveDocumentWithFallback(' in main, "Other Storage exposes provider-aware move-to-folder actions")
     require('ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);' in main and '@android.annotation.SuppressLint("WrongConstant")' not in main, "MainActivity persists SAF grants through the shared validated permission helper")
     require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
