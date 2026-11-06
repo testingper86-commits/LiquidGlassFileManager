@@ -112,6 +112,8 @@ def main():
     require('@android.annotation.SuppressLint("WrongConstant")' in main and 'Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION' in main, "SAF persistence uses explicit read/write grant flags")
     require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
 
+    gradle_properties = source("gradle.properties")
+    require("org.gradle.jvmargs=-Xmx2g" in gradle_properties and "MaxMetaspaceSize=512m" in gradle_properties and "org.gradle.workers.max=1" in gradle_properties, "Gradle CI memory is sufficient for API 36 lint analysis with bounded worker concurrency")
     app_gradle = source("app/build.gradle.kts")
     root_gradle = source("build.gradle.kts")
     wrapper = source("gradle/wrapper/gradle-wrapper.properties")
