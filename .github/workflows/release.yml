@@ -78,7 +78,7 @@ jobs:
               if path.is_file(): ET.parse(path)
           print(f'Validated XML in {len(files)} candidate files.')
           PY
-      - name: Configure optional release signing
+      - name: Require and configure release signing
         id: signing
         shell: bash
         env:
@@ -102,9 +102,8 @@ jobs:
             echo "signed=true" >> "$GITHUB_OUTPUT"
             echo "artifact_name=ToxiFiles-release-signed" >> "$GITHUB_OUTPUT"
           else
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "artifact_name=ToxiFiles-release-unsigned" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release signing secrets are not configured; the artifact will be unsigned."
+            echo "::error::Release signing is mandatory. Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD before creating a release."
+            exit 1
           fi
       - name: Run unit tests and Android lint
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug

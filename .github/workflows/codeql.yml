@@ -59,6 +59,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ToxiFiles-CodeQL-SARIF-review-only
-          path: results/*.sarif
+          path: ../results/*.sarif
           if-no-files-found: error
           retention-days: 14

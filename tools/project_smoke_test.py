@@ -25,8 +25,8 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
-        "app/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
-        "app/src/main/java/com/music/echo/offline/files/ArchivePath.java",
+        "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
+        "core/src/main/java/com/music/echo/offline/files/ArchivePath.java",
         "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java",
         "app/src/main/java/com/music/echo/offline/files/Vault.java",
         "app/src/main/java/com/music/echo/offline/files/PinHash.java",
@@ -41,6 +41,11 @@ def main():
     for item in required:
         p = ROOT / item
         require(p.is_file() and p.stat().st_size > 0, f"required source exists: {item}")
+
+    settings = source("settings.gradle.kts")
+    app_gradle = source("app/build.gradle.kts")
+    require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
+    require((ROOT / "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java").is_file() and (ROOT / "core/src/main/java/com/music/echo/offline/files/ArchivePath.java").is_file(), "core module owns cancellation and archive path validation sources")
 
     manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
     app = manifest.find("application")
@@ -103,8 +108,8 @@ def main():
     require('settings.addView(section("About"))' in main and 'About ToxiFiles' in main, "About remains at the bottom of Settings")
 
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
-    archive_path = source("app/src/main/java/com/music/echo/offline/files/ArchivePath.java")
-    cancellation = source("app/src/main/java/com/music/echo/offline/files/OperationCancellation.java")
+    archive_path = source("core/src/main/java/com/music/echo/offline/files/ArchivePath.java")
+    cancellation = source("core/src/main/java/com/music/echo/offline/files/OperationCancellation.java")
     require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
@@ -193,3 +198,4 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)
+

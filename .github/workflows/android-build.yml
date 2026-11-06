@@ -47,6 +47,9 @@ jobs:
           test -s app/src/main/res/drawable/toxifiles_splash.xml
           test -s app/build.gradle.kts
           test -s settings.gradle || test -s settings.gradle.kts
+          test -s core/build.gradle.kts
+          test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
+          test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
           chmod +x gradlew
       - name: Set up JDK 17
         uses: actions/setup-java@v4

@@ -14,4 +14,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "ToxiFiles"
-include(":app")
+include(":app", ":core")
