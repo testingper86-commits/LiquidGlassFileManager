@@ -1728,14 +1728,22 @@ public class MainActivity extends Activity {
 
     private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
                                          String name, boolean directory) {
-        String[] actions = directory
-                ? new String[]{"Move to folder", "Rename", "Delete"}
-                : new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
+        String[] actions = new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
         new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
             String action = actions[which];
             if ("Duplicate here".equals(action)) {
-                runSafAction(tree, parent, title, "Duplicated " + name,
-                        () -> SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name));
+                runSafAction(tree, parent, title, "Duplicated " + name, () -> {
+                    if (directory) {
+                        DocumentFile source = safDocument(tree, document);
+                        DocumentFile destination = safDocument(tree, parent);
+                        if (source == null || destination == null) {
+                            throw new java.io.IOException("Storage provider returned an invalid copy location");
+                        }
+                        SafStorageOperations.copyDocumentTree(getContentResolver(), source, destination);
+                    } else {
+                        SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name);
+                    }
+                });
             } else if ("Move to folder".equals(action)) {
                 showSafMoveFolderPicker(tree, parent, document, parent, title, name);
             } else if ("Rename".equals(action)) {
@@ -1761,13 +1769,8 @@ public class MainActivity extends Activity {
         }).setNegativeButton("Cancel", null).show();
     }
 
-    private DocumentFile safDocument(Uri tree, Uri document) {
-        if (tree == null || document == null) return null;
-        String rootId = DocumentsContract.getTreeDocumentId(tree);
-        String documentId = DocumentsContract.getDocumentId(document);
-        return rootId.equals(documentId)
-                ? DocumentFile.fromTreeUri(this, tree)
-                : DocumentFile.fromSingleUri(this, document);
+    private DocumentFile safDocument(Uri tree, Uri document) throws java.io.IOException {
+        return SafStorageOperations.findDocumentInTree(this, tree, document);
     }
 
     private boolean sameSafDocument(Uri first, Uri second) {
@@ -1820,7 +1823,7 @@ public class MainActivity extends Activity {
                         .setItems(choices.toArray(new String[0]), (dialog, which) -> {
                             if (canMoveHere && which == 0) {
                                 runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName, () -> {
-                                    DocumentFile source = DocumentFile.fromSingleUri(this, sourceDocument);
+                                    DocumentFile source = safDocument(tree, sourceDocument);
                                     DocumentFile from = safDocument(tree, sourceParent);
                                     DocumentFile destination = safDocument(tree, currentFolder);
                                     if (source == null || from == null || destination == null) {
