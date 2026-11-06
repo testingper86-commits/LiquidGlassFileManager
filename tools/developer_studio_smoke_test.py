@@ -8,6 +8,7 @@ BASE = ROOT / "app/src/main/java/com/music/echo/offline/files"
 activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
 core = (BASE / "DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
+tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
 TOOLS = [
@@ -51,4 +52,18 @@ require("Potentially catastrophic nested quantifiers" in core and "MAX_DIFF_LINE
         "regex and diff engines enforce input complexity limits")
 require("MAX_RELATION_FILES" in core and "MAX_TEXT_CHARS" in core,
         "source analysis has explicit input bounds")
+require("private void handleBackNavigation()" in activity and "@Override public void onBackPressed(){handleBackNavigation();}" in activity,
+        "Developer Studio hardware back uses the screen-aware navigation handler")
+require("current>=0" in activity and "cancelWork();showHome();" in activity and "else{finish();}" in activity,
+        "tool back returns to the 12-tool index and index back exits to ToxiFiles")
+require("ToxiVisualSystem.iconButton(this,ToxiIcons.BACK" in activity and "setOnClickListener(v->handleBackNavigation())" in activity,
+        "Developer Studio index and tool screens expose a proper accessible back icon")
+for index, icon in (("REL", "FOLDER"), ("APK", "APK"), ("DB", "DATABASE"), ("DIFF", "FILE"), ("FORMAT", "TEXT"), ("REGEX", "SEARCH"), ("SYMBOL", "INFO"), ("DEP", "ANALYTICS"), ("BINARY", "ARCHIVE"), ("COLOR", "PALETTE"), ("JSON_XML", "DOC")):
+    require("case " + index + ":return ToxiIcons." + icon in activity,
+            "Developer Studio tool has its own semantic icon: " + index)
+require("default:return ToxiIcons.SHIELD" in activity, "file signature analyzer has its own shield icon")
+require("ToxiVisualSystem.iconButton(this,ToxiIcons.BACK" in tools_activity and "@Override public void onBackPressed(){handleBackNavigation();}" in tools_activity,
+        "built-in tool screens expose a visible back icon and matching hardware-back action")
+require("@Override public void onBackPressed() { handleBackNavigation(); }" in main and "private void handleBackNavigation()" in main,
+        "main application hardware back continues through its central navigation handler")
 print(f"PASS: {len(checks)} Developer Studio source checks")
