@@ -376,7 +376,7 @@ final class FileOps {
         try {
             if (file == null || !file.isFile() || !file.canRead() || file.length() <= 0L
                     || !file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".apk")
-                    || Files.isSymbolicLink(file.toPath())) {
+                    || java.nio.file.Files.isSymbolicLink(file.toPath())) {
                 throw new IOException("Select a readable regular APK file");
             }
             android.content.pm.PackageInstaller.SessionParams params =
