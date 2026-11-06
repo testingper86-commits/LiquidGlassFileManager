@@ -34,7 +34,32 @@ public class DeveloperStudioCoreTest {
     }
     @Test public void regexRejectsNestedQuantifiers() {
         try { DeveloperStudioCore.regex("(a+)+$","aaaaaaaaaaaaaaaa!",null); fail("unsafe pattern must be rejected"); }
-        catch(IllegalArgumentException expected){assertTrue(expected.getMessage().contains("catastrophic"));}
+        catch(IllegalArgumentException expected){assertTrue(expected.getMessage().contains("backtracking")||expected.getMessage().contains("blocked"));}
+    }
+    @Test public void regexRejectsAmbiguousRepeatedAlternationAndBackreferences() {
+        for(String unsafe:new String[]{"(a|aa)+$","(ab*)+","(a+)\\1",".*a"}) {
+            try { DeveloperStudioCore.validateRegexPattern(unsafe); fail("unsafe regex accepted: "+unsafe); }
+            catch(IllegalArgumentException expected) { }
+        }
+    }
+    @Test public void regexAllowsBoundedOrdinaryCapturePatterns() {
+        DeveloperStudioCore.validateRegexPattern("(\\w+)=(\\d+)");
+        assertTrue(DeveloperStudioCore.regex("(\\w+)=(\\d+)","id=42",null).contains("Matches: 1"));
+    }
+    @Test public void readOnlySqlParserAllowsSafeQueriesAndInspectionPragmas() {
+        assertTrue(DeveloperStudioCore.isReadOnlySql("SELECT name FROM sqlite_master;"));
+        assertTrue(DeveloperStudioCore.isReadOnlySql("WITH items AS (SELECT 1 AS n) SELECT n FROM items"));
+        assertTrue(DeveloperStudioCore.isReadOnlySql("PRAGMA table_info('files')"));
+        assertTrue(DeveloperStudioCore.isReadOnlySql("SELECT 'DROP TABLE files' AS sample"));
+    }
+    @Test public void readOnlySqlParserRejectsWritesAssignmentsAndMultipleStatements() {
+        for(String sql:new String[]{"DELETE FROM files","WITH x AS (SELECT 1) DELETE FROM files","PRAGMA journal_mode=WAL","PRAGMA optimize","SELECT 1; DELETE FROM files","SELECT 1; -- trailing comment"})
+            assertFalse("unsafe SQL accepted: "+sql,DeveloperStudioCore.isReadOnlySql(sql));
+    }
+    @Test public void progressCountParserHandlesValidAndMalformedInput() {
+        assertArrayEquals(new int[]{12,40},DeveloperStudioCore.parseProgressCount("Copying 12 of 40 files"));
+        assertNull(DeveloperStudioCore.parseProgressCount("Copying files"));
+        assertNull(DeveloperStudioCore.parseProgressCount("Copying 1 of 0 files"));
     }
     @Test public void validatorFindsUnbalancedDelimitersButIgnoresStringsAndComments() {
         assertTrue(DeveloperStudioCore.validateSource("class A { String s=\"}\"; /* { */ }").contains("passed"));

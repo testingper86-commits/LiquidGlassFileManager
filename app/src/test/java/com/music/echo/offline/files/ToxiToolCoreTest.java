@@ -50,5 +50,6 @@ public class ToxiToolCoreTest {
     @Test public void zipPathTraversalIsRejected() throws Exception {
         try{ToxiToolCore.validateZipName("../escape.txt");fail("path traversal accepted");}catch(IOException expected){}
         try{ToxiToolCore.validateZipName("/absolute.txt");fail("absolute path accepted");}catch(IOException expected){}
+        try{ToxiToolCore.validateZipName("C:/absolute.txt");fail("drive-qualified path accepted");}catch(IOException expected){}
     }
 }

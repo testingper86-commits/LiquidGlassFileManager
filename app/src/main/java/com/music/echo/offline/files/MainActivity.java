@@ -375,11 +375,8 @@ public class MainActivity extends Activity {
         ToxiMotion.setActive(busyTv, true);
         if (dynamicIsland != null) {
             int percent = -1;
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)\\s+of\\s+(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text);
-            if (m.find()) {
-                int total = Math.max(1, Integer.parseInt(m.group(2)));
-                percent = Math.max(0, Math.min(100, (int)(100L * Integer.parseInt(m.group(1)) / total)));
-            }
+            int[] counts = DeveloperStudioCore.parseProgressCount(text);
+            if (counts != null) percent = Math.max(0, Math.min(100, (int)(100L * counts[0] / counts[1])));
             dynamicIsland.update(text, percent);
         }
     }

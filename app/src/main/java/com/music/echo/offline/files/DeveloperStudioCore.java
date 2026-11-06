@@ -61,12 +61,79 @@ final class DeveloperStudioCore {
         s.append("\nHeader bytes: ").append(hex(Arrays.copyOf(b,Math.min(96,b.length))));return s.toString();
     }
     static String regex(String pattern,String sample,String replacement) {
-        if(pattern==null||pattern.length()>4096)throw new IllegalArgumentException("Pattern is empty or exceeds 4096 characters");if(sample==null||sample.length()>200_000)throw new IllegalArgumentException("Regex samples are limited to 200,000 characters to keep matching responsive.");if(unsafeRegex(pattern))throw new IllegalArgumentException("Potentially catastrophic nested quantifiers are blocked for responsiveness.");
+        validateRegexPattern(pattern);
+        if(sample==null||sample.length()>50_000)throw new IllegalArgumentException("Regex samples are limited to 50,000 characters to keep matching responsive.");
         Pattern p=Pattern.compile(pattern,Pattern.MULTILINE);Matcher m=p.matcher(sample);StringBuilder out=new StringBuilder();int count=0;
         while(m.find()){if(++count>10000)throw new IllegalArgumentException("More than 10,000 matches; narrow the expression");out.append("Match ").append(count).append(" [").append(m.start()).append(".. ").append(m.end()).append("] line ").append(1+lineAt(sample,m.start())).append(": ").append(m.group()).append('\n');for(int g=1;g<=m.groupCount();g++)out.append("  group ").append(g).append(": ").append(m.group(g)).append('\n');}
         if(count==0)out.append("No matches.");if(replacement!=null)out.append("\nReplacement preview:\n").append(m.replaceAll(replacement));return "Matches: "+count+"\n\n"+out;
     }
-    private static boolean unsafeRegex(String p){return Pattern.compile("\\([^)]*[+*][^)]*\\)[+*{]").matcher(p).find()||Pattern.compile("\\([^)]*\\|[^)]*\\)[+*{]").matcher(p).find()||Pattern.compile("(?:\\.\\*|\\.\\+)[+*{]").matcher(p).find();}
+
+    /** Conservative linear scan that rejects known backtracking hazards before compiling user regex. */
+    static void validateRegexPattern(String pattern) {
+        if(pattern==null||pattern.isEmpty()||pattern.length()>512)throw new IllegalArgumentException("Pattern must contain 1 to 512 characters.");
+        ArrayDeque<Integer> groups=new ArrayDeque<>();boolean inClass=false,escaped=false;int lastClosedRisk=0;char previous=0;
+        for(int i=0;i<pattern.length();i++){
+            char c=pattern.charAt(i);
+            if(escaped){if(Character.isDigit(c)||c=='k'||c=='g')throw new IllegalArgumentException("Regex backreferences are blocked because they can cause excessive backtracking.");escaped=false;previous='\\';lastClosedRisk=0;continue;}
+            if(c=='\\'){escaped=true;lastClosedRisk=0;previous=c;continue;}
+            if(inClass){if(c==']')inClass=false;previous=c;continue;}
+            if(c=='['){inClass=true;lastClosedRisk=0;previous=c;continue;}
+            if(c=='('){if(i+1<pattern.length()&&pattern.charAt(i+1)=='?'&&(i+2>=pattern.length()||pattern.charAt(i+2)!=':'))throw new IllegalArgumentException("Lookaround and special regex groups are blocked for predictable matching.");groups.push(0);lastClosedRisk=0;previous=c;continue;}
+            if(c==')'){if(groups.isEmpty())throw new IllegalArgumentException("Unbalanced regex group.");lastClosedRisk=groups.pop();if(!groups.isEmpty()&&lastClosedRisk!=0){int parent=groups.pop();groups.push(parent|lastClosedRisk);}previous=c;continue;}
+            if(c=='|'){if(!groups.isEmpty()){int risk=groups.pop();groups.push(risk|2);}lastClosedRisk=0;previous=c;continue;}
+            boolean quantifier=c=='*'||c=='+'||c=='?'||c=='{';
+            if(quantifier){
+                if(c=='?'&&(previous=='('||previous=='<')){previous=c;continue;}
+                if(previous==')'&&lastClosedRisk!=0)throw new IllegalArgumentException("Nested or repeated ambiguous groups are blocked to prevent catastrophic backtracking.");
+                if((previous=='.'&&(c=='*'||c=='+'))||(previous==']'&&c=='{'))throw new IllegalArgumentException("Unbounded wildcard repetitions are blocked; use a bounded character class instead.");
+                if(!groups.isEmpty()){int risk=groups.pop();groups.push(risk|1);}lastClosedRisk=0;
+                if(c=='{'){int end=pattern.indexOf('}',i+1);if(end<0)throw new IllegalArgumentException("Invalid bounded quantifier.");String bounds=pattern.substring(i+1,end);if(!bounds.matches("[0-9]{1,4}(,[0-9]{0,4})?"))throw new IllegalArgumentException("Invalid bounded quantifier.");i=end;}
+                previous=c;continue;
+            }
+            lastClosedRisk=0;previous=c;
+        }
+        if(escaped||inClass||!groups.isEmpty())throw new IllegalArgumentException("Unbalanced regex escape, character class or group.");
+    }
+
+    /** Accepts one read-only SQLite statement; comments and quoted literals are tokenized, not regex-matched. */
+    static boolean isReadOnlySql(String sql) {
+        if(sql==null)return false;String source=sql.trim();if(source.isEmpty()||source.length()>10_000)return false;
+        ArrayList<String> tokens=new ArrayList<>();boolean single=false,doubleQuote=false,backtick=false,bracket=false,lineComment=false,blockComment=false;int semicolons=0;int semicolonAt=-1;
+        for(int i=0;i<source.length();i++){
+            char c=source.charAt(i),n=i+1<source.length()?source.charAt(i+1):0;
+            if(lineComment){if(c=='\n')lineComment=false;continue;}
+            if(blockComment){if(c=='*'&&n=='/'){blockComment=false;i++;}continue;}
+            if(single){if(c=='\''&&n=='\''){i++;continue;}if(c=='\'')single=false;continue;}
+            if(doubleQuote){if(c=='"'&&n=='"'){i++;continue;}if(c=='"')doubleQuote=false;continue;}
+            if(backtick){if(c=='`')backtick=false;continue;}
+            if(bracket){if(c==']')bracket=false;continue;}
+            if(c=='-'&&n=='-'){lineComment=true;i++;continue;}if(c=='/'&&n=='*'){blockComment=true;i++;continue;}
+            if(c=='\''){single=true;continue;}if(c=='"'){doubleQuote=true;continue;}if(c=='`'){backtick=true;continue;}if(c=='['){bracket=true;continue;}
+            if(c==';'){semicolons++;semicolonAt=i;tokens.add(";");continue;}
+            if(Character.isLetterOrDigit(c)||c=='_'){int start=i;while(i+1<source.length()){char x=source.charAt(i+1);if(!Character.isLetterOrDigit(x)&&x!='_')break;i++;}tokens.add(source.substring(start,i+1).toUpperCase(Locale.ROOT));}
+            else if(c=='=')tokens.add("=");
+        }
+        if(single||doubleQuote||backtick||bracket||blockComment||tokens.isEmpty())return false;
+        if(semicolons>1||(semicolons==1&&source.substring(semicolonAt+1).trim().length()!=0))return false;
+        String first=tokens.get(0);
+        if(!first.equals("SELECT")&&!first.equals("WITH")&&!first.equals("EXPLAIN")&&!first.equals("PRAGMA"))return false;
+        Set<String> writes=new HashSet<>(Arrays.asList("INSERT","UPDATE","DELETE","REPLACE","CREATE","DROP","ALTER","ATTACH","DETACH","VACUUM","REINDEX","BEGIN","COMMIT","ROLLBACK","SAVEPOINT","RELEASE"));
+        for(String token:tokens)if(writes.contains(token))return false;
+        if(first.equals("PRAGMA")){
+            if(tokens.contains("="))return false;int i=1;if(i<tokens.size()&&i+1<tokens.size()&&tokens.get(i+1).equals("."))i+=2;
+            if(i>=tokens.size())return false;String pragma=tokens.get(i);
+            return new HashSet<>(Arrays.asList("TABLE_INFO","TABLE_XINFO","TABLE_LIST","INDEX_LIST","INDEX_INFO","INDEX_XINFO","FOREIGN_KEY_LIST","DATABASE_LIST","COMPILE_OPTIONS","INTEGRITY_CHECK","QUICK_CHECK","FOREIGN_KEY_CHECK")).contains(pragma);
+        }
+        return true;
+    }
+
+    /** Parses the common "N of M" progress format without regex backtracking. */
+    static int[] parseProgressCount(String text) {
+        if(text==null||text.length()>4096)return null;String lower=text.toLowerCase(Locale.ROOT);int of=lower.indexOf(" of ");if(of<=0)return null;
+        int start=of-1;while(start>=0&&Character.isDigit(text.charAt(start)))start--;int end=of+4;int endStart=end;while(end<text.length()&&Character.isDigit(text.charAt(end)))end++;
+        if(start==of-1||end==endStart||of-start>10||end-endStart>10)return null;
+        try{int current=Integer.parseInt(text.substring(start+1,of));int total=Integer.parseInt(text.substring(endStart,end));return total>0?new int[]{current,total}:null;}catch(NumberFormatException ignored){return null;}
+    }
     static int lineAt(String s,int offset){int line=0;for(int i=0;i<Math.min(offset,s.length());i++)if(s.charAt(i)=='\n')line++;return line;}
     static String symbols(String src) {
         if(src.length()>MAX_TEXT_CHARS)throw new IllegalArgumentException("Source exceeds 2 MB");StringBuilder o=new StringBuilder();String[] lines=src.split("\\n",-1);

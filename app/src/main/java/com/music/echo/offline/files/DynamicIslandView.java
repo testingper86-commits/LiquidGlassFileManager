@@ -490,11 +490,11 @@ final class DynamicIslandView extends FrameLayout {
         statusIcon.setImageDrawable(ToxiIcons.symbol(active ? ToxiIcons.ANALYTICS : ToxiIcons.CHECK, active ? accent() : ToxiVisualSystem.TEXT_SECONDARY));
         statusIcon.setContentDescription(active ? "Activity in progress" : "Activity complete");
         title.setText(activity);
-        java.util.regex.Matcher items = java.util.regex.Pattern.compile("([0-9]+)[ ]+of[ ]+([0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(activity);
+        int[] items = DeveloperStudioCore.parseProgressCount(activity);
         if (lower.contains("video")) {
             subtitle.setText(progress >= 0 ? "Video playback · " + progress + "%" : "Video playback");
-        } else if (items.find()) {
-            subtitle.setText(items.group(1) + " of " + items.group(2) + " items"
+        } else if (items != null) {
+            subtitle.setText(items[0] + " of " + items[1] + " items"
                     + (progress >= 0 ? " · " + progress + "%" : ""));
         } else if (progress >= 0) {
             subtitle.setText("Task progress · " + progress + "%");
