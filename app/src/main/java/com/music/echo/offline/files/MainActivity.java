@@ -2284,30 +2284,30 @@ public class MainActivity extends Activity {
         about.addView(header, lpm(-1, -2, 8, 4, 8, 4));
         about.addView(aboutDivider(), lpm(-1, ToxiVisualSystem.dp(1), 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("Profile"), lpm(-1, -2, 18, 8, 18, 8));
+        about.addView(aboutSectionHeading("Profile"), lpm(-1, -2, 18, 12, 18, 10));
         LinearLayout profile = new LinearLayout(this);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(22));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
         profile.setBackground(aboutSurface(26, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
         TextView avatar = aboutText("CH", 25, ABOUT_CYAN, true);
         avatar.setGravity(Gravity.CENTER);
         avatar.setBackground(aboutAvatarSurface());
         profile.addView(avatar, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(76), ToxiVisualSystem.dp(76)));
-        TextView name = aboutText("CHANDU", 27, ABOUT_TEXT, true);
+        TextView name = aboutText("CHANDU", 29, ABOUT_TEXT, true);
         name.setLetterSpacing(0.09f);
         name.setGravity(Gravity.CENTER);
         name.setPadding(0, ToxiVisualSystem.dp(13), 0, 0);
         profile.addView(name);
         TextView role = aboutText("Corporate Professional · Coder · Gamer · Tech Enthusiast", 12.5f, ABOUT_MUTED, false);
         role.setGravity(Gravity.CENTER);
-        role.setPadding(0, ToxiVisualSystem.dp(7), 0, 0);
+        role.setPadding(0, ToxiVisualSystem.dp(9), 0, 0);
         profile.addView(role, new LinearLayout.LayoutParams(-1, -2));
         TextView tagline = aboutText("“Building ideas into experiences that matter.”", 14, ABOUT_TEXT, false);
         tagline.setGravity(Gravity.CENTER);
         tagline.setTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
-        tagline.setPadding(0, ToxiVisualSystem.dp(13), 0, 0);
+        tagline.setPadding(0, ToxiVisualSystem.dp(15), 0, 0);
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
 
@@ -2343,19 +2343,17 @@ public class MainActivity extends Activity {
         });
 
         about.addView(aboutSectionHeading("Connect With Me"), lpm(-1, -2, 18, 14, 18, 8));
-        LinearLayout contacts = new LinearLayout(this);
-        contacts.setOrientation(LinearLayout.HORIZONTAL);
-        contacts.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams contactParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        contactParams.setMargins(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
-        contacts.addView(aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"), contactParams);
-        LinearLayout.LayoutParams instagramParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        instagramParams.setMargins(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
-        contacts.addView(aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"), instagramParams);
-        LinearLayout.LayoutParams emailParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        emailParams.setMargins(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
-        contacts.addView(aboutContactCard("@", "Email", "testingper86@gmail.com", "mailto:testingper86@gmail.com"), emailParams);
-        about.addView(contacts, lpm(-1, -2, 12, 0, 12, 14));
+        addAboutContactRow(
+                aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"),
+                aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"));
+        LinearLayout emailRow = new LinearLayout(this);
+        emailRow.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams emailCardParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        emailCardParams.setMargins(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
+        emailRow.addView(new View(this), new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(82), 0.5f));
+        emailRow.addView(aboutContactCard("@", "Email", "testingper86@gmail.com", "mailto:testingper86@gmail.com"), emailCardParams);
+        emailRow.addView(new View(this), new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(82), 0.5f));
+        about.addView(emailRow, lpm(-1, -2, 12, 0, 12, 14));
 
         about.addView(aboutDivider(), lpm(-1, ToxiVisualSystem.dp(1), 24, 10, 24, 14));
         TextView thanks = aboutText("THANK YOU FOR VISITING", 11, ABOUT_CYAN, true);
@@ -2419,8 +2417,8 @@ public class MainActivity extends Activity {
                 new int[]{ABOUT_CYAN, Color.rgb(22, 119, 255)});
         markerShape.setCornerRadius(ToxiVisualSystem.dp(3));
         marker.setBackground(markerShape);
-        heading.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(17)));
-        TextView text = aboutText(value, 15.5f, ABOUT_TEXT, true);
+        heading.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(19)));
+        TextView text = aboutText(value, 16, ABOUT_TEXT, true);
         text.setLetterSpacing(0.015f);
         text.setPadding(ToxiVisualSystem.dp(10), 0, 0, 0);
         heading.addView(text, new LinearLayout.LayoutParams(-1, -2));
@@ -2513,8 +2511,8 @@ public class MainActivity extends Activity {
     LinearLayout aboutGridTile(String value) {
         LinearLayout tile = new LinearLayout(this);
         tile.setGravity(Gravity.CENTER_VERTICAL);
-        tile.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(11));
-        tile.setMinimumHeight(ToxiVisualSystem.dp(46));
+        tile.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12));
+        tile.setMinimumHeight(ToxiVisualSystem.dp(50));
         tile.setBackground(aboutSurface(14, false));
         View dot = new View(this);
         android.graphics.drawable.GradientDrawable dotShape = new android.graphics.drawable.GradientDrawable();
@@ -2538,10 +2536,10 @@ public class MainActivity extends Activity {
         artwork.setImageDrawable(aboutProjectArtwork(kind));
         artwork.setBackground(aboutSurface(15, true));
         artwork.setClipToOutline(true);
-        card.addView(artwork, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(82), ToxiVisualSystem.dp(82)));
+        card.addView(artwork, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(78), ToxiVisualSystem.dp(78)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(ToxiVisualSystem.dp(13), 0, 0, 0);
+        copy.setPadding(ToxiVisualSystem.dp(14), 0, 0, 0);
         TextView projectName = aboutText(name, 15, ABOUT_TEXT, true);
         copy.addView(projectName);
         TextView projectDescription = aboutText(description, 12.2f, ABOUT_MUTED, false);
@@ -2620,26 +2618,48 @@ public class MainActivity extends Activity {
         return drawable;
     }
 
+    void addAboutContactRow(View first, View second) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams firstParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        firstParams.setMargins(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(5), 0);
+        LinearLayout.LayoutParams secondParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        secondParams.setMargins(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(4), 0);
+        row.addView(first, firstParams);
+        row.addView(second, secondParams);
+        about.addView(row, lpm(-1, -2, 12, 0, 12, 8));
+    }
+
     LinearLayout aboutContactCard(String monogram, String label, String detail, String url) {
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(12));
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setMinimumHeight(ToxiVisualSystem.dp(78));
+        card.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(11));
         card.setBackground(aboutSurface(17, false));
-        TextView mark = aboutText(monogram, 15, ABOUT_CYAN, true);
+
+        TextView mark = aboutText(monogram, 13, ABOUT_CYAN, true);
         mark.setGravity(Gravity.CENTER);
         mark.setBackground(aboutAvatarSurface());
         card.addView(mark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setGravity(Gravity.CENTER_VERTICAL);
+        copy.setPadding(ToxiVisualSystem.dp(10), 0, 0, 0);
         TextView title = aboutText(label, 12.5f, ABOUT_TEXT, true);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, ToxiVisualSystem.dp(8), 0, 0);
-        card.addView(title);
-        TextView value = aboutText(detail, 9.5f, ABOUT_MUTED, false);
-        value.setGravity(Gravity.CENTER);
+        copy.addView(title);
+        TextView value = aboutText(detail, 10, ABOUT_MUTED, false);
         value.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
-        value.setMaxLines(3);
-        card.addView(value, new LinearLayout.LayoutParams(-1, -2));
+        value.setMaxLines(2);
+        value.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        copy.addView(value, new LinearLayout.LayoutParams(-1, -2));
+        card.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
+
         card.setContentDescription(label + ": " + detail);
+        card.setClickable(true);
+        card.setFocusable(true);
         card.setOnClickListener(v -> {
             ToxiVisualSystem.feedback(v);
             openExternalUrl(url);
