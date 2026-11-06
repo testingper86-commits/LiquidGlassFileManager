@@ -146,6 +146,10 @@ def main():
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
+    saf_operations = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    require('static DocumentFile moveDocumentWithFallback(Context context' in saf_operations and 'if (context == null || resolver == null || source == null' in saf_operations, "SAF move validates the Context required to wrap provider-returned document URIs")
+    require('static Uri moveDocument(ContentResolver resolver' in saf_operations and 'if (context == null || resolver == null || source == null' not in saf_operations.split('static Uri moveDocument(ContentResolver resolver', 1)[1].split('static DocumentFile moveDocumentWithFallback', 1)[0], "SAF native move does not reference an out-of-scope Context")
+    require('"Move to folder"' in main and 'showSafMoveFolderPicker(tree, parent, document, parent, title, name);' in main and 'SafStorageOperations.moveDocumentWithFallback(' in main, "Other Storage exposes provider-aware move-to-folder actions")
     require('ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);' in main and '@android.annotation.SuppressLint("WrongConstant")' not in main, "MainActivity persists SAF grants through the shared validated permission helper")
     require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
 

@@ -168,12 +168,12 @@ final class SafStorageOperations {
     static Uri moveDocument(ContentResolver resolver, Uri source, Uri sourceParent, Uri targetParent)
             throws IOException {
         OperationCancellation.checkCurrent();
-        if (context == null || resolver == null || source == null || sourceParent == null || targetParent == null) {
+        if (resolver == null || source == null || sourceParent == null || targetParent == null) {
             throw new IOException("Source and parent document URIs are required");
         }
         try {
             Uri moved = DocumentsContract.moveDocument(resolver, source, sourceParent, targetParent);
-            if (moved == null) throw new IOException("Storage provider declined the native move");
+            if (moved == null) throw new UnsupportedOperationException("Storage provider declined the native move");
             return moved;
         } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
             throw new IOException("Storage provider does not support native moves", unsupported);
@@ -189,7 +189,7 @@ final class SafStorageOperations {
                                                  DocumentFile sourceParent, DocumentFile targetParent)
             throws IOException {
         OperationCancellation.checkCurrent();
-        if (resolver == null || source == null || sourceParent == null || targetParent == null
+        if (context == null || resolver == null || source == null || sourceParent == null || targetParent == null
                 || !source.exists()) {
             throw new IOException("Source document and parent folders are required");
         }
@@ -199,7 +199,7 @@ final class SafStorageOperations {
         try {
             Uri moved = DocumentsContract.moveDocument(resolver, source.getUri(),
                     sourceParent.getUri(), targetParent.getUri());
-            if (moved == null) throw new IOException("Provider declined the native move");
+            if (moved == null) throw new UnsupportedOperationException("Provider declined the native move");
             DocumentFile result = DocumentFile.fromSingleUri(context, moved);
             if (result == null || !result.exists()) {
                 throw new IOException("Provider returned an invalid moved document");

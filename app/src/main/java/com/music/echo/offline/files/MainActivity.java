@@ -1729,13 +1729,15 @@ public class MainActivity extends Activity {
     private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
                                          String name, boolean directory) {
         String[] actions = directory
-                ? new String[]{"Rename", "Delete"}
-                : new String[]{"Duplicate here", "Rename", "Delete"};
+                ? new String[]{"Move to folder", "Rename", "Delete"}
+                : new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
         new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
             String action = actions[which];
             if ("Duplicate here".equals(action)) {
                 runSafAction(tree, parent, title, "Duplicated " + name,
                         () -> SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name));
+            } else if ("Move to folder".equals(action)) {
+                showSafMoveFolderPicker(tree, parent, document, parent, title, name);
             } else if ("Rename".equals(action)) {
                 EditText input = new EditText(this);
                 input.setSingleLine(true);
@@ -1757,6 +1759,85 @@ public class MainActivity extends Activity {
                         .show();
             }
         }).setNegativeButton("Cancel", null).show();
+    }
+
+    private DocumentFile safDocument(Uri tree, Uri document) {
+        if (tree == null || document == null) return null;
+        String rootId = DocumentsContract.getTreeDocumentId(tree);
+        String documentId = DocumentsContract.getDocumentId(document);
+        return rootId.equals(documentId)
+                ? DocumentFile.fromTreeUri(this, tree)
+                : DocumentFile.fromSingleUri(this, document);
+    }
+
+    private boolean sameSafDocument(Uri first, Uri second) {
+        if (first == null || second == null) return false;
+        try {
+            return DocumentsContract.getDocumentId(first).equals(DocumentsContract.getDocumentId(second));
+        } catch (IllegalArgumentException invalidUri) {
+            return first.equals(second);
+        }
+    }
+
+    private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
+                                         Uri sourceParent, String sourceParentTitle, String sourceName) {
+        io.execute(() -> {
+            final List<String[]> folders = new ArrayList<>();
+            String failure = null;
+            try {
+                Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(
+                        tree, DocumentsContract.getDocumentId(currentFolder));
+                try (Cursor cursor = getContentResolver().query(children, new String[]{
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                    if (cursor == null) throw new java.io.IOException("Storage provider could not list destination folders");
+                    while (cursor.moveToNext()) {
+                        if (!DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))) continue;
+                        Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
+                        if (sameSafDocument(child, sourceDocument)) continue;
+                        folders.add(new String[]{child.toString(), cursor.getString(1)});
+                    }
+                }
+            } catch (Exception error) {
+                failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+            }
+            final String detail = failure;
+            runOnUiThread(() -> {
+                if (detail != null) {
+                    ToxiVisualSystem.toast(this, "Cannot browse destination folders: " + detail);
+                    return;
+                }
+                boolean canMoveHere = !sameSafDocument(currentFolder, sourceParent);
+                List<String> choices = new ArrayList<>();
+                if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
+                for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  ›");
+                if (choices.isEmpty()) {
+                    ToxiVisualSystem.toast(this, "No other destination folders are available here");
+                    return;
+                }
+                new AlertDialog.Builder(this).setTitle("Move " + sourceName + " to folder")
+                        .setItems(choices.toArray(new String[0]), (dialog, which) -> {
+                            if (canMoveHere && which == 0) {
+                                runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName, () -> {
+                                    DocumentFile source = DocumentFile.fromSingleUri(this, sourceDocument);
+                                    DocumentFile from = safDocument(tree, sourceParent);
+                                    DocumentFile destination = safDocument(tree, currentFolder);
+                                    if (source == null || from == null || destination == null) {
+                                        throw new java.io.IOException("Storage provider returned an invalid move location");
+                                    }
+                                    SafStorageOperations.moveDocumentWithFallback(
+                                            this, getContentResolver(), source, from, destination);
+                                });
+                            } else {
+                                int folderIndex = which - (canMoveHere ? 1 : 0);
+                                String[] selected = folders.get(folderIndex);
+                                showSafMoveFolderPicker(tree, Uri.parse(selected[0]), sourceDocument,
+                                        sourceParent, sourceParentTitle, sourceName);
+                            }
+                        }).setNegativeButton("Cancel", null).show();
+            });
+        });
     }
 
     private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
