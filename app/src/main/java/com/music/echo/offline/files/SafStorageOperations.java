@@ -1,6 +1,7 @@
 package com.music.echo.offline.files;
 
 import android.content.ContentResolver;
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
@@ -167,7 +168,7 @@ final class SafStorageOperations {
     static Uri moveDocument(ContentResolver resolver, Uri source, Uri sourceParent, Uri targetParent)
             throws IOException {
         OperationCancellation.checkCurrent();
-        if (resolver == null || source == null || sourceParent == null || targetParent == null) {
+        if (context == null || resolver == null || source == null || sourceParent == null || targetParent == null) {
             throw new IOException("Source and parent document URIs are required");
         }
         try {
@@ -184,7 +185,7 @@ final class SafStorageOperations {
      * If native move is unsupported, copy fully before deleting the source.
      * If deletion fails, both copies remain and the exception names the destination.
      */
-    static DocumentFile moveDocumentWithFallback(ContentResolver resolver, DocumentFile source,
+    static DocumentFile moveDocumentWithFallback(Context context, ContentResolver resolver, DocumentFile source,
                                                  DocumentFile sourceParent, DocumentFile targetParent)
             throws IOException {
         OperationCancellation.checkCurrent();
@@ -199,7 +200,7 @@ final class SafStorageOperations {
             Uri moved = DocumentsContract.moveDocument(resolver, source.getUri(),
                     sourceParent.getUri(), targetParent.getUri());
             if (moved == null) throw new IOException("Provider declined the native move");
-            DocumentFile result = DocumentFile.fromSingleUri(resolver, moved);
+            DocumentFile result = DocumentFile.fromSingleUri(context, moved);
             if (result == null || !result.exists()) {
                 throw new IOException("Provider returned an invalid moved document");
             }
