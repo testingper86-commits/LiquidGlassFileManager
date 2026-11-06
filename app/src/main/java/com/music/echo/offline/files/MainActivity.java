@@ -64,6 +64,7 @@ import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends Activity {
+    private static final String BIOMETRIC_UNLOCK_KEY_ALIAS = "toxifiles_biometric_unlock_v1";
     private Object backInvokedCallback;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
     final OperationCancellation cancellation = new OperationCancellation();
@@ -1318,21 +1319,98 @@ public class MainActivity extends Activity {
     }
 
     @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
+    private javax.crypto.Cipher createBiometricUnlockCipher() throws Exception {
+        java.security.KeyStore keyStore = java.security.KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        if (keyStore.containsAlias(BIOMETRIC_UNLOCK_KEY_ALIAS)) {
+            try {
+                java.security.Key key = keyStore.getKey(BIOMETRIC_UNLOCK_KEY_ALIAS, null);
+                if (key instanceof javax.crypto.SecretKey) {
+                    javax.crypto.Cipher existing = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+                    existing.init(javax.crypto.Cipher.ENCRYPT_MODE, (javax.crypto.SecretKey) key);
+                    return existing;
+                }
+                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
+            } catch (android.security.keystore.KeyPermanentlyInvalidatedException invalidated) {
+                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
+            }
+        }
+        android.security.keystore.KeyGenParameterSpec.Builder builder =
+                new android.security.keystore.KeyGenParameterSpec.Builder(
+                        BIOMETRIC_UNLOCK_KEY_ALIAS, android.security.keystore.KeyProperties.PURPOSE_ENCRYPT)
+                        .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setUserAuthenticationRequired(true)
+                        .setInvalidatedByBiometricEnrollment(true);
+        if (Build.VERSION.SDK_INT >= 30) {
+            builder.setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG);
+        } else {
+            builder.setUserAuthenticationValidityDurationSeconds(-1);
+        }
+        javax.crypto.KeyGenerator generator = javax.crypto.KeyGenerator.getInstance(
+                android.security.keystore.KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        generator.init(builder.build());
+        javax.crypto.SecretKey key = generator.generateKey();
+        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key);
+        return cipher;
+    }
+
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
     void tryBiometric(final android.app.Dialog dlg) {
         try {
-            android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
-                    .setTitle("Unlock ToxiFiles")
-                    .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
-                    .build();
-            prompt.authenticate(new android.os.CancellationSignal(), getMainExecutor(),
-                    new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
-                        @Override public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult result) {
-                            unlocked = true;
-                            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-                            dlg.dismiss();
-                        }
-                    });
-        } catch (Exception ignored) { } // no enrolled biometric / unsupported \u2014 PIN field stays usable
+            io.execute(() -> {
+                final javax.crypto.Cipher cipher;
+                try {
+                    cipher = createBiometricUnlockCipher();
+                } catch (Exception keystoreFailure) {
+                    android.util.Log.w("ToxiFiles", "Biometric Keystore unavailable; PIN remains available", keystoreFailure);
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
+                    try {
+                        android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
+                                .setTitle("Unlock ToxiFiles")
+                                .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
+                                .build();
+                        prompt.authenticate(new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher),
+                                new android.os.CancellationSignal(), getMainExecutor(),
+                                new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                                    @Override public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult result) {
+                                        if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
+                                        byte[] challenge = new byte[32];
+                                        byte[] proof = null;
+                                        try {
+                                            android.hardware.biometrics.BiometricPrompt.CryptoObject authenticated = result.getCryptoObject();
+                                            if (authenticated == null || authenticated.getCipher() == null) {
+                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is unavailable");
+                                            }
+                                            new java.security.SecureRandom().nextBytes(challenge);
+                                            proof = authenticated.getCipher().doFinal(challenge);
+                                            if (proof == null || proof.length <= challenge.length) {
+                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is invalid");
+                                            }
+                                            unlocked = true;
+                                            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+                                            dlg.dismiss();
+                                        } catch (Exception verificationFailure) {
+                                            android.util.Log.w("ToxiFiles", "Biometric Keystore verification failed; PIN remains available", verificationFailure);
+                                            ToxiVisualSystem.toast(MainActivity.this, "Biometric verification failed. Use PIN.");
+                                        } finally {
+                                            java.util.Arrays.fill(challenge, (byte) 0);
+                                            if (proof != null) java.util.Arrays.fill(proof, (byte) 0);
+                                        }
+                                    }
+                                });
+                    } catch (Exception promptFailure) {
+                        android.util.Log.w("ToxiFiles", "Biometric prompt unavailable; PIN remains available", promptFailure);
+                    }
+                });
+            });
+        } catch (RuntimeException executorFailure) {
+            android.util.Log.w("ToxiFiles", "Biometric setup unavailable; PIN remains available", executorFailure);
+        }
     }
 
     // ---------------- DUPLICATE FINDER ----------------
