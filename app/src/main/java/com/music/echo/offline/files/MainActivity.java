@@ -1054,8 +1054,6 @@ public class MainActivity extends Activity {
         TextView hint = ToxiVisualSystem.text(this, "Select a category to reveal its controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
         hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
         settings.addView(hint);
-        settings.addView(row(ToxiIcons.INFO, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 2, 16, 12));
-
         settings.addView(section("Appearance"));
         settings.addView(row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(ToxiIcons.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[ToxiVisualSystem.PREFERENCES.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1144,6 +1142,11 @@ public class MainActivity extends Activity {
             settings.addView(row(ToxiIcons.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> showBuiltInTools()), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(row(ToxiIcons.REFRESH, "Reset developer options", "Hide this section again", null, v -> { ToxiVisualSystem.PREFERENCES.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
         }
+
+        // Keep About at the end of Settings, in its own collapsible section.
+        // This prevents it from sitting above Storage Access or SD Card & USB Storage.
+        settings.addView(section("About"));
+        settings.addView(row(ToxiIcons.INFO, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 12));
 
         // Present settings as clear, collapsible groups instead of one long wall of options.
         // Appearance starts open; every other section is closed until the user selects it.
