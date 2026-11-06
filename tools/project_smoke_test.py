@@ -19,6 +19,7 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/MainActivity.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
+        "app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
@@ -71,6 +72,13 @@ def main():
     require('private boolean developerUnlocked()' in developer and 'if(!developerUnlocked()){finish();return;}' in developer, "Developer Studio independently rejects direct access while locked")
     require('private static final String[] NAMES' in developer and 'openTool(int index)' in developer, "all Developer tools share one functional internal tool registry")
     require('Intent.ACTION_OPEN_DOCUMENT' in developer and 'Intent.ACTION_OPEN_DOCUMENT_TREE' in developer and 'getContentResolver().openInputStream(uri)' in developer and 'DocumentFile.fromTreeUri(this,root)' in developer, "Developer tools read user-selected files and folders through Android SAF")
+    uri_permissions = source("app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
+    require(uri_permissions.count("takePersistableUriPermission(") == 2 and "Intent.FLAG_GRANT_READ_URI_PERMISSION);" in uri_permissions and "Intent.FLAG_GRANT_WRITE_URI_PERMISSION);" in uri_permissions, "persistable URI permissions are stored one validated grant mode at a time")
+    java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
+    direct_uri_permission_calls = [str(path.relative_to(ROOT)) for path in java_sources if path.name != "ToxiUriPermissions.java" and "takePersistableUriPermission(" in path.read_text(encoding="utf-8")]
+    require(not direct_uri_permission_calls, "all activities use the shared SAF permission helper; direct unsafe calls are blocked")
+    require("ToxiUriPermissions.takeGranted(getContentResolver(),uri,data.getFlags());" in source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java") and "ToxiUriPermissions.takeGranted(getContentResolver(),u,data.getFlags());" in developer, "file tools and Developer Studio share the same validated SAF permission path")
+
 
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
