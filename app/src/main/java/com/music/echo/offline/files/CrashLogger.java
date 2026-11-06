@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.os.Build;
+import android.util.AtomicFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,16 +51,30 @@ public final class CrashLogger {
         StringWriter sw = new StringWriter();
         error.printStackTrace(new PrintWriter(sw));
         report.append(sw);
+        byte[] reportBytes = report.toString().getBytes(StandardCharsets.UTF_8);
         File latest = new File(dir, LATEST);
-        try (FileOutputStream out = new FileOutputStream(latest, false)) {
-            out.write(report.toString().getBytes(StandardCharsets.UTF_8));
+        AtomicFile atomicLatest = new AtomicFile(latest);
+        FileOutputStream latestOut = null;
+        try {
+            latestOut = atomicLatest.startWrite();
+            latestOut.write(reportBytes);
+            atomicLatest.finishWrite(latestOut);
+            latestOut = null;
+        } catch (Exception writeError) {
+            if (latestOut != null) atomicLatest.failWrite(latestOut);
+            throw writeError;
+        }
+        // Reserve each archive name atomically so same-millisecond crashes cannot overwrite history.
+        File archived = new File(dir, "crash-" + now + ".txt");
+        int collision = 1;
+        while (!archived.createNewFile()) archived = new File(dir, "crash-" + now + "-" + collision++ + ".txt");
+        try (FileOutputStream out = new FileOutputStream(archived, false)) {
+            out.write(reportBytes);
             out.flush();
             out.getFD().sync();
-        }
-        // Keep a small rolling history for repeated crashes without consuming much storage.
-        File archived = new File(dir, "crash-" + now + ".txt");
-        try (FileOutputStream out = new FileOutputStream(archived, false)) {
-            out.write(report.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (Exception archiveError) {
+            archived.delete();
+            throw archiveError;
         }
         File[] files = dir.listFiles((d, name) -> name.startsWith("crash-") && name.endsWith(".txt"));
         if (files != null && files.length > 5) {

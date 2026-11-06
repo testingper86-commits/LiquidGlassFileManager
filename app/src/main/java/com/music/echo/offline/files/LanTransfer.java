@@ -221,8 +221,9 @@ final class LanTransfer {
                     } catch (Exception decryptError) { pending.delete(); throw decryptError; }
                     if (!ok) { pending.delete(); throw new IOException(name + " failed authentication or checksum verification"); }
                     try {
-                        if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
-                    } catch (Exception commitError) { FileOps.deleteTree(dest); pending.delete(); throw commitError; }
+                        try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); }
+                        catch (IOException renameError) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
+                    } catch (Exception commitError) { pending.delete(); throw commitError; }
                     out.writeBoolean(true); out.flush();
                 }
                 l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());

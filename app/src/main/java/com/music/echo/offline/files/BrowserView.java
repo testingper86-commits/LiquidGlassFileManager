@@ -39,6 +39,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Future;
 
 /** Device-first file browser used for Files, Favorites, categories and global search. */
 final class BrowserView extends FrameLayout {
@@ -56,6 +57,8 @@ final class BrowserView extends FrameLayout {
     boolean selecting;
     String rangeAnchor;
     long selectionSummaryToken;
+    long loadGeneration, filterGeneration;
+    Future<?> filterTask;
     int columns = 1;
 
     final ListView lv;
@@ -326,6 +329,7 @@ final class BrowserView extends FrameLayout {
     }
 
     void loadDir() {
+        final long token = ++loadGeneration;
         final File d = cur;
         if (!a.hasAccess()) { loading = false; all = new ArrayList<>(); sel.clear(); selecting = false; rangeAnchor = null; updateSel(); applyFilter(); return; }
         loading = true;
@@ -338,7 +342,7 @@ final class BrowserView extends FrameLayout {
             if (fs != null) for (File f : fs) { if (!hid && f.getName().startsWith(".")) continue; res.add(new Entry(f)); }
             Collections.sort(res, cmp);
             post(() -> {
-                if (d != cur || mode != DIR) return;
+                if (token != loadGeneration || d != cur || mode != DIR) return;
                 loading = false;
                 all = res;
                 reconcileSelection();
@@ -349,16 +353,18 @@ final class BrowserView extends FrameLayout {
     }
 
     void refreshFavs() {
+        final long token = ++loadGeneration;
         final List<String> ps = new ArrayList<>(a.favs);
         a.io.execute(() -> {
             final List<Entry> l = new ArrayList<>();
             for (String p : ps) { File f = new File(p); if (f.exists()) l.add(new Entry(f)); }
-            post(() -> { loading = false; all = l; reconcileSelection(); applyFilter(); });
+            post(() -> { if (token != loadGeneration || mode != LIST || !isFavs) return; loading = false; all = l; reconcileSelection(); applyFilter(); });
         });
     }
 
     /** list == null means "still loading". */
     void setList(String t, List<Entry> list, boolean limited, boolean focusSearch) {
+        ++loadGeneration;
         mode = LIST;
         listTitle = t;
         String normalizedTitle = t == null ? "" : t.toLowerCase(Locale.ROOT);
@@ -375,31 +381,51 @@ final class BrowserView extends FrameLayout {
         if (focusSearch && search.getVisibility() != VISIBLE) showSearch();
         else if (!focusSearch && list != null && search.getVisibility() == VISIBLE && !limited) { /* keep */ }
         updateHeader();
+        updatePaste();
         applyFilter();
     }
 
     void pruneMissing() {
+        final long token = ++loadGeneration;
         final List<Entry> snap = new ArrayList<>(all);
         a.io.execute(() -> {
             final List<Entry> keep = new ArrayList<>();
             for (Entry e : snap) if (e.f.exists()) keep.add(e);
-            post(() -> { all = keep; reconcileSelection(); applyFilter(); });
+            post(() -> { if (token != loadGeneration) return; all = keep; reconcileSelection(); applyFilter(); });
         });
     }
 
     void applyFilter() {
-        List<Entry> out = new ArrayList<>();
-        int cap = limit ? 500 : Integer.MAX_VALUE;
-        boolean extOnly = query.length() > 1 && query.charAt(0) == '.';
-        String extQuery = extOnly ? query.substring(1) : null;
-        for (Entry e : all) {
-            boolean match = query.isEmpty() || (extOnly ? e.ext.equals(extQuery) : e.lname.contains(query));
-            if (match && mode == LIST && "Search".equals(listTitle)) match = matchesAdvancedFilter(e);
-            if (match) { out.add(e); if (out.size() >= cap) break; }
-        }
-        shown = out;
-        ad.notifyDataSetChanged();
-        updateEmpty();
+        final long token = ++filterGeneration;
+        if (filterTask != null) filterTask.cancel(true);
+        final List<Entry> snapshot = new ArrayList<>(all);
+        final String filter = query;
+        final int currentMode = mode;
+        final String currentTitle = listTitle;
+        final boolean capped = limit;
+        final int typeFilter = searchTypeFilter;
+        final int sizeFilter = searchSizeFilter;
+        final int dateFilter = searchDateFilter;
+        final long now = System.currentTimeMillis();
+        filterTask = a.io.submit(() -> {
+            List<Entry> out = new ArrayList<>();
+            int cap = capped ? 500 : Integer.MAX_VALUE;
+            boolean extOnly = filter.length() > 1 && filter.charAt(0) == '.';
+            String extQuery = extOnly ? filter.substring(1) : null;
+            for (Entry e : snapshot) {
+                if (Thread.currentThread().isInterrupted()) return;
+                boolean match = filter.isEmpty() || (extOnly ? e.ext.equals(extQuery) : e.lname.contains(filter));
+                if (match && currentMode == LIST && "Search".equals(currentTitle))
+                    match = matchesAdvancedFilter(e, typeFilter, sizeFilter, dateFilter, now);
+                if (match) { out.add(e); if (out.size() >= cap) break; }
+            }
+            post(() -> {
+                if (token != filterGeneration) return;
+                shown = out;
+                ad.notifyDataSetChanged();
+                updateEmpty();
+            });
+        });
     }
 
     void updateEmpty() {
@@ -701,10 +727,10 @@ final class BrowserView extends FrameLayout {
                 }).show();
     }
 
-    private boolean matchesAdvancedFilter(Entry e) {
-        if (searchTypeFilter != 0) {
+    private static boolean matchesAdvancedFilter(Entry e, int typeFilter, int sizeFilter, int dateFilter, long now) {
+        if (typeFilter != 0) {
             boolean typeMatch;
-            switch (searchTypeFilter) {
+            switch (typeFilter) {
                 case 1: typeMatch = e.kind == FileKinds.IMAGE; break;
                 case 2: typeMatch = e.kind == FileKinds.VIDEO; break;
                 case 3: typeMatch = e.kind == FileKinds.AUDIO; break;
@@ -716,10 +742,10 @@ final class BrowserView extends FrameLayout {
             }
             if (!typeMatch) return false;
         }
-        long minBytes = searchSizeFilter == 1 ? 1L * 1024 * 1024 : searchSizeFilter == 2 ? 10L * 1024 * 1024 : searchSizeFilter == 3 ? 100L * 1024 * 1024 : 0L;
+        long minBytes = sizeFilter == 1 ? 1L * 1024 * 1024 : sizeFilter == 2 ? 10L * 1024 * 1024 : sizeFilter == 3 ? 100L * 1024 * 1024 : 0L;
         if (minBytes > 0 && (e.dir || e.len < minBytes)) return false;
-        int days = searchDateFilter == 1 ? 7 : searchDateFilter == 2 ? 30 : searchDateFilter == 3 ? 365 : 0;
-        return days == 0 || e.mod >= System.currentTimeMillis() - days * 86_400_000L;
+        int days = dateFilter == 1 ? 7 : dateFilter == 2 ? 30 : dateFilter == 3 ? 365 : 0;
+        return days == 0 || e.mod >= now - days * 86_400_000L;
     }
 
     private boolean hasAdvancedFilters() { return searchTypeFilter != 0 || searchSizeFilter != 0 || searchDateFilter != 0; }
@@ -826,7 +852,7 @@ final class BrowserView extends FrameLayout {
             a.io.execute(() -> {
                 List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                 List<String> problems = new ArrayList<>(); for(BatchRenameEngine.Item item:plan) if(!item.valid()) problems.add((item.source==null?"Missing file":item.source.getName())+": "+item.problem);
-                StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) summary.append(plan.get(i).source.getName()).append(" to ").append(plan.get(i).target.getName()).append("\n");
+                StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) { BatchRenameEngine.Item item=plan.get(i); summary.append(item.source==null?"(missing)":item.source.getName()).append(" to ").append(item.target==null?"(invalid)":item.target.getName()).append("\n"); }
                 if(plan.size()>20) summary.append("… and ").append(plan.size()-20).append(" more");
                 final String reviewText=summary.toString();
                 post(() -> {

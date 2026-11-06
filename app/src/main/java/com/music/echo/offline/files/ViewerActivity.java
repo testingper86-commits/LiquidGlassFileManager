@@ -219,14 +219,14 @@ public class ViewerActivity extends Activity {
         videoDock = null;
         videoWidth = videoHeight = 0;
         currentImageBitmap = null;
-        ToxiMotion.setActive(stage, false);
+        if (stage != null) ToxiMotion.setActive(stage, false);
         if (pdf != null) {
             final PdfRenderer r = pdf;
             final ParcelFileDescriptor f = pfd;
             io.execute(() -> { try { r.close(); } catch (Exception ignored) { } try { if (f != null) f.close(); } catch (Exception ignored) { } });
             pdf = null; pfd = null;
         }
-        stage.removeAllViews();
+        if (stage != null) stage.removeAllViews();
     }
 
     void show() {
@@ -261,7 +261,7 @@ public class ViewerActivity extends Activity {
         io.execute(() -> {
             final Bitmap bm = decode(f, 2600);
             h.post(() -> {
-                if (destroyed || my != idx) return;
+                if (destroyed || my != idx) { if (bm != null && !bm.isRecycled()) bm.recycle(); return; }
                 ToxiMotion.setActive(stage, false);
                 if (bm == null) ToxiVisualSystem.toast(this, "Can't display this image");
                 else { currentImageBitmap = bm; z.setImageBitmap(bm); }
@@ -337,15 +337,36 @@ public class ViewerActivity extends Activity {
     }
 
     void saveEditedImage(Bitmap bitmap) {
-        if(bitmap==null||bitmap.isRecycled()) return;
-        File src=new File(paths.get(idx)); String name=src.getName(); int dot=name.lastIndexOf('.');
-        String base=dot>0?name.substring(0,dot):name;
-        File out=new File(src.getParentFile(),base+"_edited.jpg"); int n=2;
-        while(out.exists()) out=new File(src.getParentFile(),base+"_edited"+(n++)+".jpg");
-        try(FileOutputStream fos=new FileOutputStream(out)) {
-            if(!bitmap.compress(Bitmap.CompressFormat.JPEG,94,fos)) throw new java.io.IOException("JPEG encoding failed");
-            fos.flush(); ToxiVisualSystem.toast(this,"Saved copy: "+out.getName());
-        } catch(Exception ex) { ToxiVisualSystem.toast(this,"Couldn't save beside original. Check folder write permission."); }
+        if (bitmap == null || bitmap.isRecycled() || paths == null || idx < 0 || idx >= paths.size()) return;
+        final File src = new File(paths.get(idx));
+        final File parent = src.getParentFile();
+        if (parent == null || !parent.isDirectory()) { ToxiVisualSystem.toast(this, "The original folder is unavailable"); return; }
+        final String name = src.getName();
+        final int dot = name.lastIndexOf('.');
+        final String base = dot > 0 ? name.substring(0, dot) : name;
+        io.execute(() -> {
+            File pending = null;
+            String savedName = null;
+            try {
+                pending = new File(parent, ".toxifiles-image-" + java.util.UUID.randomUUID() + ".part");
+                if (!pending.createNewFile()) throw new java.io.IOException("Unable to reserve temporary image output");
+                try (FileOutputStream fos = new FileOutputStream(pending, false)) {
+                    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 94, fos)) throw new java.io.IOException("JPEG encoding failed");
+                    fos.flush();
+                    fos.getFD().sync();
+                }
+                for (int suffix = 1; suffix < 10000; suffix++) {
+                    File candidate = new File(parent, base + "_edited" + (suffix == 1 ? "" : suffix) + ".jpg");
+                    try { java.nio.file.Files.move(pending.toPath(), candidate.toPath()); savedName = candidate.getName(); pending = null; break; }
+                    catch (java.nio.file.FileAlreadyExistsException collision) { /* Try the next unique name without replacing user data. */ }
+                }
+                if (savedName == null) throw new java.io.IOException("Unable to reserve a unique edited-image filename");
+            } catch (Exception ex) {
+                if (pending != null) pending.delete();
+            }
+            final String result = savedName;
+            h.post(() -> { if (!destroyed) ToxiVisualSystem.toast(this, result == null ? "Couldn't save beside original. Check folder write permission." : "Saved copy: " + result); });
+        });
     }
 
     static Bitmap decode(File f, int max) {
@@ -367,9 +388,11 @@ public class ViewerActivity extends Activity {
                 else if (ori == ExifInterface.ORIENTATION_ROTATE_270) rot = 270;
             } catch (Exception ignored) { }
             if (rot != 0) {
+                Bitmap original = b;
                 Matrix m = new Matrix();
                 m.postRotate(rot);
-                b = Bitmap.createBitmap(b, 0, 0, b.getWidth(), b.getHeight(), m, true);
+                b = Bitmap.createBitmap(original, 0, 0, original.getWidth(), original.getHeight(), m, true);
+                if (b != original && !original.isRecycled()) original.recycle();
             }
             return b;
         } catch (Throwable t) {
@@ -1451,9 +1474,15 @@ public class ViewerActivity extends Activity {
             String s;
             try (FileInputStream in = new FileInputStream(f)) {
                 byte[] buf = new byte[300 * 1024];
-                int n = in.read(buf);
-                s = new String(buf, 0, Math.max(n, 0), "UTF-8");
-                if (f.length() > buf.length) s += "\n\n… file truncated (showing first 300 KB)";
+                int total = 0;
+                while (total < buf.length) {
+                    int n = in.read(buf, total, buf.length - total);
+                    if (n < 0) break;
+                    if (n == 0) continue;
+                    total += n;
+                }
+                s = new String(buf, 0, total, "UTF-8");
+                if (f.length() > total) s += "\n\n… file truncated (showing first 300 KB)";
             } catch (Exception ex) { s = "Can't read this file."; }
             final String fs = s;
             h.post(() -> { if (!destroyed && my == idx) t.setText(fs); });
@@ -1480,6 +1509,8 @@ public class ViewerActivity extends Activity {
             pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
             pdf = new PdfRenderer(pfd);
         } catch (Exception ex) {
+            if (pdf != null) { try { pdf.close(); } catch (Exception ignored) { } pdf = null; }
+            if (pfd != null) { try { pfd.close(); } catch (Exception ignored) { } pfd = null; }
             ToxiVisualSystem.toast(this, "Can't open this PDF here — try \"Open with\"");
             return;
         }
@@ -1552,9 +1583,12 @@ public class ViewerActivity extends Activity {
             synchronized (r) {
                 if (pos < 0 || pos >= r.getPageCount()) return null;
                 page = r.openPage(pos);
-                int targetWidth = Math.max(1, w);
-                float scale = (float) targetWidth / Math.max(1, page.getWidth());
-                int targetHeight = Math.max(1, (int)(page.getHeight() * scale));
+                int pageWidth = Math.max(1, page.getWidth());
+                int pageHeight = Math.max(1, page.getHeight());
+                double pagePixels = (double) pageWidth * (double) pageHeight;
+                double scale = Math.min((double) Math.max(1, w) / pageWidth, Math.sqrt(16_000_000.0 / pagePixels));
+                int targetWidth = Math.max(1, (int) Math.ceil(pageWidth * scale));
+                int targetHeight = Math.max(1, (int) Math.ceil(pageHeight * scale));
                 bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
                 bitmap.eraseColor(Color.WHITE);
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);

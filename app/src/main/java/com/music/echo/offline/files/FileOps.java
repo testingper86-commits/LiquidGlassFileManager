@@ -14,6 +14,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -39,22 +41,65 @@ final class FileOps {
         return new File(dir, base + "_" + System.currentTimeMillis() + ext);
     }
 
-    static void copy(File s, File t) throws IOException {
+    private static File createUniqueFile(File dir, String name) throws IOException {
+        String base = name, ext = "";
+        int dot = name.lastIndexOf('.');
+        if (dot > 0) { base = name.substring(0, dot); ext = name.substring(dot); }
+        for (int n = 0; n < 1000; n++) {
+            String candidate = n == 0 ? name : base + " (" + n + ")" + ext;
+            File file = new File(dir, candidate);
+            try { if (file.createNewFile()) return file; }
+            catch (IOException error) { if (!file.exists()) throw error; }
+        }
+        throw new IOException("Unable to reserve a unique output filename");
+    }
+
+    static void copy(File source, File target) throws IOException {
         checkCancelled();
-        if (java.nio.file.Files.isSymbolicLink(s.toPath())) throw new IOException("Symbolic links are not copied");
-        if (s.isDirectory()) {
-            if (!t.mkdirs() && !t.isDirectory()) throw new IOException("Can't create " + t.getName());
-            try {
-                File[] kids = s.listFiles();
-                if (kids == null) throw new IOException("Can't read folder " + s.getName());
-                for (File k : kids) copy(k, new File(t, k.getName()));
-            } catch (IOException copyError) { deleteTree(t); throw copyError; }
+        if (source == null || target == null) throw new IOException("Source and destination are required");
+        if (target.exists()) throw new IOException("Destination already exists: " + target.getName());
+        if (source.isDirectory()) {
+            String sourcePath = source.getCanonicalPath();
+            String targetPath = target.getCanonicalPath();
+            if (targetPath.equals(sourcePath) || targetPath.startsWith(sourcePath + File.separator))
+                throw new IOException("Folder destination is inside the source tree");
+        }
+        File parent = target.getParentFile();
+        if (parent == null || !parent.isDirectory()) throw new IOException("Destination folder is unavailable");
+        File staging = new File(parent, ".toxifiles-copy-" + java.util.UUID.randomUUID());
+        try {
+            copyInto(source, staging);
+            checkCancelled();
+            java.nio.file.Files.move(staging.toPath(), target.toPath());
+        } catch (IOException copyError) {
+            deleteTree(staging);
+            throw copyError;
+        } catch (RuntimeException copyError) {
+            deleteTree(staging);
+            throw copyError;
+        }
+    }
+
+    private static void copyInto(File source, File target) throws IOException {
+        checkCancelled();
+        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new IOException("Symbolic links are not copied");
+        if (source.isDirectory()) {
+            if (!target.mkdir()) throw new IOException("Can't create destination folder " + target.getName());
+            File[] children = source.listFiles();
+            if (children == null) throw new IOException("Can't read folder " + source.getName());
+            for (File child : children) copyInto(child, new File(target, child.getName()));
         } else {
-            try (InputStream in = new FileInputStream(s); OutputStream out = new FileOutputStream(t)) {
-                byte[] buf = new byte[65536];
-                int n;
-                while ((n = in.read(buf)) > 0) { checkCancelled(); out.write(buf, 0, n); }
-            } catch (IOException copyError) { t.delete(); throw copyError; }
+            if (!target.createNewFile()) throw new IOException("Destination already exists: " + target.getName());
+            try (InputStream in = new FileInputStream(source); FileOutputStream out = new FileOutputStream(target, false)) {
+                byte[] buffer = new byte[65536];
+                int count;
+                while ((count = in.read(buffer)) > 0) { checkCancelled(); out.write(buffer, 0, count); }
+                out.flush();
+                out.getFD().sync();
+            } catch (IOException writeError) {
+                target.delete();
+                throw writeError;
+            }
         }
     }
 
@@ -81,9 +126,9 @@ final class FileOps {
     }
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
+        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            cancelRequested = false;
             int ok = 0, fail = 0, skipped = 0;
             String err = "";
             int total = src.length, idx = 0;
@@ -101,9 +146,11 @@ final class FileOps {
                     }
                     File t = unique(dst, s.getName());
                     if (move) {
-                        if (!s.renameTo(t)) {
+                        try {
+                            java.nio.file.Files.move(s.toPath(), t.toPath());
+                        } catch (IOException moveError) {
                             copy(s, t);
-                            if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept");
+                            if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept", moveError);
                         }
                     } else copy(s, t);
                     ok++;
@@ -116,36 +163,49 @@ final class FileOps {
     }
 
     static void delete(final MainActivity a, final List<File> fs, final Done d) {
+        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            cancelRequested = false;
-            int ok = 0, total = fs.size(), idx = 0;
+            int ok = 0, failed = 0, total = fs.size(), idx = 0;
+            boolean cancelled = false;
             for (File f : fs) {
-                if (cancelRequested) break;
+                if (cancelRequested) { cancelled = true; break; }
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = f.getName();
                 a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
-                if (deleteTree(f)) ok++;
+                if (deleteTree(f)) ok++; else failed++;
             }
-            final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s");
+            final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
+                    + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
         });
     }
 
     static void zip(final MainActivity a, final List<File> fs, final File destDir, final Done d) {
+        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            cancelRequested = false;
             String msg;
             File out = null;
             try {
                 String base = fs.size() == 1 ? fs.get(0).getName() : "Archive";
                 int i = base.lastIndexOf('.');
                 if (fs.size() == 1 && i > 0 && !fs.get(0).isDirectory()) base = base.substring(0, i);
-                out = unique(destDir, base + ".zip");
-                try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out)))) {
-                    for (File f : fs) addZip(z, f, f.getName(), out);
+                out = createUniqueFile(destDir, base + ".zip");
+                try (ZipOutputStream z = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out, false)))) {
+                    Set<String> rootNames = new HashSet<>();
+                    for (File f : fs) {
+                        String entryName = f.getName();
+                        if (!rootNames.add(entryName)) {
+                            String rootBase = entryName, rootExt = "";
+                            int dot = entryName.lastIndexOf('.');
+                            if (dot > 0 && !f.isDirectory()) { rootBase = entryName.substring(0, dot); rootExt = entryName.substring(dot); }
+                            int suffix = 2;
+                            do { entryName = rootBase + " (" + suffix++ + ")" + rootExt; } while (!rootNames.add(entryName));
+                        }
+                        addZip(z, f, entryName, out);
+                    }
                 }
                 msg = "Created " + out.getName();
             } catch (Exception ex) { if (out != null) deleteTree(out); msg = "Zip failed: " + ex.getMessage(); }
@@ -166,7 +226,7 @@ final class FileOps {
             try (InputStream in = new FileInputStream(f)) {
                 byte[] buf = new byte[65536];
                 int n;
-                while ((n = in.read(buf)) > 0) z.write(buf, 0, n);
+                while ((n = in.read(buf)) > 0) { checkCancelled(); z.write(buf, 0, n); }
             }
             z.closeEntry();
         }
@@ -185,17 +245,19 @@ final class FileOps {
     }
 
     static void unzip(final MainActivity a, final File zip, final Done d) {
+        cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            cancelRequested = false;
             String msg;
             File dest = null;
+            boolean destCreated = false;
             try {
                 String base = zip.getName();
                 int i = base.lastIndexOf('.');
                 if (i > 0) base = base.substring(0, i);
                 dest = unique(zip.getParentFile(), base);
-                if (!dest.mkdirs() && !dest.isDirectory()) throw new IOException("Unable to create extraction folder");
+                if (!dest.mkdir()) throw new IOException("Unable to reserve extraction folder without overwriting existing data");
+                destCreated = true;
                 String root = dest.getCanonicalPath();
                 long expanded = 0L;
                 final long initialFreeSpace = dest.getUsableSpace();
@@ -218,11 +280,16 @@ final class FileOps {
                         File o = new File(dest, normalizedName);
                         String cp = o.getCanonicalPath();
                         if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
-                        if (e.isDirectory()) { if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder"); continue; }
+                        if (e.isDirectory()) {
+                            if (java.nio.file.Files.isSymbolicLink(o.toPath())) throw new IOException("Archive directory path is a symbolic link");
+                            if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder");
+                            continue;
+                        }
                         if (e.getSize() > 0 && e.getSize() > 2L * 1024 * 1024 * 1024) throw new IOException("Archive entry exceeds 2 GB limit");
-                        if (o.getParentFile() != null) o.getParentFile().mkdirs();
+                        if (o.getParentFile() != null && !o.getParentFile().mkdirs() && !o.getParentFile().isDirectory()) throw new IOException("Unable to create archive parent folder");
+                        if (java.nio.file.Files.isSymbolicLink(o.toPath()) || !o.createNewFile()) throw new IOException("Archive destination already exists or is unsafe");
                         long entryBytes = 0L;
-                        try (InputStream in = z.getInputStream(e); OutputStream out = new FileOutputStream(o)) {
+                        try (InputStream in = z.getInputStream(e); OutputStream out = new FileOutputStream(o, false)) {
                             byte[] buf = new byte[65536];
                             int n;
                             while ((n = in.read(buf)) > 0) {
@@ -236,7 +303,7 @@ final class FileOps {
                     }
                 }
                 msg = "Extracted to " + dest.getName();
-            } catch (Exception ex) { if (dest != null) deleteTree(dest); msg = "Extract failed: " + ex.getMessage(); }
+            } catch (Exception ex) { if (destCreated && dest != null) deleteTree(dest); msg = "Extract failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
         });

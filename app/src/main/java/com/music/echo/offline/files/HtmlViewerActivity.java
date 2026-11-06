@@ -23,12 +23,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.Locale;
 
 /** Private HTML viewer launched only by MainActivity's existing file-opening route. */
 public final class HtmlViewerActivity extends Activity {
     static final String EXTRA_FILE_PATH = "html_file_path";
-    private static final String ASSET_HOST = "appassets.androidplatform.net";
+    private static final String ASSET_DOMAIN_SUFFIX = ".appassets.androidplatform.net";
+    private String assetHost;
     private WebView webView;
 
     @Override protected void onCreate(Bundle state) {
@@ -50,6 +52,8 @@ public final class HtmlViewerActivity extends Activity {
             finish();
             return;
         }
+
+        assetHost = "doc-" + documentOriginId(document) + ASSET_DOMAIN_SUFFIX;
 
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
@@ -102,7 +106,8 @@ public final class HtmlViewerActivity extends Activity {
         settings.setDefaultTextEncodingName("UTF-8");
 
         WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
-                .addPathHandler("/local/", new ConfinedDirectoryHandler(document.getParentFile()))
+                .setDomain(assetHost)
+                .addPathHandler("/local/", new ConfinedDirectoryHandler(document.getParentFile(), document))
                 .build();
         webView.setWebViewClient(new WebViewClientCompat() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -127,18 +132,18 @@ public final class HtmlViewerActivity extends Activity {
         setContentView(root);
         DynamicIslandView island = new DynamicIslandView(this);
         root.addView(island, new FrameLayout.LayoutParams(-1,-1));
-        webView.loadUrl("https://" + ASSET_HOST + "/local/" + Uri.encode(document.getName()));
+        webView.loadUrl("https://" + assetHost + "/local/" + Uri.encode(document.getName()));
     }
 
-    private static WebResourceResponse intercept(WebViewAssetLoader loader, Uri uri) {
+    private WebResourceResponse intercept(WebViewAssetLoader loader, Uri uri) {
         if (!isLocalDocumentUrl(uri)) return blockedResponse();
         WebResourceResponse response = loader.shouldInterceptRequest(uri);
         return response != null ? response : blockedResponse();
     }
 
-    private static boolean isLocalDocumentUrl(Uri uri) {
+    private boolean isLocalDocumentUrl(Uri uri) {
         return uri != null && "https".equalsIgnoreCase(uri.getScheme())
-                && ASSET_HOST.equalsIgnoreCase(uri.getHost())
+                && assetHost != null && assetHost.equalsIgnoreCase(uri.getHost())
                 && uri.getPath() != null && uri.getPath().startsWith("/local/");
     }
 
@@ -146,6 +151,17 @@ public final class HtmlViewerActivity extends Activity {
         String name = file.getName();
         int dot = name.lastIndexOf('.');
         return dot < 0 ? "" : name.substring(dot + 1);
+    }
+
+    private static String documentOriginId(File document) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(document.getAbsolutePath().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder id = new StringBuilder(32);
+            for (int i = 0; i < 16; i++) id.append(String.format(Locale.ROOT, "%02x", digest[i] & 0xff));
+            return id.toString();
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
     }
 
     private static WebResourceResponse blockedResponse() {
@@ -157,8 +173,13 @@ public final class HtmlViewerActivity extends Activity {
     private static final class ConfinedDirectoryHandler implements WebViewAssetLoader.PathHandler {
         private final File root;
         private final String rootPrefix;
+        private final String documentCanonicalPath;
 
-        ConfinedDirectoryHandler(File directory) {
+        ConfinedDirectoryHandler(File directory, File document) {
+            String selectedPath;
+            try { selectedPath = document == null ? null : document.getCanonicalPath(); }
+            catch (IOException | SecurityException ex) { selectedPath = null; }
+            documentCanonicalPath = selectedPath;
             File canonicalDirectory;
             try {
                 canonicalDirectory = directory == null ? null : directory.getCanonicalFile();
@@ -185,6 +206,7 @@ public final class HtmlViewerActivity extends Activity {
                 String canonical = requested.getCanonicalPath();
                 if (!canonical.startsWith(rootPrefix) || !requested.isFile() || !requested.canRead()) return null;
                 String extension = extensionOf(requested).toLowerCase(Locale.ROOT);
+                if (!canonical.equals(documentCanonicalPath) && !isAllowedAssetExtension(extension)) return null;
                 String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
                 if (mime == null) mime = "application/octet-stream";
                 String charset = mime.startsWith("text/") || mime.contains("javascript")
@@ -193,6 +215,17 @@ public final class HtmlViewerActivity extends Activity {
                 return new WebResourceResponse(mime, charset, stream);
             } catch (IOException | SecurityException ex) {
                 return null;
+            }
+        }
+
+        private static boolean isAllowedAssetExtension(String extension) {
+            switch (extension) {
+                case "css": case "js": case "mjs": case "json":
+                case "png": case "jpg": case "jpeg": case "gif": case "webp": case "bmp": case "svg": case "ico":
+                case "woff": case "woff2": case "ttf": case "otf":
+                case "mp3": case "m4a": case "wav": case "ogg": case "mp4": case "webm": case "m4v":
+                    return true;
+                default: return false;
             }
         }
     }

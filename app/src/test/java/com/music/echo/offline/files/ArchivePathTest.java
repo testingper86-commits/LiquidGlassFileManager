@@ -17,6 +17,8 @@ public class ArchivePathTest {
         reject("folder//file.txt", false);
         reject("folder/./file.txt", false);
         reject("folder/../file.txt", false);
+        reject("bad" + (char) 0 + "name.txt", false);
+        reject("file.txt:payload", false);
     }
 
     private static void reject(String path, boolean directory) throws Exception {

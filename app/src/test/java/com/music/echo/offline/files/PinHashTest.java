@@ -31,6 +31,15 @@ public class PinHashTest {
         assertFalse(PinHash.verify("1234", null, "lgvault:"));
     }
 
+
+    @Test public void rejectsOversizedAndWrongLengthVerifierFields() {
+        assertFalse(PinHash.verify("1234", "x".repeat(129), "lgvault:"));
+        assertFalse(PinHash.verify("1234", "pbkdf2$120000$AQ==$AQ==", "lgvault:"));
+        assertFalse(PinHash.verify("1234", "pbkdf2$120000$" + "A".repeat(22) + "$" + "A".repeat(43), "lgvault:"));
+        try { PinHash.create("x".repeat(257)); fail("Oversized PIN accepted"); }
+        catch (IllegalArgumentException expected) { }
+    }
+
     private static String legacy(String prefix, String pin) throws Exception {
         byte[] digest = MessageDigest.getInstance("SHA-256").digest((prefix + pin).getBytes(StandardCharsets.UTF_8));
         StringBuilder out = new StringBuilder();

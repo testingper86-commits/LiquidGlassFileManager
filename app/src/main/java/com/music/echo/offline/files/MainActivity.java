@@ -259,7 +259,11 @@ public class MainActivity extends Activity {
     // ---------------- permissions ----------------
     boolean hasAccess() {
         if (Build.VERSION.SDK_INT >= 30) return Environment.isExternalStorageManager();
-        if (Build.VERSION.SDK_INT >= 23) return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= 23) {
+            boolean read = checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            boolean write = Build.VERSION.SDK_INT > 28 || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            return read && write;
+        }
         return true;
     }
 
@@ -1219,6 +1223,7 @@ public class MainActivity extends Activity {
 
     void scanStorage(File f, long[] totals, long[] counts, List<File> largest, long[] totalBytes, int[] totalFiles, int depth) {
         if (f == null || depth > 60) return;
+        try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) return; } catch (Exception ignored) { return; }
         try {
             if (f.isDirectory()) {
                 File[] children = f.listFiles();
@@ -1411,7 +1416,7 @@ public class MainActivity extends Activity {
         io.execute(() -> {
             final List<File> empties = new ArrayList<>();
             for (Entry e : Indexer.I.all) {
-                if (e.dir) { File[] kids = e.f.listFiles(); if (kids == null || kids.length == 0) empties.add(e.f); }
+                if (e.dir) { File[] kids = e.f.listFiles(); if (kids != null && kids.length == 0) empties.add(e.f); }
             }
             runOnUiThread(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
         });
@@ -1647,9 +1652,9 @@ public class MainActivity extends Activity {
         if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
         final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
         if (rootDoc == null || !rootDoc.canWrite()) { ToxiVisualSystem.toast(this, "This storage location is not writable"); return; }
+        FileOps.cancelRequested = false;
         busy(true);
         ops.execute(() -> {
-            FileOps.cancelRequested = false;
             int ok = 0, failed = 0, idx = 0;
             String error = "";
             for (File file : files) {
@@ -1732,9 +1737,9 @@ public class MainActivity extends Activity {
     }
 
     void importSafDoc(final Uri doc, final String name) {
+        FileOps.cancelRequested = false;
         busy(true);
         ops.execute(() -> {
-            FileOps.cancelRequested = false;
             String msg;
             File pending = null;
             File dest = null;
@@ -1749,11 +1754,10 @@ public class MainActivity extends Activity {
                     while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
                 }
                 FileOps.checkCancelled();
-                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
+                try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
                 msg = "Imported to Download/" + dest.getName();
             } catch (Exception ex) {
                 if (pending != null) pending.delete();
-                if (dest != null && dest.exists()) dest.delete();
                 msg = "Import failed: " + ex.getMessage();
             }
             final String m = msg;
@@ -1775,7 +1779,7 @@ public class MainActivity extends Activity {
                 File dest = FileOps.unique(download, "liquidglass_settings.json");
                 File pending = new File(download, ".toxifiles-settings-" + java.util.UUID.randomUUID() + ".part");
                 try (OutputStream out = new FileOutputStream(pending)) { out.write(o.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
-                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
+                try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
                 msg = "Saved to Download/" + dest.getName();
                 final File fd = dest;
                 final String exportMessage = msg;

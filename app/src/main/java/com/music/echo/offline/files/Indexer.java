@@ -15,7 +15,8 @@ final class Indexer {
     static final Indexer I = new Indexer();
     static final String[] CAT_NAMES = {"Images", "Videos", "Audio", "Documents", "Archives", "Apps", "Other"};
 
-    volatile boolean ready, running, dirty, truncated;
+    volatile boolean ready, running, dirty, truncated, incomplete;
+    volatile String lastError = "";
     private static final int MAX_INDEX_ENTRIES = 150_000;
     long finished;
     List<Entry> all = new ArrayList<>();
@@ -29,6 +30,7 @@ final class Indexer {
     private List<List<Entry>> tmpCats;
     private long[] tmpSizes;
     private int[] tmpCounts;
+    private boolean tmpIncomplete;
 
     static int cat(int kind) {
         switch (kind) {
@@ -37,17 +39,18 @@ final class Indexer {
             case FileKinds.AUDIO: return 2;
             case FileKinds.PDF: case FileKinds.TEXT: return 3;
             case FileKinds.ARCHIVE: return 4;
-            case FileKinds.APK: return 6;
+            case FileKinds.APK: return 5;
             default: return 6;
         }
     }
 
-    void start(final Runnable done) {
+    synchronized void start(final Runnable done) {
         if (running) return;
         running = true;
         dirty = false;
         truncated = false;
-        new Thread(() -> {
+        tmpIncomplete = false;
+        Thread worker = new Thread(() -> {
             try {
                 tmpAll = new ArrayList<>();
                 tmpCats = new ArrayList<>();
@@ -63,26 +66,35 @@ final class Indexer {
                     if (!e.dir && e.kind != FileKinds.OTHER) { rec.add(e); if (rec.size() >= 8) break; }
                 }
                 all = tmpAll; cats = tmpCats; sizes = tmpSizes; counts = tmpCounts; recent = rec;
+                incomplete = tmpIncomplete || truncated;
                 ready = true;
+                lastError = "";
                 finished = System.currentTimeMillis();
-            } catch (Throwable t) {
-                ready = true;
+            } catch (Exception t) {
+                lastError = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
             } finally {
                 running = false;
-                ui.post(done);
+                if (done != null) ui.post(done);
             }
-        }, "indexer").start();
+        }, "indexer");
+        try {
+            worker.start();
+        } catch (RuntimeException startError) {
+            running = false;
+            lastError = startError.getMessage() == null ? startError.getClass().getSimpleName() : startError.getMessage();
+            if (done != null) ui.post(done);
+        }
     }
 
     private void scan(File dir, int depth) {
-        if (depth > 9) return;
-        if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
-        try { if (java.nio.file.Files.isSymbolicLink(dir.toPath())) return; } catch (Exception ignored) { return; }
+        if (depth > 9) { tmpIncomplete = true; return; }
+        if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; tmpIncomplete = true; return; }
+        try { if (java.nio.file.Files.isSymbolicLink(dir.toPath())) return; } catch (Exception ignored) { tmpIncomplete = true; return; }
         File[] fs = dir.listFiles();
-        if (fs == null) return;
+        if (fs == null) { tmpIncomplete = true; return; }
         for (File f : fs) {
-            if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; return; }
-            try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue; } catch (Exception ignored) { continue; }
+            if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; tmpIncomplete = true; return; }
+            try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue; } catch (Exception ignored) { tmpIncomplete = true; continue; }
             String n = f.getName();
             if (n.startsWith(".")) continue;
             if (f.isDirectory()) {

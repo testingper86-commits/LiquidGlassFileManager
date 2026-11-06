@@ -11,6 +11,8 @@ import android.util.Base64;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FilterOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -54,13 +56,13 @@ final class Vault {
 
     static boolean hasPin(Context c) { return sp(c).contains("pinhash"); }
 
-    static void setPin(Context c, String pin) {
+    static synchronized void setPin(Context c, String pin) {
         sp(c).edit().putString("pinhash", PinHash.create(pin)).putInt("failed_attempts", 0).putLong("blocked_until", 0L).apply();
     }
 
     static boolean isLockedOut(Context c) { return System.currentTimeMillis() < sp(c).getLong("blocked_until", 0L); }
 
-    static boolean checkPin(Context c, String pin) {
+    static synchronized boolean checkPin(Context c, String pin) {
         SharedPreferences prefs = sp(c);
         long now = System.currentTimeMillis();
         if (now < prefs.getLong("blocked_until", 0L)) return false;
@@ -76,7 +78,7 @@ final class Vault {
         return true;
     }
 
-    static void clearPin(Context c) { sp(c).edit().remove("pinhash").remove("failed_attempts").remove("blocked_until").apply(); }
+    static synchronized void clearPin(Context c) { sp(c).edit().remove("pinhash").remove("failed_attempts").remove("blocked_until").apply(); }
 
     static File root(Context c) {
         File r = new File(c.getFilesDir(), "vault");
@@ -88,10 +90,17 @@ final class Vault {
     private static String decode(String enc) { return new String(Base64.decode(enc, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING)); }
 
     // ---------------- Keystore-backed AES-GCM ----------------
-    private static SecretKey key() throws Exception {
+    private static SecretKey key(Context context) throws Exception {
         KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
         ks.load(null);
         if (!ks.containsAlias(KS_ALIAS)) {
+            File vaultDirectory = new File(context.getFilesDir(), "vault");
+            if (vaultDirectory.exists() && !vaultDirectory.isDirectory())
+                throw new IOException("Vault storage is unavailable; existing data was preserved");
+            File[] existing = vaultDirectory.exists() ? vaultDirectory.listFiles() : new File[0];
+            if (existing == null) throw new IOException("Vault storage could not be inspected; existing data was preserved");
+            if (existing.length > 0)
+                throw new IOException("Vault encryption key is missing; existing encrypted data was preserved");
             KeyGenerator kg = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
             kg.init(new KeyGenParameterSpec.Builder(KS_ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                     .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -100,27 +109,35 @@ final class Vault {
                     .build());
             kg.generateKey();
         }
-        return (SecretKey) ks.getKey(KS_ALIAS, null);
+        SecretKey result = (SecretKey) ks.getKey(KS_ALIAS, null);
+        if (result == null) throw new IOException("Vault encryption key is unavailable; existing data was preserved");
+        return result;
+    }
+
+    private static final class NonClosingOutputStream extends FilterOutputStream {
+        NonClosingOutputStream(OutputStream output) { super(output); }
+        @Override public void close() throws IOException { flush(); }
     }
 
     /** Streams src → encrypted dest. Never touches more than one buffer's worth of plaintext in memory. */
-    private static void encryptFile(File src, File dest) throws Exception {
+    private static void encryptFile(File src, File dest, Context context) throws Exception {
         Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-        c.init(Cipher.ENCRYPT_MODE, key());
+        c.init(Cipher.ENCRYPT_MODE, key(context));
         byte[] iv = c.getIV();
-        try (InputStream in = new FileInputStream(src); OutputStream rawOut = new FileOutputStream(dest)) {
+        try (InputStream in = new FileInputStream(src); FileOutputStream rawOut = new FileOutputStream(dest)) {
             rawOut.write(iv.length);
             rawOut.write(iv);
-            try (CipherOutputStream cos = new CipherOutputStream(rawOut, c)) {
+            try (CipherOutputStream cos = new CipherOutputStream(new NonClosingOutputStream(rawOut), c)) {
                 byte[] buf = new byte[65536];
                 int n;
-                while ((n = in.read(buf)) > 0) cos.write(buf, 0, n);
+                while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); cos.write(buf, 0, n); }
             }
+            rawOut.getFD().sync();
         }
     }
 
     /** Authenticates AES-GCM before publishing plaintext at the destination path. */
-    private static void decryptFile(File src, File dest) throws Exception {
+    private static void decryptFile(File src, File dest, Context context) throws Exception {
         File parent = dest.getParentFile();
         if (parent == null || (!parent.isDirectory() && !parent.mkdirs())) throw new IOException("Unable to create restore folder");
         File pending = new File(parent, ".toxifiles-decrypt-" + java.util.UUID.randomUUID() + ".part");
@@ -131,17 +148,21 @@ final class Vault {
             byte[] iv = new byte[ivLen]; int off = 0;
             while (off < ivLen) { int r = rawIn.read(iv, off, ivLen - off); if (r < 0) throw new IOException("Truncated vault file"); off += r; }
             Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
-            try (OutputStream out = new FileOutputStream(pending)) {
+            c.init(Cipher.DECRYPT_MODE, key(context), new GCMParameterSpec(128, iv));
+            try (FileOutputStream out = new FileOutputStream(pending)) {
                 byte[] buf = new byte[65536]; int n;
                 while ((n = rawIn.read(buf)) != -1) {
+                    FileOps.checkCancelled();
                     byte[] plain = c.update(buf, 0, n);
                     if (plain != null && plain.length > 0) out.write(plain);
                 }
                 byte[] finalPlain = c.doFinal(); // throws if the GCM authentication tag is invalid
                 if (finalPlain.length > 0) out.write(finalPlain);
+                out.flush();
+                out.getFD().sync();
             }
-            if (dest.exists() || !pending.renameTo(dest)) throw new IOException("Could not safely publish decrypted file");
+            if (dest.exists()) throw new IOException("Restore destination already exists");
+            java.nio.file.Files.move(pending.toPath(), dest.toPath());
             published = true;
         } catch (Exception decryptError) {
             pending.delete();
@@ -152,81 +173,100 @@ final class Vault {
 
     private static final String META_FILE = ".vault_meta";
 
-    private static void writeMetadata(File wrapper, String originalPath) throws Exception {
+    private static void writeMetadata(File wrapper, String originalPath, Context context) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, key());
+        cipher.init(Cipher.ENCRYPT_MODE, key(context));
         byte[] iv = cipher.getIV();
         File meta = new File(wrapper, META_FILE);
-        try (OutputStream raw = new FileOutputStream(meta)) {
+        try (FileOutputStream raw = new FileOutputStream(meta)) {
             raw.write(iv.length); raw.write(iv);
-            try (CipherOutputStream out = new CipherOutputStream(raw, cipher)) {
+            try (CipherOutputStream out = new CipherOutputStream(new NonClosingOutputStream(raw), cipher)) {
                 out.write(originalPath.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
+            raw.getFD().sync();
         }
     }
 
-    private static String readMetadata(File meta) throws Exception {
+    private static String readMetadata(File meta, Context context) throws Exception {
         try (InputStream raw = new FileInputStream(meta)) {
             int ivLen = raw.read();
             if (ivLen < 12 || ivLen > 32) throw new IOException("Invalid encrypted Vault metadata");
             byte[] iv = new byte[ivLen]; int off = 0;
             while (off < ivLen) { int n = raw.read(iv, off, ivLen - off); if (n < 0) throw new IOException("Truncated Vault metadata"); off += n; }
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
-            try (CipherInputStream in = new CipherInputStream(raw, cipher); java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
-                byte[] buf = new byte[1024]; int n;
-                while ((n = in.read(buf)) > 0) { if (out.size() + n > 64 * 1024) throw new IOException("Vault metadata too large"); out.write(buf, 0, n); }
-                return new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+            cipher.init(Cipher.DECRYPT_MODE, key(context), new GCMParameterSpec(128, iv));
+            ByteArrayOutputStream encrypted = new ByteArrayOutputStream();
+            byte[] buf = new byte[1024]; int n;
+            while ((n = raw.read(buf)) != -1) {
+                if (encrypted.size() + n > 64 * 1024 + 16) throw new IOException("Vault metadata too large");
+                encrypted.write(buf, 0, n);
             }
+            byte[] plain = cipher.doFinal(encrypted.toByteArray());
+            if (plain.length == 0 || plain.length > 64 * 1024) throw new IOException("Invalid Vault metadata size");
+            return new String(plain, java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 
-    private static void encryptTree(File src, File destRoot) throws Exception {
+    private static void encryptTree(File src, File destRoot, Context context) throws Exception {
         FileOps.checkCancelled();
         if (java.nio.file.Files.isSymbolicLink(src.toPath())) throw new IOException("Symbolic links cannot be stored in Vault");
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
             File[] kids = src.listFiles();
             if (kids == null) throw new IOException("Can't read folder " + src.getName());
-            for (File k : kids) encryptTree(k, new File(destRoot, k.getName()));
+            for (File k : kids) encryptTree(k, new File(destRoot, k.getName()), context);
         } else {
-            encryptFile(src, destRoot);
+            encryptFile(src, destRoot, context);
         }
     }
 
-    private static void decryptTree(File src, File destRoot) throws Exception {
+    private static void decryptTree(File src, File destRoot, Context context) throws Exception {
         FileOps.checkCancelled();
         if (java.nio.file.Files.isSymbolicLink(src.toPath())) throw new IOException("Unexpected symbolic link in Vault");
         if (src.isDirectory()) {
             if (!destRoot.mkdirs() && !destRoot.isDirectory()) throw new IOException("mkdir failed");
             File[] kids = src.listFiles();
             if (kids == null) throw new IOException("Can't read encrypted folder " + src.getName());
-            for (File k : kids) decryptTree(k, new File(destRoot, k.getName()));
+            for (File k : kids) decryptTree(k, new File(destRoot, k.getName()), context);
         } else {
-            decryptFile(src, destRoot);
+            decryptFile(src, destRoot, context);
         }
     }
 
     static void moveIn(final MainActivity a, final List<File> src, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
             int ok = 0, fail = 0, cleanupFailed = 0;
             for (File s : src) {
                 if (FileOps.cancelRequested) { fail++; break; }
+                File staging = null;
                 try {
                     File parent = s.getParentFile();
                     if (parent == null) { fail++; continue; }
-                    File wrapper = new File(root(a), java.util.UUID.randomUUID().toString());
-                    if (!wrapper.mkdirs()) { fail++; continue; }
-                    File target = new File(wrapper, s.getName());
-                    try {
-                        encryptTree(s, target);               // never delete the original until encryption fully succeeds
-                        writeMetadata(wrapper, parent.getAbsolutePath());
-                    } catch (Exception encryptError) { FileOps.deleteTree(wrapper); throw encryptError; }
+                    if (META_FILE.equals(s.getName())) throw new IOException("This filename is reserved by the Vault format");
+                    File vaultRoot = root(a);
+                    key(a); // Generate a key only for a genuinely empty Vault; never replace a missing key for existing data.
+                    staging = new File(vaultRoot, ".pending-" + java.util.UUID.randomUUID());
+                    if (!staging.mkdir()) throw new IOException("Unable to create private Vault staging folder");
+                    File payloadRoot = new File(staging, "payload");
+                    if (!payloadRoot.mkdir()) throw new IOException("Unable to create Vault payload folder");
+                    File target = new File(payloadRoot, s.getName());
+                    encryptTree(s, target, a);
+                    writeMetadata(staging, parent.getAbsolutePath(), a);
+                    FileOps.checkCancelled();
+                    File wrapper = new File(vaultRoot, java.util.UUID.randomUUID().toString());
+                    if (wrapper.exists()) throw new IOException("Vault item identifier collision");
+                    try { java.nio.file.Files.move(staging.toPath(), wrapper.toPath()); }
+                    catch (IOException commitError) { throw new IOException("Unable to commit encrypted Vault item", commitError); }
+                    staging = null;
+                    if (FileOps.cancelRequested) { cleanupFailed++; fail++; continue; }
                     if (FileOps.deleteTree(s)) ok++;
                     else { cleanupFailed++; fail++; }
-                } catch (Exception ex) { fail++; }
+                } catch (Exception ex) {
+                    if (staging != null) FileOps.deleteTree(staging);
+                    fail++;
+                }
             }
             final int fok = ok, ffail = fail, fcleanup = cleanupFailed;
             final String msg = ffail == 0 ? "Encrypted and moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Vault"
@@ -240,27 +280,39 @@ final class Vault {
         File[] wraps = root(c).listFiles();
         if (wraps == null) return out;
         for (File w : wraps) {
-            if (!w.isDirectory()) continue;
+            if (!w.isDirectory() || w.getName().startsWith(".pending-")) continue;
             String nm = w.getName();
             String origPath = "";
             File meta = new File(w, META_FILE);
             if (meta.isFile()) {
-                try { origPath = readMetadata(meta); } catch (Exception invalidMetadata) { origPath = ""; }
+                try { origPath = readMetadata(meta, c); } catch (Exception invalidMetadata) { origPath = ""; }
             } else {
                 // Backward compatibility for vault entries created before metadata encryption.
                 int i = nm.lastIndexOf('~');
                 try { if (i > 0) origPath = decode(nm.substring(0, i)); } catch (Exception ignored) { }
             }
-            File[] kids = w.listFiles();
             File payload = null;
-            if (kids != null) for (File child : kids) if (!META_FILE.equals(child.getName())) { payload = child; break; }
-            if (payload == null) { FileOps.deleteTree(w); continue; }
-            out.add(new Item(payload, w, new File(origPath), payload.isDirectory()));
+            File payloadRoot = new File(w, "payload");
+            if (java.nio.file.Files.isSymbolicLink(w.toPath()) || java.nio.file.Files.isSymbolicLink(payloadRoot.toPath())) continue;
+            if (payloadRoot.isDirectory()) {
+                File[] payloads = payloadRoot.listFiles();
+                if (payloads == null || payloads.length != 1) continue;
+                payload = payloads[0];
+            } else {
+                File[] kids = w.listFiles();
+                if (kids == null) continue;
+                List<File> payloads = new ArrayList<>();
+                for (File child : kids) if (!META_FILE.equals(child.getName())) payloads.add(child);
+                if (payloads.size() != 1) continue; // Preserve malformed legacy wrappers; never guess which payload is authoritative.
+                payload = payloads.get(0);
+            }
+            out.add(new Item(payload, w, origPath.isEmpty() ? null : new File(origPath), payload.isDirectory()));
         }
         return out;
     }
 
     static void restoreOut(final MainActivity a, final Item it, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
             String msg;
@@ -272,9 +324,21 @@ final class Vault {
                     if (!destDir.isDirectory() && !destDir.mkdirs()) throw new IOException("Unable to create Downloads folder for restore");
                 }
                 File target = FileOps.unique(destDir, it.file.getName());
-                try { decryptTree(it.file, target); } catch (Exception decryptError) { FileOps.deleteTree(target); throw decryptError; } // no partial plaintext on failure
-                if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file is available, but encrypted Vault cleanup was incomplete");
-                msg = fellBack ? "Decrypted to Downloads (original folder is gone)" : "Decrypted and moved out: " + target.getName();
+                File privateStage = new File(a.getCacheDir(), "vault-restore-" + java.util.UUID.randomUUID());
+                if (!privateStage.mkdir()) throw new IOException("Unable to create private restore staging folder");
+                try {
+                    File stagedPayload = new File(privateStage, it.file.getName());
+                    decryptTree(it.file, stagedPayload, a); // Authenticate the entire tree in app-private storage first.
+                    FileOps.copy(stagedPayload, target); // Publish only after every encrypted file has passed GCM authentication.
+                } finally {
+                    FileOps.deleteTree(privateStage);
+                }
+                if (FileOps.cancelRequested) {
+                    msg = "Restored a copy; the encrypted Vault item was retained because the operation was cancelled";
+                } else {
+                    if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file is available, but encrypted Vault cleanup was incomplete");
+                    msg = fellBack ? "Decrypted to Downloads (original folder is gone)" : "Decrypted and moved out: " + target.getName();
+                }
             } catch (Exception ex) { msg = "Failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
@@ -282,6 +346,7 @@ final class Vault {
     }
 
     static void deleteForever(final MainActivity a, final Item it, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
             boolean ok = FileOps.deleteTree(it.wrapper);

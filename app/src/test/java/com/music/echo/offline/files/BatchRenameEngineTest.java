@@ -92,6 +92,18 @@ public class BatchRenameEngineTest {
         } finally { Files.setPosixFilePermissions(d.toPath(),original); }
     }
 
+
+    @Test public void rollbackRetainsRecoveryRecordWhenBothPathsExist() throws Exception {
+        File d=dir(), source=file(d,"original.txt"), target=file(d,"renamed.txt");
+        BatchRenameEngine.Result result=new BatchRenameEngine.Result();
+        result.completed.add(new BatchRenameEngine.Item(source,target,null));
+        java.lang.reflect.Method rollback=BatchRenameEngine.class.getDeclaredMethod("rollback",BatchRenameEngine.Result.class);
+        rollback.setAccessible(true); rollback.invoke(null,result);
+        assertEquals(1,result.completed.size());
+        assertFalse(result.errors.isEmpty());
+        assertTrue(source.exists()); assertTrue(target.exists());
+    }
+
     @Test public void reportsMissingSourcesAndHandlesLargeBatches() throws Exception {
         File d=dir(), missing=new File(d,"missing.txt");
         assertFalse(BatchRenameEngine.plan(Arrays.asList(missing),options()).get(0).valid());

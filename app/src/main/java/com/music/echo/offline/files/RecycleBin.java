@@ -47,9 +47,9 @@ final class RecycleBin {
 
     /** Moves each file/folder into the bin. Falls back to copy+delete if renameTo fails (e.g. cross-volume). */
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
             int ok = 0, fail = 0;
             int total = src.size(), idx = 0;
             for (File s : src) {
@@ -63,13 +63,21 @@ final class RecycleBin {
                     if (parent == null) { fail++; continue; }
                     String wrapName = encode(parent.getAbsolutePath()) + "~" + java.util.UUID.randomUUID().toString();
                     File wrapper = new File(root(a), wrapName);
-                    if (!wrapper.mkdirs()) { fail++; continue; }
+                    if (!wrapper.mkdir()) { fail++; continue; }
                     File target = new File(wrapper, s.getName());
-                    if (!s.renameTo(target)) {
-                        FileOps.copy(s, target);
-                        if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
+                    boolean payloadSafe = false;
+                    try {
+                        try { java.nio.file.Files.move(s.toPath(), target.toPath()); payloadSafe = true; }
+                        catch (java.io.IOException moveError) {
+                            FileOps.copy(s, target);
+                            payloadSafe = true;
+                            if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
+                        }
+                        ok++;
+                    } catch (Exception moveError) {
+                        if (!payloadSafe) FileOps.deleteTree(wrapper);
+                        throw moveError;
                     }
-                    ok++;
                 } catch (Exception ex) { fail++; }
             }
             final int fok = ok, ffail = fail;
@@ -101,7 +109,8 @@ final class RecycleBin {
             } catch (Exception ignored) { }
             if (deletedAt > 0 && now - deletedAt > maxAgeMs()) { FileOps.deleteTree(w); continue; }
             File[] kids = w.listFiles();
-            if (kids == null || kids.length == 0) { FileOps.deleteTree(w); continue; }
+            if (kids == null) continue;
+            if (kids.length != 1) continue; // Preserve malformed wrappers instead of discarding unrecognized payloads.
             out.add(new Item(kids[0], w, new File(origPath), deletedAt));
         }
         out.sort((x, y) -> Long.compare(y.deletedAt, x.deletedAt));
@@ -120,9 +129,10 @@ final class RecycleBin {
                     if (!destDir.isDirectory() && !destDir.mkdirs()) throw new java.io.IOException("Unable to create Downloads folder for restore");
                 }
                 File target = FileOps.unique(destDir, it.file.getName());
-                if (!it.file.renameTo(target)) {
+                try { java.nio.file.Files.move(it.file.toPath(), target.toPath()); }
+                catch (java.io.IOException moveError) {
                     FileOps.copy(it.file, target);
-                    if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept");
+                    if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept", moveError);
                 }
                 if (!FileOps.deleteTree(it.wrapper)) throw new java.io.IOException("Restored file, but Recycle Bin cleanup failed");
                 msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
@@ -133,9 +143,9 @@ final class RecycleBin {
     }
 
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
             int ok = 0;
             for (Item it : items) { if (FileOps.cancelRequested) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
@@ -144,9 +154,9 @@ final class RecycleBin {
     }
 
     static void empty(final MainActivity a, final FileOps.Done d) {
+        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
             File[] ws = root(a).listFiles();
             int deleted = 0, failed = 0;
             boolean cancelled = false;
@@ -158,6 +168,7 @@ final class RecycleBin {
             final boolean fcancelled = cancelled;
             final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
                     + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
+            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
         });
     }
 

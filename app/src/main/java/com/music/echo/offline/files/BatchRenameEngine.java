@@ -106,9 +106,16 @@ final class BatchRenameEngine {
         for (int i = result.completed.size() - 1; i >= 0; i--) {
             Item done = result.completed.get(i);
             try {
-                if (done.target.exists() && !done.source.exists()) Files.move(done.target.toPath(), done.source.toPath());
+                if (done.target.exists() && !done.source.exists()) {
+                    Files.move(done.target.toPath(), done.source.toPath());
+                    if (done.target.exists() || !done.source.exists()) throw new IOException("Rollback did not restore the original path");
+                } else if (done.target.exists() || !done.source.exists()) {
+                    throw new IOException("Both paths are occupied or the renamed item is missing; recovery record retained");
+                }
                 result.completed.remove(i);
-            } catch (Exception e) { result.errors.add("Rollback failed for " + done.target.getName() + ": " + e.getMessage()); }
+            } catch (Exception e) {
+                result.errors.add("Rollback failed for " + done.target.getName() + ": " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            }
         }
     }
     static String validateName(String name) {
@@ -130,5 +137,5 @@ final class BatchRenameEngine {
     }
     private static String padded(long n, int width) { String s=String.valueOf(n); StringBuilder b=new StringBuilder(); for(int i=s.length();i<Math.min(9,Math.max(1,width));i++) b.append('0'); return b.append(s).toString(); }
     private static boolean samePath(File a, File b) { try { return a.getCanonicalPath().equals(b.getCanonicalPath()); } catch (IOException e) { return a.getAbsolutePath().equals(b.getAbsolutePath()); } }
-    private static String key(File f) { try { return f.getCanonicalPath().toLowerCase(Locale.ROOT); } catch (IOException e) { return f.getAbsolutePath().toLowerCase(Locale.ROOT); } }
+    private static String key(File f) { try { return f.getCanonicalPath(); } catch (IOException e) { return f.getAbsolutePath(); } }
 }
