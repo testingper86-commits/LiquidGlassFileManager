@@ -84,6 +84,12 @@ def main():
     require("ToxiUriPermissions.takeGranted(getContentResolver(),uri,data.getFlags());" in source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java") and "ToxiUriPermissions.takeGranted(getContentResolver(),u,data.getFlags());" in developer, "file tools and Developer Studio share the same validated SAF permission path")
 
 
+    saf_ops = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    require("SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);" in main and "SafStorageOperations.deleteTree(target);" in main, "MainActivity routes local-to-SAF copies and rollback cleanup through the shared provider service")
+    require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
+    require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
+    require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
+
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
     require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")

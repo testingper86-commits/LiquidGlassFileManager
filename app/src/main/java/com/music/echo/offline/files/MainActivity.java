@@ -1675,48 +1675,11 @@ public class MainActivity extends Activity {
     }
 
     private void copyLocalToSaf(File source, DocumentFile parent) throws java.io.IOException {
-        FileOps.checkCancelled();
-        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new java.io.IOException("Symbolic links cannot be copied to external storage");
-        String base = source.getName(); String candidate = base; int suffix = 1;
-        while (parent.findFile(candidate) != null) {
-            int dot = source.isDirectory() ? -1 : base.lastIndexOf('.');
-            String stem = dot > 0 ? base.substring(0, dot) : base;
-            String ext = dot > 0 ? base.substring(dot) : "";
-            candidate = stem + " (" + suffix++ + ")" + ext;
-        }
-        String mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                android.webkit.MimeTypeMap.getFileExtensionFromUrl(candidate));
-        DocumentFile target = source.isDirectory() ? parent.createDirectory(candidate) : parent.createFile(mime == null ? "application/octet-stream" : mime, candidate);
-        if (target == null) throw new java.io.IOException("Could not create " + candidate + " on external storage");
-        try {
-            if (source.isDirectory()) {
-                File[] children = source.listFiles();
-                if (children == null) throw new java.io.IOException("Can't read folder " + source.getName());
-                for (File child : children) copyLocalToSaf(child, target);
-            } else {
-                try (InputStream in = new java.io.FileInputStream(source); OutputStream out = getContentResolver().openOutputStream(target.getUri(), "w")) {
-                    if (out == null) throw new java.io.IOException("External storage returned no output stream");
-                    byte[] buf = new byte[65536]; int n;
-                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
-                }
-            }
-        } catch (Exception copyError) {
-            try { deleteSafTree(target); }
-            catch (java.io.IOException cleanupError) { copyError.addSuppressed(cleanupError); }
-            if (copyError instanceof java.io.IOException) throw (java.io.IOException) copyError;
-            throw new java.io.IOException("Copy failed: " + copyError.getMessage(), copyError);
-        }
+        SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);
     }
 
     private void deleteSafTree(DocumentFile target) throws java.io.IOException {
-        if (target == null || !target.exists()) return;
-        if (target.isDirectory()) {
-            DocumentFile[] kids = target.listFiles();
-            if (kids == null) throw new java.io.IOException("External provider could not enumerate partial output for cleanup");
-            for (DocumentFile kid : kids) deleteSafTree(kid);
-        }
-        if (target.exists() && !target.delete())
-            throw new java.io.IOException("External provider refused to remove partial output: " + target.getName());
+        SafStorageOperations.deleteTree(target);
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
