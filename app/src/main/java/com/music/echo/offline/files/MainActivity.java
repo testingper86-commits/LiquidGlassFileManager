@@ -154,7 +154,8 @@ public class MainActivity extends Activity {
         toolsScroll.addView(tools, new FrameLayout.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
         settingsScroll.setVerticalScrollBarEnabled(false);
-        settingsScroll.setClipToPadding(false);
+        // Keep Settings rows inside the scroll viewport; the bottom navigation overlays the screen root.
+        settingsScroll.setClipToPadding(true);
         settings = new LinearLayout(this);
         settings.setOrientation(LinearLayout.VERTICAL);
         settingsScroll.addView(settings, new FrameLayout.LayoutParams(-1, -2));
@@ -238,7 +239,8 @@ public class MainActivity extends Activity {
             footerParams.height = ToxiVisualSystem.dp(160) + ToxiVisualSystem.BOTTOM_INSET;
             homeScrollFooter.setLayoutParams(footerParams);
         }
-        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        // Reserve enough scrollable space for the bottom navigation and system gesture area.
+        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET);
         if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
