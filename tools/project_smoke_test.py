@@ -142,6 +142,12 @@ def main():
     require('setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html, "built-in HTML viewer blocks local file access and mixed content")
     viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
     require('TextureView' in viewer and 'setSurfaceTextureListener' in viewer and 'USAGE_MEDIA' in viewer and 'A-B loop enabled' in viewer, "built-in media viewer retains native video and audio playback controls")
+    pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
+    require('io.execute(' in pdf_open and 'ParcelFileDescriptor.open(f' in pdf_open and 'h.post(' in pdf_open and 'volatile long pdfGeneration' in viewer, "PDF descriptor and renderer open off the UI thread with stale-load protection")
+    require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
+    pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
+    require('io.execute(' in pdf_open and 'ParcelFileDescriptor.open(f' in pdf_open and 'h.post(' in pdf_open and 'volatile long pdfGeneration' in viewer, "PDF descriptor and renderer open off the UI thread with stale-load protection")
+    require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
     crash = source("app/src/main/java/com/music/echo/offline/files/CrashLogger.java")
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
