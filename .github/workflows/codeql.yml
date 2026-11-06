@@ -55,10 +55,19 @@ jobs:
           category: "/language:java-kotlin"
           upload: false
 
+      - name: Stage SARIF inside the workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/codeql-sarif"
+          shopt -s nullglob
+          files=("$GITHUB_WORKSPACE/../results/"*.sarif)
+          (( ${#files[@]} > 0 )) || { echo "::error::CodeQL produced no SARIF files"; exit 1; }
+          cp "${files[@]}" "$GITHUB_WORKSPACE/codeql-sarif/"
       - name: Preserve SARIF for review
         uses: actions/upload-artifact@v4
         with:
           name: ToxiFiles-CodeQL-SARIF-review-only
-          path: ../results/*.sarif
+          path: codeql-sarif/*.sarif
           if-no-files-found: error
           retention-days: 14
