@@ -9,15 +9,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
 import android.widget.ImageView;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /** Async, cached thumbnails for images and videos. Recycled rows skip decoding entirely. */
 final class Thumbs {
     private static final LruCache<String, Bitmap> CACHE = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
         @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
     };
-    private static final ExecutorService EX = Executors.newFixedThreadPool(2);
     private static final Handler UI = new Handler(Looper.getMainLooper());
 
     static void bind(final ImageView iv, final Entry e, final int px) {
@@ -31,7 +28,7 @@ final class Thumbs {
         }
         iv.setImageDrawable(ToxiIcons.fileTile(e.kind));
         if (!needsThumbnail) return;
-        EX.execute(() -> {
+        TaskCoordinator.tryExecute(TaskCoordinator.Lane.THUMBNAIL, () -> {
             if (!key.equals(iv.getTag())) return;
             final Bitmap t = e.kind == FileKinds.IMAGE ? image(e, px) : video(e, px);
             if (t == null) return;

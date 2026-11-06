@@ -128,7 +128,7 @@ final class LanTransfer {
     // ---------------- RECEIVER ----------------
     static void receive(final File destDir, final Listener l) {
         final String pairingCode = newPairingCode();
-        new Thread(() -> {
+        try { TaskCoordinator.execute(TaskCoordinator.Lane.NETWORK, () -> {
             ServerSocket server = null;
             try {
                 server = new ServerSocket(PORT);
@@ -235,12 +235,12 @@ final class LanTransfer {
                 activeServer = null;
                 activeSocket = null;
             }
-        }).start();
+        }); } catch (RuntimeException rejected) { l.onError("LAN transfer could not be queued: " + rejected.getMessage()); }
     }
 
     // ---------------- SENDER ----------------
     static void send(final String ip, final String pairingCode, final List<File> files, final Listener l) {
-        new Thread(() -> {
+        try { TaskCoordinator.execute(TaskCoordinator.Lane.NETWORK, () -> {
             Socket sock = null;
             try {
                 sock = new Socket();
@@ -308,6 +308,6 @@ final class LanTransfer {
                 try { if (sock != null) sock.close(); } catch (Exception ignored) { }
                 activeSocket = null;
             }
-        }).start();
+        }); } catch (RuntimeException rejected) { l.onError("LAN transfer could not be queued: " + rejected.getMessage()); }
     }
 }

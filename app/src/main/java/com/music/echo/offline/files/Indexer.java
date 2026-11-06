@@ -50,7 +50,7 @@ final class Indexer {
         dirty = false;
         truncated = false;
         tmpIncomplete = false;
-        Thread worker = new Thread(() -> {
+        Runnable worker = () -> {
             try {
                 tmpAll = new ArrayList<>();
                 tmpCats = new ArrayList<>();
@@ -76,9 +76,9 @@ final class Indexer {
                 running = false;
                 if (done != null) ui.post(done);
             }
-        }, "indexer");
+        };
         try {
-            worker.start();
+            TaskCoordinator.execute(TaskCoordinator.Lane.INDEXING, worker);
         } catch (RuntimeException startError) {
             running = false;
             lastError = startError.getMessage() == null ? startError.getClass().getSimpleName() : startError.getMessage();

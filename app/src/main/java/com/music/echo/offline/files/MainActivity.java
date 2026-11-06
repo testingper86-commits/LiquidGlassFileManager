@@ -59,16 +59,16 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import org.json.JSONObject;
 import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends Activity {
     private Object backInvokedCallback;
-    final ExecutorService io = Executors.newFixedThreadPool(2);
-    final ExecutorService ops = Executors.newSingleThreadExecutor();
+    private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    final Executor io = taskScope.executor(TaskCoordinator.Lane.IO);
+    final Executor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
     final Set<String> favs = new LinkedHashSet<>();
     File[] clip;
     boolean clipCut;
@@ -319,8 +319,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33 && backInvokedCallback != null) getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) backInvokedCallback);
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         super.onDestroy();
-        io.shutdown();
-        ops.shutdown();
+        taskScope.close(false);
     }
 
     // ---------------- index ----------------
