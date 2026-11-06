@@ -1,0 +1,31 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/toxifiles_canvas</item>
+        <item name="android:navigationBarColor">@color/toxifiles_canvas</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">@color/toxifiles_signal</item>
+        <item name="android:windowBackground">@drawable/toxifiles_splash</item>
+        <item name="android:alertDialogTheme">@style/ToxiDialogTheme</item>
+    </style>
+    <style name="ToxiDialogTheme" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorAccent">@color/toxifiles_signal</item>
+        <item name="android:windowBackground">@drawable/toxifiles_dialog_surface</item>
+        <item name="android:textColorPrimary">#F1F5F8</item>
+        <item name="android:textColorSecondary">#9AA8B7</item>
+    </style>
+    <style name="AppTheme_Light" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/toxifiles_canvas</item>
+        <item name="android:navigationBarColor">@color/toxifiles_canvas</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">@color/toxifiles_signal</item>
+        <item name="android:windowBackground">@drawable/toxifiles_splash</item>
+        <item name="android:alertDialogTheme">@style/ToxiDialogTheme</item>
+    </style>
+</resources>
