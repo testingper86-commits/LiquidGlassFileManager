@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Focused source-level acceptance checks for the restricted offline Developer Studio."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+BASE = ROOT / "app/src/main/java/com/music/echo/offline/files"
+activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
+core = (BASE / "DeveloperStudioCore.java").read_text(encoding="utf-8")
+main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
+manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+
+TOOLS = [
+    "File Relationship Explorer", "APK Inspection Laboratory",
+    "Database Explorer & SQL Query Studio", "Code Diff Studio",
+    "Code Formatter & Validator", "Regex Testing Laboratory",
+    "Code Symbol Navigator", "Dependency Inspector",
+    "Binary Structure Analyzer", "Color & Asset Inspector",
+    "JSON & XML Studio", "File Signature Analyzer",
+]
+checks = []
+def require(condition, message):
+    if not condition:
+        raise SystemExit("FAIL: " + message)
+    checks.append(message)
+
+for name in TOOLS:
+    require(name in activity, "tool present: " + name)
+require("developer_options_unlocked" in activity and "onResume()" in activity and "finish()" in activity,
+        "activity rechecks the existing Developer unlock gate")
+require("android:name=\".files.DeveloperStudioActivity\" android:exported=\"false\"" in manifest,
+        "Developer Studio activity is private and non-exported")
+require(main.count("new Intent(this, DeveloperStudioActivity.class)") == 1 and "Developer Studio" in main,
+        "single Developer-only entry point exists in Settings")
+require("EXTRA_FILE_PATH" not in activity and "tool_index" not in activity,
+        "Developer tools are not routed through ordinary file-opening extras")
+require("SQLiteDatabase.OPEN_READONLY" in activity and "rawQuery" in activity,
+        "SQLite inspector opens databases read-only and executes queries locally")
+require("ACTION_OPEN_DOCUMENT" in activity and "ACTION_OPEN_DOCUMENT_TREE" in activity,
+        "file access uses Android document pickers and scoped URI grants")
+for forbidden in ("java.net.", "HttpURLConnection", "OkHttpClient", "WebView", "ProcessBuilder", "Runtime.getRuntime", "DexClassLoader"):
+    require(forbidden not in activity and forbidden not in core,
+            "no remote networking or inspected-code execution reference: " + forbidden)
+require("No code was loaded, installed or executed" in activity,
+        "APK inspection explicitly remains non-executing")
+require("Potentially catastrophic nested quantifiers" in core and "MAX_DIFF_LINES" in core,
+        "regex and diff engines enforce input complexity limits")
+require("MAX_RELATION_FILES" in core and "MAX_TEXT_CHARS" in core,
+        "source analysis has explicit input bounds")
+print(f"PASS: {len(checks)} Developer Studio source checks")

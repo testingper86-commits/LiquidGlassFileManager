@@ -41,6 +41,10 @@ jobs:
           test -s app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java
           test -s app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
           test -s app/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
+          test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
+          test -s app/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
+          test -s tools/developer_studio_smoke_test.py
           test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
           test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
           test -s app/src/main/res/drawable/ic_toxifiles_app_icon.xml
@@ -73,6 +77,9 @@ jobs:
 
       - name: Verify complete visual replacement
         run: python3 tools/toxifiles_visual_replacement_test.py
+
+      - name: Verify restricted offline Developer Studio
+        run: python3 tools/developer_studio_smoke_test.py
 
       - name: Run Android unit tests
         run: ./gradlew --no-daemon :app:testDebugUnitTest

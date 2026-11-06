@@ -1117,6 +1117,7 @@ public class MainActivity extends Activity {
         if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {
             settings.addView(section("Developer options"));
             settings.addView(row(ToxiIcons.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Developer Studio", "12 offline tools for source, APK, database, binary and asset inspection", null, v -> { if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) startActivity(new Intent(this, DeveloperStudioActivity.class)); }), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(section("Advanced tools"));
             settings.addView(switchRow(ToxiIcons.SPARKLE, "Background blur", "Can affect performance on some devices", "blur", false, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(section("Storage Tools"));
