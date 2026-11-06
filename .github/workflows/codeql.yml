@@ -43,14 +43,14 @@ jobs:
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
           chmod +x gradlew
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
           build-mode: manual
       - name: Build Android sources for analysis
         run: ./gradlew --no-daemon --stacktrace :app:compileDebugJavaWithJavac
       - name: Perform CodeQL analysis without conflicting with repository default setup
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:java-kotlin"
           upload: false
