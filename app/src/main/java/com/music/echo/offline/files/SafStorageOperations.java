@@ -1,6 +1,7 @@
 package com.music.echo.offline.files;
 
 import android.content.ContentResolver;
+import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import androidx.documentfile.provider.DocumentFile;
@@ -106,6 +107,59 @@ final class SafStorageOperations {
             catch (IOException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
             if (failure instanceof IOException) throw (IOException) failure;
             throw new IOException("Document copy failed: " + failure.getMessage(), failure);
+        }
+    }
+
+    static Uri copyDocumentFile(ContentResolver resolver, Uri tree, Uri source,
+                                 Uri parent, String requestedName) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || source == null || parent == null) {
+            throw new IOException("Source and destination document URIs are required");
+        }
+        String invalid = BatchRenameEngine.validateName(requestedName);
+        if (invalid != null) throw new IOException(invalid);
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(
+                tree, DocumentsContract.getDocumentId(parent));
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        try (Cursor cursor = resolver.query(children,
+                new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null)) {
+            if (cursor == null) throw new IOException("Provider could not inspect destination names");
+            while (cursor.moveToNext()) existing.add(cursor.getString(0));
+        }
+        String base = requestedName, extension = "";
+        int dot = requestedName.lastIndexOf('.');
+        if (dot > 0) { base = requestedName.substring(0, dot); extension = requestedName.substring(dot); }
+        String candidate = requestedName;
+        for (int suffix = 1; existing.contains(candidate); suffix++) {
+            candidate = base + " (" + suffix + ")" + extension;
+            if (BatchRenameEngine.validateName(candidate) != null) {
+                throw new IOException("Unable to create a safe duplicate filename");
+            }
+        }
+        String mime = resolver.getType(source);
+        if (mime == null) mime = mimeType(requestedName);
+        Uri target = DocumentsContract.createDocument(resolver, parent, mime, candidate);
+        if (target == null) throw new IOException("Provider could not create " + candidate);
+        try (InputStream in = resolver.openInputStream(source);
+             OutputStream out = resolver.openOutputStream(target, "w")) {
+            if (in == null || out == null) throw new IOException("Provider did not open the document streams");
+            byte[] buffer = new byte[65536];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                OperationCancellation.checkCurrent();
+                if (count > 0) out.write(buffer, 0, count);
+            }
+            out.flush();
+            OperationCancellation.checkCurrent();
+            return target;
+        } catch (Exception failure) {
+            try {
+                if (!DocumentsContract.deleteDocument(resolver, target)) {
+                    throw new IOException("Provider refused to remove partial duplicate output");
+                }
+            } catch (Exception cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+            if (failure instanceof IOException) throw (IOException) failure;
+            throw new IOException("Document duplicate failed: " + failure.getMessage(), failure);
         }
     }
 

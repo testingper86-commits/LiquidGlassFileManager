@@ -90,6 +90,9 @@ def main():
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
     require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
 
+    require("setOnItemLongClickListener" in main and "showSafDocumentActions(tree, docUri, title, selected, row[1]" in main, "existing SAF browser exposes document actions only from the selected row context")
+    require('"Duplicate here"' in main and "SafStorageOperations.copyDocumentFile" in main and "SafStorageOperations.renameDocument" in main and "SafStorageOperations.deleteDocument" in main, "SAF browser wires duplicate, rename and permanent delete to provider operations")
+    require("DocumentsContract.createDocument" in saf_ops and "buildChildDocumentsUriUsingTree" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF document duplication creates collision-safe provider documents and cleans partial output")
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
     require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")

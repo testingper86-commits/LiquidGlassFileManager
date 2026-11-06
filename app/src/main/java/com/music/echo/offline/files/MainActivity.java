@@ -1683,17 +1683,20 @@ public class MainActivity extends Activity {
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
-        ToxiVisualSystem.toast(this, "Loading\u2026");
+        ToxiVisualSystem.toast(this, "Loading…");
         io.execute(() -> {
-            final List<String[]> rows = new ArrayList<>(); // [docId, name, "1" dir / "0" file]
+            final List<String[]> rows = new ArrayList<>();
             boolean querySucceeded = false;
             try {
                 Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(docUri));
                 try (Cursor c = getContentResolver().query(children, new String[]{
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
                     if (c != null) {
                         querySucceeded = true;
-                        while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1), DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
+                        while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1),
+                                DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
                     }
                 }
             } catch (Exception ignored) { }
@@ -1703,12 +1706,77 @@ public class MainActivity extends Activity {
                 if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
                 for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i)[1];
-                new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
-                    String[] r = rows.get(w);
-                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, r[0]);
-                    if (r[2].equals("1")) showSafLevel(tree, childUri, r[1]);
-                    else importSafDoc(childUri, r[1]);
-                }).setNegativeButton("Close", null).show();
+                AlertDialog listing = new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
+                    String[] row = rows.get(w);
+                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
+                    if ("1".equals(row[2])) showSafLevel(tree, childUri, row[1]);
+                    else importSafDoc(childUri, row[1]);
+                }).setNegativeButton("Close", null).create();
+                listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
+                        (parent, view, position, id) -> {
+                            String[] row = rows.get(position);
+                            Uri selected = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
+                            showSafDocumentActions(tree, docUri, title, selected, row[1], "1".equals(row[2]));
+                            return true;
+                        }));
+                listing.show();
+            });
+        });
+    }
+
+    private interface SafAction { void run() throws Exception; }
+
+    private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
+                                         String name, boolean directory) {
+        String[] actions = directory
+                ? new String[]{"Rename", "Delete"}
+                : new String[]{"Duplicate here", "Rename", "Delete"};
+        new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
+            String action = actions[which];
+            if ("Duplicate here".equals(action)) {
+                runSafAction(tree, parent, title, "Duplicated " + name,
+                        () -> SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name));
+            } else if ("Rename".equals(action)) {
+                EditText input = new EditText(this);
+                input.setSingleLine(true);
+                input.setText(name);
+                input.setSelection(input.length());
+                new AlertDialog.Builder(this).setTitle("Rename document").setView(input)
+                        .setPositiveButton("Rename", (d, w) -> {
+                            String newName = input.getText().toString();
+                            if (name.equals(newName)) return;
+                            runSafAction(tree, parent, title, "Renamed to " + newName,
+                                    () -> SafStorageOperations.renameDocument(getContentResolver(), document, newName));
+                        }).setNegativeButton("Cancel", null).show();
+            } else {
+                new AlertDialog.Builder(this).setTitle("Delete " + name + "?")
+                        .setMessage("This permanently deletes the selected item from the chosen storage provider.")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Delete", (d, w) -> runSafAction(tree, parent, title, "Deleted " + name,
+                                () -> SafStorageOperations.deleteDocument(getContentResolver(), document)))
+                        .show();
+            }
+        }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
+        busy(true);
+        ops.execute(() -> {
+            OperationCancellation.Token operationToken = cancellation.begin();
+            String error = null;
+            try { action.run(); }
+            catch (Exception failure) {
+                error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+            } finally { cancellation.finish(operationToken); }
+            final String detail = error;
+            runOnUiThread(() -> {
+                busy(false);
+                if (detail == null) {
+                    ToxiVisualSystem.toast(this, successMessage);
+                    showSafLevel(tree, parent, title);
+                } else {
+                    ToxiVisualSystem.toast(this, "Storage operation failed: " + detail);
+                }
             });
         });
     }
