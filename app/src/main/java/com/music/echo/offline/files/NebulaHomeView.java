@@ -1,5 +1,7 @@
 package com.music.echo.offline.files;
 
+import com.music.echo.offline.R;
+
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -15,6 +17,7 @@ import android.os.Environment;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -33,7 +36,7 @@ final class NebulaHomeView {
     static final int VIOLET = Color.rgb(169, 139, 255);
     static final int TEXT = Color.rgb(242, 246, 249);
     static final int MUTED = Color.rgb(145, 159, 171);
-    private static final int[] ACCENTS = {LIME, ICE, VIOLET, LIME, ICE, VIOLET};
+    private static final int[] ACCENTS = {LIME, ICE, VIOLET, LIME, ICE, VIOLET, LIME};
 
     private NebulaHomeView() { }
 
@@ -46,19 +49,24 @@ final class NebulaHomeView {
 
         LinearLayout brand = new LinearLayout(a);
         brand.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView mark = new ImageView(a);
+        mark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        mark.setContentDescription("ToxiFiles logo");
+        mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.addView(mark, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
+        LinearLayout wordmarkBlock = new LinearLayout(a);
+        wordmarkBlock.setOrientation(LinearLayout.VERTICAL);
+        wordmarkBlock.setPadding(dp(a, 11), 0, 0, 0);
         TextView wordmark = text(a, "TOXIFILES", 22, TEXT, true);
         wordmark.setLetterSpacing(0.12f);
-        brand.addView(wordmark, new LinearLayout.LayoutParams(0, -2, 1f));
-        FrameLayout searchButton = new FrameLayout(a);
-        searchButton.setContentDescription("Search files");
-        searchButton.setBackground(background(PANEL_ALT, BORDER, 15));
-        Glyph search = new Glyph(a, "search", ICE);
-        searchButton.addView(search, new FrameLayout.LayoutParams(dp(a, 22), dp(a, 22), Gravity.CENTER));
-        searchButton.setOnClickListener(v -> a.openSearch());
-        searchButton.setFocusable(true);
-        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46));
-        brand.addView(searchButton, searchLp);
-        host.addView(brand, margins(a, -1, -2, 0, 5, 0, 0));
+        wordmarkBlock.addView(wordmark);
+        TextView brandLine = text(a, "FILE MANAGEMENT, REFINED", 8, MUTED, true);
+        brandLine.setLetterSpacing(0.13f);
+        LinearLayout.LayoutParams brandLineLp = new LinearLayout.LayoutParams(-2, -2);
+        brandLineLp.topMargin = dp(a, 4);
+        wordmarkBlock.addView(brandLine, brandLineLp);
+        brand.addView(wordmarkBlock, new LinearLayout.LayoutParams(0, -2, 1f));
+        host.addView(brand, margins(a, -1, -2, 0, 5, 0, 18));
 
         TextView subtitle = text(a, "YOUR DIGITAL SPACE", 10, MUTED, true);
         subtitle.setLetterSpacing(0.19f);
@@ -79,11 +87,11 @@ final class NebulaHomeView {
         }
 
         addStorage(a, host);
-        addSectionTitle(a, host, "EXPLORE", "YOUR FILES");
-        String[] names = {"All Files", "Images", "Videos", "Audio", "Documents", "Downloads"};
-        String[] details = {"Browse storage", "Photo library", "Video collection", "Music & sounds", "PDF & documents", "Recent downloads"};
-        String[] glyphs = {"folder-open", "images", "clapperboard", "audio-lines", "files", "download"};
-        for (int row = 0; row < 3; row++) {
+        addSectionTitle(a, host, "BROWSE BY TYPE", "5 CATEGORIES");
+        String[] names = {"Images", "Videos", "Audio", "Documents", "Downloads"};
+        String[] details = {"Photo library", "Video collection", "Music & sounds", "PDF & documents", "Recent downloads"};
+        String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
+        for (int row = 0; row < 2; row++) {
             LinearLayout line = new LinearLayout(a);
             line.setOrientation(LinearLayout.HORIZONTAL);
             for (int col = 0; col < 2; col++) {
@@ -91,12 +99,10 @@ final class NebulaHomeView {
                 View card = exploreCard(a, names[index], details[index], glyphs[index], ACCENTS[index]);
                 card.setOnClickListener(v -> {
                     switch (index) {
-                        case 0: a.selectTab(1); break;
-                        case 1: a.openCategory(0); break;
-                        case 2: a.openCategory(1); break;
-                        case 3: a.openCategory(2); break;
-                        case 4: a.openCategory(3); break;
-                        case 5: a.openDownloads(); break;
+                        case 0: a.openCategory(0); break;
+                        case 1: a.openCategory(1); break;
+                        case 2: a.openCategory(2); break;
+                        case 3: a.openCategory(3); break;
                     }
                 });
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1f);
@@ -108,6 +114,9 @@ final class NebulaHomeView {
             rowLp.bottomMargin = dp(a, 12);
             host.addView(line, rowLp);
         }
+        View downloadsCard = exploreCard(a, names[4], details[4], glyphs[4], ACCENTS[4]);
+        downloadsCard.setOnClickListener(v -> a.openDownloads());
+        host.addView(downloadsCard, margins(a, -1, dp(a, 92), 0, 0, 0, 12));
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 116) + ToxiVisualSystem.BOTTOM_INSET));
@@ -123,24 +132,28 @@ final class NebulaHomeView {
         eyebrow.setLetterSpacing(0.15f);
         host.addView(eyebrow);
         host.addView(text(a, "Tools Studio", 28, TEXT, true), margins(a, -1, -2, 0, 8, 0, 4));
-        host.addView(text(a, "Precision utilities for your files", 13, MUTED, false), margins(a, -1, -2, 0, 0, 0, 22));
-        addSectionTitle(a, host, "TOOLS", "6 UTILITIES");
-
-        String[] names = {"Analyze", "Compare", "Hex Editor", "Integrity", "Archives", "Text Editor"};
-        String[] glyphs = {"file-search", "compare", "binary", "shield-check", "archive", "code"};
-        String[] details = {"Storage insights", "Folder differences", "Binary data", "File verification", "ZIP management", "Edit text files"};
-        for (int row = 0; row < 2; row++) {
+        host.addView(text(a, "Seven focused utilities. Each opens directly.", 13, MUTED, false), margins(a, -1, -2, 0, 0, 0, 22));
+        addSectionTitle(a, host, "OFFLINE UTILITIES", "7 TOOLS");
+        String[] names = {"Dual-Pane Explorer", "Hex Editor", "Folder Comparator", "Encoding Converter", "ZIP Editor", "Integrity Studio", "Text Editor"};
+        String[] glyphs = {"columns-2", "binary", "compare", "languages", "archive", "shield-check", "code"};
+        String[] details = {"Two folders side by side", "Inspect and edit bytes", "Compare folder contents", "Convert text encodings", "Manage ZIP contents", "Verify file checksums", "Edit and search text"};
+        for (int row = 0; row < 4; row++) {
             LinearLayout line = new LinearLayout(a);
             line.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 3; col++) {
-                final int index = row * 3 + col;
+            for (int col = 0; col < 2; col++) {
+                final int index = row * 2 + col;
+                if (index >= names.length) {
+                    View spacer = new View(a);
+                    line.addView(spacer, new LinearLayout.LayoutParams(0, dp(a, 122), 1f));
+                    continue;
+                }
                 LinearLayout card = new LinearLayout(a);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setGravity(Gravity.CENTER_HORIZONTAL);
-                card.setPadding(dp(a, 5), dp(a, 15), dp(a, 5), dp(a, 11));
+                card.setPadding(dp(a, 8), dp(a, 15), dp(a, 8), dp(a, 11));
                 card.setBackground(background(PANEL, BORDER, 16));
                 Glyph icon = new Glyph(a, glyphs[index], ACCENTS[index]);
-                card.addView(icon, new LinearLayout.LayoutParams(dp(a, 30), dp(a, 30)));
+                card.addView(icon, new LinearLayout.LayoutParams(dp(a, 32), dp(a, 32)));
                 TextView name = text(a, names[index], 12, TEXT, true);
                 name.setGravity(Gravity.CENTER);
                 name.setMaxLines(2);
@@ -151,24 +164,14 @@ final class NebulaHomeView {
                 card.addView(detail, margins(a, -1, -2, 0, 4, 0, 0));
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
-                card.setOnClickListener(v -> {
-                    switch (index) {
-                        case 0: a.openStorageAnalyzer(); break;
-                        case 1: a.launchNebulaTool(2); break;
-                        case 2: a.launchNebulaTool(1); break;
-                        case 3: a.launchNebulaTool(5); break;
-                        case 4: a.launchNebulaTool(4); break;
-                        case 5: a.launchNebulaTool(6); break;
-                    }
-                });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(a, 118), 1f);
-                if (col == 0) lp.rightMargin = dp(a, 5);
-                else if (col == 1) { lp.leftMargin = dp(a, 5); lp.rightMargin = dp(a, 5); }
-                else lp.leftMargin = dp(a, 5);
+                card.setOnClickListener(v -> a.launchNebulaTool(index));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(a, 122), 1f);
+                if (col == 0) lp.rightMargin = dp(a, 6);
+                else lp.leftMargin = dp(a, 6);
                 line.addView(card, lp);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 118));
-            rowLp.bottomMargin = dp(a, 10);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 122));
+            rowLp.bottomMargin = dp(a, 11);
             host.addView(line, rowLp);
         }
         View footer = new View(a);
@@ -386,6 +389,15 @@ final class NebulaHomeView {
                     path.reset(); path.moveTo(8.5f, 6); path.lineTo(3, 12); path.lineTo(8.5f, 18); canvas.drawPath(path, paint);
                     path.reset(); path.moveTo(15.5f, 6); path.lineTo(21, 12); path.lineTo(15.5f, 18); canvas.drawPath(path, paint);
                     canvas.drawLine(14, 4, 10, 20, paint); break;
+                case "columns-2":
+                    rect.set(2.5f, 3, 10.5f, 21); canvas.drawRoundRect(rect, 1.5f, 1.5f, paint);
+                    rect.set(13.5f, 3, 21.5f, 21); canvas.drawRoundRect(rect, 1.5f, 1.5f, paint);
+                    canvas.drawLine(12, 4, 12, 20, paint); break;
+                case "languages":
+                    canvas.drawCircle(12, 12, 9, paint);
+                    canvas.drawOval(8, 3, 16, 21, paint);
+                    canvas.drawLine(4, 9, 20, 9, paint);
+                    canvas.drawLine(4, 15, 20, 15, paint); break;
                 case "house":
                     path.reset(); path.moveTo(2.5f, 11); path.lineTo(12, 3); path.lineTo(21.5f, 11); path.moveTo(5, 9.5f); path.lineTo(5, 21); path.lineTo(19, 21); path.lineTo(19, 9.5f); path.moveTo(9.5f, 21); path.lineTo(9.5f, 14); path.lineTo(14.5f, 14); path.lineTo(14.5f, 21); canvas.drawPath(path, paint); break;
                 case "grid":

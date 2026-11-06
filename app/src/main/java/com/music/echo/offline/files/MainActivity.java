@@ -1054,6 +1054,7 @@ public class MainActivity extends Activity {
         TextView hint = ToxiVisualSystem.text(this, "Select a category to reveal its controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
         hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
         settings.addView(hint);
+        settings.addView(row(ToxiIcons.INFO, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 2, 16, 12));
 
         settings.addView(section("Appearance"));
         settings.addView(row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
@@ -1069,7 +1070,15 @@ public class MainActivity extends Activity {
         settings.addView(row(ToxiIcons.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Storage Access"));
-        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed" : "Not allowed \u2014 tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed · manage access" : "Not allowed · tap to fix", null, v -> {
+            if (!hasAccess()) { showStorageAccess(); return; }
+            try {
+                Intent manage = Build.VERSION.SDK_INT >= 30
+                        ? new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName()))
+                        : new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                startActivity(manage);
+            } catch (Exception e) { ToxiVisualSystem.toast(this, "Open Android Settings > Apps > ToxiFiles > Permissions"); }
+        }), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Recycle Bin"));
@@ -1104,9 +1113,6 @@ public class MainActivity extends Activity {
         settings.addView(section("SD Card & USB Storage"));
         settings.addView(row(ToxiIcons.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
 
-
-        settings.addView(section("About"));
-        settings.addView(row(ToxiIcons.SPARKLE, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 8));
 
         if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {
             settings.addView(section("Developer options"));
