@@ -17,6 +17,8 @@ def main():
     required = [
         "app/src/main/AndroidManifest.xml",
         "app/src/main/java/com/music/echo/offline/files/MainActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/BrowserView.java",
+        "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
@@ -97,6 +99,10 @@ def main():
     require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
+    browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
+    vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
+    recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
+    require('FileOps.cancelRequested' not in browser + vault + recycle_bin and browser.count('a.cancellation.begin()') == 1 and vault.count('a.cancellation.begin()') == 3 and recycle_bin.count('a.cancellation.begin()') == 4 and 'OperationCancellation.isCancelled()' in vault and 'OperationCancellation.isCancelled()' in recycle_bin, "BrowserView, Vault and Recycle Bin use isolated operation cancellation")
     require('ArchivePath.normalize(entryName, e.isDirectory())' in file_ops and 'initialFreeSpace' in file_ops and 'extractedPaths' in file_ops, "ZIP extraction validates paths, duplicate entries and cumulative storage use")
     require('Unsafe archive entry path rejected' in archive_path and 'segment.isEmpty()' in archive_path and '"..".equals(segment)' in archive_path, "ZIP path normalization rejects traversal and ambiguous segments")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java").is_file(), "ZIP path validation has JVM regression tests")
