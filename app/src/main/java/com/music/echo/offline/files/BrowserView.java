@@ -164,6 +164,14 @@ final class BrowserView extends FrameLayout {
                     if (mode == LIST) { File par = e.f.getParentFile(); extra = par == null ? "" : par.getName(); }
                     ToxiFileRow.bind(h, e, selecting, sel.contains(e), extra);
                     ToxiFileRow.applyLabel(h, Labels.get(a, e.f));
+                    // The whole row opens on one tap; the overflow control remains independent.
+                    View.OnClickListener openClick = v -> { if (selecting) toggle(e); else open(e); };
+                    View.OnLongClickListener selectClick = v -> { if (selecting) selectRange(e); else startSelect(e); return true; };
+                    h.root.setOnClickListener(openClick);
+                    h.row.setOnClickListener(openClick);
+                    h.root.setOnLongClickListener(selectClick);
+                    h.row.setOnLongClickListener(selectClick);
+                    h.root.setContentDescription((e.dir ? "Folder " : "File ") + e.name + ", tap to open");
                     h.more.setTag(e);
                     h.more.setOnClickListener(moreL);
                     return cv;

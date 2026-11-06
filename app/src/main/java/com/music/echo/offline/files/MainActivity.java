@@ -426,7 +426,8 @@ public class MainActivity extends Activity {
         }
         if (kind == FileKinds.ARCHIVE && "zip".equals(extension)) { showZip(file); return; }
         if (kind == FileKinds.APK) { FileOps.install(this, file); return; }
-        FileOps.external(this, file, false);
+        // Unsupported native formats are handed to Android's app chooser on the first tap.
+        FileOps.external(this, file, true);
     }
 
     private void openBuiltInViewer(File file, int index) {

@@ -32,6 +32,11 @@ public class HtmlViewerRoutingTest {
     }
 
     @Test public void classifiesBuiltInViewerFileTypes() {
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("csv"));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("toml"));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("jsonl"));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfExt("tsx"));
+        assertEquals(FileKinds.OTHER, FileKinds.kindOfExt("unknown-binary-format"));
         assertEquals(FileKinds.PDF, FileKinds.kindOfExt("pdf"));
         assertEquals(FileKinds.VIDEO, FileKinds.kindOfExt("mp4"));
         assertEquals(FileKinds.VIDEO, FileKinds.kindOfExt("mkv"));
