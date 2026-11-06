@@ -100,8 +100,10 @@ def main():
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
     java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
-    legacy_cancel_callers = [str(path.relative_to(ROOT)) for path in java_sources if "FileOps.cancelRequested" in path.read_text(encoding="utf-8")]
-    require(not legacy_cancel_callers, "no legacy global file-cancellation references remain anywhere in Java sources")
+    test_sources = list((ROOT / "app/src/test/java").rglob("*.java"))
+    all_java_sources = java_sources + test_sources
+    legacy_cancel_callers = [str(path.relative_to(ROOT)) for path in all_java_sources if "FileOps.cancelRequested" in path.read_text(encoding="utf-8")]
+    require(not legacy_cancel_callers, "no legacy global file-cancellation references remain in production or test Java sources")
     toxi_tools = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
     lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
     require(toxi_tools.count('OperationCancellation.Token operationToken') == 3 and 'cancellation.cancelActive()' in toxi_tools, "Developer file tools cancel and clean up their own worker operations")

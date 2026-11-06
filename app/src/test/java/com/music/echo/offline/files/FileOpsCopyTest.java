@@ -1,6 +1,5 @@
 package com.music.echo.offline.files;
 
-import org.junit.After;
 import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +8,6 @@ import java.nio.file.Files;
 import static org.junit.Assert.*;
 
 public class FileOpsCopyTest {
-    @After public void resetCancellation() { FileOps.cancelRequested = false; }
 
     @Test public void uniqueRejectsProviderAndPeerSuppliedPathTraversalNames() throws Exception {
         File root = Files.createTempDirectory("toxifiles-unique-").toFile();
@@ -62,9 +60,15 @@ public class FileOpsCopyTest {
         File source = new File(root, "source.txt");
         Files.write(source.toPath(), "payload".getBytes(StandardCharsets.UTF_8));
         File target = new File(root, "target.txt");
-        FileOps.cancelRequested = true;
-        try { FileOps.copy(source, target); fail("Cancelled copy continued"); }
-        catch (IOException expected) { assertFalse(target.exists()); }
+        OperationCancellation cancellation = new OperationCancellation();
+        OperationCancellation.Token token = cancellation.begin();
+        try {
+            cancellation.cancelActive();
+            try { FileOps.copy(source, target); fail("Cancelled copy continued"); }
+            catch (IOException expected) { assertFalse(target.exists()); }
+        } finally {
+            cancellation.finish(token);
+        }
         File[] leftovers = root.listFiles((dir, name) -> name.startsWith(".toxifiles-copy-"));
         assertNotNull(leftovers);
         assertEquals(0, leftovers.length);
