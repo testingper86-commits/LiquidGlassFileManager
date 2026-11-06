@@ -36,17 +36,49 @@ final class ToxiToolCore {
         for(int p=offset;p<offset+length;p+=16){out.append(String.format(Locale.US,"%08X  ",p));int end=Math.min(p+16,offset+length);for(int i=p;i<p+16;i++){if(i<end)out.append(String.format(Locale.US,"%02X ",bytes[i]&255));else out.append("   ");if(i-p==7)out.append(' ');}out.append(" |");for(int i=p;i<end;i++){int c=bytes[i]&255;out.append(c>=32&&c<127?(char)c:'.');}out.append("|\n");}return out.toString();
     }
     static byte[] parseHex(String text) {
+        if (text == null || text.length() > MAX_HEX_BYTES * 4L) throw new IllegalArgumentException("Hex input exceeds the supported text limit");
         StringBuilder digits = new StringBuilder();
-        for (String line : text.split("\\R")) {
-            int ascii = line.indexOf('|'); if (ascii >= 0) line = line.substring(0, ascii);
-            line = line.replaceFirst("(?i)^\\s*[0-9a-f]{8}\\s+", "").replaceFirst("//.*$|#.*$", "").replaceAll("(?i)0x|[\\s,:;_-]", "");
-            digits.append(line);
+        int lineStart = 0;
+        while (lineStart <= text.length()) {
+            int lineEnd = lineStart;
+            while (lineEnd < text.length() && text.charAt(lineEnd) != '\n' && text.charAt(lineEnd) != '\r'
+                    && text.charAt(lineEnd) != '\u0085' && text.charAt(lineEnd) != '\u2028' && text.charAt(lineEnd) != '\u2029') lineEnd++;
+            String line = text.substring(lineStart, lineEnd);
+            int ascii = line.indexOf('|');
+            if (ascii >= 0) line = line.substring(0, ascii);
+            int prefix = 0;
+            while (prefix < line.length() && Character.isWhitespace(line.charAt(prefix))) prefix++;
+            int offsetEnd = prefix;
+            while (offsetEnd < line.length() && offsetEnd - prefix < 8 && Character.digit(line.charAt(offsetEnd), 16) >= 0) offsetEnd++;
+            if (offsetEnd - prefix == 8 && offsetEnd < line.length() && Character.isWhitespace(line.charAt(offsetEnd))) {
+                while (offsetEnd < line.length() && Character.isWhitespace(line.charAt(offsetEnd))) offsetEnd++;
+                line = line.substring(offsetEnd);
+            }
+            int comment = line.length();
+            for (int i = 0; i < line.length(); i++) {
+                if (line.charAt(i) == '#' || (line.charAt(i) == '/' && i + 1 < line.length() && line.charAt(i + 1) == '/')) {
+                    comment = i;
+                    break;
+                }
+            }
+            for (int i = 0; i < comment; i++) {
+                char c = line.charAt(i);
+                if (c == '0' && i + 1 < comment && (line.charAt(i + 1) == 'x' || line.charAt(i + 1) == 'X')) {
+                    i++;
+                    continue;
+                }
+                if (Character.isWhitespace(c) || c == ',' || c == ':' || c == ';' || c == '_' || c == '-') continue;
+                if (Character.digit(c, 16) < 0) throw new IllegalArgumentException("Only hexadecimal byte pairs are allowed");
+                digits.append(c);
+                if (digits.length() > MAX_HEX_BYTES * 2L) throw new IllegalArgumentException("Hex input exceeds the supported byte limit");
+            }
+            if (lineEnd == text.length()) break;
+            lineStart = lineEnd + 1;
+            if (text.charAt(lineEnd) == '\r' && lineStart < text.length() && text.charAt(lineStart) == '\n') lineStart++;
         }
-        String cleaned = digits.toString();
-        if ((cleaned.length() & 1) != 0) throw new IllegalArgumentException("Hex input must contain complete byte pairs");
-        if (!cleaned.matches("(?i)[0-9a-f]*")) throw new IllegalArgumentException("Only hexadecimal byte pairs are allowed");
-        byte[] out = new byte[cleaned.length() / 2];
-        for (int i = 0; i < out.length; i++) out[i] = (byte) Integer.parseInt(cleaned.substring(i * 2, i * 2 + 2), 16);
+        if ((digits.length() & 1) != 0) throw new IllegalArgumentException("Hex input must contain complete byte pairs");
+        byte[] out = new byte[digits.length() / 2];
+        for (int i = 0; i < out.length; i++) out[i] = (byte) Integer.parseInt(digits.substring(i * 2, i * 2 + 2), 16);
         return out;
     }
     static String decode(byte[] bytes, String charsetName) throws Exception {

@@ -23,6 +23,9 @@ public class ToxiToolCoreTest {
         byte[] source=new byte[]{0,1,15,16,31,32,65,90,(byte)255};
         assertArrayEquals(source,ToxiToolCore.parseHex(ToxiToolCore.formatHex(source,0,source.length)));
     }
+    @Test public void hexParserSupportsOffsetsPrefixesAndInlineComments() {
+        assertArrayEquals(new byte[]{(byte)0xab,0x10,(byte)0xcd,(byte)0xef},ToxiToolCore.parseHex("0xAB, 10 # comment\r\n00000002  CD EF // comment"));
+    }
     @Test public void hexRejectsIncompleteAndNonHexInput() {
         try{ToxiToolCore.parseHex("A");fail("odd nibble accepted");}catch(IllegalArgumentException expected){}
         try{ToxiToolCore.parseHex("GG");fail("non-hex accepted");}catch(IllegalArgumentException expected){}
