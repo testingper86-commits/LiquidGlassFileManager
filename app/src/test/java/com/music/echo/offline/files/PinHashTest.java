@@ -7,6 +7,10 @@ import java.security.MessageDigest;
 import java.util.Locale;
 
 public class PinHashTest {
+    @Test public void rejectsVerifierIterationCountsOutsideSafeBounds() {
+        assertFalse(PinHash.verify("1234", "pbkdf2$1$abc$def", "lgvault:"));
+        assertFalse(PinHash.verify("1234", "pbkdf2$999999999$abc$def", "lgvault:"));
+    }
     @Test public void saltedHashesDifferAndVerify() {
         String first = PinHash.create("0042");
         String second = PinHash.create("0042");

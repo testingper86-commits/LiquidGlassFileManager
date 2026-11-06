@@ -70,7 +70,7 @@ final class ToxiVisualSystem {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
         ACCENT = ToxiThemeSystem.ACCENTS[THEME_INDEX];
         CANVAS = ToxiThemeSystem.CANVAS[THEME_INDEX];
-        TEXT_SECONDARY = ToxiThemeSystem.MUTED[THEME_INDEX];
+        TEXT_SECONDARY = HIGH_CONTRAST ? 0xFFE8EEF5 : ToxiThemeSystem.MUTED[THEME_INDEX];
         EDGE_STROKE = ToxiThemeSystem.EDGES[THEME_INDEX];
         if (save && PREFERENCES != null) PREFERENCES.edit().putInt("theme", THEME_INDEX).apply();
     }

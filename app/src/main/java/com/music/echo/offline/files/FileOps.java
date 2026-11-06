@@ -100,7 +100,12 @@ final class FileOps {
                         fail++; err = "Can't put a folder inside itself"; continue;
                     }
                     File t = unique(dst, s.getName());
-                    if (move) { if (!s.renameTo(t)) { copy(s, t); deleteTree(s); } } else copy(s, t);
+                    if (move) {
+                        if (!s.renameTo(t)) {
+                            copy(s, t);
+                            if (!deleteTree(s)) throw new IOException("Copied to destination, but source could not be removed; both copies were kept");
+                        }
+                    } else copy(s, t);
                     ok++;
                 } catch (Exception ex) { fail++; err = String.valueOf(ex.getMessage()); }
             }
@@ -193,6 +198,8 @@ final class FileOps {
                 if (!dest.mkdirs() && !dest.isDirectory()) throw new IOException("Unable to create extraction folder");
                 String root = dest.getCanonicalPath();
                 long expanded = 0L;
+                final long initialFreeSpace = dest.getUsableSpace();
+                java.util.Set<String> extractedPaths = new java.util.HashSet<>();
                 try (ZipFile z = new ZipFile(zip)) {
                     int total = z.size(), idx = 0;
                     if (total > 20_000) throw new IOException("Archive has too many entries");
@@ -206,7 +213,9 @@ final class FileOps {
                         a.runOnUiThread(() -> a.progress("Extracting " + fi + " of " + ft + ": " + nm));
                         String entryName = e.getName();
                         if (entryName == null || entryName.isEmpty() || entryName.startsWith("/") || entryName.startsWith("\\") || entryName.matches("^[A-Za-z]:.*")) continue;
-                        File o = new File(dest, entryName);
+                        String normalizedName = ArchivePath.normalize(entryName, e.isDirectory());
+                        if (!extractedPaths.add(normalizedName)) throw new IOException("Archive contains duplicate entry paths");
+                        File o = new File(dest, normalizedName);
                         String cp = o.getCanonicalPath();
                         if (!cp.startsWith(root + File.separator)) continue; // zip-slip guard
                         if (e.isDirectory()) { if (!o.mkdirs() && !o.isDirectory()) throw new IOException("Unable to create archive folder"); continue; }
@@ -220,7 +229,7 @@ final class FileOps {
                                 checkCancelled();
                                 entryBytes += n; expanded += n;
                                 if (entryBytes > 2L * 1024 * 1024 * 1024 || expanded > 4L * 1024 * 1024 * 1024) throw new IOException("Archive expanded-size limit exceeded");
-                                if (n > dest.getUsableSpace()) throw new IOException("Not enough free space to extract archive");
+                                if (expanded > initialFreeSpace) throw new IOException("Not enough free space to extract archive");
                                 out.write(buf, 0, n);
                             }
                         } catch (Exception writeError) { o.delete(); throw writeError; }

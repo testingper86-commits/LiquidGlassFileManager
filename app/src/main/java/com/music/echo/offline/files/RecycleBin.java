@@ -65,7 +65,10 @@ final class RecycleBin {
                     File wrapper = new File(root(a), wrapName);
                     if (!wrapper.mkdirs()) { fail++; continue; }
                     File target = new File(wrapper, s.getName());
-                    if (!s.renameTo(target)) { FileOps.copy(s, target); FileOps.deleteTree(s); }
+                    if (!s.renameTo(target)) {
+                        FileOps.copy(s, target);
+                        if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
+                    }
                     ok++;
                 } catch (Exception ex) { fail++; }
             }
@@ -112,11 +115,17 @@ final class RecycleBin {
             try {
                 File destDir = it.originalParent;
                 boolean fellBack = destDir == null || !destDir.isDirectory();
-                if (fellBack) destDir = Environment.getExternalStorageDirectory();
+                if (fellBack) {
+                    destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!destDir.isDirectory() && !destDir.mkdirs()) throw new java.io.IOException("Unable to create Downloads folder for restore");
+                }
                 File target = FileOps.unique(destDir, it.file.getName());
-                if (!it.file.renameTo(target)) { FileOps.copy(it.file, target); FileOps.deleteTree(it.file); }
-                FileOps.deleteTree(it.wrapper);
-                msg = fellBack ? "Restored to internal storage (original folder is gone)" : "Restored " + target.getName();
+                if (!it.file.renameTo(target)) {
+                    FileOps.copy(it.file, target);
+                    if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept");
+                }
+                if (!FileOps.deleteTree(it.wrapper)) throw new java.io.IOException("Restored file, but Recycle Bin cleanup failed");
+                msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
@@ -139,9 +148,16 @@ final class RecycleBin {
         a.ops.execute(() -> {
             FileOps.cancelRequested = false;
             File[] ws = root(a).listFiles();
-            int n = ws == null ? 0 : ws.length;
-            if (ws != null) for (File w : ws) { if (FileOps.cancelRequested) break; FileOps.deleteTree(w); }
-            a.runOnUiThread(() -> { a.busy(false); d.run("Recycle Bin emptied (" + n + " item" + (n == 1 ? "" : "s") + ")"); });
+            int deleted = 0, failed = 0;
+            boolean cancelled = false;
+            if (ws != null) for (File w : ws) {
+                if (FileOps.cancelRequested) { cancelled = true; break; }
+                if (FileOps.deleteTree(w)) deleted++; else failed++;
+            }
+            final int fdeleted = deleted, ffailed = failed;
+            final boolean fcancelled = cancelled;
+            final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
+                    + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
         });
     }
 

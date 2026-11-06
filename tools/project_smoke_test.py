@@ -1,297 +1,128 @@
-#!/usr/bin/env python3
-"""Fast, offline structural regression checks for Liquid Files."""
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-ANDROID = '{http://schemas.android.com/apk/res/android}'
+ANDROID = "{http://schemas.android.com/apk/res/android}"
 
 def require(condition, message):
     if not condition:
         raise AssertionError(message)
-    print(f'PASS: {message}')
+    print(f"PASS: {message}")
+
+def source(path):
+    return (ROOT / path).read_text(encoding="utf-8")
 
 def main():
     required = [
-        'settings.gradle.kts', 'build.gradle.kts', 'app/build.gradle.kts',
-        'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties',
-        'gradlew', 'gradlew.bat', 'app/src/main/AndroidManifest.xml',
-        'app/src/main/java/com/music/echo/offline/files/MainActivity.java',
-        'app/src/main/java/com/music/echo/offline/files/FileOps.java',
-        '.github/workflows/android-build.yml',
+        "app/src/main/AndroidManifest.xml",
+        "app/src/main/java/com/music/echo/offline/files/MainActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
+        "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
+        "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
+        "app/src/main/java/com/music/echo/offline/files/FileOps.java",
+        "app/src/main/java/com/music/echo/offline/files/ArchivePath.java",
+        "app/src/main/java/com/music/echo/offline/files/Vault.java",
+        "app/src/main/java/com/music/echo/offline/files/PinHash.java",
+        "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
+        "app/src/main/java/com/music/echo/offline/files/Indexer.java",
+        "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/ViewerActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/CrashLogger.java",
+        "tools/developer_studio_smoke_test.py",
+        "tools/video_lifecycle_regression_test.py",
     ]
-    for rel in required:
-        path = ROOT / rel
-        require(path.is_file() and path.stat().st_size > 0, f'required project file exists: {rel}')
+    for item in required:
+        p = ROOT / item
+        require(p.is_file() and p.stat().st_size > 0, f"required source exists: {item}")
 
-    manifest_path = ROOT / 'app/src/main/AndroidManifest.xml'
-    manifest = ET.parse(manifest_path).getroot()
-    perms = {n.attrib.get(ANDROID + 'name') for n in manifest.findall('uses-permission')}
-    require('android.permission.INTERNET' in perms, 'manifest declares INTERNET permission used by optional LAN features')
-    require('android.permission.FOREGROUND_SERVICE' in perms and 'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK' in perms, 'foreground media-playback permissions declared for built-in background audio')
-    app = manifest.find('application')
-    require(app is not None, 'manifest has application node')
-    require(app.attrib.get(ANDROID + 'allowBackup') == 'false', 'Android system backup is disabled for private app state')
-    paths = ET.parse(ROOT / 'app/src/main/res/xml/file_paths.xml').getroot()
-    path_names = {node.tag for node in paths}
-    require(not any(node.tag == 'root-path' for node in paths), 'FileProvider does not expose the filesystem root')
-    require(any(node.tag == 'external-path' and node.attrib.get('path') == '.' for node in paths), 'FileProvider external access is limited to shared storage, without filesystem-root access')
-    lan = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LanTransfer.java').read_text()
-    require('Unsafe incoming filename rejected' in lan and 'getCanonicalPath().startsWith(rootPath)' in lan, 'LAN receive validates filenames and canonical destination containment')
-    require('setSoTimeout(120_000)' in lan and 'Transfer confirmation timed out' in lan, 'LAN receive has socket and consent timeouts')
-    require('Not enough free space for this transfer' in lan and 'count > 500' in lan, 'LAN receive bounds transfer metadata and checks free space')
-    require('PBKDF2WithHmacSHA256' in lan and 'HmacSHA256' in lan and 'AES/GCM/NoPadding' in lan and 'Pairing code is incorrect' in lan, 'LAN transfer uses one-time pairing authentication and AES-GCM encryption')
-    main_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    main_activity = next((a for a in app.findall('activity') if a.attrib.get(ANDROID + 'name') == '.files.MainActivity'), None)
-    require(main_activity is not None and main_activity.attrib.get(ANDROID + 'enableOnBackInvokedCallback') == 'false'
-            and '@Override public void onBackPressed()' in main_src,
-            'Android 13+ Back dispatch preserves MainActivity overlay, Settings and file-navigation handling')
-    require('10-character pairing code' in main_src and 'Files are encrypted during transfer' in main_src, 'LAN UI communicates pairing and encrypted-transfer requirements')
-    require('List<IncomingFile> incomingFiles' in lan and 'incomingNames' in lan and 'Files:' in main_src and 'names.size() > shown' in main_src, 'LAN receiver shows verified filenames before the user accepts a transfer')
-    require("name.indexOf('/') >= 0" in lan and "name.indexOf('\\\\') >= 0" in lan, 'LAN rejects path separators rather than silently renaming untrusted paths')
-    require('portableSettingKeys()' in main_src and 'Settings file exceeds the 1 MB limit' in main_src, 'settings import is size-limited and restricted to portable preferences')
-    require('if (!allowed.contains(k)) continue;' in main_src and 'applock_on' not in main_src[main_src.index('private static java.util.Set<String> portableSettingKeys()'):main_src.index('// ---------------- LARGEST FILES')], 'settings import cannot overwrite App Lock or other non-portable security preferences')
-    pin_hash = (ROOT / 'app/src/main/java/com/music/echo/offline/files/PinHash.java').read_text()
-    require('PBKDF2WithHmacSHA256' in pin_hash and 'SecureRandom' in pin_hash and 'MessageDigest.isEqual' in pin_hash, 'PIN verifiers use salted PBKDF2 and constant-time comparison')
-    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/PinHashTest.java').is_file() and 'testImplementation(\"junit:junit:4.13.2\")' in (ROOT / 'app/build.gradle.kts').read_text(), 'PIN verifier has automated unit tests for salt, legacy migration and malformed input')
-    app_lock = (ROOT / 'app/src/main/java/com/music/echo/offline/files/AppLock.java').read_text()
-    vault = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Vault.java').read_text()
-    require('failed_attempts' in app_lock and 'blocked_until' in app_lock and 'Math.min(15 * 60_000L' in app_lock, 'App Lock applies persistent escalating PIN lockout')
-    require('failed_attempts' in vault and 'blocked_until' in vault and 'Math.min(15 * 60_000L' in vault, 'Vault applies persistent escalating PIN lockout')
-    require('UUID.randomUUID()' in vault and 'UUID.randomUUID()' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/RecycleBin.java').read_text(), 'Vault and Recycle Bin wrapper names avoid timestamp collisions')
-    require('writeMetadata(wrapper, parent.getAbsolutePath())' in vault and 'readMetadata(meta)' in vault and 'META_FILE = \".vault_meta\"' in vault, 'Vault original-path metadata is encrypted at rest')
-    decrypt_src = vault[vault.index('private static void decryptFile'):vault.index('private static final String META_FILE')]
-    require('c.doFinal(); // throws if the GCM authentication tag is invalid' in decrypt_src and 'toxifiles-decrypt-' in decrypt_src and 'CipherInputStream' not in decrypt_src, 'Vault decrypt authenticates AES-GCM before publishing plaintext')
-    require('origPath = \"\"' in vault and 'encrypted copies are safe' in vault, 'Vault keeps entries visible when metadata is unreadable and reports source cleanup failures')
-    browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
-    require('Copy SHA-256' in browser and 'MessageDigest.getInstance(\"SHA-256\")' in browser and 'SHA-256 copied' in browser, 'file properties can compute and copy a SHA-256 digest')
-    require('Strip GPS metadata (save copy)' in browser and 'cleaned.setAttribute(tag, null)' in browser and 'The original stays unchanged' in browser, 'image GPS stripping creates a separate copy and preserves the original')
-    require('androidx.documentfile:documentfile:1.0.1' in (ROOT / 'app/build.gradle.kts').read_text() and 'copyToSafTree' in main_src and 'copyLocalToSaf' in main_src, 'SD/USB storage supports recursive outbound copies through the Storage Access Framework')
-    require('FLAG_GRANT_WRITE_URI_PERMISSION' in main_src and 'saf_tree' in main_src, 'SD/USB read/write access is persisted for later sessions')
-    require('.toxifiles-import-' in main_src and 'FileOps.checkCancelled(); out.write(buf, 0, n)' in main_src and 'External storage returned no input stream' in main_src, 'SAF imports are cancellable and publish only completed files')
-    require('.toxifiles-settings-' in main_src and 'pending.renameTo(dest)' in main_src, 'settings export publishes atomically through a temporary file')
-    require('Encrypted at rest with AES-GCM' in browser and 'it does not encrypt them' not in browser, 'Vault UI accurately describes encryption at rest')
-    require('Symbolic links are not copied' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text() and 'Symbolic links cannot be stored in Vault' in vault, 'recursive file operations reject symbolic links')
-    file_ops = (ROOT / 'app/src/main/java/com/music/echo/offline/files/FileOps.java').read_text()
-    require('Archive has too many entries' in file_ops and 'Archive expanded-size limit exceeded' in file_ops and 'deleteTree(dest)' in file_ops, 'archive extraction bounds expansion and removes partial output on failure')
-    require("Can't read folder" in file_ops and 't.delete(); throw copyError' in file_ops and 'Zip failed:' in file_ops, 'failed copies and archives clean partial outputs and reject unreadable directories')
-    require('kids == null' in vault and 'encrypted folder' in vault, 'Vault refuses incomplete directory reads instead of encrypting/restoring partial trees')
-    require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, 'file operations expose cancellation checks with partial-output cleanup')
-    require('skipExisting' in file_ops and 'skipped > 0' in file_ops and 'Skip existing' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text() and 'Keep both' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text(), 'copy and move operations offer explicit conflict handling')
-    require('Tap to request cancellation' in main_src and 'tap to cancel' in main_src and 'LanTransfer.cancel()' in main_src, 'progress control exposes cancellation for file and LAN operations')
-    require('FLAG_SECURE' in main_src and 'v == vaultScroll' in main_src, 'Vault and App Lock surfaces block screenshots')
-    require('onUserLeaveHint()' in main_src and 'ACTION_SCREEN_OFF' in main_src and 'unlocked = false; // re-lock every time the app leaves the foreground' not in main_src, 'App Lock re-arms on actual app departure and screen-off, not every Activity pause')
-    require('if (overlayView == vaultScroll) closeOverlay()' in main_src, 'Vault overlay closes and re-locks when the user backgrounds the app')
-    glyphs = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text()
-    ui_src = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
-    require('setContentDescription(Glyphs.label(glyph))' in ui_src and 'static String label(int kind)' in glyphs, 'vector action buttons have screen-reader labels')
-    require('setMinimumWidth(dp(48))' in ui_src and 'setMinimumHeight(dp(48))' in ui_src, 'icon action controls declare 48dp minimum touch targets')
-    require("high_text_contrast_enabled" in ui_src and 'highContrast ? (strong ? 118 : 88)' in ui_src, 'glass surfaces strengthen contrast when Android high-contrast text is enabled')
-    require('static void press(View v)' in ui_src and 'v.setOnTouchListener' not in ui_src and 'setOnClickListener' in main_src, 'global touch effects do not intercept native click dispatch')
-    indexer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text()
-    require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, 'indexer avoids symlink traversal and bounds large-library memory use')
-    require('quick search and overview are limited' in main_src, 'large-library index truncation is communicated to users')
-    build_gradle = (ROOT / 'app/build.gradle.kts').read_text()
-    require('versionCode = 3' in build_gradle and 'versionName = \"1.2.0\"' in build_gradle, 'application version is advanced for the security and feature release')
-    require('ANDROID_KEYSTORE_PATH' in build_gradle and 'signingConfig = signingConfigs.getByName(\"release\")' in build_gradle, 'release builds support environment-provided signing without committing keystore material')
+    manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
+    app = manifest.find("application")
+    require(app is not None, "manifest has an application node")
+    require(app.attrib.get(ANDROID + "allowBackup") == "false", "Android system backup is disabled")
+    require(app.attrib.get(ANDROID + "usesCleartextTraffic") == "false", "cleartext HTTP traffic is disabled")
+    require(app.attrib.get(ANDROID + "fullBackupContent") == "@xml/backup_rules" and app.attrib.get(ANDROID + "dataExtractionRules") == "@xml/data_extraction_rules", "cloud backup and device-transfer exclusions are explicitly configured")
+    backup = ET.parse(ROOT / "app/src/main/res/xml/backup_rules.xml").getroot()
+    extraction = ET.parse(ROOT / "app/src/main/res/xml/data_extraction_rules.xml").getroot()
+    require(len(backup.findall("exclude")) >= 5 and len(extraction.findall("cloud-backup/exclude")) >= 5 and len(extraction.findall("device-transfer/exclude")) >= 5, "private files, databases, preferences and external state are excluded from backup")
+    permissions = {p.attrib.get(ANDROID + "name") for p in manifest.findall("uses-permission")}
+    require("android.permission.INTERNET" in permissions and "android.permission.USE_BIOMETRIC" in permissions, "only required local-network and biometric permissions are declared")
+    file_paths = ET.parse(ROOT / "app/src/main/res/xml/file_paths.xml").getroot()
+    require(not any(node.tag == "root-path" for node in file_paths), "FileProvider does not expose the filesystem root")
 
-    require((ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').is_file() and 'AES/GCM/NoPadding' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN pairing and AES-GCM integrity have automated JVM tests')
-    require('filenamesRejectTraversalSeparatorsAndControlCharacters' in (ROOT / 'app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java').read_text(), 'LAN filename validation has automated traversal regression tests')
-
-    require('createBlurEffect(Ui.dp(18), Ui.dp(18)' in main_src and 'screens[tab].setRenderEffect(null)' in main_src, 'glass overlays use real Android 12+ backdrop blur with cleanup')
-    require('Ui.bool(\"blur\", false) && !Ui.highContrast' in main_src, 'backdrop blur is opt-in by default for performance and high-contrast accessibility is respected')
-    require('Re-locks after you leave the app or the screen turns off' in main_src and 'copy files out' in main_src, 'settings descriptions match App Lock lifecycle and bidirectional external storage')
-    manifest_text = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
-    require('android:screenOrientation=\"portrait\"' not in manifest_text, 'main file manager is not locked to portrait orientation')
-
-    viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
-    require('if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)' in viewer, 'viewer content blocks screenshots when App Lock is enabled')
-
-    require('audioLoopStartMs' in viewer and 'audioLoopEndMs' in viewer and 'A-B loop enabled. Tap to clear loop' in viewer and 'mp.seekTo(audioLoopStartMs)' in viewer, 'built-in audio player supports A-B repeat loops')
-
-    require('void advancedSearchDialog()' in browser and 'matchesAdvancedFilter(Entry e)' in browser and 'Modified in last 30 days' in browser and 'At least 100 MB' in browser, 'global search supports type, size and modification-date filters')
-
+    activities = {a.attrib.get(ANDROID + "name"): a for a in app.findall("activity")}
     launcher = []
-    for activity in app.findall('activity'):
-        filt = activity.find('intent-filter')
-        if filt is not None:
-            actions = {x.attrib.get(ANDROID + 'name') for x in filt.findall('action')}
-            cats = {x.attrib.get(ANDROID + 'name') for x in filt.findall('category')}
-            if 'android.intent.action.MAIN' in actions and 'android.intent.category.LAUNCHER' in cats:
-                launcher.append(activity.attrib.get(ANDROID + 'name'))
-    require(launcher == ['.files.MainActivity'], 'file manager remains the only launcher activity')
+    for name, activity in activities.items():
+        intent_filter = activity.find("intent-filter")
+        if intent_filter is None:
+            continue
+        actions = {n.attrib.get(ANDROID + "name") for n in intent_filter.findall("action")}
+        categories = {n.attrib.get(ANDROID + "name") for n in intent_filter.findall("category")}
+        if "android.intent.action.MAIN" in actions and "android.intent.category.LAUNCHER" in categories:
+            launcher.append(name)
+    require(launcher == [".files.MainActivity"], "ToxiFiles remains the only launcher activity")
+    developer_activity = activities.get(".files.DeveloperStudioActivity")
+    require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
-    file_ui = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    settings = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    require('Internet permission' in file_ui and 'local Wi-Fi transfer' in file_ui and
-            'No claim of zero network traffic is made here.' in file_ui,
-            'file-manager privacy text accurately describes network permission')
-    require('startActivity(new Intent(this, com.music.echo.offline.ui.MainActivity.class))' not in file_ui,
-            'file-manager Audio tab does not launch the separate Compose player')
-    activity_names = {a.attrib.get(ANDROID + 'name') for a in app.findall('activity')}
-    service_names = {a.attrib.get(ANDROID + 'name') for a in app.findall('service')}
-    require('.ui.MainActivity' not in activity_names and '.playback.MusicService' not in service_names,
-            'separate Compose player and MusicService are not registered in the app manifest')
-    require('.files.BackgroundAudioService' in service_names, 'built-in foreground audio service is registered')
-    require('Export settings' in settings and 'Import settings' in settings, 'file manager settings backup and restore remain available')
-    require('SETTINGS = 44' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Glyphs.java').read_text(), 'dedicated gear-shaped settings icon is available')
-    require('setTheme(sp.getInt(\"theme\", 0), false)' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'saved color-glass themes are restored on launch')
-    require('Haptic feedback' in settings and 'Backup & Restore' in settings, 'haptics and backup controls are inside developer options')
-    require('ImageView sb = Ui.iconBtn(this, Glyphs.SEARCH' not in settings, 'main page has no top-level search shortcut')
-    require('String[] lb = {\"Home\", \"Files\"}' in settings, 'main navigation no longer exposes Favorites')
-    require('case FileKinds.APK: return 6;' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Indexer.java').read_text(), 'APK files are categorized under Other')
-    require('toUpperCase(java.util.Locale.ROOT)' in settings, 'settings categories use consistent compact section headings')
-    require('int dialogListHeight()' in settings and 'Math.min(Ui.dp(520), available)' in settings and 'Ui.dp(430)' not in settings, 'dialog lists size to the available screen instead of fixed-height clipping')
-    require('t.setMinimumHeight(Ui.dp(136))' not in settings and 'String[] marks =' not in settings and 'marks[index]' not in settings, 'category cards are content-sized and obsolete theme glyph entries are removed')
-    require('homeScroll.setFillViewport(true)' in settings and 'homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2))' in settings and 'homeScroll.setClipToPadding(true)' in settings and 'homeScrollFooter' in settings and 'Ui.dp(160) + Ui.bottom' in settings, 'Home uses a real scroll-content footer and clips content above bottom navigation')
-    require('v.setText("+  " + t.toUpperCase(java.util.Locale.ROOT))' in settings and '(anyVisible ? "+  " : "-  ")' in settings, 'settings section indicators use safe non-corrupting characters')
-    require('No internet permission' not in settings,
-            'no contradictory claim that INTERNET permission is absent')
-    ui_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text()
-    browser_source = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
-    island_contract_test = (ROOT / 'tools/dynamic_island_regression_test.py').read_text()
-    require('syncNavigationVisibility(boolean selecting)' in settings and 'tab == 3 || overlayView != null || selecting' in settings,
-            'bottom navigation remains hidden on Settings and all overlay screens')
-    require('int overlayAlpha = Ui.highContrast ? 255 : 248;' in settings
-            and 'v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(Ui.bg), Color.green(Ui.bg), Color.blue(Ui.bg)))' in settings
-            and 'View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS' in settings and 'overlayBackgroundScreen' in settings
-            and 'overlayBackgroundVisibility' in settings and 'overlayBackgroundContent' in settings
-            and 'screens[tab].setVisibility(View.INVISIBLE)' in settings,
-            'modal overlays isolate their glass surface, hide inactive screens and restore them after closing')
-    require('restoreOverlayBackgroundAccessibility()' in settings and 'setImportantForAccessibility(overlayBackgroundAccessibility)' in settings
-            and 'setImportantForAccessibility(overlayBackgroundContentAccessibility)' in settings
-            and 'setVisibility(overlayBackgroundVisibility)' in settings,
-            'closing overlays restores the underlying screen visibility and accessibility state')
-    require('settingsScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom)' in settings,
-            'Settings uses a system-safe bottom inset without reserving space for hidden navigation')
-    require('TextView sectionLabel(String t)' in settings and 'about.addView(sectionLabel(' in settings and 'about.addView(section(' not in settings,
-            'About uses static headings instead of disabled expandable Settings controls')
-    require('hd.setMinimumHeight(Ui.dp(58))' in settings and 'home.addView(hd, new LinearLayout.LayoutParams(-1, -2))' in settings
-            and 'header.setMinimumHeight(Ui.dp(60))' in browser_source and 'headerLp = new LinearLayout.LayoutParams(-1, -2)' in browser_source,
-            'Home and file-browser headers wrap content while retaining their visual minimums')
-    require('static float textSizePx(Context c, float sp)' in ui_source and 'Ui.textSizePx(a, 15)' in browser_source,
-            'EditText and shared labels use one density-aware bounded typography policy')
-    require(not any(marker in settings for marker in ('â', 'Ã', 'Â', 'ï¸', 'ð', '�')),
-            'MainActivity source has no mojibake text or symbol sequences')
-    require('island.setVisibility(View.GONE)' in island_contract_test
-            and 'activity.busyCount > 0 || playerActive' in island_contract_test
-            and 'DynamicIslandView.setPlayerActive(playing)' in island_contract_test
-            and 'DynamicIslandView.showSettings(this)' in island_contract_test
-            and 'BackgroundAudioService.ACTION_STOP' in island_contract_test,
-            'static Dynamic Island regression covers idle visibility, file tasks, real playback, Settings and player controls')
+    main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    developer = source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java")
+    require('if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {' in main and 'startActivity(new Intent(this, DeveloperStudioActivity.class))' in main, "Developer Studio is exposed only after the existing Developer unlock")
+    require('private boolean developerUnlocked()' in developer and 'if(!developerUnlocked()){finish();return;}' in developer, "Developer Studio independently rejects direct access while locked")
+    require('private static final String[] NAMES' in developer and 'openTool(int index)' in developer, "all Developer tools share one functional internal tool registry")
+    require('Intent.ACTION_OPEN_DOCUMENT' in developer and 'Intent.ACTION_OPEN_DOCUMENT_TREE' in developer and 'getContentResolver().openInputStream(uri)' in developer and 'DocumentFile.fromTreeUri(this,root)' in developer, "Developer tools read user-selected files and folders through Android SAF")
 
-    gradle = (ROOT / 'app/build.gradle.kts').read_text()
-    require('applicationId = "com.liquidfiles.offline"' in gradle, 'fresh application ID is configured')
-    plugins_block = gradle.split('plugins {', 1)[1].split('}', 1)[0] if 'plugins {' in gradle else gradle
-    require('org.jetbrains.kotlin' not in plugins_block and 'com.google.devtools.ksp' not in plugins_block, 'unused Kotlin and KSP build plugins removed')
-    require(not (ROOT / 'app/src/main/kotlin').exists(), 'unused Echo-derived Compose player source tree removed')
-    workflow = (ROOT / '.github/workflows/android-build.yml').read_text()
-    require('pull_request:' in workflow and 'assembleDebug' in workflow,
-            'CI runs on pull requests and compiles debug APK')
-    require('project ZIP not found' not in workflow and 'unzip -q' not in workflow,
-            'CI builds source at repository root, not a nested ZIP')
-    require('python tools/dynamic_island_regression_test.py' in workflow
-            and 'Install and launch on Android 16 emulator' not in workflow
-            and 'Enable KVM access' not in workflow
-            and 'home_scroll_runtime_test.py' not in workflow,
-            'CI runs native Dynamic Island source-contract checks and does not provision or launch an emulator')
+    visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
+    icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
+    require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")
+    require('setMinimumWidth(dp(48))' in visual and 'setMinimumHeight(dp(48))' in visual and 'ToxiIcons.accessibilityLabel(symbol)' in visual, "shared icon controls have accessible labels and 48dp touch targets")
+    require('static void interactive(View view)' in visual and 'view.setOnTouchListener' not in visual and 'setOnClickListener' in main, "shared interaction styling does not intercept native click dispatch")
+    require('Obsidian Alloy' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java") and 'hasIndependentTokens()' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java"), "current theme catalog uses independent design tokens")
+    require('settingsScroll.setClipToPadding(true)' in main and 'ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET' in main, "Settings reserves scroll space above bottom navigation")
+    require('settings.addView(section("About"))' in main and 'About ToxiFiles' in main, "About remains at the bottom of Settings")
 
-    service_path = ROOT / 'app/src/main/java/com/music/echo/offline/files/BackgroundAudioService.java'
-    service = service_path.read_text()
-    require('private void prepareNext()' in service and 'private void promoteNext()' in service,
-            'background audio preloads and promotes the next queue item')
-    require('private final Runnable crossfadeTick' in service and 'crossfadeStartedAt' in service,
-            'background crossfade lifecycle is present')
-    require('if (player != mp)' in service and 'if (player == mp)' in service,
-            'stale asynchronous player callbacks cannot replace current playback')
-    require('handler.postDelayed(this, 250)' in service and 'if (player != null && prepared)' in service,
-            'background progress ticker remains scheduled while prepared')
-    require('player.pause()' in service and 'nextPlayer.pause()' in service,
-            'pause path accounts for both sides of an active crossfade')
-    require('pausedForTransientFocusLoss' in service and 'change == AudioManager.AUDIOFOCUS_LOSS' in service,
-            'permanent audio-focus loss does not automatically resume playback')
-    require('ACTION_PAUSE.equals(action)) { pausedForTransientFocusLoss = false; pause(); }' in service,
-            'explicit notification pause clears transient-focus auto-resume intent')
-    require('focusGranted = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED' in service and 'if (focusGranted)' in service,
-            'background playback respects denied audio focus')
-    require('abandonAudioFocusRequest(focusRequest)' in service and 'private void stopPlayback()' in service,
-            'audio focus is released when playback stops')
-    require('releaseNext();\n                prepareNext();' in service,
-            'same-track handoff refreshes preloaded queue item')
-    require('playbackVolume = intent == null ? 1.0f' in service and 'setVolume(playbackVolume, playbackVolume)' in service,
-            'background playback honors the foreground volume setting')
-    viewer = (ROOT / 'app/src/main/java/com/music/echo/offline/files/ViewerActivity.java').read_text()
-    require('new SquigglySeekBar(this)' in viewer and viewer.count('new SquigglySeekBar(this)') >= 2,
-            'audio and video use the clean squiggly playback control')
-    squiggle = (ROOT / 'app/src/main/java/com/music/echo/offline/files/SquigglySeekBar.java').read_text()
-    require('extends SeekBar' in squiggle and 'Math.sin' in squiggle and 'drawPath(path,paint)' in squiggle,
-            'custom squiggly progress control draws the played section while retaining native seek interaction')
-    require('new SquigglySeekBar(this)' in viewer and viewer.count('new SquigglySeekBar(this)') >= 2,
-            'audio and video playback use the new squiggly seek control')
-    require('USAGE_MEDIA' in viewer and 'CONTENT_TYPE_MUSIC' in viewer,
-            'foreground player declares standard media audio attributes')
-    require('putInt("audio_volume", value)' in viewer and 'putExtra("volume", audioVolume)' in viewer,
-            'audio volume persists and transfers to background playback')
-    require('void showQueueEditor()' in viewer and 'Collections.swap(paths, position, position - 1)' in viewer
-            and 'paths.remove(position)' in viewer, 'playback queue supports reordering and removal')
-    require('Frame â/ï¼' not in viewer and 'frameForward' not in viewer
-            and 'if (!videoLoop) advanceToNextVideo();' in viewer,
-            'unsupported frame-step control is removed and videos auto-advance on completion unless repeat is enabled')
-    require('Audio only' not in viewer and 'Aspect ratio' not in viewer and 'Audio & subtitle tracks' not in viewer
-            and 'Skip intro / outro' not in viewer and 'video_marker_' not in viewer,
-            'removed video-player audio-only, aspect, track picker, and intro/outro controls')
-    require('enterVideoImmersiveMode();' in viewer and 'WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE' in viewer
-            and 'LinearLayout primaryRow' in viewer and 'LinearLayout secondaryRow' in viewer
-            and 'setMediaController' not in viewer and 'SeekBar seekBar' in viewer
-            and 'formatVideoTime' in viewer,
-            'video playback uses immersive full-screen mode and an integrated seek/play control dock')
-    require('TextureView' in viewer and 'setSurfaceTextureListener' in viewer and 'player.setSurface(output)' in viewer
-            and 'new VideoView' not in viewer and 'Subtitles' not in viewer and 'subtitleOverlay' not in viewer,
-            'video frames render through TextureView and subtitle UI is removed')
-    require('new SquigglySeekBar(this)' in viewer and 'videoProgressAnimation' not in viewer and 'audioProgressAnimation' not in viewer,
-            'audio and video playback use only the custom squiggly progress control')
-    require('sound.json' not in viewer and 'wave.json' not in viewer and 'LottieAnimationView' not in viewer,
-            'music and video players contain no sound/wave JSON visualizers')
-    assets = ROOT / 'app/src/main/assets'
-    require(not (assets / 'sound.json').exists() and not (assets / 'wave.json').exists(),
-            'sound.json and wave.json are removed from packaged Android assets')
-    require('com.airbnb.android:lottie' not in gradle, 'unused Lottie runtime dependency is removed')
-    main_activity = (ROOT / 'app/src/main/java/com/music/echo/offline/files/MainActivity.java').read_text()
-    require('categoryName = Indexer.CAT_NAMES[cat]' in main_activity and 'System apps' in main_activity and 'Downloaded apps' in main_activity and 'APK installer files' in main_activity and 'showOtherSections()' in main_activity,
-            'Other section contains APK files, system apps, downloaded apps, and settings')
-    require('settingsBtn.setContentDescription("Settings")' in main_activity and 'settingsBtn.setOnClickListener(v -> selectTab(3))' in main_activity,
-            'Settings is accessed from the top-right home header')
-    require('Usage & diagnostics' in main_activity and 'Built-in tools' in main_activity and 'phone\'s separate apps' in main_activity and 'Debug options' not in main_activity,
-            'developer options refer to integrated file-manager tools rather than mobile apps')
-    browser = (ROOT / 'app/src/main/java/com/music/echo/offline/files/BrowserView.java').read_text()
-    require('normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")' in browser,
-            'Videos and Music/Audio categories default to grid view')
-    require('Open LiquidDrive dashboard' not in main_activity and not (ROOT / 'app/src/main/java/com/music/echo/offline/files/DashboardActivity.java').exists(),
-            'LiquidDrive dashboard shortcut and activity are removed')
-    require('Cyber Theme Studio' in main_activity and 'Neon Cyan' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text() and 'Matrix Green' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(),
-            'appearance chooser provides selectable cyber themes')
-    require((ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text().count('Neon Cyan') == 1 and 'Cyber Magenta' in (ROOT / 'app/src/main/java/com/music/echo/offline/files/Ui.java').read_text(), 'five-theme cyber palette is installed')
-    require('void openTextEditor(File file)' in viewer and 'Text file saved' in viewer,
-            'built-in text editor can edit and save supported small text files')
-    require('Ui.bool("reduce_motion", true)' in main_activity,
-            'decorative motion is reduced by default')
-    manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
-    crash_logger = (ROOT / 'app/src/main/java/com/music/echo/offline/files/CrashLogger.java').read_text()
-    crash_app = (ROOT / 'app/src/main/java/com/music/echo/offline/files/LiquidFilesApplication.java').read_text()
-    require('android:name=".files.LiquidFilesApplication"' in manifest and 'CrashLogger.install(this)' in crash_app,
-            'uncaught crash logging is installed at application startup')
-    require('FATAL EXCEPTION' in crash_logger and 'latest_crash.txt' in crash_logger and 'printStackTrace' in crash_logger,
-            'crash logger persists Java exception stack traces locally')
-    require('Crash logs & diagnostics' in settings and 'maybeOfferCrashReport' in settings and 'shareCrashReport' in settings,
-            'crash reports can be offered after restart and manually shared from settings')
-    require('<files-path name="crash_logs" path="crash-logs/" />' in (ROOT / 'app/src/main/res/xml/file_paths.xml').read_text(),
-            'private crash report path is shareable through FileProvider')
-    print('\nAll structural smoke checks passed. This is not a substitute for Android compilation or device testing.')
+    file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
+    archive_path = source("app/src/main/java/com/music/echo/offline/files/ArchivePath.java")
+    require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, "file operations support cancellation")
+    require('ArchivePath.normalize(entryName, e.isDirectory())' in file_ops and 'initialFreeSpace' in file_ops and 'extractedPaths' in file_ops, "ZIP extraction validates paths, duplicate entries and cumulative storage use")
+    require('Unsafe archive entry path rejected' in archive_path and 'segment.isEmpty()' in archive_path and '"..".equals(segment)' in archive_path, "ZIP path normalization rejects traversal and ambiguous segments")
+    require((ROOT / "app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java").is_file(), "ZIP path validation has JVM regression tests")
+    require('Copied to destination, but source could not be removed' in file_ops and 'Recycle Bin: removed' in source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java"), "move and Recycle Bin operations report cleanup failures accurately")
 
-if __name__ == '__main__':
+    vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
+    pin_hash = source("app/src/main/java/com/music/echo/offline/files/PinHash.java")
+    require('AES/GCM/NoPadding' in vault and 'doFinal()' in vault and 'encrypted Vault cleanup was incomplete' in vault, "Vault uses authenticated encryption and reports incomplete cleanup")
+    require('iterations < 10_000' in pin_hash and 'iterations > 1_000_000' in pin_hash and 'MessageDigest.isEqual' in pin_hash, "PIN verification bounds PBKDF2 work and compares verifiers in constant time")
+    require((ROOT / "app/src/test/java/com/music/echo/offline/files/PinHashTest.java").is_file(), "PIN verification has automated boundary tests")
+    lan = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
+    require('PBKDF2WithHmacSHA256' in lan and 'AES/GCM/NoPadding' in lan and 'authProof' in lan, "local Wi-Fi transfer authenticates pairing and encrypts payloads")
+    require('getCanonicalPath().startsWith(rootPath)' in lan and 'Unsafe incoming filename rejected' in lan, "LAN receive validates names and canonical destination containment")
+    require((ROOT / "app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java").is_file(), "LAN transfer has cryptographic and filename regression tests")
+
+    indexer = source("app/src/main/java/com/music/echo/offline/files/Indexer.java")
+    require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, "file indexing avoids symlink traversal and bounds memory use")
+    html = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
+    require('setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html, "built-in HTML viewer blocks local file access and mixed content")
+    viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
+    require('TextureView' in viewer and 'setSurfaceTextureListener' in viewer and 'USAGE_MEDIA' in viewer and 'A-B loop enabled' in viewer, "built-in media viewer retains native video and audio playback controls")
+    crash = source("app/src/main/java/com/music/echo/offline/files/CrashLogger.java")
+    require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
+
+    require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
+    require('@android.annotation.SuppressLint("WrongConstant")' in main and 'Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION' in main, "SAF persistence uses explicit read/write grant flags")
+    require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
+
+    app_gradle = source("app/build.gradle.kts")
+    root_gradle = source("build.gradle.kts")
+    wrapper = source("gradle/wrapper/gradle-wrapper.properties")
+    require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'version "8.10.1"' in root_gradle and 'gradle-8.11.1-bin.zip' in wrapper, "API 36 release uses compatible Android Gradle and wrapper versions")
+    workflow = source(".github/workflows/release.yml")
+    require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and 'testDebugUnitTest lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
+    print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
+
+if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f'FAIL: {exc}', file=sys.stderr)
+        print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)

@@ -1724,6 +1724,7 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (AppLock.enabled(this) && !MainActivity.unlocked) { finish(); return; }
         if (backgroundAudioHandoff) {
             try {
                 String servicePath = BackgroundAudioService.activePath;

@@ -66,6 +66,7 @@ import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends Activity {
+    private Object backInvokedCallback;
     final ExecutorService io = Executors.newFixedThreadPool(2);
     final ExecutorService ops = Executors.newSingleThreadExecutor();
     final Set<String> favs = new LinkedHashSet<>();
@@ -81,7 +82,7 @@ public class MainActivity extends Activity {
     Uri safTree;
     ScrollView dupScroll;
     LinearLayout dup;
-    boolean unlocked = false;
+    static volatile boolean unlocked = false;
     BrowserView filesView, favView, listView;
     View[] screens;
     FrameLayout nav;
@@ -112,6 +113,12 @@ public class MainActivity extends Activity {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(R.style.AppTheme);
         super.onCreate(b);
+        if (Build.VERSION.SDK_INT >= 33) {
+            android.window.OnBackInvokedCallback callback = this::handleBackNavigation;
+            backInvokedCallback = callback;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback);
+        }
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(screenOffReceiver, screenOffFilter);
@@ -305,6 +312,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33 && backInvokedCallback != null) getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) backInvokedCallback);
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         super.onDestroy();
         io.shutdown();
@@ -569,13 +577,14 @@ public class MainActivity extends Activity {
 
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
 
-    @Override public void onBackPressed() {
-        // Consume Back only when the active list actually handled it. Otherwise close the overlay.
+    @Override public void onBackPressed() { handleBackNavigation(); }
+
+    private void handleBackNavigation() {
         if (overlayView == listView && listView.handleBack()) return;
         if (overlayView != null) { closeOverlay(); return; }
         if (tab == 1 && filesView.handleBack()) return;
         if (tab != 0) { selectTab(0); return; }
-        super.onBackPressed();
+        finish();
     }
 
     void buildNav() {
@@ -1616,6 +1625,7 @@ public class MainActivity extends Activity {
         } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open the storage picker on this device"); }
     }
 
+    @android.annotation.SuppressLint("WrongConstant")
     @Override protected void onActivityResult(int rq, int rc, Intent data) {
         super.onActivityResult(rq, rc, data);
         if (rc != RESULT_OK || data == null) return;

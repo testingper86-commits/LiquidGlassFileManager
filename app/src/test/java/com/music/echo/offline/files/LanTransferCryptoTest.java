@@ -49,4 +49,13 @@ public class LanTransferCryptoTest {
         try { tampered.doFinal(encrypted); fail("Tampered ciphertext must not authenticate"); }
         catch (AEADBadTagException expected) { /* authenticated encryption rejects changes */ }
     }
+    @Test public void pairingProofChangesWithSaltAndUnicodeNamesRemainValid() throws Exception {
+        byte[] salt = new byte[16]; Arrays.fill(salt, (byte) 3);
+        byte[] otherSalt = salt.clone(); otherSalt[0] ^= 0x55;
+        SecretKey key = LanTransfer.sessionKey("ABCD2345EF", salt);
+        SecretKey changed = LanTransfer.sessionKey("ABCD2345EF", otherSalt);
+        assertFalse(Arrays.equals(LanTransfer.authProof(key, salt), LanTransfer.authProof(changed, otherSalt)));
+        assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
+        assertRejected("nul" + ((char) 0) + "name.txt");
+    }
 }

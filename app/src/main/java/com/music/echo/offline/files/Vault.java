@@ -267,11 +267,14 @@ final class Vault {
             try {
                 File destDir = it.originalParent;
                 boolean fellBack = destDir == null || !destDir.isDirectory();
-                if (fellBack) destDir = Environment.getExternalStorageDirectory();
+                if (fellBack) {
+                    destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!destDir.isDirectory() && !destDir.mkdirs()) throw new IOException("Unable to create Downloads folder for restore");
+                }
                 File target = FileOps.unique(destDir, it.file.getName());
                 try { decryptTree(it.file, target); } catch (Exception decryptError) { FileOps.deleteTree(target); throw decryptError; } // no partial plaintext on failure
-                FileOps.deleteTree(it.wrapper);            // only remove the encrypted copy once that succeeds
-                msg = fellBack ? "Decrypted to internal storage (original folder is gone)" : "Decrypted and moved out: " + target.getName();
+                if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file is available, but encrypted Vault cleanup was incomplete");
+                msg = fellBack ? "Decrypted to Downloads (original folder is gone)" : "Decrypted and moved out: " + target.getName();
             } catch (Exception ex) { msg = "Failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });

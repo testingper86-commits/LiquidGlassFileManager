@@ -81,6 +81,12 @@ jobs:
       - name: Verify restricted offline Developer Studio
         run: python3 tools/developer_studio_smoke_test.py
 
+      - name: Verify current project and security contracts
+        run: python3 tools/project_smoke_test.py
+
+      - name: Verify media lifecycle regressions
+        run: python3 tools/video_lifecycle_regression_test.py
+
       - name: Run Android unit tests
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 

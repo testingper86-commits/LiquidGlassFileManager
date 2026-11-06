@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Focused source-level acceptance checks for the restricted offline Developer Studio."""
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "app/src/main/java/com/music/echo/offline/files"
@@ -27,7 +28,11 @@ for name in TOOLS:
     require(name in activity, "tool present: " + name)
 require("developer_options_unlocked" in activity and "onResume()" in activity and "finish()" in activity,
         "activity rechecks the existing Developer unlock gate")
-require("android:name=\".files.DeveloperStudioActivity\" android:exported=\"false\"" in manifest,
+manifest_root = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
+android_ns = "{http://schemas.android.com/apk/res/android}"
+app_node = manifest_root.find("application")
+dev_activity = next((item for item in app_node.findall("activity") if item.attrib.get(android_ns + "name") == ".files.DeveloperStudioActivity"), None)
+require(dev_activity is not None and dev_activity.attrib.get(android_ns + "exported") == "false" and dev_activity.find("intent-filter") is None,
         "Developer Studio activity is private and non-exported")
 require(main.count("new Intent(this, DeveloperStudioActivity.class)") == 1 and "Developer Studio" in main,
         "single Developer-only entry point exists in Settings")
