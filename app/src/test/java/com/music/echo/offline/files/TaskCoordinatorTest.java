@@ -22,6 +22,17 @@ public class TaskCoordinatorTest {
         finally { second.close(true); }
     }
 
+    @Test public void scopedExecutorSupportsExecuteAndSubmit() throws Exception {
+        TaskCoordinator.Scope scope = new TaskCoordinator.Scope();
+        try {
+            TaskCoordinator.ScopedExecutor executor = scope.executor(TaskCoordinator.Lane.IO);
+            assertEquals("submitted", executor.submit(() -> "submitted").get(5, TimeUnit.SECONDS));
+            CountDownLatch executed = new CountDownLatch(1);
+            executor.execute(executed::countDown);
+            assertTrue(executed.await(5, TimeUnit.SECONDS));
+        } finally { scope.close(true); }
+    }
+
     @Test public void gracefulCloseAllowsAcceptedWorkToFinish() throws Exception {
         TaskCoordinator.Scope scope = new TaskCoordinator.Scope();
         CountDownLatch started = new CountDownLatch(1);

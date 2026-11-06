@@ -63,11 +63,21 @@ final class TaskCoordinator {
         catch (RejectedExecutionException rejected) { return false; }
     }
 
+    static final class ScopedExecutor implements Executor {
+        private final Scope scope;
+        private final Lane lane;
+
+        private ScopedExecutor(Scope scope, Lane lane) { this.scope = scope; this.lane = lane; }
+        @Override public void execute(Runnable task) { scope.execute(lane, task); }
+        Future<?> submit(Runnable task) { return scope.submit(lane, task); }
+        <T> Future<T> submit(Callable<T> task) { return scope.submit(lane, task); }
+    }
+
     static final class Scope implements AutoCloseable {
         private final Set<FutureTask<?>> pending = ConcurrentHashMap.newKeySet();
         private volatile boolean closed;
 
-        Executor executor(Lane lane) { return task -> execute(lane, task); }
+        ScopedExecutor executor(Lane lane) { return new ScopedExecutor(this, lane); }
 
         void execute(Lane lane, Runnable task) { submit(lane, task); }
 

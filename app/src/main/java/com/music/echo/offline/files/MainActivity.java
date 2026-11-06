@@ -59,7 +59,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executor;
 import org.json.JSONObject;
 import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
@@ -67,8 +66,8 @@ import androidx.documentfile.provider.DocumentFile;
 public class MainActivity extends Activity {
     private Object backInvokedCallback;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
-    final Executor io = taskScope.executor(TaskCoordinator.Lane.IO);
-    final Executor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
+    final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
+    final TaskCoordinator.ScopedExecutor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
     final Set<String> favs = new LinkedHashSet<>();
     File[] clip;
     boolean clipCut;
@@ -1698,31 +1697,43 @@ public class MainActivity extends Activity {
                 }
             }
         } catch (Exception copyError) {
-            deleteSafTree(target);
+            try { deleteSafTree(target); }
+            catch (java.io.IOException cleanupError) { copyError.addSuppressed(cleanupError); }
             if (copyError instanceof java.io.IOException) throw (java.io.IOException) copyError;
             throw new java.io.IOException("Copy failed: " + copyError.getMessage(), copyError);
         }
     }
 
-    private void deleteSafTree(DocumentFile target) {
-        try { if (target.isDirectory()) { DocumentFile[] kids = target.listFiles(); if (kids != null) for (DocumentFile kid : kids) deleteSafTree(kid); } target.delete(); } catch (Exception ignored) { }
+    private void deleteSafTree(DocumentFile target) throws java.io.IOException {
+        if (target == null || !target.exists()) return;
+        if (target.isDirectory()) {
+            DocumentFile[] kids = target.listFiles();
+            if (kids == null) throw new java.io.IOException("External provider could not enumerate partial output for cleanup");
+            for (DocumentFile kid : kids) deleteSafTree(kid);
+        }
+        if (target.exists() && !target.delete())
+            throw new java.io.IOException("External provider refused to remove partial output: " + target.getName());
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
         ToxiVisualSystem.toast(this, "Loading\u2026");
         io.execute(() -> {
             final List<String[]> rows = new ArrayList<>(); // [docId, name, "1" dir / "0" file]
+            boolean querySucceeded = false;
             try {
                 Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(docUri));
-                Cursor c = getContentResolver().query(children, new String[]{
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
-                if (c != null) {
-                    while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1), DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
-                    c.close();
+                try (Cursor c = getContentResolver().query(children, new String[]{
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                    if (c != null) {
+                        querySucceeded = true;
+                        while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1), DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
+                    }
                 }
             } catch (Exception ignored) { }
+            final boolean readable = querySucceeded;
             runOnUiThread(() -> {
-                if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "Nothing here, or can't read this location"); return; }
+                if (!readable) { ToxiVisualSystem.toast(this, "This storage provider could not read the folder"); return; }
+                if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
                 for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i)[1];
                 new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {

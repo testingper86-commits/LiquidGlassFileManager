@@ -60,7 +60,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.concurrent.Executor;
 
 /** Built-in viewer: images (pinch zoom), video, audio, PDF and text. Works without any other app installed. */
 public class ViewerActivity extends Activity {
@@ -73,7 +72,7 @@ public class ViewerActivity extends Activity {
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
-    final Executor io = taskScope.executor(TaskCoordinator.Lane.IO);
+    final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
     final Handler h = new Handler(Looper.getMainLooper());
     MediaPlayer mp;
     MediaPlayer videoPlayer;
