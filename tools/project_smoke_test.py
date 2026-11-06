@@ -23,7 +23,9 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
+        "app/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
         "app/src/main/java/com/music/echo/offline/files/ArchivePath.java",
+        "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java",
         "app/src/main/java/com/music/echo/offline/files/Vault.java",
         "app/src/main/java/com/music/echo/offline/files/PinHash.java",
         "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
@@ -91,7 +93,10 @@ def main():
 
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     archive_path = source("app/src/main/java/com/music/echo/offline/files/ArchivePath.java")
-    require('requestCancel()' in file_ops and 'checkCancelled()' in file_ops and 'Operation cancelled' in file_ops, "file operations support cancellation")
+    cancellation = source("app/src/main/java/com/music/echo/offline/files/OperationCancellation.java")
+    require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
+    require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
+    require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
     require('ArchivePath.normalize(entryName, e.isDirectory())' in file_ops and 'initialFreeSpace' in file_ops and 'extractedPaths' in file_ops, "ZIP extraction validates paths, duplicate entries and cumulative storage use")
     require('Unsafe archive entry path rejected' in archive_path and 'segment.isEmpty()' in archive_path and '"..".equals(segment)' in archive_path, "ZIP path normalization rejects traversal and ambiguous segments")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java").is_file(), "ZIP path validation has JVM regression tests")
