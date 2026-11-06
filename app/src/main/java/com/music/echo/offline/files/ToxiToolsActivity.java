@@ -123,5 +123,5 @@ public final class ToxiToolsActivity extends Activity {
         if(uri==null)return;try{ToxiUriPermissions.takeGranted(getContentResolver(),uri,data.getFlags());}catch(Exception ignored){}
         switch(request){case PICK_HEX:showHex(uri);break;case PICK_HASH:showHash(uri);break;case PICK_ENCODE:showEncoding(uri);break;case CREATE_ENCODE:try{writeUri(uri,pendingOutput);info("Converted file saved: "+displayName(uri));}catch(Exception e){info("Save failed: "+e.getMessage());}pendingOutput=null;break;case PICK_ZIP:showZip(uri);break;case PICK_ZIP_ADD:try{File f=File.createTempFile("toxifiles-add-", ".bin",getCacheDir());try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(f)){if(in==null)throw new IOException("Cannot read selected file");byte[]b=new byte[65536];int n;long total=0;while((n=in.read(b))!=-1){total+=n;if(total>ToxiToolCore.MAX_ZIP_ENTRY_BYTES)throw new IOException("Added file exceeds 128 MB");out.write(b,0,n);}}zipAdds.put(displayName(uri),f);info("Queued "+displayName(uri)+" for archive");}catch(Exception e){info("Add failed: "+e.getMessage());}break;case PICK_TEXT:showText(uri);break;}
     }
-    @Override public void onBackPressed(){finish();}
+
 }
