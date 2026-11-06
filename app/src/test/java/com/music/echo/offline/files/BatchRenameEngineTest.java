@@ -118,12 +118,12 @@ public class BatchRenameEngineTest {
     @Test public void reportsMissingSourcesAndHandlesLargeBatches() throws Exception {
         File d=dir(), missing=new File(d,"missing.txt");
         assertFalse(BatchRenameEngine.plan(Arrays.asList(missing),options()).get(0).valid());
-        List<File> files=new ArrayList<>(); for(int i=0;i<250;i++) files.add(file(d,"item_"+i+".dat"));
+        List<File> files=new ArrayList<>(); for(int i=0;i<1000;i++) files.add(file(d,"item_"+i+".dat"));
         BatchRenameEngine.Options o=options(); o.suffix="_renamed";
         List<BatchRenameEngine.Item> plan=BatchRenameEngine.plan(files,o);
-        assertEquals(250,plan.size()); assertTrue(plan.stream().allMatch(BatchRenameEngine.Item::valid));
+        assertEquals(1000,plan.size()); assertTrue(plan.stream().allMatch(BatchRenameEngine.Item::valid));
         BatchRenameEngine.Result result=BatchRenameEngine.execute(plan); assertTrue(result.errors.toString(),result.success());
-        assertEquals(250,result.completed.size());
+        assertEquals(1000,result.completed.size());
     }
 
     @Test public void resolveChildRejectsTraversalAndSymlinkEscapes() throws Exception {

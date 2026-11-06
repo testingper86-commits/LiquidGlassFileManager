@@ -58,4 +58,14 @@ public class LanTransferCryptoTest {
         assertEquals("छवि.png", LanTransfer.validateFileName("छवि.png"));
         assertRejected("nul" + ((char) 0) + "name.txt");
     }
+
+    @Test public void incompleteTransferFilesAreRemovedAndCleanupIsIdempotent() throws Exception {
+        java.io.File pending = java.nio.file.Files.createTempFile("toxifiles-lan-", ".part").toFile();
+        assertTrue(pending.isFile());
+        LanTransfer.discardPendingFile(pending);
+        assertFalse(pending.exists());
+        LanTransfer.discardPendingFile(pending);
+        assertFalse(pending.exists());
+    }
+
 }
