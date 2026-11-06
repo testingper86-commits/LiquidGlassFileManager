@@ -213,7 +213,9 @@ final class NebulaHomeView {
         values.addView(storageValue(a, "USED", total > 0 ? formatSize(used) : "Unavailable", LIME), new LinearLayout.LayoutParams(0, -2, 1f));
         values.addView(storageValue(a, "AVAILABLE", total > 0 ? formatSize(available) : "Unavailable", ICE), new LinearLayout.LayoutParams(0, -2, 1f));
         card.addView(values);
-        card.setContentDescription(total > 0 ? "Device storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used." : "Device storage information unavailable.");
+        card.setContentDescription(total > 0 ? "Device storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
+        card.setFocusable(true);
+        card.setOnClickListener(v -> a.openStorageAnalyzer());
         host.addView(card, margins(a, -1, -2, 0, 0, 0, 20));
     }
 
