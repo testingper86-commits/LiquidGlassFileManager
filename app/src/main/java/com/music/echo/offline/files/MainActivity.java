@@ -1625,7 +1625,6 @@ public class MainActivity extends Activity {
         } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open the storage picker on this device"); }
     }
 
-    @android.annotation.SuppressLint("WrongConstant")
     @Override protected void onActivityResult(int rq, int rc, Intent data) {
         super.onActivityResult(rq, rc, data);
         if (rc != RESULT_OK || data == null) return;
@@ -1633,18 +1632,7 @@ public class MainActivity extends Activity {
             Uri tree = data.getData();
             if (tree == null) return;
             int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            // Use literal grant-flag combinations so Android Lint can verify the API contract.
-            try {
-                if ((grantedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0
-                        && (grantedFlags & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
-                    getContentResolver().takePersistableUriPermission(tree,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                } else if ((grantedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
-                    getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                } else if ((grantedFlags & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
-                    getContentResolver().takePersistableUriPermission(tree, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                }
-            } catch (SecurityException ignored) { /* session grant may still work */ }
+            ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);
             safTree = tree;
             getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
