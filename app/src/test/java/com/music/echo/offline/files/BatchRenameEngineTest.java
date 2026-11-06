@@ -145,6 +145,12 @@ public class BatchRenameEngineTest {
             BatchRenameEngine.resolveChild(parent, "escape.txt");
             fail("A symlink target outside the selected parent must be rejected");
         } catch (java.io.IOException expected) { }
+        try {
+            BatchRenameEngine.moveChild(link, new File(parent, "renamed.txt"));
+            fail("A move through an external symlink must be rejected");
+        } catch (java.io.IOException expected) { }
+        assertTrue("external symlink target remains untouched", outside.exists());
+        assertTrue("source symlink remains untouched", link.exists());
         File safe = BatchRenameEngine.resolveChild(parent, "safe name.txt");
         assertEquals(parent.getCanonicalFile(), safe.getParentFile().getCanonicalFile());
     }

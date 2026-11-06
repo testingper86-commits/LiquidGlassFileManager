@@ -1003,7 +1003,7 @@ final class BrowserView extends FrameLayout {
                     try {
                         File t = BatchRenameEngine.resolveChild(e.f.getParentFile(), n);
                         if (t.exists()) { ToxiVisualSystem.toast(a, "A file with that name exists"); return; }
-                        java.nio.file.Files.move(e.f.toPath(), t.toPath());
+                        BatchRenameEngine.moveChild(e.f, t);
                         a.renameFav(e.f, t);
                         endSelect();
                         a.afterOps();

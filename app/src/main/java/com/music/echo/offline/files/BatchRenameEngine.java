@@ -3,6 +3,8 @@ package com.music.echo.offline.files;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -77,7 +79,7 @@ final class BatchRenameEngine {
             try {
                 if (!item.source.exists()) throw new IOException("Source disappeared");
                 if (item.target.exists()) throw new IOException("Destination appeared before rename");
-                Files.move(item.source.toPath(), item.target.toPath());
+                moveChild(item.source, item.target);
                 result.completed.add(item);
             } catch (Exception e) {
                 result.errors.add(item.source.getName() + ": " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
@@ -95,7 +97,7 @@ final class BatchRenameEngine {
             try {
                 if (!item.target.exists()) throw new IOException("Renamed item is missing");
                 if (item.source.exists()) throw new IOException("Original name is occupied");
-                Files.move(item.target.toPath(), item.source.toPath());
+                moveChild(item.target, item.source);
                 result.completed.add(new Item(item.target, item.source, null));
             } catch (Exception e) {
                 result.errors.add(item.target.getName() + ": " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
@@ -111,7 +113,7 @@ final class BatchRenameEngine {
             Item done = result.completed.get(i);
             try {
                 if (done.target.exists() && !done.source.exists()) {
-                    Files.move(done.target.toPath(), done.source.toPath());
+                    moveChild(done.target, done.source);
                     if (done.target.exists() || !done.source.exists()) throw new IOException("Rollback did not restore the original path");
                 } else if (done.target.exists() || !done.source.exists()) {
                     throw new IOException("Both paths are occupied or the renamed item is missing; recovery record retained");
@@ -122,19 +124,44 @@ final class BatchRenameEngine {
             }
         }
     }
-    /** Resolve a user-selected child name and reject symlink or canonical-path escapes. */
+    /** Resolve one direct child with normalized path containment and explicit symlink rejection. */
     static File resolveChild(File parent, String name) throws IOException {
         if (parent == null) throw new IOException("Destination folder is required");
         String invalid = validateName(name);
         if (invalid != null) throw new IOException(invalid);
         File canonicalParent = parent.getCanonicalFile();
         if (!canonicalParent.isDirectory()) throw new IOException("Destination parent is not a directory");
-        File candidate = new File(canonicalParent, name).getCanonicalFile();
-        File actualParent = candidate.getParentFile();
-        if (actualParent == null || !canonicalParent.equals(actualParent)) {
+        Path parentPath = canonicalParent.toPath();
+        Path candidate = parentPath.resolve(name).normalize();
+        if (!parentPath.equals(candidate.getParent()) || !candidate.startsWith(parentPath)) {
             throw new IOException("Destination escapes the selected parent folder");
         }
-        return candidate;
+        if (Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) {
+            Path realTarget = candidate.toRealPath();
+            if (!parentPath.equals(realTarget.getParent())) {
+                throw new IOException("Destination resolves through a symbolic link outside the selected parent");
+            }
+        }
+        return candidate.toFile();
+    }
+
+    /** Revalidate both leaf paths immediately before moving; never follow a selected symlink. */
+    static void moveChild(File source, File target) throws IOException {
+        if (source == null || target == null || source.getParentFile() == null || target.getParentFile() == null) {
+            throw new IOException("Source and destination must be direct children of a folder");
+        }
+        File sourceParent = source.getParentFile().getCanonicalFile();
+        File targetParent = target.getParentFile().getCanonicalFile();
+        if (!sourceParent.equals(targetParent)) throw new IOException("Rename cannot move an item outside its parent folder");
+        File checkedSource = resolveChild(sourceParent, source.getName());
+        File checkedTarget = resolveChild(targetParent, target.getName());
+        if (!Files.exists(checkedSource.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new IOException("Source disappeared before rename");
+        if (Files.exists(checkedTarget.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new java.nio.file.FileAlreadyExistsException(checkedTarget.getName());
+        Files.move(checkedSource.toPath(), checkedTarget.toPath(), LinkOption.NOFOLLOW_LINKS);
+        if (Files.exists(checkedSource.toPath(), LinkOption.NOFOLLOW_LINKS)
+                || !Files.exists(checkedTarget.toPath(), LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Rename could not be verified after execution");
+        }
     }
 
     static String validateName(String name) {

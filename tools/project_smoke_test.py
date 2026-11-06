@@ -94,6 +94,8 @@ def main():
     require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
     require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
+    rename_engine = source("app/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
+    require("parentPath.resolve(name).normalize()" in rename_engine and "candidate.startsWith(parentPath)" in rename_engine and "LinkOption.NOFOLLOW_LINKS" in rename_engine and "BatchRenameEngine.moveChild(e.f, t)" in source("app/src/main/java/com/music/echo/offline/files/BrowserView.java"), "filesystem rename uses normalized direct-child paths and refuses symlink traversal")
 
     require("setOnItemLongClickListener" in main and "showSafDocumentActions(tree, docUri, title, selected, row[1]" in main, "existing SAF browser exposes document actions only from the selected row context")
     require('"Duplicate here"' in main and "SafStorageOperations.copyDocumentFile" in main and "SafStorageOperations.renameDocument" in main and "SafStorageOperations.deleteDocument" in main, "SAF browser wires duplicate, rename and permanent delete to provider operations")
