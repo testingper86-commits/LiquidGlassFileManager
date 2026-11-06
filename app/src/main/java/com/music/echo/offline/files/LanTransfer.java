@@ -295,12 +295,23 @@ final class LanTransfer {
                         byte[] finalPlain = cipher.doFinal();
                         if (finalPlain.length > 0) { fout.write(finalPlain); md.update(finalPlain); }
                         ok = hex(md).equals(expectHash);
-                    } catch (Exception decryptError) { pending.delete(); throw decryptError; }
-                    if (!ok) { pending.delete(); throw new IOException(name + " failed authentication or checksum verification"); }
+                    } catch (Exception decryptError) {
+                        try { discardPendingFile(pending); }
+                        catch (IOException cleanupError) { decryptError.addSuppressed(cleanupError); }
+                        throw decryptError;
+                    }
+                    if (!ok) {
+                        discardPendingFile(pending);
+                        throw new IOException(name + " failed authentication or checksum verification");
+                    }
                     try {
                         try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); }
-                        catch (IOException renameError) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
-                    } catch (Exception commitError) { pending.delete(); throw commitError; }
+                        catch (IOException renameError) { FileOps.copy(pending, dest); discardPendingFile(pending); }
+                    } catch (Exception commitError) {
+                        try { discardPendingFile(pending); }
+                        catch (IOException cleanupError) { commitError.addSuppressed(cleanupError); }
+                        throw commitError;
+                    }
                     out.writeBoolean(true); out.flush();
                 }
                 l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
@@ -316,6 +327,16 @@ final class LanTransfer {
             session.cancel();
             ACTIVE.compareAndSet(session, null);
             l.onError("LAN transfer could not be queued: " + rejected.getMessage());
+        }
+    }
+
+
+    /** Remove an uncommitted receive file and report cleanup failures. */
+    static void discardPendingFile(File pending) throws IOException {
+        if (pending == null || !pending.exists()) return;
+        if (!pending.delete() && pending.exists()) {
+            pending.deleteOnExit();
+            throw new IOException("Unable to remove incomplete transfer file: " + pending.getName());
         }
     }
 
