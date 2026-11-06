@@ -125,4 +125,27 @@ public class BatchRenameEngineTest {
         BatchRenameEngine.Result result=BatchRenameEngine.execute(plan); assertTrue(result.errors.toString(),result.success());
         assertEquals(250,result.completed.size());
     }
+
+    @Test public void resolveChildRejectsTraversalAndSymlinkEscapes() throws Exception {
+        File root = dir();
+        File parent = new File(root, "parent");
+        assertTrue(parent.mkdir());
+        try {
+            BatchRenameEngine.resolveChild(parent, "../outside.txt");
+            fail("Traversal name must be rejected");
+        } catch (java.io.IOException expected) { }
+        File outside = file(root, "outside.txt");
+        File link = new File(parent, "escape.txt");
+        try {
+            Files.createSymbolicLink(link.toPath(), outside.toPath());
+        } catch (UnsupportedOperationException | java.io.IOException | SecurityException unavailable) {
+            return;
+        }
+        try {
+            BatchRenameEngine.resolveChild(parent, "escape.txt");
+            fail("A symlink target outside the selected parent must be rejected");
+        } catch (java.io.IOException expected) { }
+        File safe = BatchRenameEngine.resolveChild(parent, "safe name.txt");
+        assertEquals(parent.getCanonicalFile(), safe.getParentFile().getCanonicalFile());
+    }
 }

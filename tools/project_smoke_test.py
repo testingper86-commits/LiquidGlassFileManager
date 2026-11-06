@@ -145,14 +145,19 @@ def main():
     pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
     require('io.execute(' in pdf_open and 'ParcelFileDescriptor.open(f' in pdf_open and 'h.post(' in pdf_open and 'volatile long pdfGeneration' in viewer, "PDF descriptor and renderer open off the UI thread with stale-load protection")
     require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
-    pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
-    require('io.execute(' in pdf_open and 'ParcelFileDescriptor.open(f' in pdf_open and 'h.post(' in pdf_open and 'volatile long pdfGeneration' in viewer, "PDF descriptor and renderer open off the UI thread with stale-load protection")
-    require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
     crash = source("app/src/main/java/com/music/echo/offline/files/CrashLogger.java")
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
     saf_operations = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    rename_engine = source("app/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
+    file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
+    browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
+    require('static File resolveChild(File parent, String name)' in rename_engine and 'candidate.getParentFile()' in rename_engine and 'canonicalParent.equals(actualParent)' in rename_engine, "User-derived child paths are checked against canonical parent boundaries")
+    require('BatchRenameEngine.resolveChild(cur, n)' in browser and 'BatchRenameEngine.resolveChild(e.f.getParentFile(), n)' in browser, "Folder creation and rename use canonical path containment")
+    require('BatchRenameEngine.resolveChild(dir, candidate)' in file_ops and 'safeChild(dir, name)' in file_ops, "File operations resolve generated destination names through the safe child helper")
+    rename_tests = source("app/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java")
+    require('resolveChildRejectsTraversalAndSymlinkEscapes' in rename_tests, "canonical path resolution has traversal and symlink-escape regression tests")
     require('static DocumentFile findDocumentInTree(Context context, Uri tree, Uri target)' in saf_operations and 'DocumentFile.fromTreeUri(context, tree)' in saf_operations and 'current.listFiles()' in saf_operations, "SAF recursive operations resolve tree-aware DocumentFile wrappers")
     require('static DocumentFile moveDocumentWithFallback(Context context' in saf_operations and 'if (context == null || resolver == null || source == null' in saf_operations, "SAF move validates the Context required to wrap provider-returned document URIs")
     require('static Uri moveDocument(ContentResolver resolver' in saf_operations and 'if (context == null || resolver == null || source == null' not in saf_operations.split('static Uri moveDocument(ContentResolver resolver', 1)[1].split('static DocumentFile moveDocumentWithFallback', 1)[0], "SAF native move does not reference an out-of-scope Context")

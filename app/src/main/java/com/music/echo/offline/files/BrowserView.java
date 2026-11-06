@@ -30,6 +30,7 @@ import android.widget.Spinner;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import java.io.File;
+import java.io.IOException;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.MessageDigest;
@@ -982,9 +983,13 @@ final class BrowserView extends FrameLayout {
                 .setPositiveButton("Create", (d, w) -> {
                     String n = in.getText().toString().trim();
                     if (BatchRenameEngine.validateName(n) != null) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
-                    File f = new File(cur, n);
-                    if (f.exists()) ToxiVisualSystem.toast(a, "Already exists");
-                    else if (!f.mkdirs()) ToxiVisualSystem.toast(a, "Couldn't create folder");
+                    try {
+                        File f = BatchRenameEngine.resolveChild(cur, n);
+                        if (f.exists()) ToxiVisualSystem.toast(a, "Already exists");
+                        else if (!f.mkdir()) ToxiVisualSystem.toast(a, "Couldn't create folder");
+                    } catch (IOException invalidPath) {
+                        ToxiVisualSystem.toast(a, "Invalid folder destination");
+                    }
                     a.afterOps();
                 }).show();
     }
@@ -995,10 +1000,18 @@ final class BrowserView extends FrameLayout {
                 .setPositiveButton("Rename", (d, w) -> {
                     String n = in.getText().toString().trim();
                     if (BatchRenameEngine.validateName(n) != null || n.equals(e.name)) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
-                    File t = new File(e.f.getParentFile(), n);
-                    if (t.exists()) { ToxiVisualSystem.toast(a, "A file with that name exists"); return; }
-                    if (e.f.renameTo(t)) { a.renameFav(e.f, t); endSelect(); a.afterOps(); }
-                    else ToxiVisualSystem.toast(a, "Rename failed");
+                    try {
+                        File t = BatchRenameEngine.resolveChild(e.f.getParentFile(), n);
+                        if (t.exists()) { ToxiVisualSystem.toast(a, "A file with that name exists"); return; }
+                        java.nio.file.Files.move(e.f.toPath(), t.toPath());
+                        a.renameFav(e.f, t);
+                        endSelect();
+                        a.afterOps();
+                    } catch (java.nio.file.FileAlreadyExistsException occupied) {
+                        ToxiVisualSystem.toast(a, "A file with that name exists");
+                    } catch (IOException renameFailure) {
+                        ToxiVisualSystem.toast(a, "Rename failed");
+                    }
                 }).show();
         in.post(() -> {
             int dot = e.name.lastIndexOf('.');

@@ -30,16 +30,21 @@ final class FileOps {
         if (dir == null || BatchRenameEngine.validateName(name) != null) {
             throw new IllegalArgumentException("Invalid destination filename");
         }
-        File f = new File(dir, name);
+        File f = safeChild(dir, name);
         if (!f.exists()) return f;
         String base = name, ext = "";
         int i = name.lastIndexOf('.');
         if (i > 0) { base = name.substring(0, i); ext = name.substring(i); }
         for (int n = 1; n < 1000; n++) {
-            f = new File(dir, base + " (" + n + ")" + ext);
+            f = safeChild(dir, base + " (" + n + ")" + ext);
             if (!f.exists()) return f;
         }
-        return new File(dir, base + "_" + System.currentTimeMillis() + ext);
+        return safeChild(dir, base + "_" + java.util.UUID.randomUUID() + ext);
+    }
+
+    private static File safeChild(File dir, String name) {
+        try { return BatchRenameEngine.resolveChild(dir, name); }
+        catch (IOException invalidPath) { throw new IllegalArgumentException("Invalid destination path", invalidPath); }
     }
 
     private static File createUniqueFile(File dir, String name) throws IOException {
@@ -48,7 +53,7 @@ final class FileOps {
         if (dot > 0) { base = name.substring(0, dot); ext = name.substring(dot); }
         for (int n = 0; n < 1000; n++) {
             String candidate = n == 0 ? name : base + " (" + n + ")" + ext;
-            File file = new File(dir, candidate);
+            File file = BatchRenameEngine.resolveChild(dir, candidate);
             try { if (file.createNewFile()) return file; }
             catch (IOException error) { if (!file.exists()) throw error; }
         }

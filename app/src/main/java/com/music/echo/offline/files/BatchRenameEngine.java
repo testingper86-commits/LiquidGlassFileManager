@@ -55,7 +55,11 @@ final class BatchRenameEngine {
             number += options.increment;
             String next = base + ext;
             String invalid = validateName(next);
-            File target = new File(source.getParentFile(), next);
+            File target = null;
+            if (invalid == null) {
+                try { target = resolveChild(source.getParentFile(), next); }
+                catch (IOException invalidPath) { invalid = "Destination escapes its parent folder"; }
+            }
             if (invalid == null && samePath(source, target)) invalid = "Name is unchanged";
             if (invalid == null && !targets.add(key(target))) invalid = "Duplicate destination in this batch";
             if (invalid == null && target.exists() && !sourcePaths.contains(key(target))) invalid = "Destination already exists";
@@ -118,6 +122,21 @@ final class BatchRenameEngine {
             }
         }
     }
+    /** Resolve a user-selected child name and reject symlink or canonical-path escapes. */
+    static File resolveChild(File parent, String name) throws IOException {
+        if (parent == null) throw new IOException("Destination folder is required");
+        String invalid = validateName(name);
+        if (invalid != null) throw new IOException(invalid);
+        File canonicalParent = parent.getCanonicalFile();
+        if (!canonicalParent.isDirectory()) throw new IOException("Destination parent is not a directory");
+        File candidate = new File(canonicalParent, name).getCanonicalFile();
+        File actualParent = candidate.getParentFile();
+        if (actualParent == null || !canonicalParent.equals(actualParent)) {
+            throw new IOException("Destination escapes the selected parent folder");
+        }
+        return candidate;
+    }
+
     static String validateName(String name) {
         if (name == null || name.trim().isEmpty()) return "Filename is empty";
         if (".".equals(name) || "..".equals(name)) return "Reserved filename";
