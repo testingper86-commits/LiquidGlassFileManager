@@ -179,6 +179,44 @@ final class SafStorageOperations {
         }
     }
 
+    /**
+     * Move a SAF entry with a provider-native operation where supported.
+     * If native move is unsupported, copy fully before deleting the source.
+     * If deletion fails, both copies remain and the exception names the destination.
+     */
+    static DocumentFile moveDocumentWithFallback(ContentResolver resolver, DocumentFile source,
+                                                 DocumentFile sourceParent, DocumentFile targetParent)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || source == null || sourceParent == null || targetParent == null
+                || !source.exists()) {
+            throw new IOException("Source document and parent folders are required");
+        }
+        if (!targetParent.exists() || !targetParent.isDirectory() || !targetParent.canWrite()) {
+            throw new IOException("Destination document folder is not writable");
+        }
+        try {
+            Uri moved = DocumentsContract.moveDocument(resolver, source.getUri(),
+                    sourceParent.getUri(), targetParent.getUri());
+            if (moved == null) throw new IOException("Provider declined the native move");
+            DocumentFile result = DocumentFile.fromSingleUri(resolver, moved);
+            if (result == null || !result.exists()) {
+                throw new IOException("Provider returned an invalid moved document");
+            }
+            return result;
+        } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
+            OperationCancellation.checkCurrent();
+            DocumentFile copied = copyDocumentTree(resolver, source, targetParent);
+            try {
+                deleteDocument(resolver, source.getUri());
+            } catch (IOException deleteFailure) {
+                throw new IOException("Copied to " + copied.getName()
+                        + " but the original remains because the provider refused deletion; both copies were preserved", deleteFailure);
+            }
+            return copied;
+        }
+    }
+
     static Uri renameDocument(ContentResolver resolver, Uri document, String newName)
             throws IOException {
         OperationCancellation.checkCurrent();
