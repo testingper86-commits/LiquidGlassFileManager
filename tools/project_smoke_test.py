@@ -117,7 +117,7 @@ def main():
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
-    require('@android.annotation.SuppressLint("WrongConstant")' in main and 'Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION' in main, "SAF persistence uses explicit read/write grant flags")
+    require('ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);' in main and '@android.annotation.SuppressLint("WrongConstant")' not in main, "MainActivity persists SAF grants through the shared validated permission helper")
     require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
 
     base_theme = source("app/src/main/res/values/themes.xml")
