@@ -2346,6 +2346,9 @@ public class MainActivity extends Activity {
         addAboutContactRow(
                 aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"),
                 aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"));
+        addAboutContactRow(
+                aboutContactCard("FB", "Facebook", "facebook.com/chand.p.319", "https://www.facebook.com/chand.p.319/"),
+                aboutContactCard("TG", "Telegram", "t.me/Toxiiii2k23", "https://t.me/Toxiiii2k23"));
         LinearLayout emailRow = new LinearLayout(this);
         emailRow.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams emailCardParams = new LinearLayout.LayoutParams(0, -2, 1f);
