@@ -38,6 +38,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver android:name=".files.ApkInstallStatusReceiver" android:exported="false" />
         <service android:name=".files.BackgroundAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <activity
             android:name=".files.HtmlViewerActivity"

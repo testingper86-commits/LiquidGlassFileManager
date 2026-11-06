@@ -352,31 +352,80 @@ final class FileOps {
         } catch (Exception ex) { ToxiVisualSystem.toast(a, "Can't open this file"); }
     }
 
-    static void install(Activity a, File f) {
-        if (a == null) return;
-        try {
-            if (f == null || !f.isFile() || !f.canRead()
-                    || !f.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".apk")
-                    || Files.isSymbolicLink(f.toPath())) {
-                ToxiVisualSystem.toast(a, "Select a readable APK file");
-                return;
-            }
-            if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
-                ToxiVisualSystem.toast(a, "Allow \"Install unknown apps\" for this app, then tap the APK again");
-                a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:" + a.getPackageName())));
-                return;
-            }
-            // Explicit user-selected APK handoff. Android's package installer owns the final confirmation.
-            Uri apkUri = uri(a, f);
-            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            intent.setClipData(ClipData.newRawUri("", apkUri));
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            a.startActivity(intent);
-        } catch (Exception ex) {
-            ToxiVisualSystem.toast(a, "Can't install this APK");
+    static void install(Activity activity, File file, java.util.concurrent.Executor executor) {
+        if (activity == null || executor == null) return;
+        if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) {
+            ToxiVisualSystem.toast(activity, "Allow \"Install unknown apps\" for this app, then tap the APK again");
+            activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + activity.getPackageName())));
+            return;
         }
+        ToxiVisualSystem.toast(activity, "Preparing APK for Android's installer");
+        final android.content.Context appContext = activity.getApplicationContext();
+        try {
+            executor.execute(() -> installWithPackageInstaller(activity, appContext, file));
+        } catch (RuntimeException rejected) {
+            ToxiVisualSystem.toast(activity, "APK installation could not be started");
+        }
+    }
+
+    private static void installWithPackageInstaller(Activity activity, android.content.Context appContext, File file) {
+        android.content.pm.PackageInstaller installer = appContext.getPackageManager().getPackageInstaller();
+        int sessionId = -1;
+        boolean committed = false;
+        try {
+            if (file == null || !file.isFile() || !file.canRead() || file.length() <= 0L
+                    || !file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".apk")
+                    || Files.isSymbolicLink(file.toPath())) {
+                throw new IOException("Select a readable regular APK file");
+            }
+            android.content.pm.PackageInstaller.SessionParams params =
+                    new android.content.pm.PackageInstaller.SessionParams(
+                            android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            params.setSize(file.length());
+            sessionId = installer.createSession(params);
+            android.content.pm.PackageInstaller.Session session = installer.openSession(sessionId);
+            if (session == null) throw new IOException("Package installer session is unavailable");
+            try {
+                try (InputStream input = new FileInputStream(file);
+                     OutputStream output = session.openWrite("base.apk", 0, file.length())) {
+                    byte[] buffer = new byte[64 * 1024];
+                    int read;
+                    while ((read = input.read(buffer)) != -1) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            throw new java.io.InterruptedIOException("APK installation was interrupted");
+                        }
+                        output.write(buffer, 0, read);
+                    }
+                    session.fsync(output);
+                }
+                Intent statusIntent = new Intent(appContext, ApkInstallStatusReceiver.class)
+                        .setAction(appContext.getPackageName() + ".APK_INSTALL_STATUS." + sessionId);
+                int pendingFlags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= 31) pendingFlags |= android.app.PendingIntent.FLAG_MUTABLE;
+                android.app.PendingIntent callback = android.app.PendingIntent.getBroadcast(
+                        appContext, sessionId, statusIntent, pendingFlags);
+                session.commit(callback.getIntentSender());
+                committed = true;
+            } finally {
+                try { session.close(); } catch (IOException ignored) { }
+            }
+            postInstallToast(activity, "Waiting for Android's installation confirmation");
+        } catch (Exception failure) {
+            if (sessionId >= 0 && !committed) {
+                try { installer.abandonSession(sessionId); } catch (Exception ignored) { }
+            }
+            postInstallToast(activity, "APK installation failed");
+        }
+    }
+
+    private static void postInstallToast(Activity activity, String message) {
+        if (activity == null) return;
+        try {
+            activity.runOnUiThread(() -> {
+                if (!activity.isFinishing() && !activity.isDestroyed()) ToxiVisualSystem.toast(activity, message);
+            });
+        } catch (RuntimeException ignored) { }
     }
 
     static void share(Activity a, List<File> fs) {
