@@ -58,6 +58,11 @@ final class TaskCoordinator {
         pool(lane).execute(task);
     }
 
+    static Future<?> submit(Lane lane, Runnable task) {
+        if (task == null) throw new NullPointerException("task");
+        return pool(lane).submit(task);
+    }
+
     static boolean tryExecute(Lane lane, Runnable task) {
         try { execute(lane, task); return true; }
         catch (RejectedExecutionException rejected) { return false; }

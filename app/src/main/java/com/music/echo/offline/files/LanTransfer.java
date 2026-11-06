@@ -30,6 +30,9 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Minimal same-network (Wi-Fi) file transfer over a plain TCP socket — no device discovery,
@@ -117,28 +120,98 @@ final class LanTransfer {
     }
     private static void readFully(DataInputStream in, byte[] data) throws IOException { in.readFully(data); }
 
-    static volatile ServerSocket activeServer;
-    static volatile Socket activeSocket;
+    private static final AtomicReference<Session> ACTIVE = new AtomicReference<>();
+
+    private static final class Session {
+        private final Listener listener;
+        private final AtomicBoolean cancellationReported = new AtomicBoolean();
+        private ServerSocket server;
+        private Socket socket;
+        private Future<?> future;
+        private volatile boolean cancelled;
+
+        Session(Listener listener) { this.listener = listener; }
+
+        void reportCancelled() {
+            if (cancellationReported.compareAndSet(false, true)) listener.onError("Transfer cancelled");
+        }
+
+        synchronized void attach(ServerSocket value) throws IOException {
+            server = value;
+            if (cancelled) { value.close(); throw new IOException("Transfer cancelled"); }
+        }
+
+        synchronized void attach(Socket value) throws IOException {
+            socket = value;
+            if (cancelled) { value.close(); throw new IOException("Transfer cancelled"); }
+        }
+
+        synchronized void setFuture(Future<?> value) {
+            future = value;
+            if (cancelled) value.cancel(true);
+        }
+
+        void cancel() {
+            Future<?> pending;
+            ServerSocket listening;
+            Socket connected;
+            synchronized (this) {
+                cancelled = true;
+                pending = future;
+                listening = server;
+                connected = socket;
+            }
+            if (pending != null) pending.cancel(true);
+            close(listening);
+            close(connected);
+            reportCancelled();
+        }
+
+        void closeResources() {
+            ServerSocket listening;
+            Socket connected;
+            synchronized (this) { listening = server; connected = socket; }
+            close(listening);
+            close(connected);
+        }
+
+        private static void close(ServerSocket value) { try { if (value != null) value.close(); } catch (Exception ignored) { } }
+        private static void close(Socket value) { try { if (value != null) value.close(); } catch (Exception ignored) { } }
+    }
+
+    private static Session begin(Listener listener) {
+        Session session = new Session(listener);
+        if (ACTIVE.compareAndSet(null, session)) return session;
+        listener.onError("Another LAN transfer is already active");
+        return null;
+    }
+
+    private static void finish(Session session) {
+        session.closeResources();
+        ACTIVE.compareAndSet(session, null);
+    }
 
     static void cancel() {
-        try { if (activeSocket != null) activeSocket.close(); } catch (Exception ignored) { }
-        try { if (activeServer != null) activeServer.close(); } catch (Exception ignored) { }
+        Session session = ACTIVE.getAndSet(null);
+        if (session != null) session.cancel();
     }
 
     // ---------------- RECEIVER ----------------
     static void receive(final File destDir, final Listener l) {
         final String pairingCode = newPairingCode();
-        try { TaskCoordinator.execute(TaskCoordinator.Lane.NETWORK, () -> {
+        final Session session = begin(l);
+        if (session == null) return;
+        try { session.setFuture(TaskCoordinator.submit(TaskCoordinator.Lane.NETWORK, () -> {
             ServerSocket server = null;
             try {
                 server = new ServerSocket(PORT);
-                activeServer = server;
+                session.attach(server);
                 String ip = localIp();
                 l.onWaiting(ip != null ? ip : "unknown — check your Wi-Fi connection", PORT, pairingCode);
 
                 server.setSoTimeout(120_000);
                 Socket sock = server.accept();
-                activeSocket = sock;
+                session.attach(sock);
                 sock.setSoTimeout(300_000);
                 DataInputStream in = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
                 DataOutputStream out = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
@@ -228,23 +301,27 @@ final class LanTransfer {
                 }
                 l.onDone("Received " + count + " file" + (count == 1 ? "" : "s") + " into Download/" + destDir.getName());
             } catch (Exception ex) {
-                l.onError("Receive failed: " + ex.getMessage());
+                if (session.cancelled) session.reportCancelled();
+                else l.onError("Receive failed: " + ex.getMessage());
             } finally {
-                try { if (activeSocket != null) activeSocket.close(); } catch (Exception ignored) { }
-                try { if (server != null) server.close(); } catch (Exception ignored) { }
-                activeServer = null;
-                activeSocket = null;
+                finish(session);
             }
-        }); } catch (RuntimeException rejected) { l.onError("LAN transfer could not be queued: " + rejected.getMessage()); }
+        })); } catch (RuntimeException rejected) {
+            session.cancel();
+            ACTIVE.compareAndSet(session, null);
+            l.onError("LAN transfer could not be queued: " + rejected.getMessage());
+        }
     }
 
     // ---------------- SENDER ----------------
     static void send(final String ip, final String pairingCode, final List<File> files, final Listener l) {
-        try { TaskCoordinator.execute(TaskCoordinator.Lane.NETWORK, () -> {
+        final Session session = begin(l);
+        if (session == null) return;
+        try { session.setFuture(TaskCoordinator.submit(TaskCoordinator.Lane.NETWORK, () -> {
             Socket sock = null;
             try {
                 sock = new Socket();
-                activeSocket = sock;
+                session.attach(sock);
                 sock.connect(new InetSocketAddress(ip, PORT), 8000);
                 sock.setSoTimeout(300_000);
                 DataOutputStream out = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
@@ -303,11 +380,15 @@ final class LanTransfer {
                 }
                 l.onDone("Sent " + files.size() + " file" + (files.size() == 1 ? "" : "s"));
             } catch (Exception ex) {
-                l.onError("Send failed: " + ex.getMessage());
+                if (session.cancelled) session.reportCancelled();
+                else l.onError("Send failed: " + ex.getMessage());
             } finally {
-                try { if (sock != null) sock.close(); } catch (Exception ignored) { }
-                activeSocket = null;
+                finish(session);
             }
-        }); } catch (RuntimeException rejected) { l.onError("LAN transfer could not be queued: " + rejected.getMessage()); }
+        })); } catch (RuntimeException rejected) {
+            session.cancel();
+            ACTIVE.compareAndSet(session, null);
+            l.onError("LAN transfer could not be queued: " + rejected.getMessage());
+        }
     }
 }
