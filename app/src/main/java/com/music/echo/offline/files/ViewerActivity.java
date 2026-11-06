@@ -87,10 +87,11 @@ public class ViewerActivity extends Activity {
     int videoPendingPosition = 0;
     PdfRenderer pdf;
     ParcelFileDescriptor pfd;
+    volatile long pdfGeneration;
     Runnable ticker;
     Runnable videoTicker;
     boolean seekingVideo = false;
-    boolean destroyed;
+    volatile boolean destroyed;
     boolean audioRepeat = false, audioShuffle = false, videoLoop = false;
     int audioRepeatMode = 0; // 0 off, 1 repeat one, 2 repeat all
     int audioLoopStartMs = -1, audioLoopEndMs = -1;
@@ -219,11 +220,13 @@ public class ViewerActivity extends Activity {
         videoWidth = videoHeight = 0;
         currentImageBitmap = null;
         if (stage != null) ToxiMotion.setActive(stage, false);
-        if (pdf != null) {
-            final PdfRenderer r = pdf;
-            final ParcelFileDescriptor f = pfd;
-            io.execute(() -> { try { r.close(); } catch (Exception ignored) { } try { if (f != null) f.close(); } catch (Exception ignored) { } });
-            pdf = null; pfd = null;
+        ++pdfGeneration;
+        if (pdf != null || pfd != null) {
+            final PdfRenderer renderer = pdf;
+            final ParcelFileDescriptor descriptor = pfd;
+            pdf = null;
+            pfd = null;
+            closePdfResourcesAsync(renderer, descriptor);
         }
         if (stage != null) stage.removeAllViews();
     }
@@ -1499,25 +1502,75 @@ public class ViewerActivity extends Activity {
     }
 
     // ---------------- pdf ----------------
-    void showPdf(File f) {
-        if (f == null || !f.isFile() || !f.canRead() || f.length() <= 0L) {
-            ToxiVisualSystem.toast(this, "This PDF is missing, empty, or unreadable");
-            return;
+    private static void closePdfResources(PdfRenderer renderer, ParcelFileDescriptor descriptor) {
+        if (renderer != null) {
+            synchronized (renderer) {
+                try { renderer.close(); } catch (Exception ignored) { }
+            }
         }
+        if (descriptor != null) {
+            try { descriptor.close(); } catch (Exception ignored) { }
+        }
+    }
+
+    private void closePdfResourcesAsync(PdfRenderer renderer, ParcelFileDescriptor descriptor) {
+        if (renderer == null && descriptor == null) return;
         try {
-            pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
-            pdf = new PdfRenderer(pfd);
-        } catch (Exception ex) {
-            if (pdf != null) { try { pdf.close(); } catch (Exception ignored) { } pdf = null; }
-            if (pfd != null) { try { pfd.close(); } catch (Exception ignored) { } pfd = null; }
-            ToxiVisualSystem.toast(this, "Can't open this PDF here — try \"Open with\"");
-            return;
+            io.execute(() -> closePdfResources(renderer, descriptor));
+        } catch (RuntimeException rejected) {
+            closePdfResources(renderer, descriptor);
         }
-        final PdfRenderer r = pdf;
-        final int count;
-        try { count = r.getPageCount(); }
-        catch (RuntimeException ex) { ToxiVisualSystem.toast(this, "This PDF could not be read"); cleanup(); return; }
-        if (count <= 0) { ToxiVisualSystem.toast(this, "This PDF contains no readable pages"); cleanup(); return; }
+    }
+
+    void showPdf(File f) {
+        final long token = ++pdfGeneration;
+        io.execute(() -> {
+            if (destroyed || token != pdfGeneration) return;
+            ParcelFileDescriptor openedDescriptor = null;
+            PdfRenderer openedRenderer = null;
+            int pageCount = 0;
+            String failure = null;
+            try {
+                if (f == null || !f.isFile() || !f.canRead() || f.length() <= 0L) {
+                    failure = "This PDF is missing, empty, or unreadable";
+                } else {
+                    openedDescriptor = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
+                    openedRenderer = new PdfRenderer(openedDescriptor);
+                    pageCount = openedRenderer.getPageCount();
+                    if (pageCount <= 0) failure = "This PDF contains no readable pages";
+                }
+            } catch (Exception openFailure) {
+                failure = "Can't open this PDF here — try \"Open with\"";
+            }
+            if (failure != null) {
+                closePdfResources(openedRenderer, openedDescriptor);
+                final String message = failure;
+                h.post(() -> {
+                    if (!destroyed && token == pdfGeneration) ToxiVisualSystem.toast(this, message);
+                });
+                return;
+            }
+            final PdfRenderer renderer = openedRenderer;
+            final ParcelFileDescriptor descriptor = openedDescriptor;
+            final int count = pageCount;
+            if (destroyed || token != pdfGeneration) {
+                closePdfResources(renderer, descriptor);
+                return;
+            }
+            boolean posted = h.post(() -> {
+                if (destroyed || token != pdfGeneration) {
+                    closePdfResourcesAsync(renderer, descriptor);
+                    return;
+                }
+                pdf = renderer;
+                pfd = descriptor;
+                showPdfPages(renderer, count, token);
+            });
+            if (!posted) closePdfResources(renderer, descriptor);
+        });
+    }
+
+    private void showPdfPages(PdfRenderer r, int count, long token) {
         final int w = Math.max(1, Math.min(2400, stage.getWidth() > 0 ? stage.getWidth() : getResources().getDisplayMetrics().widthPixels));
         final int cacheBudgetBytes = (int)Math.max(4L * 1024L * 1024L, Runtime.getRuntime().maxMemory() / 8L);
         final LruCache<Integer, Bitmap> cache = new LruCache<Integer, Bitmap>(cacheBudgetBytes) {
@@ -1552,20 +1605,28 @@ public class ViewerActivity extends Activity {
                     iv.setImageDrawable(null);
                     iv.setMinimumHeight((int) (w * 1.35f));
                     io.execute(() -> {
+                        if (destroyed || token != pdfGeneration) return;
                         Bitmap bm = renderPage(r, pos, w);
                         if (bm == null) {
                             h.post(() -> {
-                                if (!destroyed && !pageErrorShown[0]) {
+                                if (!destroyed && token == pdfGeneration && !pageErrorShown[0]) {
                                     pageErrorShown[0] = true;
                                     ToxiVisualSystem.toast(ViewerActivity.this, "One or more PDF pages could not be rendered");
                                 }
                             });
                             return;
                         }
+                        if (destroyed || token != pdfGeneration) {
+                            bm.recycle();
+                            return;
+                        }
                         cache.put(pos, bm);
                         h.post(() -> {
                             Object tg = iv.getTag();
-                            if (!destroyed && tg != null && ((Integer) tg) == pos) { iv.setImageBitmap(bm); iv.setMinimumHeight(0); }
+                            if (!destroyed && token == pdfGeneration && tg != null && ((Integer) tg) == pos) {
+                                iv.setImageBitmap(bm);
+                                iv.setMinimumHeight(0);
+                            }
                         });
                     });
                 }
