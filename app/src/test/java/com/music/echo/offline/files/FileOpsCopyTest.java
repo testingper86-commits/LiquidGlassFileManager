@@ -11,6 +11,16 @@ import static org.junit.Assert.*;
 public class FileOpsCopyTest {
     @After public void resetCancellation() { FileOps.cancelRequested = false; }
 
+    @Test public void uniqueRejectsProviderAndPeerSuppliedPathTraversalNames() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-unique-").toFile();
+        assertEquals(new File(root, "safe-name.txt").getCanonicalFile(),
+                FileOps.unique(root, "safe-name.txt").getCanonicalFile());
+        assertThrows(IllegalArgumentException.class, () -> FileOps.unique(root, "../outside.txt"));
+        assertThrows(IllegalArgumentException.class, () -> FileOps.unique(root, "nested/child.txt"));
+        assertThrows(IllegalArgumentException.class, () -> FileOps.unique(root, "nested\\child.txt"));
+        assertThrows(IllegalArgumentException.class, () -> FileOps.unique(root, ".."));
+    }
+
     @Test public void publishesCompleteFileWithoutReplacingExistingData() throws Exception {
         File root = Files.createTempDirectory("toxifiles-copy-").toFile();
         File source = new File(root, "source.txt");

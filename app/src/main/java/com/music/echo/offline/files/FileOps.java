@@ -29,6 +29,9 @@ final class FileOps {
     static void checkCancelled() throws IOException { if (cancelRequested) throw new IOException("Operation cancelled"); }
 
     static File unique(File dir, String name) {
+        if (dir == null || BatchRenameEngine.validateName(name) != null) {
+            throw new IllegalArgumentException("Invalid destination filename");
+        }
         File f = new File(dir, name);
         if (!f.exists()) return f;
         String base = name, ext = "";
