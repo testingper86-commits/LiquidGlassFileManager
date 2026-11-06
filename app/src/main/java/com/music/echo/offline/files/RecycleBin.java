@@ -47,13 +47,14 @@ final class RecycleBin {
 
     /** Moves each file/folder into the bin. Falls back to copy+delete if renameTo fails (e.g. cross-volume). */
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             int ok = 0, fail = 0;
             int total = src.size(), idx = 0;
             for (File s : src) {
-                if (FileOps.cancelRequested) { fail++; break; }
+                if (OperationCancellation.isCancelled()) { fail++; break; }
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
@@ -70,6 +71,7 @@ final class RecycleBin {
                         try { java.nio.file.Files.move(s.toPath(), target.toPath()); payloadSafe = true; }
                         catch (java.io.IOException moveError) {
                             FileOps.copy(s, target);
+                            FileOps.checkCancelled();
                             payloadSafe = true;
                             if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
                         }
@@ -85,6 +87,8 @@ final class RecycleBin {
                     ? "Moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Recycle Bin"
                     : "Moved " + fok + ", failed " + ffail;
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
@@ -120,6 +124,8 @@ final class RecycleBin {
     static void restore(final MainActivity a, final Item it, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             String msg;
             try {
                 File destDir = it.originalParent;
@@ -132,6 +138,7 @@ final class RecycleBin {
                 try { java.nio.file.Files.move(it.file.toPath(), target.toPath()); }
                 catch (java.io.IOException moveError) {
                     FileOps.copy(it.file, target);
+                    FileOps.checkCancelled();
                     if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept", moveError);
                 }
                 if (!FileOps.deleteTree(it.wrapper)) throw new java.io.IOException("Restored file, but Recycle Bin cleanup failed");
@@ -139,29 +146,35 @@ final class RecycleBin {
             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             int ok = 0;
-            for (Item it : items) { if (FileOps.cancelRequested) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
+            for (Item it : items) { if (OperationCancellation.isCancelled()) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
             a.runOnUiThread(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void empty(final MainActivity a, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             File[] ws = root(a).listFiles();
             int deleted = 0, failed = 0;
             boolean cancelled = false;
             if (ws != null) for (File w : ws) {
-                if (FileOps.cancelRequested) { cancelled = true; break; }
+                if (OperationCancellation.isCancelled()) { cancelled = true; break; }
                 if (FileOps.deleteTree(w)) deleted++; else failed++;
             }
             final int fdeleted = deleted, ffailed = failed;
@@ -169,6 +182,8 @@ final class RecycleBin {
             final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
                     + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 

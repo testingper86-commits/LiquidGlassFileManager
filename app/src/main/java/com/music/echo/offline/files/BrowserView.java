@@ -1063,7 +1063,8 @@ final class BrowserView extends FrameLayout {
                 .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
                     a.busy(true);
                     a.ops.execute(() -> {
-                        FileOps.cancelRequested = false;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
                         File copy = null; String result;
                         try {
                             android.media.ExifInterface original = new android.media.ExifInterface(source.getAbsolutePath());
@@ -1077,6 +1078,7 @@ final class BrowserView extends FrameLayout {
                             FileOps.copy(source, copy);
                             android.media.ExifInterface cleaned = new android.media.ExifInterface(copy.getAbsolutePath());
                             for (String tag : gpsTags) cleaned.setAttribute(tag, null);
+                            FileOps.checkCancelled();
                             cleaned.saveAttributes();
                             result = "Saved copy without GPS metadata: " + copy.getName();
                         } catch (Exception ex) {
@@ -1085,7 +1087,9 @@ final class BrowserView extends FrameLayout {
                         }
                         final String message = result;
                         a.runOnUiThread(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
-                    });
+                    
+            } finally { a.cancellation.finish(operationToken); }
+        });
                 }).show();
     }
 

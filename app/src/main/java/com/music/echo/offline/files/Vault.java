@@ -234,12 +234,13 @@ final class Vault {
     }
 
     static void moveIn(final MainActivity a, final List<File> src, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             int ok = 0, fail = 0, cleanupFailed = 0;
             for (File s : src) {
-                if (FileOps.cancelRequested) { fail++; break; }
+                if (OperationCancellation.isCancelled()) { fail++; break; }
                 File staging = null;
                 try {
                     File parent = s.getParentFile();
@@ -260,7 +261,7 @@ final class Vault {
                     try { java.nio.file.Files.move(staging.toPath(), wrapper.toPath()); }
                     catch (IOException commitError) { throw new IOException("Unable to commit encrypted Vault item", commitError); }
                     staging = null;
-                    if (FileOps.cancelRequested) { cleanupFailed++; fail++; continue; }
+                    if (OperationCancellation.isCancelled()) { cleanupFailed++; fail++; continue; }
                     if (FileOps.deleteTree(s)) ok++;
                     else { cleanupFailed++; fail++; }
                 } catch (Exception ex) {
@@ -272,6 +273,8 @@ final class Vault {
             final String msg = ffail == 0 ? "Encrypted and moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Vault"
                     : "Encrypted/moved " + fok + ", failed " + ffail + (fcleanup > 0 ? "; encrypted copies are safe, but some originals may remain" : "");
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
@@ -312,9 +315,10 @@ final class Vault {
     }
 
     static void restoreOut(final MainActivity a, final Item it, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             String msg;
             try {
                 File destDir = it.originalParent;
@@ -333,7 +337,7 @@ final class Vault {
                 } finally {
                     FileOps.deleteTree(privateStage);
                 }
-                if (FileOps.cancelRequested) {
+                if (OperationCancellation.isCancelled()) {
                     msg = "Restored a copy; the encrypted Vault item was retained because the operation was cancelled";
                 } else {
                     if (!FileOps.deleteTree(it.wrapper)) throw new IOException("Decrypted file is available, but encrypted Vault cleanup was incomplete");
@@ -342,15 +346,20 @@ final class Vault {
             } catch (Exception ex) { msg = "Failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void deleteForever(final MainActivity a, final Item it, final FileOps.Done d) {
-        FileOps.cancelRequested = false;
         a.busy(true);
         a.ops.execute(() -> {
-            boolean ok = FileOps.deleteTree(it.wrapper);
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
+            boolean ok = !OperationCancellation.isCancelled() && FileOps.deleteTree(it.wrapper);
             a.runOnUiThread(() -> { a.busy(false); d.run(ok ? "Deleted" : "Delete failed"); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 }
