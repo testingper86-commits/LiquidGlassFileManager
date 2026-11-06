@@ -408,7 +408,7 @@ final class FileOps {
                 session.commit(callback.getIntentSender());
                 committed = true;
             } finally {
-                try { session.close(); } catch (IOException ignored) { }
+                session.close();
             }
             postInstallToast(activity, "Waiting for Android's installation confirmation");
         } catch (Exception failure) {
