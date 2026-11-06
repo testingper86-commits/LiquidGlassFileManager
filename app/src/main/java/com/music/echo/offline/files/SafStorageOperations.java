@@ -12,6 +12,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 /** Provider-aware operations for user-granted Storage Access Framework document trees. */
 final class SafStorageOperations {
@@ -165,6 +167,65 @@ final class SafStorageOperations {
     }
 
     /** Uses the provider's native move; unsupported providers must use copy-then-delete. */
+    /**
+     * Resolve a provider document through the selected tree so recursive operations retain
+     * tree-aware DocumentFile instances. Single-document wrappers cannot reliably enumerate
+     * descendants on every SAF provider.
+     */
+    static DocumentFile findDocumentInTree(Context context, Uri tree, Uri target) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || tree == null || target == null) {
+            throw new IOException("Storage tree and target document are required");
+        }
+        final String targetId;
+        try {
+            targetId = DocumentsContract.getDocumentId(target);
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid target document URI", invalidUri);
+        }
+        DocumentFile root = DocumentFile.fromTreeUri(context, tree);
+        if (root == null) throw new IOException("Selected storage tree is no longer available");
+        ArrayList<DocumentFile> pending = new ArrayList<>();
+        HashSet<String> visitedDirectories = new HashSet<>();
+        pending.add(root);
+        int cursor = 0;
+        int scannedDirectories = 0;
+        while (cursor < pending.size()) {
+            OperationCancellation.checkCurrent();
+            if (++scannedDirectories > 100_000 || pending.size() > 100_000) {
+                throw new IOException("Storage tree is too large to resolve this document safely");
+            }
+            DocumentFile current = pending.get(cursor++);
+            String currentId;
+            try {
+                currentId = DocumentsContract.getDocumentId(current.getUri());
+            } catch (IllegalArgumentException treeRootUri) {
+                currentId = DocumentsContract.getTreeDocumentId(tree);
+            }
+            if (targetId.equals(currentId)) return current;
+            if (!current.isDirectory()) continue;
+            DocumentFile[] children;
+            try {
+                children = current.listFiles();
+            } catch (RuntimeException providerFailure) {
+                throw new IOException("Storage provider could not enumerate a folder", providerFailure);
+            }
+            if (children == null) continue;
+            for (DocumentFile child : children) {
+                if (child == null) continue;
+                String childId;
+                try {
+                    childId = DocumentsContract.getDocumentId(child.getUri());
+                } catch (IllegalArgumentException invalidChild) {
+                    continue;
+                }
+                if (targetId.equals(childId)) return child;
+                if (child.isDirectory() && visitedDirectories.add(childId)) pending.add(child);
+            }
+        }
+        throw new IOException("Document is no longer available in the selected storage tree");
+    }
+
     static Uri moveDocument(ContentResolver resolver, Uri source, Uri sourceParent, Uri targetParent)
             throws IOException {
         OperationCancellation.checkCurrent();
