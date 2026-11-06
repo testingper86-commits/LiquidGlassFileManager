@@ -15,7 +15,7 @@ final class FileKinds {
         put(VIDEO, "mp4 mkv webm 3gp mov avi m4v ts flv wmv mpg mpeg");
         put(AUDIO, "mp3 wav ogg m4a flac aac opus amr wma mid midi");
         put(PDF, "pdf");
-        put(TEXT, "txt text md markdown rst adoc log csv tsv json jsonl ndjson xml xsd xsl xslt css scss less js mjs cjs jsx ts tsx java kt kts py pyw rb go rs swift c h cc cpp cxx hpp hxx cs fs vb php phtml sql sh bash zsh fish bat cmd ps1 ini cfg conf config properties toml env yml yaml srt vtt ass ssa vcf ics diff patch gradle kts make mk cmake dockerfile gitignore editorconfig");
+        put(TEXT, "txt text md markdown rst adoc log csv tsv json jsonl ndjson xml xsd xsl xslt html htm xhtml xht shtml shtm css scss less js mjs cjs jsx ts tsx java kt kts py pyw rb go rs swift c h cc cpp cxx hpp hxx cs fs vb php phtml sql sh bash zsh fish bat cmd ps1 ini cfg conf config properties toml env yml yaml srt vtt ass ssa vcf ics diff patch gradle kts make mk cmake dockerfile gitignore editorconfig");
         put(ARCHIVE, "zip rar 7z tar gz tgz bz2 xz");
         put(APK, "apk");
     }

@@ -25,7 +25,7 @@ public class HtmlViewerRoutingTest {
     @Test public void pdfAndHtmlAreDetectedFromTheActualFileName() {
         assertEquals(FileKinds.PDF, FileKinds.kindOfFile(new File("scan.PDF")));
         assertEquals(FileKinds.PDF, FileKinds.kindOfFile(new File("report.pdf ")));
-        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.HTML")));
+        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.HTML")));\n        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.xhtml")));\n        assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.htm")));
         assertEquals(FileKinds.TEXT, FileKinds.kindOfFile(new File("page.xhtml")));
         assertTrue(FileKinds.isPdfExtension(" PDF "));
         assertFalse(FileKinds.isPdfExtension("pdfx"));
