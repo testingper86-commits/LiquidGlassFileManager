@@ -13,6 +13,10 @@ public class DeveloperStudioCoreTest {
         assertTrue(result.contains("PNG image"));
         assertTrue(result.contains("Extension mismatch: YES"));
     }
+    @Test public void signatureUsesBigEndianPngDimensions() {
+        byte[] b=new byte[24];byte[] sig={(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a};System.arraycopy(sig,0,b,0,8);b[19]=2;b[23]=3;
+        assertTrue(DeveloperStudioCore.signature(b,"image.png").contains("2 × 3"));
+    }
     @Test public void analyzesPngHeaderDimensions() {
         byte[] b=new byte[26];byte[] sig={(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a};System.arraycopy(sig,0,b,0,8);
         b[19]=2;b[23]=3;b[24]=8;b[25]=6;
