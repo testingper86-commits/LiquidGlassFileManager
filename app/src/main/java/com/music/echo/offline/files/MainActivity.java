@@ -116,8 +116,21 @@ public class MainActivity extends ComponentActivity {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(screenOffReceiver, screenOffFilter);
         ToxiVisualSystem.initialize(this);
-        String savedSafTree = getSharedPreferences("lg_storage", MODE_PRIVATE).getString("saf_tree", null);
-        if (savedSafTree != null) safTree = Uri.parse(savedSafTree);
+        android.content.SharedPreferences storagePreferences = getSharedPreferences("lg_storage", MODE_PRIVATE);
+        String savedSafTree = storagePreferences.getString("saf_tree", null);
+        if (savedSafTree != null) {
+            try {
+                Uri restoredTree = Uri.parse(savedSafTree);
+                int persistedFlags = ToxiUriPermissions.persistedFlags(getContentResolver(), restoredTree);
+                if ((persistedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+                    safTree = restoredTree;
+                } else {
+                    storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
+                }
+            } catch (RuntimeException invalidSavedTree) {
+                storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
+            }
+        }
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         SharedPreferences fp = getSharedPreferences("lg_favs", MODE_PRIVATE);
@@ -1695,9 +1708,15 @@ public class MainActivity extends ComponentActivity {
             Uri tree = data.getData();
             if (tree == null) return;
             int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);
+            int persistedFlags = ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);
             safTree = tree;
-            getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
+            android.content.SharedPreferences storagePreferences = getSharedPreferences("lg_storage", MODE_PRIVATE);
+            if ((persistedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+                storagePreferences.edit().putString("saf_tree", tree.toString()).putInt("saf_flags", persistedFlags).apply();
+            } else {
+                storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
+                ToxiVisualSystem.toast(this, "This provider grants temporary access only; select it again after restarting ToxiFiles");
+            }
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
             showSafLevel(tree, DocumentsContract.buildDocumentUriUsingTree(tree, rootDoc), "Other storage");
         } else if (rq == REQ_IMPORT_SETTINGS) {
