@@ -83,4 +83,15 @@ public class FileOperationEngineTest {
         File root=Files.createTempDirectory("toxifiles-delete-tree-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
         Files.write(new File(nested,"file.bin").toPath(),new byte[]{1});assertTrue(FileOperationEngine.deleteTree(root));assertFalse(root.exists());
     }
+
+    @Test public void cancelledRecursiveDeleteStopsBeforeRemovingTheTree() throws Exception {
+        File root=Files.createTempDirectory("toxifiles-delete-cancel-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
+        File data=new File(nested,"file.bin");Files.write(data.toPath(),new byte[]{1,2,3});
+        OperationCancellation cancellation=new OperationCancellation();OperationCancellation.Token token=cancellation.begin();
+        try {
+            cancellation.cancelActive();
+            assertFalse(FileOperationEngine.deleteTree(root));
+            assertTrue(root.isDirectory());assertTrue(data.isFile());
+        } finally { cancellation.finish(token); }
+    }
 }

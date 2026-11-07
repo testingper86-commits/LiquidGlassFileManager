@@ -148,27 +148,33 @@ final class FileOperationEngine {
     }
 
     private static void cleanupAfterFailure(File staging, Throwable failure) {
-        try { deleteTreeOrThrow(staging.toPath()); }
+        try { deleteTreeOrThrow(staging.toPath(), false); }
         catch (IOException | RuntimeException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
     }
 
     static boolean deleteTree(File file) {
         if (file == null) return false;
-        try { deleteTreeOrThrow(file.toPath()); return true; }
+        try { deleteTreeOrThrow(file.toPath(), true); return true; }
         catch (IOException | RuntimeException failure) { return false; }
     }
 
-    private static void deleteTreeOrThrow(Path path) throws IOException {
+    private static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
+        if (cancellable) OperationCancellation.checkCurrent();
         final BasicFileAttributes attributes;
         try { attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS); }
         catch (java.nio.file.NoSuchFileException missing) { return; }
         if (attributes.isSymbolicLink() || !attributes.isDirectory()) {
+            if (cancellable) OperationCancellation.checkCurrent();
             Files.deleteIfExists(path);
             return;
         }
         try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-            for (Path child : children) deleteTreeOrThrow(child);
+            for (Path child : children) {
+                if (cancellable) OperationCancellation.checkCurrent();
+                deleteTreeOrThrow(child, cancellable);
+            }
         }
+        if (cancellable) OperationCancellation.checkCurrent();
         Files.deleteIfExists(path);
     }
 

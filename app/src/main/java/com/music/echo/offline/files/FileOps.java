@@ -88,7 +88,9 @@ final class FileOps {
                     final int fi = idx, ft = total;
                     final String nm = f.getName();
                     a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
-                    if (deleteTree(f)) ok++; else failed++;
+                    if (deleteTree(f)) ok++;
+                    else if (OperationCancellation.isCancelled()) { cancelled = true; break; }
+                    else failed++;
                 }
                 final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
                         + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
