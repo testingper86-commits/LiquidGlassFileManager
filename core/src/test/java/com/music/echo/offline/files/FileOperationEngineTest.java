@@ -116,6 +116,18 @@ public class FileOperationEngineTest {
         assertEquals(0L, totals[1]);
     }
 
+    @Test public void deleteTreeBoundsDeepDirectoryTraversalWithoutRecursion() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-delete-depth-").toFile();
+        java.nio.file.Path nested = root.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1});
+        assertFalse(FileOperationEngine.deleteTree(root));
+        assertTrue("Traversal limit must stop before the root is removed", root.exists());
+    }
+
     @Test public void deleteTreeRemovesNestedRegularFiles() throws Exception {
         File root=Files.createTempDirectory("toxifiles-delete-tree-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
         Files.write(new File(nested,"file.bin").toPath(),new byte[]{1});assertTrue(FileOperationEngine.deleteTree(root));assertFalse(root.exists());

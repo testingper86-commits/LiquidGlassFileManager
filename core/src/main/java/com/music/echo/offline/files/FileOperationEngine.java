@@ -161,23 +161,45 @@ final class FileOperationEngine {
     }
 
     static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
-        if (cancellable) OperationCancellation.checkCurrent();
-        final BasicFileAttributes attributes;
-        try { attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS); }
-        catch (java.nio.file.NoSuchFileException missing) { return; }
-        if (attributes.isSymbolicLink() || !attributes.isDirectory()) {
+        java.util.ArrayDeque<DeleteNode> pending = new java.util.ArrayDeque<>();
+        TreeTraversalBudget budget = new TreeTraversalBudget();
+        budget.enter(0);
+        pending.push(new DeleteNode(path, 0, false));
+        while (!pending.isEmpty()) {
             if (cancellable) OperationCancellation.checkCurrent();
-            Files.deleteIfExists(path);
-            return;
-        }
-        try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-            for (Path child : children) {
+            DeleteNode current = pending.pop();
+            final BasicFileAttributes attributes;
+            try {
+                attributes = Files.readAttributes(current.path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            } catch (java.nio.file.NoSuchFileException missing) {
+                continue;
+            }
+            if (!current.deleteAfterChildren && attributes.isDirectory() && !attributes.isSymbolicLink()) {
+                pending.push(new DeleteNode(current.path, current.depth, true));
+                try (DirectoryStream<Path> children = Files.newDirectoryStream(current.path)) {
+                    for (Path child : children) {
+                        if (cancellable) OperationCancellation.checkCurrent();
+                        budget.enter(current.depth + 1);
+                        pending.push(new DeleteNode(child, current.depth + 1, false));
+                    }
+                }
+            } else {
                 if (cancellable) OperationCancellation.checkCurrent();
-                deleteTreeOrThrow(child, cancellable);
+                Files.deleteIfExists(current.path);
             }
         }
-        if (cancellable) OperationCancellation.checkCurrent();
-        Files.deleteIfExists(path);
+    }
+
+    private static final class DeleteNode {
+        final Path path;
+        final int depth;
+        final boolean deleteAfterChildren;
+
+        DeleteNode(Path path, int depth, boolean deleteAfterChildren) {
+            this.path = path;
+            this.depth = depth;
+            this.deleteAfterChildren = deleteAfterChildren;
+        }
     }
 
     static void treeSize(File file, long[] totals) {
