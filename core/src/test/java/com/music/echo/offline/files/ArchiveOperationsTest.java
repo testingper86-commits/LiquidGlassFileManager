@@ -46,7 +46,7 @@ public class ArchiveOperationsTest {
         File parent=temporary.newFolder("zip-slip"),archive=new File(parent,"malicious.zip");
         try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(archive.toPath()))){zip.putNextEntry(new ZipEntry("../escaped.txt"));zip.write(1);zip.closeEntry();}
         try{ArchiveOperations.extractZip(archive,parent,null);fail("Zip-slip entry was accepted");}catch(IOException expected){assertEquals("Unsafe archive entry path rejected",expected.getMessage());}
-        assertFalse(new File(parent.getParentFile(),"escaped.txt").exists());File[] leftovers=parent.listFiles((dir,name)->name.startsWith("malicious"));assertNotNull(leftovers);assertEquals(0,leftovers.length);
+        assertFalse(new File(parent.getParentFile(),"escaped.txt").exists());assertFalse(new File(parent,"malicious").exists());
     }
 
     @Test public void rejectsDuplicateNormalizedPaths() throws Exception {
