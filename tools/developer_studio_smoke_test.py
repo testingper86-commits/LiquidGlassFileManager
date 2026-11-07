@@ -46,6 +46,10 @@ require("ACTION_OPEN_DOCUMENT" in activity and "ACTION_OPEN_DOCUMENT_TREE" in ac
         "file access uses Android document pickers and scoped URI grants")
 require("DocumentsContract.isDocumentUri" in uri_permissions and "DocumentsContract.isTreeUri" in uri_permissions and "requireSafUri" in uri_permissions,
         "ContentResolver access is restricted to validated SAF document and tree URIs")
+require("checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermission)" in uri_permissions,
+        "every SAF resolver operation requires the app's explicit per-URI grant")
+require("FLAG_GRANT_READ_URI_PERMISSION" in uri_permissions and "FLAG_GRANT_WRITE_URI_PERMISSION" in uri_permissions,
+        "SAF read, query and write operations enforce their distinct permission modes")
 require("ToxiUriPermissions.openInputStream(this,uri)" in activity and "ToxiUriPermissions.openInputStream(this,uri)" in tools_activity and "ToxiUriPermissions.openInputStream(this, file)" in main,
         "Developer Studio, built-in tools and settings import use the validated SAF stream boundary")
 for forbidden in ("java.net.", "HttpURLConnection", "OkHttpClient", "WebView", "ProcessBuilder", "Runtime.getRuntime", "DexClassLoader"):

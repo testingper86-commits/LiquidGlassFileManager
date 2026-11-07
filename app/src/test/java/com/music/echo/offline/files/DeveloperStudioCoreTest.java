@@ -56,6 +56,17 @@ public class DeveloperStudioCoreTest {
         for(String sql:new String[]{"DELETE FROM files","WITH x AS (SELECT 1) DELETE FROM files","PRAGMA journal_mode=WAL","PRAGMA optimize","SELECT 1; DELETE FROM files","SELECT 1; -- trailing comment"})
             assertFalse("unsafe SQL accepted: "+sql,DeveloperStudioCore.isReadOnlySql(sql));
     }
+    @Test public void readOnlySqlParserHandlesCommentsQuotedKeywordsAndMalformedInput() {
+        assertTrue(DeveloperStudioCore.isReadOnlySql("/* local query */ SELECT 'DELETE; DROP' AS sample -- trailing comment"));
+        assertTrue(DeveloperStudioCore.isReadOnlySql("SELECT '; DROP TABLE files' AS literal;"));
+        assertFalse(DeveloperStudioCore.isReadOnlySql("SELECT 1; /* second statement follows */ DELETE FROM files"));
+        assertFalse(DeveloperStudioCore.isReadOnlySql("SELECT 1 /* unterminated comment"));
+        assertFalse(DeveloperStudioCore.isReadOnlySql("EXPLAIN QUERY PLAN DELETE FROM files"));
+        assertFalse(DeveloperStudioCore.isReadOnlySql("PRAGMA writable_schema=ON"));
+    }
+    @Test public void readOnlySqlParserRejectsOversizedStatements() {
+        assertFalse(DeveloperStudioCore.isReadOnlySql("SELECT '" + new String(new char[10_001]).replace('\0', 'x') + "'"));
+    }
     @Test public void progressCountParserHandlesValidAndMalformedInput() {
         assertArrayEquals(new int[]{12,40},DeveloperStudioCore.parseProgressCount("Copying 12 of 40 files"));
         assertNull(DeveloperStudioCore.parseProgressCount("Copying files"));

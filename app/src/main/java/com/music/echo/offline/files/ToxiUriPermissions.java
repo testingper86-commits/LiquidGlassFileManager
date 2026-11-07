@@ -3,6 +3,8 @@ package com.music.echo.offline.files;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Process;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
@@ -32,22 +34,31 @@ final class ToxiUriPermissions {
         if (!isSafUri(context, uri)) throw new IOException("Only documents selected through Android's Storage Access Framework are supported");
     }
 
-    static InputStream openInputStream(Context context, Uri uri) throws IOException {
+    /** Require the explicit URI grant returned by the system document picker for each operation. */
+    private static void requireSafUri(Context context, Uri uri, int requiredPermission) throws IOException {
         requireSafUri(context, uri);
+        if (context.checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermission)
+                != PackageManager.PERMISSION_GRANTED) {
+            throw new IOException("The selected document does not grant the required access permission");
+        }
+    }
+
+    static InputStream openInputStream(Context context, Uri uri) throws IOException {
+        requireSafUri(context, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         InputStream input = context.getContentResolver().openInputStream(uri);
         if (input == null) throw new IOException("Selected document provider returned no input stream");
         return input;
     }
 
     static OutputStream openOutputStream(Context context, Uri uri, String mode) throws IOException {
-        requireSafUri(context, uri);
+        requireSafUri(context, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         OutputStream output = context.getContentResolver().openOutputStream(uri, mode);
         if (output == null) throw new IOException("Selected document provider returned no output stream");
         return output;
     }
 
     static Cursor query(Context context, Uri uri, String[] projection) throws IOException {
-        requireSafUri(context, uri);
+        requireSafUri(context, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         return context.getContentResolver().query(uri, projection, null, null, null);
     }
 
