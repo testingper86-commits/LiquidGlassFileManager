@@ -146,6 +146,8 @@ def main():
     require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
     require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
+    saf_delete = saf_ops.split("static void deleteTree(DocumentFile target)", 1)[1].split("private static String documentIdentity", 1)[0]
+    require("ArrayDeque<DocumentDeleteNode>" in saf_delete and "deleteAfterChildren" in saf_delete and "new TreeTraversalBudget(" in saf_delete and "Integer.MAX_VALUE" in saf_delete and "deleteTree(child" not in saf_delete, "SAF rollback deletion is iterative, cycle-aware and bounded by entry count without recursive stack depth")
     rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     require("parentPath.resolve(name).normalize()" in rename_engine and "candidate.startsWith(parentPath)" in rename_engine and "LinkOption.NOFOLLOW_LINKS" in rename_engine and "BatchRenameEngine.moveChild(e.f, t)" in source("app/src/main/java/com/music/echo/offline/files/BrowserView.java"), "filesystem rename uses normalized direct-child paths and refuses symlink traversal")
 

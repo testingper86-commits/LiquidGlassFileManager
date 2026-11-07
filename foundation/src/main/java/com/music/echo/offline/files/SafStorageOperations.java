@@ -678,26 +678,50 @@ final class SafStorageOperations {
     }
 
     static void deleteTree(DocumentFile target) throws IOException {
-        deleteTree(target, new TreeTraversalBudget(), new HashSet<>(), 0);
-    }
-
-    private static void deleteTree(DocumentFile target, TreeTraversalBudget budget,
-                                   HashSet<String> visitedDirectories, int depth) throws IOException {
         if (target == null || !target.exists()) return;
-        budget.enter(depth);
-        if (target.isDirectory()) {
-            if (!visitedDirectories.add(documentIdentity(target.getUri()))) {
-                throw new IOException("Storage provider returned a repeated or cyclic directory during cleanup");
+        TreeTraversalBudget budget = new TreeTraversalBudget(
+                TreeTraversalBudget.DEFAULT_MAX_ENTRIES, Integer.MAX_VALUE);
+        HashSet<String> visitedDirectories = new HashSet<>();
+        java.util.ArrayDeque<DocumentDeleteNode> pending = new java.util.ArrayDeque<>();
+        budget.enter(0);
+        pending.push(new DocumentDeleteNode(target, 0, false));
+        while (!pending.isEmpty()) {
+            DocumentDeleteNode current = pending.pop();
+            DocumentFile document = current.document;
+            if (current.deleteAfterChildren) {
+                if (document.exists() && !document.delete()) {
+                    throw new IOException("Provider refused to remove partial output: " + document.getName());
+                }
+                continue;
             }
-            DocumentFile[] children = target.listFiles();
-            if (children == null) throw new IOException("Provider could not enumerate partial output for cleanup");
-            for (DocumentFile child : children) {
-                if (child == null) throw new IOException("Provider returned an invalid child during cleanup");
-                deleteTree(child, budget, visitedDirectories, depth + 1);
+            if (!document.exists()) continue;
+            if (document.isDirectory()) {
+                if (!visitedDirectories.add(documentIdentity(document.getUri()))) {
+                    throw new IOException("Storage provider returned a repeated or cyclic directory during cleanup");
+                }
+                DocumentFile[] children = document.listFiles();
+                if (children == null) throw new IOException("Provider could not enumerate partial output for cleanup");
+                pending.push(new DocumentDeleteNode(document, current.depth, true));
+                for (DocumentFile child : children) {
+                    if (child == null) throw new IOException("Provider returned an invalid child during cleanup");
+                    budget.enter(current.depth + 1);
+                    pending.push(new DocumentDeleteNode(child, current.depth + 1, false));
+                }
+            } else if (!document.delete()) {
+                throw new IOException("Provider refused to remove partial output: " + document.getName());
             }
         }
-        if (target.exists() && !target.delete()) {
-            throw new IOException("Provider refused to remove partial output: " + target.getName());
+    }
+
+    private static final class DocumentDeleteNode {
+        final DocumentFile document;
+        final int depth;
+        final boolean deleteAfterChildren;
+
+        DocumentDeleteNode(DocumentFile document, int depth, boolean deleteAfterChildren) {
+            this.document = document;
+            this.depth = depth;
+            this.deleteAfterChildren = deleteAfterChildren;
         }
     }
 
