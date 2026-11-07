@@ -136,5 +136,5 @@ final class ArchiveOperations {
         }
     }
 
-    private static void cleanupArchive(File path,Throwable failure){if(!FileOperationEngine.deleteTree(path))failure.addSuppressed(new IOException("Unable to remove incomplete archive output: "+path.getName()));}
+    private static void cleanupArchive(File path,Throwable failure){try{FileOperationEngine.deleteTreeOrThrow(path.toPath(),false);}catch(IOException cleanupFailure){failure.addSuppressed(new IOException("Unable to remove incomplete archive output: "+path.getName(),cleanupFailure));}}
 }

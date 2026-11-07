@@ -158,7 +158,7 @@ final class FileOperationEngine {
         catch (IOException | RuntimeException failure) { return false; }
     }
 
-    private static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
+    static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
         if (cancellable) OperationCancellation.checkCurrent();
         final BasicFileAttributes attributes;
         try { attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS); }
