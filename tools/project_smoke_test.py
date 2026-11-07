@@ -120,6 +120,9 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
+    lan_hash = lan_transfer.split("private static String sha256(File f)", 1)[1].split("private static String hex(", 1)[0]
+    require("OperationCancellation.checkCurrent();" in lan_hash and "private static String sha256(File f) throws IOException" in lan_transfer and lan_transfer.count("OperationCancellation.checkCurrent();") >= 10, "LAN transfers cooperatively stop file hashing and encrypted send/receive loops when cancelled")
     cleanup_scan = main.split("void openCleanup()", 1)[1].split("void buildEmptyFolders(", 1)[0]
     require("OperationCancellation.Token operationToken = cancellation.begin();" in cleanup_scan and cleanup_scan.count("OperationCancellation.isCancelled()") >= 3 and "cancellation.finish(operationToken);" in cleanup_scan, "empty-folder scanning stops promptly when its Activity-scoped cancellation token is cancelled")
     require(main.count("io.execute(") == 1 and main.count("ops.execute(") == 1 and main.count("executeIo(") >= 8 and main.count("executeOperation(") == 4 and "catch (RejectedExecutionException rejected)" in main and "busy(false);" in main, "bounded MainActivity task submissions recover from queue rejection without leaving operations busy")
