@@ -30,7 +30,6 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.content.ContentResolver;
 import android.database.Cursor;
-import android.provider.DocumentsContract;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -1717,8 +1716,7 @@ public class MainActivity extends ComponentActivity {
                 storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
                 ToxiVisualSystem.toast(this, "This provider grants temporary access only; select it again after restarting ToxiFiles");
             }
-            String rootDoc = DocumentsContract.getTreeDocumentId(tree);
-            showSafLevel(tree, DocumentsContract.buildDocumentUriUsingTree(tree, rootDoc), "Other storage");
+            showSafLevel(tree, SafStorageOperations.treeRootDocumentUri(tree), "Other storage");
         } else if (rq == REQ_IMPORT_SETTINGS) {
             Uri file = data.getData();
             if (file != null) applyImportedSettings(file);
@@ -1768,14 +1766,14 @@ public class MainActivity extends ComponentActivity {
                 for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i).name;
                 AlertDialog listing = new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
                     SafStorageOperations.DirectoryEntry row = rows.get(w);
-                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, row.documentId);
+                    Uri childUri = SafStorageOperations.documentUriInTree(tree, row.documentId);
                     if (row.directory) showSafLevel(tree, childUri, row.name);
                     else importSafDoc(childUri, row.name);
                 }).setNegativeButton("Close", null).create();
                 listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
                         (parent, view, position, id) -> {
                             SafStorageOperations.DirectoryEntry row = rows.get(position);
-                            Uri selected = DocumentsContract.buildDocumentUriUsingTree(tree, row.documentId);
+                            Uri selected = SafStorageOperations.documentUriInTree(tree, row.documentId);
                             showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
                             return true;
                         }));
@@ -1839,7 +1837,7 @@ public class MainActivity extends ComponentActivity {
                 }
                 boolean canMoveHere = !SafStorageOperations.sameDocument(currentFolder, sourceParent);
                 List<String> choices = new ArrayList<>();
-                if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
+                if (canMoveHere) choices.add("Move here: " + SafStorageOperations.documentId(currentFolder));
                 for (SafStorageOperations.DirectoryEntry folder : folders) choices.add("Open folder: " + folder.name + "  âº");
                 if (choices.isEmpty()) {
                     ToxiVisualSystem.toast(this, "No other destination folders are available here");
@@ -1854,7 +1852,7 @@ public class MainActivity extends ComponentActivity {
                             } else {
                                 int folderIndex = which - (canMoveHere ? 1 : 0);
                                 SafStorageOperations.DirectoryEntry selected = folders.get(folderIndex);
-                                Uri selectedFolder = DocumentsContract.buildDocumentUriUsingTree(tree, selected.documentId);
+                                Uri selectedFolder = SafStorageOperations.documentUriInTree(tree, selected.documentId);
                                 showSafMoveFolderPicker(tree, selectedFolder, sourceDocument,
                                         sourceParent, sourceParentTitle, sourceName);
                             }

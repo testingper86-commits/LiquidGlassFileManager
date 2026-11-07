@@ -143,6 +143,27 @@ final class SafStorageOperations {
         return destinations;
     }
 
+    static Uri treeRootDocumentUri(Uri tree) {
+        if (tree == null) throw new IllegalArgumentException("Storage tree URI is required");
+        String rootId = DocumentsContract.getTreeDocumentId(tree);
+        if (rootId == null || rootId.isEmpty()) {
+            throw new IllegalArgumentException("Storage tree has no root document");
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(tree, rootId);
+    }
+
+    static Uri documentUriInTree(Uri tree, String documentId) {
+        if (tree == null || documentId == null || documentId.isEmpty()) {
+            throw new IllegalArgumentException("Storage tree and document ID are required");
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(tree, documentId);
+    }
+
+    static String documentId(Uri document) {
+        if (document == null) throw new IllegalArgumentException("Document URI is required");
+        return DocumentsContract.getDocumentId(document);
+    }
+
     static boolean sameDocument(Uri first, Uri second) {
         if (first == null || second == null) return false;
         try {
