@@ -318,7 +318,7 @@ def main():
     indexer = source("app/src/main/java/com/music/echo/offline/files/Indexer.java")
     require("WeakReference<Runnable>" in indexer and "completionCallbacks" in indexer and "registerCompletionCallback(done)" in indexer and "postCompletionCallbacks()" in indexer and "Indexer.I.start(indexDoneCallback)" in main and "if (isFinishing() || isDestroyed()) return;" in main, "global indexing delivers completion only to live, weakly held Activity callbacks")
     require("void runUiIfAlive(Runnable action)" in main and "if (action == null || isFinishing() || isDestroyed()) return;" in main and "if (!isFinishing() && !isDestroyed()) action.run();" in main and "a.runOnUiThread(" not in file_ops and "a.runUiIfAlive(" in file_ops, "file-operation progress and completion callbacks are discarded after Activity destruction")
-    require('cancellation.cancelActive();\n        taskScope.close(true);\n        super.onDestroy();' in main, "MainActivity cancels active operations and interrupts scoped tasks before destruction")
+    require('cancellation.cancelActive();\n        LanTransfer.cancel();\n        taskScope.close(true);\n        super.onDestroy();' in main, "MainActivity cancels active operations, LAN transfers and scoped tasks before destruction")
     require("getOnBackPressedDispatcher().addCallback(activity" in back_navigation and "new OnBackPressedCallback(true)" in back_navigation and all("extends ComponentActivity" in activity and "ToxiBackNavigation.bind(this," in activity and "@Override public void onBackPressed" not in activity for activity in back_activities), "All activities use lifecycle-aware AndroidX predictive Back callbacks")
 
     base_theme = source("app/src/main/res/values/themes.xml")
