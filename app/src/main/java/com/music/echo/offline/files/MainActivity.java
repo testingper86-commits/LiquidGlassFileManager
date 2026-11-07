@@ -1416,6 +1416,7 @@ public class MainActivity extends Activity {
         if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage — try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for duplicates…");
         io.execute(() -> {
+            OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
                 runOnUiThread(() -> {
@@ -1424,12 +1425,15 @@ public class MainActivity extends Activity {
                     showOverlay(dupScroll);
                 });
             } catch (IOException scanFailure) {
+                if ("Operation cancelled".equals(scanFailure.getMessage())) return;
                 final String detail = scanFailure.getMessage();
                 runOnUiThread(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     ToxiVisualSystem.toast(this, "Duplicate scan failed: "
                             + (detail == null || detail.trim().isEmpty() ? "a file could not be read" : detail));
                 });
+            } finally {
+                this.cancellation.finish(operationToken);
             }
         });
     }

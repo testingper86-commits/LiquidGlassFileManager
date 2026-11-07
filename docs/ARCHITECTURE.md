@@ -3,7 +3,7 @@
 ## Gradle modules
 
 - `:app` is the Android application boundary. It owns activities, Android framework integration, storage providers, UI, and application lifecycle.
-- `:core` is a Java 17 library for platform-neutral primitives shared by the application. Its extracted components are operation-scoped cancellation, strict ZIP-entry and filesystem child-path validation, read-only Developer Studio parsing/analysis, and PIN-verifier primitives. These utilities remain Android-free and have JVM regression tests in the core module.
+- `:core` is a Java 17 library for platform-neutral primitives shared by the application. Its extracted components are operation-scoped cancellation, strict ZIP-entry and filesystem child-path validation, read-only Developer Studio parsing/analysis, PIN-verifier primitives, and canonical filesystem path resolution. These utilities remain Android-free and have JVM regression tests in the core module.
 
 The core module intentionally has no Android SDK dependency. Android-specific services remain in `:app` and depend on `:core`, never the reverse.
 

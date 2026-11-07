@@ -20,9 +20,12 @@ import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewClientCompat;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Locale;
 
@@ -90,8 +93,8 @@ public final class HtmlViewerActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
         WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
+        settings.setJavaScriptEnabled(false);
+        settings.setDomStorageEnabled(false);
         settings.setDatabaseEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
@@ -171,56 +174,47 @@ public final class HtmlViewerActivity extends Activity {
     }
 
     private static final class ConfinedDirectoryHandler implements WebViewAssetLoader.PathHandler {
-        private final File root;
-        private final String rootPrefix;
-        private final String documentCanonicalPath;
+        private final Path rootPath;
+        private final Path documentPath;
 
         ConfinedDirectoryHandler(File directory, File document) {
-            String selectedPath;
-            try { selectedPath = document == null ? null : document.getCanonicalPath(); }
-            catch (IOException | SecurityException ex) { selectedPath = null; }
-            documentCanonicalPath = selectedPath;
-            File canonicalDirectory;
+            Path selectedDocument = null;
+            Path selectedRoot = null;
             try {
-                canonicalDirectory = directory == null ? null : directory.getCanonicalFile();
-            } catch (IOException | SecurityException ex) {
-                canonicalDirectory = null;
+                selectedDocument = document == null ? null : document.getCanonicalFile().toPath();
+            } catch (IOException | SecurityException ignored) {
+                selectedDocument = null;
             }
-            root = canonicalDirectory;
-            String base = canonicalDirectory == null ? null : canonicalDirectory.getPath();
-            rootPrefix = base == null ? null
-                    : (base.endsWith(File.separator) ? base : base + File.separator);
+            try {
+                selectedRoot = directory == null ? null : directory.getCanonicalFile().toPath();
+            } catch (IOException | SecurityException ignored) {
+                selectedRoot = null;
+            }
+            documentPath = selectedDocument;
+            rootPath = selectedRoot;
         }
 
         @Override public WebResourceResponse handle(String path) {
-            if (root == null || rootPrefix == null || path == null || path.isEmpty()
+            if (rootPath == null || path == null || path.isEmpty()
                     || path.indexOf((char) 0) >= 0 || path.indexOf(92) >= 0) return null;
             try {
-                String decoded = Uri.decode(path);
-                if (decoded.isEmpty() || decoded.indexOf((char) 0) >= 0 || decoded.indexOf(92) >= 0
-                        || decoded.startsWith("/") || decoded.equals("..") || decoded.equals(".")
-                        || decoded.contains("../") || decoded.contains("/..") || decoded.contains("./")) {
-                    return null;
-                }
-                File requested = new File(root, decoded);
-                String canonical = requested.getCanonicalPath();
-                if (!canonical.startsWith(rootPrefix) || !requested.isFile() || !requested.canRead()) return null;
-                String extension = extensionOf(requested).toLowerCase(Locale.ROOT);
-                if (!canonical.equals(documentCanonicalPath) && !isAllowedAssetExtension(extension)) return null;
+                Path canonical = SafePathResolver.resolveExistingFile(rootPath, Uri.decode(path));
+                String extension = extensionOf(canonical.toFile()).toLowerCase(Locale.ROOT);
+                if (!canonical.equals(documentPath) && !isAllowedAssetExtension(extension)) return null;
                 String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
                 if (mime == null) mime = "application/octet-stream";
-                String charset = mime.startsWith("text/") || mime.contains("javascript")
-                        || mime.contains("json") || mime.contains("xml") ? "UTF-8" : null;
-                InputStream stream = new FileInputStream(requested);
+                String charset = mime.startsWith("text/") || mime.contains("json") || mime.contains("xml")
+                        ? "UTF-8" : null;
+                InputStream stream = Files.newInputStream(canonical, LinkOption.NOFOLLOW_LINKS);
                 return new WebResourceResponse(mime, charset, stream);
-            } catch (IOException | SecurityException ex) {
+            } catch (IOException | SecurityException | InvalidPathException ex) {
                 return null;
             }
         }
 
         private static boolean isAllowedAssetExtension(String extension) {
             switch (extension) {
-                case "css": case "js": case "mjs": case "json":
+                case "css": case "json":
                 case "png": case "jpg": case "jpeg": case "gif": case "webp": case "bmp": case "svg": case "ico":
                 case "woff": case "woff2": case "ttf": case "otf":
                 case "mp3": case "m4a": case "wav": case "ogg": case "mp4": case "webm": case "m4v":

@@ -31,6 +31,8 @@ def main():
         "core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java",
         "core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java",
         "core/src/test/java/com/music/echo/offline/files/PinHashTest.java",
+        "core/src/main/java/com/music/echo/offline/files/SafePathResolver.java",
+        "core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java",
         "app/src/main/java/com/music/echo/offline/files/Vault.java",
         "core/src/main/java/com/music/echo/offline/files/PinHash.java",
         "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
@@ -50,7 +52,12 @@ def main():
     settings = source("settings.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
     require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
-    require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
+    require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
+    dependency_audit = source("tools/dependency_audit.py")
+    app_build = source("app/build.gradle.kts")
+    require('pom_licenses' in dependency_audit and 'bundled_notices' in dependency_audit and 'OWNER REVIEW REQUIRED' in dependency_audit, "dependency inventory extracts POM licenses and bundled notices without claiming legal approval")
+    dependency_audit_tests = source("tools/dependency_audit_test.py")
+    require('test_pom_license_metadata_with_maven_namespace' in dependency_audit_tests and 'test_bundled_license_and_notice_files' in dependency_audit_tests, "dependency license metadata parser has regression tests")
 
     manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
     app = manifest.find("application")
@@ -118,7 +125,7 @@ def main():
     archive_path = source("core/src/main/java/com/music/echo/offline/files/ArchivePath.java")
     cancellation = source("core/src/main/java/com/music/echo/offline/files/OperationCancellation.java")
     require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
-    require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
+    require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 3, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
     java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
     test_sources = list((ROOT / "app/src/test/java").rglob("*.java")) + list((ROOT / "core/src/test/java").rglob("*.java"))
@@ -152,11 +159,15 @@ def main():
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, "file indexing avoids symlink traversal and bounds memory use")
     dup_finder = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
     dup_tests = source("app/src/test/java/com/music/echo/offline/files/DupFinderTest.java")
-    require('entry.len < 0' in dup_finder and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder, "duplicate detection includes empty files, rejects stale/symlink entries and never hides hash failures")
-    require('catch (IOException scanFailure)' in main and 'Duplicate scan failed:' in main, "duplicate scan reports incomplete I/O failures to the user")
-    require('includesEmptyFilesAsExactDuplicates' in dup_tests and 'reportsDisappearingFilesInsteadOfReturningPartialResults' in dup_tests, "duplicate scanner has regression coverage for empty and disappearing files")
+    require('entry.len < 0' in dup_finder and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder and 'OperationCancellation.checkCurrent()' in dup_finder, "duplicate detection includes empty files, rejects stale/symlink entries and never hides hash failures")
+    require('catch (IOException scanFailure)' in main and 'Duplicate scan failed:' in main and 'this.cancellation.finish(operationToken)' in main, "duplicate scan reports incomplete I/O failures to the user")
+    require('includesEmptyFilesAsExactDuplicates' in dup_tests and 'reportsDisappearingFilesInsteadOfReturningPartialResults' in dup_tests and 'honorsScopedOperationCancellation' in dup_tests, "duplicate scanner has regression coverage for empty and disappearing files")
     html = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
-    require('setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html, "built-in HTML viewer blocks local file access and mixed content")
+    require('setJavaScriptEnabled(false)' in html and 'setDomStorageEnabled(false)' in html and 'setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html and 'SafePathResolver.resolveExistingFile(rootPath, Uri.decode(path))' in html, "built-in HTML viewer disables active scripts and confines every asset to a canonical real-path root")
+    safe_paths = source("core/src/main/java/com/music/echo/offline/files/SafePathResolver.java")
+    safe_path_tests = source("core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java")
+    require('candidate.startsWith(root)' in safe_paths and 'canonical.startsWith(root)' in safe_paths and 'toRealPath()' in safe_paths and 'Files.isRegularFile' in safe_paths, "HTML asset path resolver enforces canonical segment-aware containment and symlink resolution")
+    require('rejectsParentTraversalAbsoluteAndBackslashPaths' in safe_path_tests and 'rejectsSymlinkTargetsOutsideTheRoot' in safe_path_tests, "canonical asset path resolver has traversal and symlink escape regression tests")
     viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
     require('TextureView' in viewer and 'setSurfaceTextureListener' in viewer and 'USAGE_MEDIA' in viewer and 'A-B loop enabled' in viewer, "built-in media viewer retains native video and audio playback controls")
     pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
@@ -173,8 +184,14 @@ def main():
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
     require('static File resolveChild(File parent, String name)' in rename_engine and 'candidate.startsWith(parentPath)' in rename_engine and 'candidate.toRealPath()' in rename_engine and 'LinkOption.NOFOLLOW_LINKS' in rename_engine, "User-derived child paths are normalized, parent-contained and symlink-checked")
+    require('for (char c : name.toCharArray())' in rename_engine, "batch rename validates each bounded filename character without an indexed loop")
     require('BatchRenameEngine.resolveChild(cur, n)' in browser and 'BatchRenameEngine.resolveChild(e.f.getParentFile(), n)' in browser, "Folder creation and rename use canonical path containment")
     require('BatchRenameEngine.resolveChild(dir, candidate)' in file_ops and 'safeChild(dir, name)' in file_ops, "File operations resolve generated destination names through the safe child helper")
+    external_open = file_ops.split('static void external(Activity a, File f, boolean chooser)', 1)[1].split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[0]
+    require('e.kind == FileKinds.APK' in external_open and 'Use the Install action for APK files' in external_open, "generic ACTION_VIEW handoff refuses APKs and keeps installation on the explicit PackageInstaller path")
+    hash_core = source("app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
+    hash_ui = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
+    require('MD5 (legacy)' in hash_core and 'SHA-1 (legacy)' in hash_core and hash_core.count('codeql[java/potentially-weak-cryptographic-algorithm]') == 2 and 'not security checks' in hash_ui, "legacy MD5/SHA-1 fingerprints are clearly labeled and never presented as security-grade hashes")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
     manifest = source("app/src/main/AndroidManifest.xml")

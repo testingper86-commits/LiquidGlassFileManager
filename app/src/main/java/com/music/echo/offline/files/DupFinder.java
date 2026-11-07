@@ -23,9 +23,11 @@ final class DupFinder {
     }
 
     static List<Group> find(List<Entry> all) throws IOException {
+        OperationCancellation.checkCurrent();
         if (all == null) throw new IOException("The storage index is unavailable");
         Map<Long, List<Entry>> bySize = new HashMap<>();
         for (Entry entry : all) {
+            OperationCancellation.checkCurrent();
             if (entry == null || entry.dir || entry.len < 0) continue;
             if (entry.f == null) throw new IOException("The storage index contains an invalid file entry");
             List<Entry> candidates = bySize.get(entry.len);
@@ -59,8 +61,15 @@ final class DupFinder {
     }
 
     private static void verifySnapshot(Entry entry) throws IOException {
+        OperationCancellation.checkCurrent();
         File file = entry.f;
-        if (Files.isSymbolicLink(file.toPath()) || !file.isFile()
+        final boolean symbolicLink;
+        try {
+            symbolicLink = Files.isSymbolicLink(file.toPath());
+        } catch (SecurityException denied) {
+            throw new IOException("Access denied to " + file.getName() + " during duplicate scan", denied);
+        }
+        if (symbolicLink || !file.isFile()
                 || file.length() != entry.len || file.lastModified() != entry.mod) {
             throw new IOException("File changed or became unavailable during duplicate scan: " + file.getName());
         }
@@ -77,9 +86,12 @@ final class DupFinder {
             byte[] buffer = new byte[65536];
             int count;
             while ((count = input.read(buffer)) != -1) {
+                OperationCancellation.checkCurrent();
                 if (count > 0) digest.update(buffer, 0, count);
             }
+            OperationCancellation.checkCurrent();
         } catch (IOException failure) {
+            if ("Operation cancelled".equals(failure.getMessage())) throw failure;
             throw new IOException("Unable to read " + file.getName() + " during duplicate scan", failure);
         } catch (SecurityException denied) {
             throw new IOException("Access denied to " + file.getName() + " during duplicate scan", denied);

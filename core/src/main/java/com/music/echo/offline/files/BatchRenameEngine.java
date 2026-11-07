@@ -168,7 +168,9 @@ final class BatchRenameEngine {
         if (name == null || name.trim().isEmpty()) return "Filename is empty";
         if (".".equals(name) || "..".equals(name)) return "Reserved filename";
         if (name.getBytes(StandardCharsets.UTF_8).length > 255) return "Filename exceeds the 255-byte filesystem limit";
-        for (int i=0;i<name.length();i++) { char c=name.charAt(i); if (c < 32 || c == 127 || c == '/' || c == '\\' || c == 0) return "Filename contains an invalid character"; }
+        for (char c : name.toCharArray()) {
+            if (c < 32 || c == 127 || c == '/' || c == '\\' || c == 0) return "Filename contains an invalid character";
+        }
         return null;
     }
     private static String applyCase(String value, int mode) {

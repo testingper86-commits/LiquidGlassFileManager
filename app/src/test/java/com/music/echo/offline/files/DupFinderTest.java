@@ -61,4 +61,21 @@ public class DupFinderTest {
             assertTrue(expected.getMessage().contains("first.bin"));
         }
     }
+    @Test public void honorsScopedOperationCancellation() throws Exception {
+        File file = temporary.newFile("cancelled.bin");
+        OperationCancellation cancellation = new OperationCancellation();
+        OperationCancellation.Token token = cancellation.begin();
+        try {
+            cancellation.cancelActive();
+            try {
+                DupFinder.find(Arrays.asList(new Entry(file)));
+                fail("A cancelled duplicate scan must stop before returning results");
+            } catch (IOException expected) {
+                assertEquals("Operation cancelled", expected.getMessage());
+            }
+        } finally {
+            cancellation.finish(token);
+        }
+    }
+
 }

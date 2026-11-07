@@ -334,6 +334,10 @@ final class FileOps {
     static void external(Activity a, File f, boolean chooser) {
         try {
             Entry e = new Entry(f);
+            if (e.kind == FileKinds.APK || "apk".equalsIgnoreCase(e.ext)) {
+                ToxiVisualSystem.toast(a, "Use the Install action for APK files");
+                return;
+            }
             Uri u = uri(a, f);
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(u, FileKinds.mime(e));
