@@ -1847,7 +1847,7 @@ public class MainActivity extends ComponentActivity {
                 boolean canMoveHere = !SafStorageOperations.sameDocument(currentFolder, sourceParent);
                 List<String> choices = new ArrayList<>();
                 if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
-                for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  âº");
+                for (SafStorageOperations.DirectoryEntry folder : folders) choices.add("Open folder: " + folder.name + "  âº");
                 if (choices.isEmpty()) {
                     ToxiVisualSystem.toast(this, "No other destination folders are available here");
                     return;
