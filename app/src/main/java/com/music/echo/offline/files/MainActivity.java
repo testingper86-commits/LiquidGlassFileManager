@@ -61,12 +61,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.json.JSONObject;
+import androidx.activity.ComponentActivity;
 import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ComponentActivity {
     private static final String BIOMETRIC_UNLOCK_KEY_ALIAS = "toxifiles_biometric_unlock_v1";
-    private Object backInvokedCallback;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
     final OperationCancellation cancellation = new OperationCancellation();
     final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
@@ -115,12 +115,7 @@ public class MainActivity extends Activity {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(R.style.AppTheme);
         super.onCreate(b);
-        if (Build.VERSION.SDK_INT >= 33) {
-            android.window.OnBackInvokedCallback callback = this::handleBackNavigation;
-            backInvokedCallback = callback;
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback);
-        }
+        ToxiBackNavigation.bind(this, this::handleBackNavigation);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(screenOffReceiver, screenOffFilter);
@@ -318,7 +313,6 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
-        if (Build.VERSION.SDK_INT >= 33 && backInvokedCallback != null) getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) backInvokedCallback);
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         super.onDestroy();
         taskScope.close(false);
@@ -578,8 +572,6 @@ public class MainActivity extends Activity {
     }
 
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
-
-    @Override public void onBackPressed() { handleBackNavigation(); }
 
     private void handleBackNavigation() {
         if (overlayView == listView && listView.handleBack()) return;

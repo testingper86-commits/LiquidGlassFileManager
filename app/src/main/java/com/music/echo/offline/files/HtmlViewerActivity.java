@@ -16,6 +16,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.ComponentActivity;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewClientCompat;
 
@@ -30,7 +31,7 @@ import java.security.MessageDigest;
 import java.util.Locale;
 
 /** Private HTML viewer launched only by MainActivity's existing file-opening route. */
-public final class HtmlViewerActivity extends Activity {
+public final class HtmlViewerActivity extends ComponentActivity {
     static final String EXTRA_FILE_PATH = "html_file_path";
     private static final String ASSET_DOMAIN_SUFFIX = ".appassets.androidplatform.net";
     private String assetHost;
@@ -38,6 +39,7 @@ public final class HtmlViewerActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        ToxiBackNavigation.bind(this, this::finish);
         ToxiVisualSystem.initialize(this);
         if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
 
@@ -223,8 +225,6 @@ public final class HtmlViewerActivity extends Activity {
             }
         }
     }
-
-    @Override public void onBackPressed() { finish(); }
 
     @Override protected void onDestroy() {
         if (webView != null) {

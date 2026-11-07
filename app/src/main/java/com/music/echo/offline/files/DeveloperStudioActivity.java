@@ -26,6 +26,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import androidx.activity.ComponentActivity;
 import androidx.documentfile.provider.DocumentFile;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -57,7 +58,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /** Restricted, on-device Developer Studio. No network clients or file execution are used. */
-public final class DeveloperStudioActivity extends Activity {
+public final class DeveloperStudioActivity extends ComponentActivity {
     private static final int PICK_ONE=501, PICK_DIFF_A=502, PICK_DIFF_B=503, PICK_DB=504, PICK_TREE=505;
     private static final int REL=0, APK=1, DB=2, DIFF=3, FORMAT=4, REGEX=5, SYMBOL=6, DEP=7, BINARY=8, COLOR=9, JSON_XML=10, SIGNATURE=11;
     private static final String[] NAMES={"File Relationship Explorer","APK Inspection Laboratory","Database Explorer & SQL Query Studio","Code Diff Studio","Code Formatter & Validator","Regex Testing Laboratory","Code Symbol Navigator","Dependency Inspector","Binary Structure Analyzer","Color & Asset Inspector","JSON & XML Studio","File Signature Analyzer"};
@@ -90,7 +91,7 @@ public final class DeveloperStudioActivity extends Activity {
     private File databaseCopy;
     private volatile CancellationSignal activeSqlSignal;
 
-    @Override public void onCreate(Bundle state){super.onCreate(state);ToxiVisualSystem.initialize(this);getWindow().setStatusBarColor(ToxiVisualSystem.CANVAS);getWindow().setNavigationBarColor(ToxiVisualSystem.CANVAS);if(!developerUnlocked()){finish();return;}showHome();}
+    @Override public void onCreate(Bundle state){super.onCreate(state);ToxiBackNavigation.bind(this, this::handleBackNavigation);ToxiVisualSystem.initialize(this);getWindow().setStatusBarColor(ToxiVisualSystem.CANVAS);getWindow().setNavigationBarColor(ToxiVisualSystem.CANVAS);if(!developerUnlocked()){finish();return;}showHome();}
     @Override protected void onResume(){super.onResume();if(!developerUnlocked())finish();}
     private boolean developerUnlocked(){return ToxiVisualSystem.PREFERENCES.getBoolean("developer_options_unlocked",false);}
     @Override protected void onDestroy(){cancelWork();if(database!=null)database.close();if(databaseCopy!=null)databaseCopy.delete();taskScope.close(true);super.onDestroy();}
@@ -111,7 +112,7 @@ public final class DeveloperStudioActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);LinearLayout content=vertical();scroll.addView(content);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);page=content;
     }
     private void handleBackNavigation(){if(current>=0){cancelWork();showHome();}else{finish();}}
-    @Override public void onBackPressed(){handleBackNavigation();}
+    
     private LinearLayout page;
     private void add(View v){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(8);page.addView(v,p);}
     private void showHome(){if(!developerUnlocked()){finish();return;}current=-1;base("Developer Studio","12 offline inspection tools · on-device processing · originals remain unchanged");add(section("SOURCE & CODE"));tile(REL);tile(DIFF);tile(FORMAT);tile(REGEX);tile(SYMBOL);tile(DEP);add(section("PACKAGES & BINARY"));tile(APK);tile(BINARY);tile(SIGNATURE);add(section("DATA & ASSETS"));tile(DB);tile(COLOR);tile(JSON_XML);add(muted("All analysis runs locally. Select files through Android's document picker. No inspected file is executed or uploaded."));}

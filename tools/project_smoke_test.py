@@ -21,6 +21,10 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/BrowserView.java",
         "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/ToxiBackNavigation.java",
+        "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/ViewerActivity.java",
         "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
         "foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
@@ -249,7 +253,9 @@ def main():
     require('"Duplicate here"' in main and 'SafStorageOperations.copyDocumentTree(getContentResolver(), source, destination)' in main, "Other Storage supports recursive directory duplication")
     require('"Move to folder"' in main and 'showSafMoveFolderPicker(tree, parent, document, parent, title, name);' in main and 'SafStorageOperations.moveDocumentWithFallback(' in main, "Other Storage exposes provider-aware move-to-folder actions")
     require('ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);' in main and '@android.annotation.SuppressLint("WrongConstant")' not in main, "MainActivity persists SAF grants through the shared validated permission helper")
-    require('registerOnBackInvokedCallback' in main and 'unregisterOnBackInvokedCallback' in main and 'private void handleBackNavigation()' in main, "Android 13+ predictive Back callbacks are registered and released")
+    back_navigation = source("app/src/main/java/com/music/echo/offline/files/ToxiBackNavigation.java")
+    back_activities = [main, source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java"), source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java"), source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java"), source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")]
+    require("getOnBackPressedDispatcher().addCallback(activity" in back_navigation and "new OnBackPressedCallback(true)" in back_navigation and all("extends ComponentActivity" in activity and "ToxiBackNavigation.bind(this," in activity and "@Override public void onBackPressed" not in activity for activity in back_activities), "All activities use lifecycle-aware AndroidX predictive Back callbacks")
 
     base_theme = source("app/src/main/res/values/themes.xml")
     api27_theme = source("app/src/main/res/values-v27/themes.xml")

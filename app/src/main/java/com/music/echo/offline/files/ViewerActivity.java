@@ -4,6 +4,7 @@ package com.music.echo.offline.files;
 import com.music.echo.offline.R;
 
 import android.app.Activity;
+import androidx.activity.ComponentActivity;
 import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -62,7 +63,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 /** Built-in viewer: images (pinch zoom), video, audio, PDF and text. Works without any other app installed. */
-public class ViewerActivity extends Activity {
+public class ViewerActivity extends ComponentActivity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
@@ -112,6 +113,7 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        ToxiBackNavigation.bind(this, this::handleBackNavigation);
         ToxiVisualSystem.initialize(this);
         if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         paths = getIntent().getStringArrayListExtra("paths");
@@ -1725,7 +1727,7 @@ public class ViewerActivity extends Activity {
         }
     }
 
-    @Override public void onBackPressed() {
+    private void handleBackNavigation() {
         // Back from the viewer must return to the file list, never leave a hidden player alive.
         try {
             if (videoPlayer != null) {
