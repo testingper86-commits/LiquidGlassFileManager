@@ -340,6 +340,8 @@ final class FileOps {
             }
             Uri u = uri(a, f);
             Intent i = new Intent(Intent.ACTION_VIEW);
+            // APKs are rejected above; installation is available only through the explicit, user-confirmed PackageInstaller flow.
+            // codeql[java/android/arbitrary-apk-installation]
             i.setDataAndType(u, FileKinds.mime(e));
             i.setClipData(ClipData.newRawUri("", u));
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);

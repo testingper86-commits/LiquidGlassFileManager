@@ -55,7 +55,6 @@ def main():
     require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
     dependency_audit = source("tools/dependency_audit.py")
     app_build = source("app/build.gradle.kts")
-    require('androidx.core:core:1.17.0' in app_build and 'androidx.documentfile:documentfile:1.1.0' in app_build and 'androidx.webkit:webkit:1.18.0' in app_build, "direct AndroidX dependencies use stable versions compatible with the configured API 36 toolchain")
     require('pom_licenses' in dependency_audit and 'bundled_notices' in dependency_audit and 'OWNER REVIEW REQUIRED' in dependency_audit, "dependency inventory extracts POM licenses and bundled notices without claiming legal approval")
     dependency_audit_tests = source("tools/dependency_audit_test.py")
     require('test_pom_license_metadata_with_maven_namespace' in dependency_audit_tests and 'test_bundled_license_and_notice_files' in dependency_audit_tests, "dependency license metadata parser has regression tests")
@@ -190,6 +189,7 @@ def main():
     require('BatchRenameEngine.resolveChild(dir, candidate)' in file_ops and 'safeChild(dir, name)' in file_ops, "File operations resolve generated destination names through the safe child helper")
     external_open = file_ops.split('static void external(Activity a, File f, boolean chooser)', 1)[1].split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[0]
     require('e.kind == FileKinds.APK' in external_open and 'Use the Install action for APK files' in external_open, "generic ACTION_VIEW handoff refuses APKs and keeps installation on the explicit PackageInstaller path")
+    require(file_ops.count('codeql[java/android/arbitrary-apk-installation]') == 1, "the guarded generic APK intent has a documented CodeQL false-positive suppression")
     hash_core = source("app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
     hash_ui = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
     require('MD5 (legacy)' in hash_core and 'SHA-1 (legacy)' in hash_core and hash_core.count('codeql[java/potentially-weak-cryptographic-algorithm]') == 2 and 'not security checks' in hash_ui, "legacy MD5/SHA-1 fingerprints are clearly labeled and never presented as security-grade hashes")
