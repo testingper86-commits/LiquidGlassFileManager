@@ -267,7 +267,7 @@ def main():
         'exclude(group = "org.bitbucket.b_c", module = "jose4j")',
         'exclude(group = "org.jdom", module = "jdom2")',
     )
-    require('classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(dep in root_gradle for dep in patched_build_libraries) and all(rule in root_gradle for rule in patched_build_exclusions), "Android plugin classpath excludes vulnerable transitive edges and adds patched binary-compatible libraries")
+    require('subprojects {' in root_gradle and 'if (path == ":app" || path == ":foundation")' in root_gradle and 'buildscript {' in root_gradle and 'classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(dep in root_gradle for dep in patched_build_libraries) and all(rule in root_gradle for rule in patched_build_exclusions), "Android app and foundation plugin classpaths exclude vulnerable transitive edges and add patched binary-compatible libraries")
     require("enableKotlin = false" in app_gradle and "enableKotlin = false" in foundation_gradle, "Java-only Android modules disable unused built-in Kotlin compiler tasks")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
