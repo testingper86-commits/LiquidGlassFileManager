@@ -1,4 +1,12 @@
 buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // AGP loads KotlinBaseApiPlugin during initialization even with Kotlin compilation disabled.
+        classpath("com.android.tools.build:gradle:9.5.0")
+    }
     // Keep AGP's transitive build-tool libraries on patched, binary-compatible versions.
     configurations.getByName("classpath").resolutionStrategy.force(
         "org.apache.commons:commons-lang3:3.18.0",
@@ -13,7 +21,3 @@ buildscript {
     )
 }
 
-plugins {
-    id("com.android.application") version "9.5.0" apply false
-    id("com.android.library") version "9.5.0" apply false
-}

@@ -14,7 +14,10 @@ BUILD_FILE = ROOT / "app" / "build.gradle.kts"
 REPORT = ROOT / "build" / "reports" / "toxifiles-dependency-audit.md"
 GRADLE_CACHE = Path.home() / ".gradle" / "caches" / "modules-2" / "files-2.1"
 COORDINATE = re.compile(r"(?P<group>[A-Za-z0-9_.-]+):(?P<artifact>[A-Za-z0-9_.-]+):(?P<version>[A-Za-z0-9_.+-]+)")
-DECLARATION = re.compile(r'(?:implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation)\("([^"]+)"\)')
+DECLARATION = re.compile(
+    r'(?:implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation)\("([^"]+)"\)'
+    r'|add\("(?:implementation|api|runtimeOnly|compileOnly|testImplementation|androidTestImplementation)",\s*"([^"]+)"\)'
+)
 DYNAMIC = re.compile(r"(?:\+|latest\.(?:release|integration)|SNAPSHOT)", re.IGNORECASE)
 NOTICE_PREFIXES = ("license", "licence", "notice", "copying", "copyright")
 
@@ -60,6 +63,10 @@ def bundled_notices(cache_dir: Path) -> list[str]:
     return sorted(found)
 
 
+def declared_dependencies(source: str) -> list[str]:
+    return [direct or added for direct, added in DECLARATION.findall(source)]
+
+
 def safe_cell(value: str) -> str:
     return " ".join(value.replace("|", r"\|").split())
 
@@ -96,7 +103,7 @@ def main() -> int:
         if arrow:
             version = arrow.group(1)
         resolved[(group, artifact)] = version
-    declarations = DECLARATION.findall(BUILD_FILE.read_text(encoding="utf-8"))
+    declarations = declared_dependencies(BUILD_FILE.read_text(encoding="utf-8"))
     dynamic = [item for item in declarations if DYNAMIC.search(item)]
     if dynamic:
         print("FAIL: dynamic dependency versions are not allowed:", file=sys.stderr)
