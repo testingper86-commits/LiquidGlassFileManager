@@ -168,6 +168,7 @@ def main():
     recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
     require('FileOps.cancelRequested' not in browser + vault + recycle_bin and browser.count('a.cancellation.begin()') == 1 and vault.count('a.cancellation.begin()') == 3 and recycle_bin.count('a.cancellation.begin()') == 4 and 'OperationCancellation.isCancelled()' in vault and 'OperationCancellation.isCancelled()' in recycle_bin, "BrowserView, Vault and Recycle Bin use isolated operation cancellation")
     archive_ops = source("core/src/main/java/com/music/echo/offline/files/ArchiveOperations.java")
+    archive_ops_tests = source("core/src/test/java/com/music/echo/offline/files/ArchiveOperationsTest.java")
     require('ArchiveOperations.createZip(fs, destDir)' in file_ops and 'ArchiveOperations.extractZip(zip, zip.getParentFile()' in file_ops and 'ArchiveOperations.listZip(zip' in file_ops, "FileOps delegates ZIP creation, extraction and listing to the shared archive engine")
     archive_contract = "".join(archive_ops.split())
     require('ArchivePath.normalize(rawName,entry.isDirectory())' in archive_contract and 'initialFreeSpace' in archive_contract and 'extractedPaths' in archive_contract and 'ensureDirectories(root,output)' in archive_contract and 'MAX_TOTAL_BYTES' in archive_contract, "core archive engine rejects zip-slip, duplicate paths, symlinks and expanded-size exhaustion")
