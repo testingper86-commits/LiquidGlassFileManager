@@ -66,7 +66,6 @@ import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends ComponentActivity {
-    private static final String BIOMETRIC_UNLOCK_KEY_ALIAS = "toxifiles_biometric_unlock_v1";
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
     final OperationCancellation cancellation = new OperationCancellation();
     final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
@@ -358,14 +357,14 @@ public class MainActivity extends ComponentActivity {
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
-        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" · tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
+        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" Â· tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
     void progress(String text) {
-        busyTv.setText(text + " · tap to cancel");
+        busyTv.setText(text + " Â· tap to cancel");
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, true);
         if (dynamicIsland != null) {
@@ -1020,7 +1019,7 @@ public class MainActivity extends ComponentActivity {
         settings.addView(row(ToxiIcons.REFRESH,"Reset Dynamic Island preferences","Restore its default appearance and position",null,v->new AlertDialog.Builder(this).setTitle("Reset Dynamic Island?").setMessage("Only Dynamic Island preferences will be reset.").setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->{p.edit().clear().apply();if(dynamicIsland!=null){dynamicIsland.setEnabledFromSettings();dynamicIsland.refreshStyle();}buildSettings();}).show()),lpm(-1,-2,16,0,16,8));
     }
     View islandSwitch(android.content.SharedPreferences p,String title,String key,boolean def){Switch sw=new Switch(this);sw.setChecked(p.getBoolean(key,def));sw.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean(key,on).apply();if(dynamicIsland!=null)dynamicIsland.refreshStyle();});return row(ToxiIcons.SPARKLE,title,null,sw,v->sw.toggle());}
-    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(10));box.setBackground(ToxiVisualSystem.surface(14,false));TextView label=ToxiVisualSystem.text(this,title+" · "+p.getInt(key,def),13,ToxiVisualSystem.TEXT_PRIMARY,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(this);seek.setProgressTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));seek.setProgressBackgroundTintList(ColorStateList.valueOf(ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]));seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" · "+n);if(dynamicIsland!=null)dynamicIsland.refreshStyle();}});box.addView(seek);settings.addView(box,lpm(-1,-2,16,0,16,8));}
+    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(10));box.setBackground(ToxiVisualSystem.surface(14,false));TextView label=ToxiVisualSystem.text(this,title+" Â· "+p.getInt(key,def),13,ToxiVisualSystem.TEXT_PRIMARY,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(this);seek.setProgressTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));seek.setProgressBackgroundTintList(ColorStateList.valueOf(ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]));seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" Â· "+n);if(dynamicIsland!=null)dynamicIsland.refreshStyle();}});box.addView(seek);settings.addView(box,lpm(-1,-2,16,0,16,8));}
 
     void buildSettings() {
         settings.removeAllViews();
@@ -1073,7 +1072,7 @@ public class MainActivity extends ComponentActivity {
         settings.addView(row(ToxiIcons.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Storage Access"));
-        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed · manage access" : "Not allowed · tap to fix", null, v -> {
+        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed Â· manage access" : "Not allowed Â· tap to fix", null, v -> {
             if (!hasAccess()) { showStorageAccess(); return; }
             try {
                 Intent manage = Build.VERSION.SDK_INT >= 30
@@ -1179,7 +1178,7 @@ public class MainActivity extends ComponentActivity {
     // ---------------- STORAGE ANALYZER ----------------
     void openStorageAnalyzer() {
         if (!hasAccess()) { showStorageAccess(); return; }
-        ToxiVisualSystem.toast(this, "Analyzing storage…");
+        ToxiVisualSystem.toast(this, "Analyzing storageâ¦");
         io.execute(() -> {
             OperationCancellation.Token operationToken = cancellation.begin();
             final String result;
@@ -1216,14 +1215,14 @@ public class MainActivity extends ComponentActivity {
                 report.append("Scanned internal shared storage\n\nFiles: ").append(totalFiles[0])
                         .append("\nEstimated file size total: ").append(formatBytes(totalBytes[0])).append("\n\nBy category:\n");
                 for (int i = 0; i < labels.length; i++) {
-                    report.append(labels[i]).append(": ").append(counts[i]).append(" files • ")
+                    report.append(labels[i]).append(": ").append(counts[i]).append(" files â¢ ")
                             .append(formatBytes(totals[i])).append("\n");
                 }
                 report.append("\nLargest files found (up to 15):\n");
                 int count = Math.min(15, largest.size());
                 for (int i = 0; i < count; i++) {
                     StorageIndexEngine.Snapshot item = largest.get(i);
-                    report.append("\n").append(formatBytes(item.length)).append(" — ").append(item.file.getAbsolutePath());
+                    report.append("\n").append(formatBytes(item.length)).append(" â ").append(item.file.getAbsolutePath());
                 }
                 if (count == 0) report.append("None found.");
                 if (scan.incomplete) {
@@ -1325,50 +1324,12 @@ public class MainActivity extends ComponentActivity {
     }
 
     @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
-    private javax.crypto.Cipher createBiometricUnlockCipher() throws Exception {
-        java.security.KeyStore keyStore = java.security.KeyStore.getInstance("AndroidKeyStore");
-        keyStore.load(null);
-        if (keyStore.containsAlias(BIOMETRIC_UNLOCK_KEY_ALIAS)) {
-            try {
-                java.security.Key key = keyStore.getKey(BIOMETRIC_UNLOCK_KEY_ALIAS, null);
-                if (key instanceof javax.crypto.SecretKey) {
-                    javax.crypto.Cipher existing = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
-                    existing.init(javax.crypto.Cipher.ENCRYPT_MODE, (javax.crypto.SecretKey) key);
-                    return existing;
-                }
-                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
-            } catch (android.security.keystore.KeyPermanentlyInvalidatedException invalidated) {
-                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
-            }
-        }
-        android.security.keystore.KeyGenParameterSpec.Builder builder =
-                new android.security.keystore.KeyGenParameterSpec.Builder(
-                        BIOMETRIC_UNLOCK_KEY_ALIAS, android.security.keystore.KeyProperties.PURPOSE_ENCRYPT)
-                        .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
-                        .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
-                        .setUserAuthenticationRequired(true)
-                        .setInvalidatedByBiometricEnrollment(true);
-        if (Build.VERSION.SDK_INT >= 30) {
-            builder.setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG);
-        } else {
-            builder.setUserAuthenticationValidityDurationSeconds(-1);
-        }
-        javax.crypto.KeyGenerator generator = javax.crypto.KeyGenerator.getInstance(
-                android.security.keystore.KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
-        generator.init(builder.build());
-        javax.crypto.SecretKey key = generator.generateKey();
-        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key);
-        return cipher;
-    }
-
-    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
     void tryBiometric(final android.app.Dialog dlg) {
         try {
             io.execute(() -> {
                 final javax.crypto.Cipher cipher;
                 try {
-                    cipher = createBiometricUnlockCipher();
+                    cipher = BiometricUnlockKeyStore.createCipher();
                 } catch (Exception keystoreFailure) {
                     android.util.Log.w("ToxiFiles", "Biometric Keystore unavailable; PIN remains available", keystoreFailure);
                     return;
@@ -1421,8 +1382,8 @@ public class MainActivity extends ComponentActivity {
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
-        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage — try again in a moment"); return; }
-        ToxiVisualSystem.toast(this, "Scanning for duplicates…");
+        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage â try again in a moment"); return; }
+        ToxiVisualSystem.toast(this, "Scanning for duplicatesâ¦");
         io.execute(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
@@ -1784,7 +1745,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
-        ToxiVisualSystem.toast(this, "Loading…");
+        ToxiVisualSystem.toast(this, "Loadingâ¦");
         io.execute(() -> {
             final List<String[]> rows = new ArrayList<>();
             boolean querySucceeded = false;
@@ -1915,7 +1876,7 @@ public class MainActivity extends ComponentActivity {
                 boolean canMoveHere = !sameSafDocument(currentFolder, sourceParent);
                 List<String> choices = new ArrayList<>();
                 if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
-                for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  ›");
+                for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  âº");
                 if (choices.isEmpty()) {
                     ToxiVisualSystem.toast(this, "No other destination folders are available here");
                     return;
