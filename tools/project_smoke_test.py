@@ -192,7 +192,7 @@ def main():
     external_open = file_ops.split('static void external(Activity a, File f, boolean chooser)', 1)[1].split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[0]
     require('e.kind == FileKinds.APK' in external_open and 'Use the Install action for APK files' in external_open, "generic ACTION_VIEW handoff refuses APKs and keeps installation on the explicit PackageInstaller path")
     require(file_ops.count('codeql[java/android/arbitrary-apk-installation]') == 1, "the guarded generic APK intent has a documented CodeQL false-positive suppression")
-    hash_core = source("app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
+    hash_core = source("core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
     hash_ui = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
     require('MD5 (legacy)' in hash_core and 'SHA-1 (legacy)' in hash_core and hash_core.count('codeql[java/potentially-weak-cryptographic-algorithm]') == 2 and 'not security checks' in hash_ui, "legacy MD5/SHA-1 fingerprints are clearly labeled and never presented as security-grade hashes")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
