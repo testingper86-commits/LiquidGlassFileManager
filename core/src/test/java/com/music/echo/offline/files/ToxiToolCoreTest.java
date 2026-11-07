@@ -11,13 +11,15 @@ import static org.junit.Assert.*;
 public class ToxiToolCoreTest {
     private File temp() throws IOException { return Files.createTempDirectory("toxifiles-tools-test").toFile(); }
     private void remove(File f) { if(f.isDirectory()){File[] kids=f.listFiles();if(kids!=null)for(File k:kids)remove(k);}f.delete(); }
-    @Test public void hashesMatchKnownVectors() throws Exception {
+    @Test public void hashesUseStrongDigestsAndExposeCrc32Separately() throws Exception {
         Map<String,String> h=ToxiToolCore.hashes(new ByteArrayInputStream("abc".getBytes(StandardCharsets.US_ASCII)));
-        assertEquals("900150983cd24fb0d6963f7d28e17f72",h.get("MD5 (legacy)"));
-        assertEquals("a9993e364706816aba3e25717850c26c9cd0d89d",h.get("SHA-1 (legacy)"));
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",h.get("SHA-256"));
-        assertEquals("352441c2",h.get("CRC32"));
         assertEquals(128,h.get("SHA-512").length());
+        assertEquals("352441c2",h.get("CRC32"));
+        assertFalse(h.containsKey("MD5"));
+        assertFalse(h.containsKey("MD5 (legacy)"));
+        assertFalse(h.containsKey("SHA-1"));
+        assertFalse(h.containsKey("SHA-1 (legacy)"));
     }
     @Test public void hexDumpCanBeParsedBack() {
         byte[] source=new byte[]{0,1,15,16,31,32,65,90,(byte)255};

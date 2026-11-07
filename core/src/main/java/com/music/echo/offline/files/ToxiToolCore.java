@@ -25,17 +25,11 @@ final class ToxiToolCore {
         return out.toByteArray();
     }
     static Map<String,String> hashes(InputStream source) throws Exception {
-        // MD5 is retained only for compatibility with legacy checksum databases; never use it for security decisions.
-        // codeql[java/potentially-weak-cryptographic-algorithm]
-        MessageDigest md5 = MessageDigest.getInstance("MD5");
-        // SHA-1 is retained only for compatibility with legacy checksum databases; prefer SHA-256 or SHA-512.
-        // codeql[java/potentially-weak-cryptographic-algorithm]
-        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
         MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
         MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
         CRC32 crc = new CRC32();
-        try (InputStream in=source) { byte[] b=new byte[BUFFER]; int n; while((n=in.read(b))!=-1){md5.update(b,0,n);sha1.update(b,0,n);sha256.update(b,0,n);sha512.update(b,0,n);crc.update(b,0,n);} }
-        Map<String,String> r=new LinkedHashMap<>();r.put("MD5 (legacy)",hex(md5.digest()));r.put("SHA-1 (legacy)",hex(sha1.digest()));r.put("SHA-256",hex(sha256.digest()));r.put("SHA-512",hex(sha512.digest()));r.put("CRC32",String.format(Locale.US,"%08x",crc.getValue()));return r;
+        try (InputStream in=source) { byte[] b=new byte[BUFFER]; int n; while((n=in.read(b))!=-1){sha256.update(b,0,n);sha512.update(b,0,n);crc.update(b,0,n);} }
+        Map<String,String> r=new LinkedHashMap<>();r.put("SHA-256",hex(sha256.digest()));r.put("SHA-512",hex(sha512.digest()));r.put("CRC32",String.format(Locale.US,"%08x",crc.getValue()));return r;
     }
     static Map<String,String> hashes(File file) throws Exception { return hashes(new BufferedInputStream(new FileInputStream(file))); }
     static String hex(byte[] bytes) { StringBuilder s=new StringBuilder(bytes.length*2);for(byte b:bytes)s.append(String.format(Locale.US,"%02x",b&255));return s.toString(); }
