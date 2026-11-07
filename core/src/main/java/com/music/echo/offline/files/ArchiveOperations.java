@@ -33,7 +33,11 @@ final class ArchiveOperations {
         final String name; final long size; final boolean directory;
         EntryInfo(String name,long size,boolean directory){this.name=name;this.size=size;this.directory=directory;}
     }
-    private static final class BuildState { final Set<String> entries=new HashSet<>(); int count; }
+    private static final class BuildState {
+        final Set<String> entries = new HashSet<>();
+        final TreeTraversalBudget traversalBudget = new TreeTraversalBudget(MAX_ARCHIVE_ENTRIES, TreeTraversalBudget.DEFAULT_MAX_DEPTH);
+        int count;
+    }
     private ArchiveOperations() { }
 
     static File createZip(List<File> sources,File destinationDirectory)throws IOException{
@@ -53,7 +57,7 @@ final class ArchiveOperations {
         File output=FileOperationEngine.createUniqueFile(parent,base+".zip");BuildState state=new BuildState();
         try(ZipOutputStream zip=new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(output,false)))){
             Set<String> rootNames=new HashSet<>();Path skip=output.toPath().toAbsolutePath().normalize();
-            for(File source:sources){OperationCancellation.checkCurrent();boolean directory=source.isDirectory();String name=uniqueRootName(source.getName(),directory,rootNames);addZip(zip,source.toPath(),name,skip,state);}
+            for(File source:sources){OperationCancellation.checkCurrent();boolean directory=source.isDirectory();String name=uniqueRootName(source.getName(),directory,rootNames);addZip(zip,source.toPath(),name,skip,state,0);}
         }catch(IOException failure){cleanupArchive(output,failure);throw failure;}
         catch(RuntimeException failure){cleanupArchive(output,failure);throw failure;}
         catch(Error failure){cleanupArchive(output,failure);throw failure;}
@@ -68,8 +72,9 @@ final class ArchiveOperations {
         throw new IOException("Unable to create unique archive entry names");
     }
 
-    private static void addZip(ZipOutputStream zip,Path source,String name,Path skip,BuildState state)throws IOException{
+    private static void addZip(ZipOutputStream zip,Path source,String name,Path skip,BuildState state,int depth)throws IOException{
         OperationCancellation.checkCurrent();if(source.toAbsolutePath().normalize().equals(skip))return;
+        state.traversalBudget.enter(depth);
         BasicFileAttributes attributes=Files.readAttributes(source,BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);
         if(attributes.isSymbolicLink())return;boolean directory=attributes.isDirectory();
         if(!directory&&!attributes.isRegularFile())throw new IOException("Unsupported archive source: "+source.getFileName());
@@ -78,7 +83,7 @@ final class ArchiveOperations {
         if(++state.count>MAX_ARCHIVE_ENTRIES)throw new IOException("Archive has too many entries");
         zip.putNextEntry(new ZipEntry(entryName));
         if(directory){zip.closeEntry();try(DirectoryStream<Path> children=Files.newDirectoryStream(source)){
-            for(Path child:children){OperationCancellation.checkCurrent();Path leaf=child.getFileName();if(leaf==null)throw new IOException("Invalid source child path");addZip(zip,child,normalized+"/"+leaf,skip,state);}}
+            for(Path child:children){OperationCancellation.checkCurrent();Path leaf=child.getFileName();if(leaf==null)throw new IOException("Invalid source child path");addZip(zip,child,normalized+"/"+leaf,skip,state,depth+1);}}
             return;
         }
         try(InputStream input=Files.newInputStream(source,LinkOption.NOFOLLOW_LINKS)){byte[] buffer=new byte[65536];int count;
