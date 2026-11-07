@@ -49,6 +49,8 @@ jobs:
           test -s settings.gradle || test -s settings.gradle.kts
           test -s core/build.gradle.kts
           test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
+          test -s core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java
+          test -s core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java
           test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
           test -s core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
           test -s core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java

@@ -26,6 +26,7 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
+        "core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java",
         "core/src/main/java/com/music/echo/offline/files/ArchivePath.java",
         "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java",
         "core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java",
@@ -38,7 +39,7 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
         "app/src/main/java/com/music/echo/offline/files/Indexer.java",
         "app/src/main/java/com/music/echo/offline/files/DupFinder.java",
-        "app/src/test/java/com/music/echo/offline/files/DupFinderTest.java",
+        "core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java",
         "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
         "app/src/main/java/com/music/echo/offline/files/ViewerActivity.java",
         "app/src/main/java/com/music/echo/offline/files/CrashLogger.java",
@@ -159,9 +160,11 @@ def main():
 
     indexer = source("app/src/main/java/com/music/echo/offline/files/Indexer.java")
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, "file indexing avoids symlink traversal and bounds memory use")
-    dup_finder = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
-    dup_tests = source("app/src/test/java/com/music/echo/offline/files/DupFinderTest.java")
-    require('entry.len < 0' in dup_finder and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder and 'OperationCancellation.checkCurrent()' in dup_finder, "duplicate detection includes empty files, rejects stale/symlink entries and never hides hash failures")
+    dup_adapter = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
+    dup_finder = source("core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java")
+    dup_tests = source("core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java")
+    require('DuplicateFinder.find(snapshots)' in dup_adapter and 'new DuplicateFinder.Snapshot' in dup_adapter, "app duplicate adapter delegates to core snapshots")
+    require('snapshot.length < 0' in dup_finder and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder and 'OperationCancellation.checkCurrent()' in dup_finder, "core duplicate detection rejects stale/symlink entries and propagates hash failures")
     require('catch (IOException scanFailure)' in main and 'Duplicate scan failed:' in main and 'this.cancellation.finish(operationToken)' in main, "duplicate scan reports incomplete I/O failures to the user")
     require('includesEmptyFilesAsExactDuplicates' in dup_tests and 'reportsDisappearingFilesInsteadOfReturningPartialResults' in dup_tests and 'honorsScopedOperationCancellation' in dup_tests, "duplicate scanner has regression coverage for empty and disappearing files")
     html = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
