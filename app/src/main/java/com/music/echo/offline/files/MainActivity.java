@@ -342,11 +342,13 @@ public class MainActivity extends ComponentActivity {
         });
     }
 
-    private void executeIo(Runnable task) {
+    private boolean executeIo(Runnable task) {
         try {
             io.execute(task);
+            return true;
         } catch (RejectedExecutionException rejected) {
             runUiIfAlive(() -> ToxiVisualSystem.toast(this, "Background task queue is busy. Try again shortly."));
+            return false;
         }
     }
 
@@ -1123,7 +1125,7 @@ public class MainActivity extends ComponentActivity {
 
         settings.addView(section("Recycle Bin"));
         settings.addView(switchRow(ToxiIcons.TRASH, "Move deleted files to Recycle Bin", "Keep deleted files here before permanent removal", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        int binCount = RecycleBin.list(this).size();
+        int binCount = RecycleBin.count(this);
         settings.addView(row(ToxiIcons.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " \u2022 auto-removed after " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
         settings.addView(row(ToxiIcons.TRASH, "Recycle Bin retention", ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
@@ -2015,6 +2017,14 @@ public class MainActivity extends ComponentActivity {
     void showRecycleBin() { buildRecycleBin(); showOverlay(recycleScroll); }
 
     void buildRecycleBin() {
+        renderRecycleBin(null, true);
+        if (!executeIo(() -> {
+            List<RecycleBin.Item> items = RecycleBin.list(this);
+            runUiIfAlive(() -> renderRecycleBin(items, false));
+        })) renderRecycleBin(null, false);
+    }
+
+    private void renderRecycleBin(List<RecycleBin.Item> items, boolean loading) {
         recycle.removeAllViews();
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
@@ -2039,8 +2049,11 @@ public class MainActivity extends ComponentActivity {
         note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
         recycle.addView(note);
 
-        List<RecycleBin.Item> items = RecycleBin.list(this);
-        if (items.isEmpty()) {
+        if (items == null) {
+            TextView status = ToxiVisualSystem.text(this, loading ? "Loading Recycle Bin…" : "Unable to load Recycle Bin. Try again.", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
+            status.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
+            recycle.addView(status);
+        } else if (items.isEmpty()) {
             TextView w = ToxiVisualSystem.text(this, "Recycle Bin is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
             w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
             recycle.addView(w);

@@ -96,6 +96,35 @@ final class RecycleBin {
         });
     }
 
+    static int count(Context c) {
+        File[] wraps = root(c).listFiles();
+        if (wraps == null) return 0;
+        long now = System.currentTimeMillis();
+        long retention = maxAgeMs();
+        int count = 0;
+        List<File> expired = new ArrayList<>();
+        for (File wrapper : wraps) {
+            if (!wrapper.isDirectory()) continue;
+            String name = wrapper.getName();
+            int separator = name.lastIndexOf('~');
+            long deletedAt = 0;
+            if (separator > 0) {
+                String suffix = name.substring(separator + 1);
+                try { deletedAt = Long.parseLong(suffix); }
+                catch (NumberFormatException legacyOrUuid) { deletedAt = wrapper.lastModified(); }
+            }
+            if (deletedAt > 0 && now - deletedAt > retention) {
+                String path = wrapper.getAbsolutePath();
+                if (EXPIRY_CLEANUP_PENDING.add(path)) expired.add(wrapper);
+            } else {
+                File[] children = wrapper.listFiles();
+                if (children != null && children.length == 1) count++;
+            }
+        }
+        scheduleExpiryCleanup(expired);
+        return count;
+    }
+
     /** Lists current bin contents, newest-deleted first. Silently purges anything past MAX_AGE_MS. */
     static List<Item> list(Context c) {
         List<Item> out = new ArrayList<>();

@@ -120,6 +120,9 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    require("int binCount = RecycleBin.count(this);" in main and "RecycleBin.list(this).size()" not in main, "Settings uses a lightweight Recycle Bin count instead of loading every item on the UI thread")
+    recycle_ui = main.split("void buildRecycleBin()", 1)[1].split("void recycleItemMenu(", 1)[0]
+    require("renderRecycleBin(null, true);" in recycle_ui and "executeIo(() ->" in recycle_ui and "RecycleBin.list(this)" in recycle_ui and "runUiIfAlive(() -> renderRecycleBin(items, false))" in recycle_ui, "Recycle Bin item enumeration runs on IO and renders loading/results through the lifecycle-safe dispatcher")
     recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
     recycle_list = recycle_bin.split("static List<Item> list(Context c)", 1)[1].split("private static void scheduleExpiryCleanup", 1)[0]
     require("scheduleExpiryCleanup(expired);" in recycle_list and "FileOps.deleteTree(w)" not in recycle_list and "TaskCoordinator.execute(TaskCoordinator.Lane.IO" in recycle_bin and "EXPIRY_CLEANUP_PENDING" in recycle_bin, "expired Recycle Bin trees are purged asynchronously on the bounded IO lane, not during UI listing")
