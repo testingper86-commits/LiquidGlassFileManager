@@ -50,6 +50,14 @@ public class ToxiToolCoreTest {
         Map<String,String> renames=new HashMap<>();renames.put("old.txt","renamed.txt");Set<String> deletes=new HashSet<>();deletes.add("remove.txt");Map<String,File> additions=new HashMap<>();additions.put("added.txt",added);
         ToxiToolCore.rewriteZip(zip,renames,deletes,additions);try(ZipFile z=new ZipFile(zip)){assertNotNull(z.getEntry("renamed.txt"));assertNotNull(z.getEntry("added.txt"));assertNull(z.getEntry("old.txt"));assertNull(z.getEntry("remove.txt"));}remove(d);
     }
+    @Test public void zipRewritePreservesDirectoryMarkersWhenRenaming() throws Exception {
+        File d=temp(),zip=new File(d,"source.zip");
+        try(ZipOutputStream out=new ZipOutputStream(new FileOutputStream(zip))){out.putNextEntry(new ZipEntry("folder/"));out.closeEntry();}
+        Map<String,String> renames=new HashMap<>();renames.put("folder/","renamed");
+        ToxiToolCore.rewriteZip(zip,renames,Collections.emptySet(),Collections.emptyMap());
+        try(ZipFile z=new ZipFile(zip)){ZipEntry directory=z.getEntry("renamed/");assertNotNull(directory);assertTrue(directory.isDirectory());}
+        remove(d);
+    }
     @Test public void zipPathTraversalIsRejected() throws Exception {
         try{ToxiToolCore.validateZipName("../escape.txt");fail("path traversal accepted");}catch(IOException expected){}
         try{ToxiToolCore.validateZipName("/absolute.txt");fail("absolute path accepted");}catch(IOException expected){}

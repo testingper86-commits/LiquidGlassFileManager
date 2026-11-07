@@ -50,6 +50,7 @@ jobs:
           test -s core/build.gradle.kts
           test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
           test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
+          test -s core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
           test -s core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java
           test -s core/src/main/java/com/music/echo/offline/files/PinHash.java
           test -s core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java

@@ -21,6 +21,21 @@ public class ArchivePathTest {
         reject("file.txt:payload", false);
     }
 
+    @Test public void toolZipEditorUsesTheSharedStrictValidator() throws Exception {
+        assertEquals("assets/", ToxiToolCore.validateZipName("assets/"));
+        assertEquals("renamed/", ToxiToolCore.validateZipName("renamed", true));
+        assertEquals("assets/icon.png", ToxiToolCore.validateZipName("assets\\icon.png"));
+        rejectTool("folder//file.txt");
+        rejectTool("folder/./file.txt");
+        rejectTool("bad" + (char) 0 + "name.txt");
+        rejectTool("file.txt:payload");
+    }
+
+    private static void rejectTool(String path) throws Exception {
+        try { ToxiToolCore.validateZipName(path); fail("Unsafe tool archive path accepted: " + path); }
+        catch (java.io.IOException expected) { /* rejected */ }
+    }
+
     private static void reject(String path, boolean directory) throws Exception {
         try { ArchivePath.normalize(path, directory); fail("Unsafe path accepted: " + path); }
         catch (java.io.IOException expected) { /* rejected */ }

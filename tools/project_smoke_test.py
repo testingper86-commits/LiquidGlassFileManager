@@ -144,7 +144,7 @@ def main():
     require('FileOps.cancelRequested' not in browser + vault + recycle_bin and browser.count('a.cancellation.begin()') == 1 and vault.count('a.cancellation.begin()') == 3 and recycle_bin.count('a.cancellation.begin()') == 4 and 'OperationCancellation.isCancelled()' in vault and 'OperationCancellation.isCancelled()' in recycle_bin, "BrowserView, Vault and Recycle Bin use isolated operation cancellation")
     require('ArchivePath.normalize(entryName, e.isDirectory())' in file_ops and 'initialFreeSpace' in file_ops and 'extractedPaths' in file_ops, "ZIP extraction validates paths, duplicate entries and cumulative storage use")
     require('Unsafe archive entry path rejected' in archive_path and 'segment.isEmpty()' in archive_path and '"..".equals(segment)' in archive_path, "ZIP path normalization rejects traversal and ambiguous segments")
-    require((ROOT / "app/src/test/java/com/music/echo/offline/files/ArchivePathTest.java").is_file(), "ZIP path validation has JVM regression tests")
+    require((ROOT / "core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java").is_file(), "ZIP path validation has JVM regression tests")
     require('Copied to destination, but source could not be removed' in file_ops and 'Recycle Bin: removed' in source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java"), "move and Recycle Bin operations report cleanup failures accurately")
 
     vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
