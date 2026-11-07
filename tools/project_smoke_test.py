@@ -234,6 +234,8 @@ def main():
     require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
     crash = source("foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java")
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
+    require("private static synchronized void writeCrash" in crash and "public static synchronized boolean deleteReports(Context context)" in crash and "new AtomicFile(new File(dir, LATEST))" in crash and "latest.delete()" in crash, "crash report writes and deletion are serialized and AtomicFile recovery state is removed")
+    require("CrashLogger.deleteReports(this)" in main and 'name.startsWith("crash-")' not in main, "crash archive deletion remains inside the foundation service")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
     biometric_keystore = source("app/src/main/java/com/music/echo/offline/files/BiometricUnlockKeyStore.java")

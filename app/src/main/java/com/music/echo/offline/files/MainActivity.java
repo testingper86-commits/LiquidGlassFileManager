@@ -2173,13 +2173,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     void deleteCrashReport() {
-        File report = CrashLogger.latest(this);
-        boolean deleted = !report.exists() || report.delete();
-        File dir = report.getParentFile();
-        if (dir != null) {
-            File[] old = dir.listFiles((d, name) -> name.startsWith("crash-") && name.endsWith(".txt"));
-            if (old != null) for (File f : old) try { f.delete(); } catch (Exception ignored) { }
-        }
+        boolean deleted = CrashLogger.deleteReports(this);
         if (deleted) ToxiVisualSystem.toast(this, "Crash reports deleted");
         else ToxiVisualSystem.toast(this, "Could not delete crash report");
     }
