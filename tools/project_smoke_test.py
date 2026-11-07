@@ -55,6 +55,7 @@ def main():
     require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
     dependency_audit = source("tools/dependency_audit.py")
     app_build = source("app/build.gradle.kts")
+    require('androidx.core:core:1.17.0' in app_build and 'androidx.documentfile:documentfile:1.1.0' in app_build and 'androidx.webkit:webkit:1.18.0' in app_build, "direct AndroidX dependencies use stable versions compatible with the configured API 36 toolchain")
     require('pom_licenses' in dependency_audit and 'bundled_notices' in dependency_audit and 'OWNER REVIEW REQUIRED' in dependency_audit, "dependency inventory extracts POM licenses and bundled notices without claiming legal approval")
     dependency_audit_tests = source("tools/dependency_audit_test.py")
     require('test_pom_license_metadata_with_maven_namespace' in dependency_audit_tests and 'test_bundled_license_and_notice_files' in dependency_audit_tests, "dependency license metadata parser has regression tests")

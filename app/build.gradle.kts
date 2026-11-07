@@ -47,7 +47,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
-    implementation("androidx.core:core:1.19.1")
+    implementation("androidx.core:core:1.17.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.webkit:webkit:1.18.0")
     testImplementation("junit:junit:4.13.2")
