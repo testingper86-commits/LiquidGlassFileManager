@@ -161,8 +161,11 @@ final class BrowserView extends FrameLayout {
             @Override public long getItemId(int i) { return i; }
             @Override public View getView(int i, View cv, ViewGroup p) {
                 if (columns <= 1) {
-                    if (cv == null) cv = ToxiFileRow.create(a);
-                    ToxiFileRow.Holder h = (ToxiFileRow.Holder) cv.getTag();
+                    ToxiFileRow.Holder h = ToxiFileRow.holder(cv);
+                    if (h == null) {
+                        cv = ToxiFileRow.create(a);
+                        h = ToxiFileRow.holder(cv);
+                    }
                     Entry e = shown.get(i);
                     String extra = null;
                     if (mode == LIST) { File par = e.f.getParentFile(); extra = par == null ? "" : par.getName(); }

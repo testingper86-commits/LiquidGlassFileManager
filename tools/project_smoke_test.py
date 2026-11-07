@@ -137,6 +137,8 @@ def main():
     require(toxi_tools.count('OperationCancellation.Token operationToken') == 3 and 'cancellation.cancelActive()' in toxi_tools, "Developer file tools cancel and clean up their own worker operations")
     require(lan_transfer.count('OperationCancellation.Token operationToken') == 2 and 'cancellation.cancelActive()' in lan_transfer and lan_transfer.count('session.cancellation.finish(operationToken)') == 2, "LAN transfer cancellation reaches authenticated receive commit work")
     browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
+    file_row = source("app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java")
+    require("ToxiFileRow.holder(cv)" in browser and "if (h == null)" in browser and "cv = ToxiFileRow.create(a)" in browser and "(ToxiFileRow.Holder) cv.getTag()" not in browser and "static Holder holder(View view)" in file_row and "holder.root != view" in file_row, "ListView recycling validates holder tags and recreates malformed convertView rows before binding")
     vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
     recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
     require('FileOps.cancelRequested' not in browser + vault + recycle_bin and browser.count('a.cancellation.begin()') == 1 and vault.count('a.cancellation.begin()') == 3 and recycle_bin.count('a.cancellation.begin()') == 4 and 'OperationCancellation.isCancelled()' in vault and 'OperationCancellation.isCancelled()' in recycle_bin, "BrowserView, Vault and Recycle Bin use isolated operation cancellation")

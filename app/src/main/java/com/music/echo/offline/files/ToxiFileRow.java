@@ -54,6 +54,17 @@ final class ToxiFileRow {
         LinearLayout.LayoutParams checkLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28),ToxiVisualSystem.dp(28));checkLp.rightMargin=ToxiVisualSystem.dp(8);h.check.setVisibility(View.GONE);h.row.addView(h.check,checkLp);
         h.root.addView(h.row,new FrameLayout.LayoutParams(-1,-2));h.root.setTag(h);return h.root;
     }
+    static Holder holder(View view) {
+        if (!(view instanceof FrameLayout)) return null;
+        Object tag = view.getTag();
+        if (!(tag instanceof Holder)) return null;
+        Holder holder = (Holder) tag;
+        if (holder.root != view || holder.row == null || holder.icon == null
+                || holder.more == null || holder.check == null || holder.name == null
+                || holder.sub == null || holder.labelDot == null) return null;
+        return holder;
+    }
+
     static void bind(Holder h,Entry entry,boolean selecting,boolean selected,String extra){
         h.name.setText(entry.name);
         String meta=entry.dir?"Folder":ToxiVisualSystem.formatSize(entry.len);
