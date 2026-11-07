@@ -255,8 +255,17 @@ def main():
     root_gradle = source("build.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
     foundation_gradle = source("foundation/build.gradle.kts")
-    patched_build_libraries = ("org.apache.commons:commons-lang3:3.18.0", "org.apache.httpcomponents:httpclient:4.5.14", "org.apache.httpcomponents:httpmime:4.5.14", "com.google.guava:guava:33.7.2-jre", "org.bouncycastle:bcprov-jdk18on:1.85", "org.bouncycastle:bcpkix-jdk18on:1.85", "org.bouncycastle:bcutil-jdk18on:1.85", "org.bitbucket.b_c:jose4j:0.9.6", "org.jdom:jdom2:2.0.6.1")
-    require('classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(dep in root_gradle for dep in patched_build_libraries), "Android plugin classpath uses patched transitive build-library constraints")
+    patched_build_substitutions = (
+        'substitute(module("org.apache.commons:commons-lang3:3.16.0")).using(module("org.apache.commons:commons-lang3:3.18.0"))',
+        'substitute(module("org.apache.httpcomponents:httpclient:4.5.6")).using(module("org.apache.httpcomponents:httpclient:4.5.14"))',
+        'substitute(module("org.apache.httpcomponents:httpmime:4.5.6")).using(module("org.apache.httpcomponents:httpmime:4.5.14"))',
+        'substitute(module("com.google.guava:guava:33.4.0-jre")).using(module("com.google.guava:guava:33.7.2-jre"))',
+        'substitute(module("com.google.guava:failureaccess:1.0.2")).using(module("com.google.guava:failureaccess:1.0.3"))',
+        'substitute(module("org.bouncycastle:bcprov-jdk18on:1.80.2")).using(module("org.bouncycastle:bcprov-jdk18on:1.85"))',
+        'substitute(module("org.bouncycastle:bcpkix-jdk18on:1.80.2")).using(module("org.bouncycastle:bcpkix-jdk18on:1.85"))',
+        'substitute(module("org.bouncycastle:bcutil-jdk18on:1.80.2")).using(module("org.bouncycastle:bcutil-jdk18on:1.85"))',
+    )
+    require('subprojects {' in root_gradle and 'if (path == ":app" || path == ":foundation")' in root_gradle and 'configurations.getByName("classpath").resolutionStrategy.dependencySubstitution' in root_gradle and 'classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(rule in root_gradle for rule in patched_build_substitutions), "Android app and foundation plugin classpaths substitute vulnerable transitive coordinates with patched binary-compatible versions")
     require("enableKotlin = false" in app_gradle and "enableKotlin = false" in foundation_gradle, "Java-only Android modules disable unused built-in Kotlin compiler tasks")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
