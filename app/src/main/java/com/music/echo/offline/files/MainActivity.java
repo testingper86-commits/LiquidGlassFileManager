@@ -1923,24 +1923,13 @@ public class MainActivity extends ComponentActivity {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 String msg;
-                File pending = null;
-                File dest = null;
                 try {
                     File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                    if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
-                    dest = FileOps.unique(download, name);
-                    pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
-                    try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
-                        if (in == null) throw new java.io.IOException("External storage returned no input stream");
-                        byte[] buf = new byte[65536]; int n;
-                        while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
-                    }
-                    FileOps.checkCancelled();
-                    try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
-                    msg = "Imported to Download/" + dest.getName();
+                    File destination = SafStorageOperations.importDocument(
+                            getContentResolver(), doc, download, name);
+                    msg = "Imported to Download/" + destination.getName();
                 } catch (Exception ex) {
-                    if (pending != null) pending.delete();
-                    msg = "Import failed: " + ex.getMessage();
+                    msg = "Import failed: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
                 }
                 final String m = msg;
                 runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });

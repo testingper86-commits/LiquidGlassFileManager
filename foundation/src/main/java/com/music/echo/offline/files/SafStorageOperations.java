@@ -9,9 +9,12 @@ import androidx.documentfile.provider.DocumentFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -111,6 +114,61 @@ final class SafStorageOperations {
             }
         }
         return false;
+    }
+
+    /** Imports one provider document into local storage using a private staging file. */
+    static File importDocument(ContentResolver resolver, Uri document, File destinationDirectory,
+                               String requestedName) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || document == null || destinationDirectory == null
+                || requestedName == null || requestedName.trim().isEmpty()) {
+            throw new IOException("Document, destination folder and filename are required");
+        }
+        if (!destinationDirectory.isDirectory() && !destinationDirectory.mkdirs()) {
+            throw new IOException("Download folder is unavailable");
+        }
+        if (!destinationDirectory.isDirectory() || !destinationDirectory.canWrite()) {
+            throw new IOException("Download folder is not writable");
+        }
+        final File destination;
+        try { destination = FileOperationEngine.unique(destinationDirectory, requestedName); }
+        catch (IllegalArgumentException invalidName) {
+            throw new IOException("Invalid imported filename", invalidName);
+        }
+        File pending = new File(destinationDirectory, ".toxifiles-import-" + UUID.randomUUID() + ".part");
+        boolean reserved = false;
+        try {
+            reserved = pending.createNewFile();
+            if (!reserved) throw new IOException("Unable to reserve an import staging file");
+            try (InputStream input = resolver.openInputStream(document);
+                 FileOutputStream output = new FileOutputStream(pending, false)) {
+                if (input == null) throw new IOException("External storage returned no input stream");
+                byte[] buffer = new byte[65536];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    OperationCancellation.checkCurrent();
+                    if (count > 0) output.write(buffer, 0, count);
+                }
+                output.flush();
+                output.getFD().sync();
+            } catch (SecurityException denied) {
+                throw new IOException("Storage provider denied access to this document", denied);
+            }
+            OperationCancellation.checkCurrent();
+            try {
+                Files.move(pending.toPath(), destination.toPath());
+            } catch (IOException moveFailure) {
+                FileOperationEngine.copy(pending, destination);
+                Files.deleteIfExists(pending.toPath());
+            }
+            return destination;
+        } catch (IOException | RuntimeException failure) {
+            if (reserved) {
+                try { Files.deleteIfExists(pending.toPath()); }
+                catch (IOException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+            }
+            throw failure;
+        }
     }
 
     static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent)
