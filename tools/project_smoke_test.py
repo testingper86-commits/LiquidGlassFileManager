@@ -28,6 +28,8 @@ def main():
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
         "core/src/main/java/com/music/echo/offline/files/TaskScheduler.java",
         "core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java",
+        "core/src/main/java/com/music/echo/offline/files/FileOperationEngine.java",
+        "core/src/test/java/com/music/echo/offline/files/FileOperationEngineTest.java",
         "core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java",
         "foundation/build.gradle.kts",
         "foundation/src/main/AndroidManifest.xml",
@@ -215,7 +217,8 @@ def main():
     require('static File resolveChild(File parent, String name)' in rename_engine and 'candidate.startsWith(parentPath)' in rename_engine and 'candidate.toRealPath()' in rename_engine and 'LinkOption.NOFOLLOW_LINKS' in rename_engine, "User-derived child paths are normalized, parent-contained and symlink-checked")
     require('for (char c : name.toCharArray())' in rename_engine, "batch rename validates each bounded filename character without an indexed loop")
     require('BatchRenameEngine.resolveChild(cur, n)' in browser and 'BatchRenameEngine.resolveChild(e.f.getParentFile(), n)' in browser, "Folder creation and rename use canonical path containment")
-    require('BatchRenameEngine.resolveChild(dir, candidate)' in file_ops and 'safeChild(dir, name)' in file_ops, "File operations resolve generated destination names through the safe child helper")
+    file_engine = source("core/src/main/java/com/music/echo/offline/files/FileOperationEngine.java")
+    require('FileOperationEngine.unique(dir, name)' in file_ops and 'FileOperationEngine.copy(source, target)' in file_ops and 'FileOperationEngine.deleteTree(file)' in file_ops and 'BatchRenameEngine.resolveChild(directory, name)' in file_engine and 'Files.newDirectoryStream(source)' in file_engine, "FileOps delegates local copy, collision handling and cleanup to the shared streaming core engine")
     external_open = file_ops.split('static void external(Activity a, File f, boolean chooser)', 1)[1].split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[0]
     require('e.kind == FileKinds.APK' in external_open and 'Use the Install action for APK files' in external_open, "generic ACTION_VIEW handoff refuses APKs and keeps installation on the explicit PackageInstaller path")
     require(file_ops.count('codeql[java/android/arbitrary-apk-installation]') == 1, "the guarded generic APK intent has a documented CodeQL false-positive suppression")

@@ -26,106 +26,15 @@ final class FileOps {
 
     static void checkCancelled() throws IOException { OperationCancellation.checkCurrent(); }
 
-    static File unique(File dir, String name) {
-        if (dir == null || BatchRenameEngine.validateName(name) != null) {
-            throw new IllegalArgumentException("Invalid destination filename");
-        }
-        File f = safeChild(dir, name);
-        if (!f.exists()) return f;
-        String base = name, ext = "";
-        int i = name.lastIndexOf('.');
-        if (i > 0) { base = name.substring(0, i); ext = name.substring(i); }
-        for (int n = 1; n < 1000; n++) {
-            f = safeChild(dir, base + " (" + n + ")" + ext);
-            if (!f.exists()) return f;
-        }
-        return safeChild(dir, base + "_" + java.util.UUID.randomUUID() + ext);
-    }
+    static File unique(File dir, String name) { return FileOperationEngine.unique(dir, name); }
 
-    private static File safeChild(File dir, String name) {
-        try { return BatchRenameEngine.resolveChild(dir, name); }
-        catch (IOException invalidPath) { throw new IllegalArgumentException("Invalid destination path", invalidPath); }
-    }
+    private static File createUniqueFile(File dir, String name) throws IOException { return FileOperationEngine.createUniqueFile(dir, name); }
 
-    private static File createUniqueFile(File dir, String name) throws IOException {
-        String base = name, ext = "";
-        int dot = name.lastIndexOf('.');
-        if (dot > 0) { base = name.substring(0, dot); ext = name.substring(dot); }
-        for (int n = 0; n < 1000; n++) {
-            String candidate = n == 0 ? name : base + " (" + n + ")" + ext;
-            File file = BatchRenameEngine.resolveChild(dir, candidate);
-            try { if (file.createNewFile()) return file; }
-            catch (IOException error) { if (!file.exists()) throw error; }
-        }
-        throw new IOException("Unable to reserve a unique output filename");
-    }
+    static void copy(File source, File target) throws IOException { FileOperationEngine.copy(source, target); }
 
-    static void copy(File source, File target) throws IOException {
-        checkCancelled();
-        if (source == null || target == null) throw new IOException("Source and destination are required");
-        if (target.exists()) throw new IOException("Destination already exists: " + target.getName());
-        if (source.isDirectory()) {
-            String sourcePath = source.getCanonicalPath();
-            String targetPath = target.getCanonicalPath();
-            if (targetPath.equals(sourcePath) || targetPath.startsWith(sourcePath + File.separator))
-                throw new IOException("Folder destination is inside the source tree");
-        }
-        File parent = target.getParentFile();
-        if (parent == null || !parent.isDirectory()) throw new IOException("Destination folder is unavailable");
-        File staging = new File(parent, ".toxifiles-copy-" + java.util.UUID.randomUUID());
-        try {
-            copyInto(source, staging);
-            checkCancelled();
-            java.nio.file.Files.move(staging.toPath(), target.toPath());
-        } catch (IOException copyError) {
-            deleteTree(staging);
-            throw copyError;
-        } catch (RuntimeException copyError) {
-            deleteTree(staging);
-            throw copyError;
-        }
-    }
+    static boolean deleteTree(File file) { return FileOperationEngine.deleteTree(file); }
 
-    private static void copyInto(File source, File target) throws IOException {
-        checkCancelled();
-        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new IOException("Symbolic links are not copied");
-        if (source.isDirectory()) {
-            if (!target.mkdir()) throw new IOException("Can't create destination folder " + target.getName());
-            File[] children = source.listFiles();
-            if (children == null) throw new IOException("Can't read folder " + source.getName());
-            for (File child : children) copyInto(child, new File(target, child.getName()));
-        } else {
-            if (!target.createNewFile()) throw new IOException("Destination already exists: " + target.getName());
-            try (InputStream in = new FileInputStream(source); FileOutputStream out = new FileOutputStream(target, false)) {
-                byte[] buffer = new byte[65536];
-                int count;
-                while ((count = in.read(buffer)) > 0) { checkCancelled(); out.write(buffer, 0, count); }
-                out.flush();
-                out.getFD().sync();
-            } catch (IOException writeError) {
-                target.delete();
-                throw writeError;
-            }
-        }
-    }
-
-    static boolean deleteTree(File f) {
-        try {
-            if (f.isDirectory() && !java.nio.file.Files.isSymbolicLink(f.toPath())) {
-                File[] kids = f.listFiles();
-                if (kids != null) for (File k : kids) deleteTree(k);
-            }
-        } catch (Throwable ignored) { }
-        return f.delete();
-    }
-
-    static void treeSize(File f, long[] t) {
-        if (java.nio.file.Files.isSymbolicLink(f.toPath())) return;
-        if (f.isDirectory()) {
-            File[] kids = f.listFiles();
-            if (kids != null) for (File k : kids) treeSize(k, t);
-        } else { t[0] += f.length(); t[1]++; }
-    }
+    static void treeSize(File file, long[] totals) { FileOperationEngine.treeSize(file, totals); }
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final Done d) {
         paste(a, src, dst, move, false, d);
