@@ -10,14 +10,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Background scan of internal storage: powers categories, recent files, storage chart and global search. */
+/** Android adapter: categorizes core filesystem snapshots and publishes them on the UI thread. */
 final class Indexer {
     static final Indexer I = new Indexer();
     static final String[] CAT_NAMES = {"Images", "Videos", "Audio", "Documents", "Archives", "Apps", "Other"};
 
     volatile boolean ready, running, dirty, truncated, incomplete;
     volatile String lastError = "";
-    private static final int MAX_INDEX_ENTRIES = 150_000;
     long finished;
     List<Entry> all = new ArrayList<>();
     List<Entry> recent = new ArrayList<>();
@@ -57,21 +56,32 @@ final class Indexer {
                 for (int i = 0; i < 7; i++) tmpCats.add(new ArrayList<Entry>());
                 tmpSizes = new long[7];
                 tmpCounts = new int[7];
-                scan(Environment.getExternalStorageDirectory(), 0);
+                StorageIndexEngine.Result scan = StorageIndexEngine.scan(Environment.getExternalStorageDirectory(), snapshot -> {
+                    Entry entry = new Entry(snapshot.file, snapshot.directory, snapshot.modifiedAt, snapshot.length);
+                    tmpAll.add(entry);
+                    if (!entry.dir) {
+                        int category = cat(entry.kind);
+                        tmpCats.get(category).add(entry);
+                        tmpSizes[category] += entry.len;
+                        tmpCounts[category]++;
+                    }
+                });
+                truncated = scan.truncated;
+                tmpIncomplete = scan.incomplete;
                 java.util.Comparator<Entry> byDate = (x, y) -> Long.compare(y.mod, x.mod);
-                for (List<Entry> l : tmpCats) Collections.sort(l, byDate);
+                for (List<Entry> list : tmpCats) Collections.sort(list, byDate);
                 Collections.sort(tmpAll, byDate);
                 List<Entry> rec = new ArrayList<>();
-                for (Entry e : tmpAll) {
-                    if (!e.dir && e.kind != FileKinds.OTHER) { rec.add(e); if (rec.size() >= 8) break; }
+                for (Entry entry : tmpAll) {
+                    if (!entry.dir && entry.kind != FileKinds.OTHER) { rec.add(entry); if (rec.size() >= 8) break; }
                 }
                 all = tmpAll; cats = tmpCats; sizes = tmpSizes; counts = tmpCounts; recent = rec;
                 incomplete = tmpIncomplete || truncated;
                 ready = true;
                 lastError = "";
                 finished = System.currentTimeMillis();
-            } catch (Exception t) {
-                lastError = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            } catch (Exception failure) {
+                lastError = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
             } finally {
                 running = false;
                 if (done != null) ui.post(done);
@@ -83,32 +93,6 @@ final class Indexer {
             running = false;
             lastError = startError.getMessage() == null ? startError.getClass().getSimpleName() : startError.getMessage();
             if (done != null) ui.post(done);
-        }
-    }
-
-    private void scan(File dir, int depth) {
-        if (depth > 9) { tmpIncomplete = true; return; }
-        if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; tmpIncomplete = true; return; }
-        try { if (java.nio.file.Files.isSymbolicLink(dir.toPath())) return; } catch (Exception ignored) { tmpIncomplete = true; return; }
-        File[] fs = dir.listFiles();
-        if (fs == null) { tmpIncomplete = true; return; }
-        for (File f : fs) {
-            if (tmpAll.size() >= MAX_INDEX_ENTRIES) { truncated = true; tmpIncomplete = true; return; }
-            try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) continue; } catch (Exception ignored) { tmpIncomplete = true; continue; }
-            String n = f.getName();
-            if (n.startsWith(".")) continue;
-            if (f.isDirectory()) {
-                if (depth == 0 && n.equals("Android")) continue;
-                tmpAll.add(new Entry(f, true, f.lastModified(), 0));
-                scan(f, depth + 1);
-            } else {
-                Entry e = new Entry(f, false, f.lastModified(), f.length());
-                int c = cat(e.kind);
-                tmpAll.add(e);
-                tmpCats.get(c).add(e);
-                tmpSizes[c] += e.len;
-                tmpCounts[c]++;
-            }
         }
     }
 }

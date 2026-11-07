@@ -27,6 +27,8 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
         "core/src/main/java/com/music/echo/offline/files/TaskScheduler.java",
+        "core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java",
+        "core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java",
         "foundation/build.gradle.kts",
         "foundation/src/main/AndroidManifest.xml",
         "foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java",
@@ -177,7 +179,11 @@ def main():
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/LanTransferCryptoTest.java").is_file(), "LAN transfer has cryptographic and filename regression tests")
 
     indexer = source("app/src/main/java/com/music/echo/offline/files/Indexer.java")
-    require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, "file indexing avoids symlink traversal and bounds memory use")
+    storage_index = source("core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java")
+    storage_index_tests = source("core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java")
+    require("StorageIndexEngine.scan(Environment.getExternalStorageDirectory()" in indexer and "new Entry(snapshot.file" in indexer, "Android index adapter consumes core snapshots and retains app-only categorization")
+    require("Files.newDirectoryStream" in storage_index and "NOFOLLOW_LINKS" in storage_index and "MAX_INDEX_ENTRIES = 150_000" in storage_index and "OperationCancellation.checkCurrent()" in storage_index, "core storage traversal streams directories, rejects symlinks, checks cancellation and bounds entries")
+    require("skipsHiddenEntriesAndRootAndroidDirectory" in storage_index_tests and "skipsSymbolicLinksWithoutFollowingTheirTargets" in storage_index_tests and "enforcesEntryLimitAndMarksResultsIncomplete" in storage_index_tests and "cancellationStopsTraversalInsteadOfPublishingPartialResults" in storage_index_tests, "core storage scanner has regression coverage for hidden paths, symlinks, limits and cancellation")
     dup_adapter = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
     dup_finder = source("core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java")
     dup_tests = source("core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java")

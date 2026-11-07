@@ -50,6 +50,8 @@ jobs:
           test -s core/build.gradle.kts
           test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
           test -s core/src/main/java/com/music/echo/offline/files/TaskScheduler.java
+          test -s core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java
+          test -s core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java
           test -s foundation/build.gradle.kts
           test -s foundation/src/main/AndroidManifest.xml
           test -s foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java
