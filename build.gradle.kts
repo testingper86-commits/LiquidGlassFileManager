@@ -1,4 +1,15 @@
 buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:9.5.0") {
+            // These plugins are unused: both Android modules contain Java only and disable Kotlin.
+            exclude(group = "org.jetbrains.kotlin", module = "kotlin-gradle-plugin")
+            exclude(group = "com.google.devtools.ksp", module = "symbol-processing-gradle-plugin")
+        }
+    }
     // Keep AGP's transitive build-tool libraries on patched, binary-compatible versions.
     configurations.getByName("classpath").resolutionStrategy.force(
         "org.apache.commons:commons-lang3:3.18.0",
@@ -13,7 +24,3 @@ buildscript {
     )
 }
 
-plugins {
-    id("com.android.application") version "9.5.0" apply false
-    id("com.android.library") version "9.5.0" apply false
-}

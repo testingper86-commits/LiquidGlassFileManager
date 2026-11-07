@@ -1,13 +1,13 @@
-plugins {
-    id("com.android.application")
-}
+import com.android.build.api.dsl.ApplicationExtension
+
+apply(plugin = "com.android.application")
 
 val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
 val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
 
-android {
+extensions.configure<ApplicationExtension>("android") {
     // This module has Java sources only; do not apply the transitive Kotlin compiler plugin.
     enableKotlin = false
     namespace = "com.music.echo.offline"

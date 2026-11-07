@@ -1,8 +1,8 @@
-plugins {
-    id("com.android.library")
-}
+import com.android.build.api.dsl.LibraryExtension
 
-android {
+apply(plugin = "com.android.library")
+
+extensions.configure<LibraryExtension>("android") {
     // This module has Java sources only; do not apply the transitive Kotlin compiler plugin.
     enableKotlin = false
     namespace = "com.music.echo.foundation"
