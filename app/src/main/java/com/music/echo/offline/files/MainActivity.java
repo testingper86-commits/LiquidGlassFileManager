@@ -1513,11 +1513,22 @@ public class MainActivity extends ComponentActivity {
         if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for empty folders\u2026");
         executeIo(() -> {
-            final List<File> empties = new ArrayList<>();
-            for (Entry e : Indexer.I.all) {
-                if (e.dir) { File[] kids = e.f.listFiles(); if (kids != null && kids.length == 0) empties.add(e.f); }
+            OperationCancellation.Token operationToken = cancellation.begin();
+            try {
+                final List<File> empties = new ArrayList<>();
+                for (Entry e : Indexer.I.all) {
+                    if (OperationCancellation.isCancelled()) return;
+                    if (e.dir) {
+                        File[] kids = e.f.listFiles();
+                        if (OperationCancellation.isCancelled()) return;
+                        if (kids != null && kids.length == 0) empties.add(e.f);
+                    }
+                }
+                if (OperationCancellation.isCancelled()) return;
+                runUiIfAlive(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
+            } finally {
+                cancellation.finish(operationToken);
             }
-            runUiIfAlive(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
         });
     }
 

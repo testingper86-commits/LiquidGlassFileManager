@@ -120,6 +120,8 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    cleanup_scan = main.split("void openCleanup()", 1)[1].split("void buildEmptyFolders(", 1)[0]
+    require("OperationCancellation.Token operationToken = cancellation.begin();" in cleanup_scan and cleanup_scan.count("OperationCancellation.isCancelled()") >= 3 and "cancellation.finish(operationToken);" in cleanup_scan, "empty-folder scanning stops promptly when its Activity-scoped cancellation token is cancelled")
     require(main.count("io.execute(") == 1 and main.count("ops.execute(") == 1 and main.count("executeIo(") >= 8 and main.count("executeOperation(") == 4 and "catch (RejectedExecutionException rejected)" in main and "busy(false);" in main, "bounded MainActivity task submissions recover from queue rejection without leaving operations busy")
     require(main.count("runOnUiThread(") == 1 and main.count("runUiIfAlive(") >= 20, "all MainActivity background UI callbacks use the destruction-safe dispatcher")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
