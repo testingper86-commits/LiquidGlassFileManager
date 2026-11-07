@@ -141,7 +141,7 @@ jobs:
             echo "Unsigned release APK. Do not distribute. Configure release signing secrets before publishing." > dist/BUILD-NOTES.txt
           fi
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.signing.outputs.artifact_name }}
           path: dist/*
