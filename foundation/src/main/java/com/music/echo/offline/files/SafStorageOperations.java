@@ -159,7 +159,8 @@ final class SafStorageOperations {
                 Files.move(pending.toPath(), destination.toPath());
             } catch (IOException moveFailure) {
                 FileOperationEngine.copy(pending, destination);
-                Files.deleteIfExists(pending.toPath());
+                try { Files.deleteIfExists(pending.toPath()); }
+                catch (IOException cleanupFailure) { /* The published import is complete; leave cleanup for later. */ }
             }
             return destination;
         } catch (IOException | RuntimeException failure) {
