@@ -162,7 +162,7 @@ final class FileOperationEngine {
 
     static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
         java.util.ArrayDeque<DeleteNode> pending = new java.util.ArrayDeque<>();
-        TreeTraversalBudget budget = new TreeTraversalBudget();
+        TreeTraversalBudget budget = new TreeTraversalBudget(TreeTraversalBudget.DEFAULT_MAX_ENTRIES, Integer.MAX_VALUE);
         budget.enter(0);
         pending.push(new DeleteNode(path, 0, false));
         while (!pending.isEmpty()) {
