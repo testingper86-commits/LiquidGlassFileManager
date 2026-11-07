@@ -1,63 +1,100 @@
 package com.music.echo.offline.files;
 
-import com.music.echo.offline.R;
-
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Finds true duplicate files: first groups by exact size (cheap, no disk reads), then
- * confirms with a SHA-256 checksum only within same-size groups of 2+ files — so a full
- * library is never hashed end-to-end, only the files that could actually collide.
- */
+/** Finds exact duplicates without presenting partial results as complete. */
 final class DupFinder {
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
     static final class Group {
         long size;
         final List<File> files = new ArrayList<>();
     }
 
-    static List<Group> find(List<Entry> all) {
-        Map<Long, List<File>> bySize = new HashMap<>();
-        for (Entry e : all) {
-            if (e.dir || e.len <= 0) continue;
-            List<File> l = bySize.get(e.len);
-            if (l == null) { l = new ArrayList<>(); bySize.put(e.len, l); }
-            l.add(e.f);
-        }
-        List<Group> out = new ArrayList<>();
-        for (Map.Entry<Long, List<File>> en : bySize.entrySet()) {
-            if (en.getValue().size() < 2) continue;
-            Map<String, Group> byHash = new HashMap<>();
-            for (File f : en.getValue()) {
-                String h = sha256(f);
-                if (h == null) continue;
-                Group g = byHash.get(h);
-                if (g == null) { g = new Group(); g.size = en.getKey(); byHash.put(h, g); }
-                g.files.add(f);
+    static List<Group> find(List<Entry> all) throws IOException {
+        if (all == null) throw new IOException("The storage index is unavailable");
+        Map<Long, List<Entry>> bySize = new HashMap<>();
+        for (Entry entry : all) {
+            if (entry == null || entry.dir || entry.len < 0) continue;
+            if (entry.f == null) throw new IOException("The storage index contains an invalid file entry");
+            List<Entry> candidates = bySize.get(entry.len);
+            if (candidates == null) {
+                candidates = new ArrayList<>();
+                bySize.put(entry.len, candidates);
             }
-            for (Group g : byHash.values()) if (g.files.size() > 1) out.add(g);
+            candidates.add(entry);
         }
-        Collections.sort(out, (x, y) -> Long.compare(y.size * y.files.size(), x.size * x.files.size()));
-        return out;
+
+        List<Group> result = new ArrayList<>();
+        for (Map.Entry<Long, List<Entry>> sizeGroup : bySize.entrySet()) {
+            if (sizeGroup.getValue().size() < 2) continue;
+            Map<String, Group> byHash = new HashMap<>();
+            for (Entry indexed : sizeGroup.getValue()) {
+                verifySnapshot(indexed);
+                String hash = sha256(indexed.f);
+                verifySnapshot(indexed);
+                Group group = byHash.get(hash);
+                if (group == null) {
+                    group = new Group();
+                    group.size = sizeGroup.getKey();
+                    byHash.put(hash, group);
+                }
+                group.files.add(indexed.f);
+            }
+            for (Group group : byHash.values()) if (group.files.size() > 1) result.add(group);
+        }
+        Collections.sort(result, (left, right) -> Long.compare(reclaimable(right), reclaimable(left)));
+        return result;
     }
 
-    private static String sha256(File f) {
-        try (InputStream in = new FileInputStream(f)) {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] buf = new byte[65536];
-            int n;
-            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-            byte[] d = md.digest();
-            StringBuilder sb = new StringBuilder();
-            for (byte b : d) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) { return null; }
+    private static void verifySnapshot(Entry entry) throws IOException {
+        File file = entry.f;
+        if (Files.isSymbolicLink(file.toPath()) || !file.isFile()
+                || file.length() != entry.len || file.lastModified() != entry.mod) {
+            throw new IOException("File changed or became unavailable during duplicate scan: " + file.getName());
+        }
+    }
+
+    private static String sha256(File file) throws IOException {
+        final MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IOException("SHA-256 is unavailable", unavailable);
+        }
+        try (InputStream input = new FileInputStream(file)) {
+            byte[] buffer = new byte[65536];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (count > 0) digest.update(buffer, 0, count);
+            }
+        } catch (IOException failure) {
+            throw new IOException("Unable to read " + file.getName() + " during duplicate scan", failure);
+        } catch (SecurityException denied) {
+            throw new IOException("Access denied to " + file.getName() + " during duplicate scan", denied);
+        }
+        StringBuilder result = new StringBuilder(64);
+        for (byte value : digest.digest()) {
+            int unsigned = value & 0xff;
+            result.append(HEX[unsigned >>> 4]).append(HEX[unsigned & 0x0f]);
+        }
+        return result.toString();
+    }
+
+    private static long reclaimable(Group group) {
+        long extraCopies = group.files.size() - 1L;
+        if (extraCopies <= 0) return 0L;
+        return group.size > Long.MAX_VALUE / extraCopies ? Long.MAX_VALUE : group.size * extraCopies;
     }
 }

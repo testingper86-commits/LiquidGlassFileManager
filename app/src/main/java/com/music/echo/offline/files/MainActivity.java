@@ -49,6 +49,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -1412,11 +1413,24 @@ public class MainActivity extends Activity {
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
-        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
-        ToxiVisualSystem.toast(this, "Scanning for duplicates\u2026");
+        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage — try again in a moment"); return; }
+        ToxiVisualSystem.toast(this, "Scanning for duplicates…");
         io.execute(() -> {
-            final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
-            runOnUiThread(() -> { buildDuplicates(groups); showOverlay(dupScroll); });
+            try {
+                final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    buildDuplicates(groups);
+                    showOverlay(dupScroll);
+                });
+            } catch (IOException scanFailure) {
+                final String detail = scanFailure.getMessage();
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    ToxiVisualSystem.toast(this, "Duplicate scan failed: "
+                            + (detail == null || detail.trim().isEmpty() ? "a file could not be read" : detail));
+                });
+            }
         });
     }
 

@@ -26,6 +26,8 @@ jobs:
           test -s gradlew
           test -s gradle/wrapper/gradle-wrapper.jar
           test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/DupFinder.java
+          test -s app/src/test/java/com/music/echo/offline/files/DupFinderTest.java
           test -s app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
           test -s app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java
           test -s app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java

@@ -35,6 +35,8 @@ def main():
         "core/src/main/java/com/music/echo/offline/files/PinHash.java",
         "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
         "app/src/main/java/com/music/echo/offline/files/Indexer.java",
+        "app/src/main/java/com/music/echo/offline/files/DupFinder.java",
+        "app/src/test/java/com/music/echo/offline/files/DupFinderTest.java",
         "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
         "app/src/main/java/com/music/echo/offline/files/ViewerActivity.java",
         "app/src/main/java/com/music/echo/offline/files/CrashLogger.java",
@@ -48,7 +50,7 @@ def main():
     settings = source("settings.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
     require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
-    require(all((ROOT / "core/src/main/java/com/music/echo/offline/files/android-build.yml").is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
+    require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
 
     manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
     app = manifest.find("application")
@@ -148,6 +150,11 @@ def main():
 
     indexer = source("app/src/main/java/com/music/echo/offline/files/Indexer.java")
     require('Files.isSymbolicLink(dir.toPath())' in indexer and 'MAX_INDEX_ENTRIES = 150_000' in indexer and 'truncated = true' in indexer, "file indexing avoids symlink traversal and bounds memory use")
+    dup_finder = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
+    dup_tests = source("app/src/test/java/com/music/echo/offline/files/DupFinderTest.java")
+    require('entry.len < 0' in dup_finder and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder, "duplicate detection includes empty files, rejects stale/symlink entries and never hides hash failures")
+    require('catch (IOException scanFailure)' in main and 'Duplicate scan failed:' in main, "duplicate scan reports incomplete I/O failures to the user")
+    require('includesEmptyFilesAsExactDuplicates' in dup_tests and 'reportsDisappearingFilesInsteadOfReturningPartialResults' in dup_tests, "duplicate scanner has regression coverage for empty and disappearing files")
     html = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
     require('setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html, "built-in HTML viewer blocks local file access and mixed content")
     viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
