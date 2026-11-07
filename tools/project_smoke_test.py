@@ -17,6 +17,7 @@ def main():
     required = [
         "app/src/main/AndroidManifest.xml",
         "app/src/main/java/com/music/echo/offline/files/MainActivity.java",
+        "app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java",
         "app/src/main/java/com/music/echo/offline/files/BrowserView.java",
         "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
@@ -113,6 +114,8 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    settings_backup = source("app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java")
+    require("SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES)" in main and "SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES" in main and "portableSettingKeys" not in main and "MAX_IMPORT_BYTES = 1024 * 1024" in settings_backup and "ToxiUriPermissions.openInputStream(context, uri)" in settings_backup and "editor.commit()" in settings_backup, "settings backup serialization, bounded SAF import and allow-listed preference validation are isolated from MainActivity")
     developer = source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java")
     require('if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {' in main and 'startActivity(new Intent(this, DeveloperStudioActivity.class))' in main, "Developer Studio is exposed only after the existing Developer unlock")
     require('private boolean developerUnlocked()' in developer and 'if(!developerUnlocked()){finish();return;}' in developer, "Developer Studio independently rejects direct access while locked")

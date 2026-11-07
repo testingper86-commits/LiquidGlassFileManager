@@ -1993,98 +1993,47 @@ public class MainActivity extends Activity {
     // ---------------- SETTINGS BACKUP ----------------
     void exportSettings() {
         io.execute(() -> {
-            String msg;
             try {
-                JSONObject o = new JSONObject();
-                for (String key : portableSettingKeys()) {
-                    if (ToxiVisualSystem.PREFERENCES.contains(key)) o.put(key, ToxiVisualSystem.PREFERENCES.getAll().get(key));
-                }
-                File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
-                File dest = FileOps.unique(download, "liquidglass_settings.json");
-                File pending = new File(download, ".toxifiles-settings-" + java.util.UUID.randomUUID() + ".part");
-                try (OutputStream out = new FileOutputStream(pending)) { out.write(o.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
-                try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
-                msg = "Saved to Download/" + dest.getName();
-                final File fd = dest;
-                final String exportMessage = msg;
+                final File exported = SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES);
                 runOnUiThread(() -> {
-                    ToxiVisualSystem.toast(this, exportMessage);
+                    ToxiVisualSystem.toast(this, "Saved to Download/" + exported.getName());
                     try {
-                        Intent i = new Intent(Intent.ACTION_SEND);
-                        i.setType("application/json");
-                        i.putExtra(Intent.EXTRA_STREAM, FileOps.uri(this, fd));
-                        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(Intent.createChooser(i, "Share settings file"));
+                        Intent share = new Intent(Intent.ACTION_SEND);
+                        share.setType("application/json");
+                        share.putExtra(Intent.EXTRA_STREAM, FileOps.uri(this, exported));
+                        share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(share, "Share settings file"));
                     } catch (Exception ignored) { }
                 });
-                return;
-            } catch (Exception ex) { msg = "Export failed: " + ex.getMessage(); }
-            final String m = msg;
-            runOnUiThread(() -> ToxiVisualSystem.toast(this, m));
+            } catch (Exception failure) {
+                final String message = "Export failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
+                runOnUiThread(() -> ToxiVisualSystem.toast(this, message));
+            }
         });
     }
 
     void importSettingsPick() {
         try {
-            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-            i.setType("*/*");
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(Intent.createChooser(i, "Choose settings file"), REQ_IMPORT_SETTINGS);
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, "Choose settings file"), REQ_IMPORT_SETTINGS);
         } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open file picker"); }
-    }
-
-    private static java.util.Set<String> portableSettingKeys() {
-        return new java.util.HashSet<>(java.util.Arrays.asList(
-                "theme", "light", "haptic", "blur", "hidden", "sort", "grid",
-                "font_family", "reduce_motion", "recyclebin_days", "dev_verbose",
-                "dev_debug_toasts", "dev_logging"));
     }
 
     void applyImportedSettings(final Uri file) {
         io.execute(() -> {
-            String msg;
+            String message;
             try {
-                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-                try (InputStream in = ToxiUriPermissions.openInputStream(this, file)) {
-                    if (in == null) throw new java.io.IOException("Unable to open settings file");
-                    byte[] buffer = new byte[8192];
-                    int n;
-                    while ((n = in.read(buffer)) != -1) {
-                        if (bytes.size() + n > 1024 * 1024) throw new java.io.IOException("Settings file exceeds the 1 MB limit");
-                        bytes.write(buffer, 0, n);
-                    }
-                }
-                JSONObject o = new JSONObject(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
-                java.util.Set<String> allowed = portableSettingKeys();
-                SharedPreferences.Editor ed = ToxiVisualSystem.PREFERENCES.edit();
-                java.util.Iterator<String> keys = o.keys();
-                while (keys.hasNext()) {
-                    String k = keys.next();
-                    if (!allowed.contains(k)) continue;
-                    Object v = o.get(k);
-                    if ("theme".equals(k) && v instanceof Number) {
-                        int theme = ((Number) v).intValue();
-                        if (theme >= 0 && theme < ToxiVisualSystem.THEME_NAMES.length) ed.putInt(k, theme);
-                    } else if ("font_family".equals(k) && v instanceof Number) {
-                        int font = ((Number) v).intValue();
-                        if (font >= 0 && font <= 3) ed.putInt(k, font);
-                    } else if ("recyclebin_days".equals(k) && v instanceof Number) {
-                        int days = ((Number) v).intValue();
-                        if (days == 7 || days == 14 || days == 30 || days == 60 || days == 90) ed.putInt(k, days);
-                    } else if (v instanceof Boolean) {
-                        ed.putBoolean(k, (Boolean) v);
-                    } else if (v instanceof String && "sort".equals(k)) {
-                        String sort = (String) v;
-                        if (sort.length() <= 32) ed.putString(k, sort);
-                    }
-                }
-                ed.apply();
-                msg = "Settings restored (security settings were not imported)";
-            } catch (Exception ex) { msg = "Import failed: " + ex.getMessage(); }
-            final String m = msg;
+                SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES,
+                        ToxiVisualSystem.THEME_NAMES.length);
+                message = "Settings restored (security settings were not imported)";
+            } catch (Exception failure) {
+                message = "Import failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
+            }
+            final String result = message;
             runOnUiThread(() -> {
-                ToxiVisualSystem.toast(this, m);
+                ToxiVisualSystem.toast(this, result);
                 ToxiVisualSystem.applyTheme(ToxiVisualSystem.PREFERENCES.getInt("theme", 0), false);
                 recolor();
                 buildSettings();
