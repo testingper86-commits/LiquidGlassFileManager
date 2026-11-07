@@ -1249,7 +1249,7 @@ public class MainActivity extends ComponentActivity {
                 result = report.toString();
             } catch (Exception failure) {
                 String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     ToxiVisualSystem.toast(this, "Storage analysis failed: " + detail);
                 });
@@ -1257,7 +1257,7 @@ public class MainActivity extends ComponentActivity {
             } finally {
                 cancellation.finish(operationToken);
             }
-            runOnUiThread(() -> {
+            runUiIfAlive(() -> {
                 if (isFinishing() || isDestroyed()) return;
                 new AlertDialog.Builder(this).setTitle("Storage analysis")
                         .setMessage(result).setPositiveButton("Done", null)
@@ -1352,7 +1352,7 @@ public class MainActivity extends ComponentActivity {
                     android.util.Log.w("ToxiFiles", "Biometric Keystore unavailable; PIN remains available", keystoreFailure);
                     return;
                 }
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
                     try {
                         android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
@@ -1406,7 +1406,7 @@ public class MainActivity extends ComponentActivity {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     buildDuplicates(groups);
                     showOverlay(dupScroll);
@@ -1414,7 +1414,7 @@ public class MainActivity extends ComponentActivity {
             } catch (IOException scanFailure) {
                 if ("Operation cancelled".equals(scanFailure.getMessage())) return;
                 final String detail = scanFailure.getMessage();
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     ToxiVisualSystem.toast(this, "Duplicate scan failed: "
                             + (detail == null || detail.trim().isEmpty() ? "a file could not be read" : detail));
@@ -1497,7 +1497,7 @@ public class MainActivity extends ComponentActivity {
             for (Entry e : Indexer.I.all) {
                 if (e.dir) { File[] kids = e.f.listFiles(); if (kids != null && kids.length == 0) empties.add(e.f); }
             }
-            runOnUiThread(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
+            runUiIfAlive(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
         });
     }
 
@@ -1648,10 +1648,10 @@ public class MainActivity extends ComponentActivity {
         File destDir = new File(Environment.getExternalStorageDirectory(), "Download/LanReceived");
         LanTransfer.receive(destDir, new LanTransfer.Listener() {
             @Override public void onWaiting(String ip, int port, String pairingCode) {
-                runOnUiThread(() -> waitDlg.setMessage("On the sending device, open the file action menu, choose Send via Wi-Fi, then enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
+                runUiIfAlive(() -> waitDlg.setMessage("On the sending device, open the file action menu, choose Send via Wi-Fi, then enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
             }
             @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) {
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     if (waitDlg.isShowing()) waitDlg.dismiss();
                     StringBuilder preview = new StringBuilder();
                     int shown = Math.min(8, names.size());
@@ -1665,10 +1665,10 @@ public class MainActivity extends ComponentActivity {
                             .show();
                 });
             }
-            @Override public void onFileStart(int idx, int total, String name) { runOnUiThread(() -> progress("Receiving " + idx + " of " + total + ": " + name)); }
-            @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); afterOps(); }); }
+            @Override public void onFileStart(int idx, int total, String name) { runUiIfAlive(() -> progress("Receiving " + idx + " of " + total + ": " + name)); }
+            @Override public void onDone(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); afterOps(); }); }
             @Override public void onError(String msg) {
-                runOnUiThread(() -> { busy(false); if (waitDlg.isShowing()) waitDlg.dismiss(); ToxiVisualSystem.toast(MainActivity.this, msg); });
+                runUiIfAlive(() -> { busy(false); if (waitDlg.isShowing()) waitDlg.dismiss(); ToxiVisualSystem.toast(MainActivity.this, msg); });
             }
         });
     }
@@ -1694,9 +1694,9 @@ public class MainActivity extends ComponentActivity {
                     LanTransfer.send(ip, pairingCode, files, new LanTransfer.Listener() {
                         @Override public void onWaiting(String ip2, int port, String pairingCode2) { }
                         @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) { }
-                        @Override public void onFileStart(int idx, int total, String name) { runOnUiThread(() -> progress("Sending " + idx + " of " + total + ": " + name)); }
-                        @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
-                        @Override public void onError(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
+                        @Override public void onFileStart(int idx, int total, String name) { runUiIfAlive(() -> progress("Sending " + idx + " of " + total + ": " + name)); }
+                        @Override public void onDone(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
+                        @Override public void onError(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
                     });
                 }).show();
     }
@@ -1741,8 +1741,8 @@ public class MainActivity extends ComponentActivity {
                 SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFilesToTree(
                         getApplicationContext(), getContentResolver(), files, safTree,
                         (current, total, source) ->
-                                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + total + ": " + source.getName())));
-                runOnUiThread(() -> {
+                                runUiIfAlive(() -> progress("Copying to SD/USB " + current + " of " + total + ": " + source.getName())));
+                runUiIfAlive(() -> {
                     busy(false);
                     ToxiVisualSystem.toast(this, result.failed == 0
                             ? "Copied " + result.copied + " item" + (result.copied == 1 ? "" : "s") + " to SD/USB"
@@ -1764,7 +1764,7 @@ public class MainActivity extends ComponentActivity {
             } catch (Exception ignored) { }
             rows = loaded;
             final boolean readable = querySucceeded;
-            runOnUiThread(() -> {
+            runUiIfAlive(() -> {
                 if (!readable) { ToxiVisualSystem.toast(this, "This storage provider could not read the folder"); return; }
                 if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
@@ -1835,7 +1835,7 @@ public class MainActivity extends ComponentActivity {
                 failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
             }
             final String detail = failure;
-            runOnUiThread(() -> {
+            runUiIfAlive(() -> {
                 if (detail != null) {
                     ToxiVisualSystem.toast(this, "Cannot browse destination folders: " + detail);
                     return;
@@ -1876,7 +1876,7 @@ public class MainActivity extends ComponentActivity {
                 error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
             } finally { cancellation.finish(operationToken); }
             final String detail = error;
-            runOnUiThread(() -> {
+            runUiIfAlive(() -> {
                 busy(false);
                 if (detail == null) {
                     ToxiVisualSystem.toast(this, successMessage);
@@ -1903,7 +1903,7 @@ public class MainActivity extends ComponentActivity {
                     msg = "Import failed: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
                 }
                 final String m = msg;
-                runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
+                runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
 
             } finally { this.cancellation.finish(operationToken); }
         });
@@ -1914,7 +1914,7 @@ public class MainActivity extends ComponentActivity {
         io.execute(() -> {
             try {
                 final File exported = SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES);
-                runOnUiThread(() -> {
+                runUiIfAlive(() -> {
                     ToxiVisualSystem.toast(this, "Saved to Download/" + exported.getName());
                     try {
                         Intent share = new Intent(Intent.ACTION_SEND);
@@ -1926,7 +1926,7 @@ public class MainActivity extends ComponentActivity {
                 });
             } catch (Exception failure) {
                 final String message = "Export failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
-                runOnUiThread(() -> ToxiVisualSystem.toast(this, message));
+                runUiIfAlive(() -> ToxiVisualSystem.toast(this, message));
             }
         });
     }
@@ -1951,7 +1951,7 @@ public class MainActivity extends ComponentActivity {
                 message = "Import failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
             }
             final String result = message;
-            runOnUiThread(() -> {
+            runUiIfAlive(() -> {
                 ToxiVisualSystem.toast(this, result);
                 ToxiVisualSystem.applyTheme(ToxiVisualSystem.PREFERENCES.getInt("theme", 0), false);
                 recolor();
