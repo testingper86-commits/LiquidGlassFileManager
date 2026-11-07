@@ -1793,18 +1793,9 @@ public class MainActivity extends ComponentActivity {
         new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
             String action = actions[which];
             if ("Duplicate here".equals(action)) {
-                runSafAction(tree, parent, title, "Duplicated " + name, () -> {
-                    if (directory) {
-                        DocumentFile source = safDocument(tree, document);
-                        DocumentFile destination = safDocument(tree, parent);
-                        if (source == null || destination == null) {
-                            throw new java.io.IOException("Storage provider returned an invalid copy location");
-                        }
-                        SafStorageOperations.copyDocumentTree(getContentResolver(), source, destination);
-                    } else {
-                        SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name);
-                    }
-                });
+                runSafAction(tree, parent, title, "Duplicated " + name,
+                        () -> SafStorageOperations.duplicateDocumentInTree(this, getContentResolver(),
+                                tree, document, parent, name, directory));
             } else if ("Move to folder".equals(action)) {
                 showSafMoveFolderPicker(tree, parent, document, parent, title, name);
             } else if ("Rename".equals(action)) {

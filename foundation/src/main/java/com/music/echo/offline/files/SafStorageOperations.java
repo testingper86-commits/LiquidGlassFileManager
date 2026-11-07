@@ -301,6 +301,31 @@ final class SafStorageOperations {
         }
     }
 
+    /** Duplicates a document or directory after resolving both locations inside its SAF tree. */
+    static void duplicateDocumentInTree(Context context, ContentResolver resolver, Uri tree,
+                                        Uri sourceDocument, Uri destinationParent, String displayName,
+                                        boolean directory) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || resolver == null || tree == null || sourceDocument == null
+                || destinationParent == null || displayName == null || displayName.trim().isEmpty()) {
+            throw new IOException("Storage tree, source, destination and name are required");
+        }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        DocumentFile destination = findDocumentInTree(context, tree, destinationParent);
+        if (!destination.isDirectory()) throw new IOException("The duplicate destination is not a folder");
+        if (directory) {
+            if (!source.isDirectory()) throw new IOException("The selected source is not a folder");
+            if (sameDocument(sourceDocument, destinationParent)
+                    || containsDocument(resolver, tree, sourceDocument, destinationParent)) {
+                throw new IOException("A folder cannot be duplicated inside itself or one of its subfolders");
+            }
+            copyDocumentTree(resolver, source, destination);
+        } else {
+            if (source.isDirectory()) throw new IOException("The selected source is a folder");
+            copyDocumentFile(resolver, tree, sourceDocument, destinationParent, displayName);
+        }
+    }
+
     static DocumentFile copyDocumentTree(ContentResolver resolver, DocumentFile source,
                                          DocumentFile parent) throws IOException {
         return copyDocumentTree(resolver, source, parent, new TreeTraversalBudget(), new HashSet<>(), 0);
