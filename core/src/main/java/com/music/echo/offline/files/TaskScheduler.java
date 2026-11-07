@@ -103,26 +103,26 @@ final class TaskScheduler {
         }
         <T> Future<T> submit(Lane lane, Callable<T> task) {
             if (task == null) throw new NullPointerException("task");
-            if (closed) throw new RejectedExecutionException("Task scope is closed");
-            FutureTask<T> future = new FutureTask<T>(task) {
-                @Override protected void done() { pending.remove(this); }
-            };
-            pending.add(future);
-            if (closed) {
-                future.cancel(true);
-                throw new RejectedExecutionException("Task scope is closed");
+            synchronized (this) {
+                if (closed) throw new RejectedExecutionException("Task scope is closed");
+                FutureTask<T> future = new FutureTask<T>(task) {
+                    @Override protected void done() { pending.remove(this); }
+                };
+                pending.add(future);
+                try { scheduler.pool(lane).execute(future); }
+                catch (RuntimeException | Error failure) {
+                    pending.remove(future);
+                    future.cancel(false);
+                    throw failure;
+                }
+                return future;
             }
-            try { scheduler.pool(lane).execute(future); }
-            catch (RuntimeException | Error failure) {
-                pending.remove(future);
-                future.cancel(false);
-                throw failure;
-            }
-            return future;
         }
         void close(boolean cancelRunning) {
-            closed = true;
-            if (cancelRunning) for (FutureTask<?> task : pending) task.cancel(true);
+            synchronized (this) {
+                closed = true;
+                if (cancelRunning) for (FutureTask<?> task : pending) task.cancel(true);
+            }
         }
         @Override public void close() { close(true); }
     }
