@@ -121,6 +121,9 @@ def main():
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
     recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
+    recycle_list = recycle_bin.split("static List<Item> list(Context c)", 1)[1].split("private static void scheduleExpiryCleanup", 1)[0]
+    require("scheduleExpiryCleanup(expired);" in recycle_list and "FileOps.deleteTree(w)" not in recycle_list and "TaskCoordinator.execute(TaskCoordinator.Lane.IO" in recycle_bin and "EXPIRY_CLEANUP_PENDING" in recycle_bin, "expired Recycle Bin trees are purged asynchronously on the bounded IO lane, not during UI listing")
+    recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
     require("void executeOperation(Runnable task)" in main and recycle_bin.count("a.executeOperation(") == 4 and "a.ops.execute(" not in recycle_bin and "a.runOnUiThread(" not in recycle_bin and recycle_bin.count("a.runUiIfAlive(") >= 5, "RecycleBin operations handle bounded-queue rejection and suppress callbacks after Activity destruction")
     lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
     lan_hash = lan_transfer.split("private static String sha256(File f)", 1)[1].split("private static String hex(", 1)[0]

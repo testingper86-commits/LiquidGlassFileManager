@@ -8,6 +8,8 @@ import android.util.Base64;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Soft-delete store. Deleted items are moved (not erased) into an app-private folder
@@ -18,6 +20,8 @@ import java.util.List;
  * separate database — the filesystem itself is the index.
  */
 final class RecycleBin {
+    private static final Set<String> EXPIRY_CLEANUP_PENDING = ConcurrentHashMap.newKeySet();
+
     /** Days before auto-purge; user-configurable in Settings (default 30). */
     static long maxAgeMs() { return ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
 
@@ -95,9 +99,11 @@ final class RecycleBin {
     /** Lists current bin contents, newest-deleted first. Silently purges anything past MAX_AGE_MS. */
     static List<Item> list(Context c) {
         List<Item> out = new ArrayList<>();
+        List<File> expired = new ArrayList<>();
         File[] wraps = root(c).listFiles();
         if (wraps == null) return out;
         long now = System.currentTimeMillis();
+        long retention = maxAgeMs();
         for (File w : wraps) {
             if (!w.isDirectory()) continue;
             String nm = w.getName();
@@ -111,14 +117,34 @@ final class RecycleBin {
                     try { deletedAt = Long.parseLong(suffix); } catch (NumberFormatException legacyOrUuid) { deletedAt = w.lastModified(); }
                 }
             } catch (Exception ignored) { }
-            if (deletedAt > 0 && now - deletedAt > maxAgeMs()) { FileOps.deleteTree(w); continue; }
+            if (deletedAt > 0 && now - deletedAt > retention) {
+                String path = w.getAbsolutePath();
+                if (EXPIRY_CLEANUP_PENDING.add(path)) expired.add(w);
+                continue;
+            }
             File[] kids = w.listFiles();
             if (kids == null) continue;
             if (kids.length != 1) continue; // Preserve malformed wrappers instead of discarding unrecognized payloads.
             out.add(new Item(kids[0], w, new File(origPath), deletedAt));
         }
+        scheduleExpiryCleanup(expired);
         out.sort((x, y) -> Long.compare(y.deletedAt, x.deletedAt));
         return out;
+    }
+
+    private static void scheduleExpiryCleanup(List<File> expired) {
+        if (expired.isEmpty()) return;
+        try {
+            TaskCoordinator.execute(TaskCoordinator.Lane.IO, () -> {
+                try {
+                    for (File wrapper : expired) FileOps.deleteTree(wrapper);
+                } finally {
+                    for (File wrapper : expired) EXPIRY_CLEANUP_PENDING.remove(wrapper.getAbsolutePath());
+                }
+            });
+        } catch (RuntimeException rejected) {
+            for (File wrapper : expired) EXPIRY_CLEANUP_PENDING.remove(wrapper.getAbsolutePath());
+        }
     }
 
     static void restore(final MainActivity a, final Item it, final FileOps.Done d) {
