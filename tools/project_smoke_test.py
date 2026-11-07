@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -73,8 +74,8 @@ def main():
     settings = source("settings.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
     foundation_gradle = source("foundation/build.gradle.kts")
-    require('include(":app", ":core", ":foundation")' in settings and 'implementation(project(":core"))' in app_gradle and 'implementation(project(":foundation"))' in app_gradle and 'implementation(project(":core"))' in foundation_gradle and (ROOT / "core/build.gradle.kts").is_file(), "app, Android foundation and platform-neutral core modules have one-way dependency direction")
-    require('id("com.android.library")' in foundation_gradle and 'namespace = "com.music.echo.foundation"' in foundation_gradle and 'compileSdk = 36' in foundation_gradle and 'minSdk = 26' in foundation_gradle, "Android foundation module uses the project's supported SDK and Java platform")
+    require('include(":app", ":core", ":foundation")' in settings and 'add("implementation", project(":core"))' in app_gradle and 'add("implementation", project(":foundation"))' in app_gradle and 'add("implementation", project(":core"))' in foundation_gradle and (ROOT / "core/build.gradle.kts").is_file(), "app, Android foundation and platform-neutral core modules have one-way dependency direction")
+    require('apply(plugin = "com.android.library")' in foundation_gradle and 'extensions.configure<LibraryExtension>("android")' in foundation_gradle and 'apply(plugin = "com.android.application")' in app_gradle and 'extensions.configure<ApplicationExtension>("android")' in app_gradle and 'namespace = "com.music.echo.foundation"' in foundation_gradle and 'compileSdk = 36' in foundation_gradle and 'minSdk = 26' in foundation_gradle and 'add("implementation",' in app_gradle and 'add("testImplementation",' in app_gradle and 'add("implementation",' in foundation_gradle, "Android modules use shared AGP classpath, typed extensions and explicit dependency configuration names")
     require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
     task_scheduler = source("core/src/main/java/com/music/echo/offline/files/TaskScheduler.java")
     task_coordinator = source("foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java")
@@ -207,6 +208,8 @@ def main():
     require("OperationCancellation.Token operationToken = cancellation.begin()" in indexer and "cancellation.finish(operationToken)" in indexer, "storage index worker binds cancellation to its actual background thread")
     require("Files.newDirectoryStream" in storage_index and "NOFOLLOW_LINKS" in storage_index and "MAX_INDEX_ENTRIES = 150_000" in storage_index and "OperationCancellation.checkCurrent()" in storage_index, "core storage traversal streams directories, rejects symlinks, checks cancellation and bounds entries")
     require("skipsHiddenEntriesAndRootAndroidDirectory" in storage_index_tests and "skipsSymbolicLinksWithoutFollowingTheirTargets" in storage_index_tests and "enforcesEntryLimitAndMarksResultsIncomplete" in storage_index_tests and "cancellationStopsTraversalInsteadOfPublishingPartialResults" in storage_index_tests, "core storage scanner has regression coverage for hidden paths, symlinks, limits and cancellation")
+    require("StorageIndexEngine.scan(rootDir, 60" in main and "StorageIndexEngine.MAX_INDEX_ENTRIES, true, true" in main and "scan.incomplete" in main and "scanStorage(" not in main, "storage analyzer reuses bounded core traversal and discloses incomplete scans")
+    require("includesHiddenEntriesAndRootAndroidDirectoryWhenRequested" in storage_index_tests, "core scanner supports explicit full-storage analysis without changing index defaults")
     dup_adapter = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
     dup_finder = source("core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java")
     dup_tests = source("core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java")
@@ -250,6 +253,21 @@ def main():
     uri_guard = source("foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
     require('codeql[java/sql-injection]' in sql_editor and 'lgtm[java/sql-injection]' in sql_editor and 'DeveloperStudioCore.isReadOnlySql(sql)' in sql_editor and 'SQLiteDatabase.OPEN_READONLY' in sql_editor, "developer SQL editor is explicitly bounded to one read-only query on a read-only database")
     require('codeql[java/android/unsafe-content-uri-resolution]' in uri_guard and uri_guard.count('lgtm[java/android/unsafe-content-uri-resolution]') == 2 and 'DocumentsContract.isDocumentUri(context, uri)' in uri_guard and 'checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermission)' in uri_guard, "SAF URI resolution requires document URI validation and the exact read/write grant before resolver access")
+    root_gradle = source("build.gradle.kts")
+    app_gradle = source("app/build.gradle.kts")
+    foundation_gradle = source("foundation/build.gradle.kts")
+    patched_build_substitutions = (
+        'substitute(module("org.apache.commons:commons-lang3:3.16.0")).using(module("org.apache.commons:commons-lang3:3.18.0"))',
+        'substitute(module("org.apache.httpcomponents:httpclient:4.5.6")).using(module("org.apache.httpcomponents:httpclient:4.5.14"))',
+        'substitute(module("org.apache.httpcomponents:httpmime:4.5.6")).using(module("org.apache.httpcomponents:httpmime:4.5.14"))',
+        'substitute(module("com.google.guava:guava:33.4.0-jre")).using(module("com.google.guava:guava:33.7.2-jre"))',
+        'substitute(module("com.google.guava:failureaccess:1.0.2")).using(module("com.google.guava:failureaccess:1.0.3"))',
+        'substitute(module("org.bouncycastle:bcprov-jdk18on:1.80.2")).using(module("org.bouncycastle:bcprov-jdk18on:1.85"))',
+        'substitute(module("org.bouncycastle:bcpkix-jdk18on:1.80.2")).using(module("org.bouncycastle:bcpkix-jdk18on:1.85"))',
+        'substitute(module("org.bouncycastle:bcutil-jdk18on:1.80.2")).using(module("org.bouncycastle:bcutil-jdk18on:1.85"))',
+    )
+    require('subprojects {' in root_gradle and 'if (path == ":app" || path == ":foundation")' in root_gradle and 'configurations.getByName("classpath").resolutionStrategy.dependencySubstitution' in root_gradle and 'classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(rule in root_gradle for rule in patched_build_substitutions), "Android app and foundation plugin classpaths substitute vulnerable transitive coordinates with patched binary-compatible versions")
+    require("enableKotlin = false" in app_gradle and "enableKotlin = false" in foundation_gradle, "Java-only Android modules disable unused built-in Kotlin compiler tasks")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
     manifest = source("app/src/main/AndroidManifest.xml")
@@ -280,7 +298,7 @@ def main():
     wrapper_url = re.search(r"^distributionUrl=(.+)$", wrapper, re.MULTILINE)
     wrapper_version = re.search(r"gradle-(\d+)\.(\d+)\.(\d+)-bin\.zip", wrapper_url.group(1)) if wrapper_url else None
     wrapper_checksum = re.search(r"^distributionSha256Sum=([0-9a-fA-F]{64})$", wrapper, re.MULTILINE)
-    require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'version "9.5.0"' in root_gradle and wrapper_url is not None and wrapper_url.group(1).startswith("https\://services.gradle.org/distributions/") and wrapper_version is not None and tuple(map(int, wrapper_version.groups())) >= (9, 6, 0) and wrapper_checksum is not None, "API 36 release uses compatible Android Gradle and a pinned, checksummed compatible wrapper distribution")
+    require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and wrapper_url is not None and wrapper_url.group(1).startswith(r"https\://services.gradle.org/distributions/") and wrapper_version is not None and tuple(map(int, wrapper_version.groups())) >= (9, 6, 0) and wrapper_checksum is not None, "API 36 release uses compatible Android Gradle and a pinned, checksummed compatible wrapper distribution")
     workflow = source(".github/workflows/release.yml")
     require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and ':core:test :app:testDebugUnitTest :app:lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
