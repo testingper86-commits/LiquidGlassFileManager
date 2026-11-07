@@ -1923,7 +1923,7 @@ public class MainActivity extends ComponentActivity {
                 try {
                     File download = new File(Environment.getExternalStorageDirectory(), "Download");
                     File destination = SafStorageOperations.importDocument(
-                            getContentResolver(), doc, download, name);
+                            getApplicationContext(), doc, download, name);
                     msg = "Imported to Download/" + destination.getName();
                 } catch (Exception ex) {
                     msg = "Import failed: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());

@@ -117,10 +117,10 @@ final class SafStorageOperations {
     }
 
     /** Imports one provider document into local storage using a private staging file. */
-    static File importDocument(ContentResolver resolver, Uri document, File destinationDirectory,
+    static File importDocument(Context context, Uri document, File destinationDirectory,
                                String requestedName) throws IOException {
         OperationCancellation.checkCurrent();
-        if (resolver == null || document == null || destinationDirectory == null
+        if (context == null || document == null || destinationDirectory == null
                 || requestedName == null || requestedName.trim().isEmpty()) {
             throw new IOException("Document, destination folder and filename are required");
         }
@@ -140,9 +140,8 @@ final class SafStorageOperations {
         try {
             reserved = pending.createNewFile();
             if (!reserved) throw new IOException("Unable to reserve an import staging file");
-            try (InputStream input = resolver.openInputStream(document);
+            try (InputStream input = ToxiUriPermissions.openInputStream(context, document);
                  FileOutputStream output = new FileOutputStream(pending, false)) {
-                if (input == null) throw new IOException("External storage returned no input stream");
                 byte[] buffer = new byte[65536];
                 int count;
                 while ((count = input.read(buffer)) != -1) {
