@@ -18,6 +18,7 @@ def main():
         "app/src/main/AndroidManifest.xml",
         "app/src/main/java/com/music/echo/offline/files/MainActivity.java",
         "app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java",
+        "app/src/main/java/com/music/echo/offline/files/AboutScreenBuilder.java",
         "app/src/main/java/com/music/echo/offline/files/BrowserView.java",
         "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
@@ -119,6 +120,8 @@ def main():
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
     settings_backup = source("app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java")
+    about_builder = source("app/src/main/java/com/music/echo/offline/files/AboutScreenBuilder.java")
+    require("AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName())" in main and "addAboutGridSection" not in main and "aboutText(" in about_builder and "openExternalUrl(" in about_builder, "About profile content and layout helpers are isolated from MainActivity")
     require("SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES)" in main and "SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES" in main and "portableSettingKeys" not in main and "MAX_IMPORT_BYTES = 1024 * 1024" in settings_backup and "ToxiUriPermissions.openInputStream(context, uri)" in settings_backup and "editor.commit()" in settings_backup, "settings backup serialization, bounded SAF import and allow-listed preference validation are isolated from MainActivity")
     developer = source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java")
     require('if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {' in main and 'startActivity(new Intent(this, DeveloperStudioActivity.class))' in main, "Developer Studio is exposed only after the existing Developer unlock")
