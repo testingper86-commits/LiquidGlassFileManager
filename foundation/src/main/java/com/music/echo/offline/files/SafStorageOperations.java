@@ -19,6 +19,100 @@ import java.util.HashSet;
 final class SafStorageOperations {
     private SafStorageOperations() { }
 
+    static final class DirectoryEntry {
+        final String documentId;
+        final String name;
+        final boolean directory;
+
+        DirectoryEntry(String documentId, String name, boolean directory) {
+            this.documentId = documentId;
+            this.name = name;
+            this.directory = directory;
+        }
+    }
+
+    /** Lists immediate children through the selected tree, with bounded provider traversal. */
+    static ArrayList<DirectoryEntry> listChildren(ContentResolver resolver, Uri tree, Uri parent)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || parent == null) {
+            throw new IOException("Storage tree and parent document are required");
+        }
+        Uri children;
+        try {
+            children = DocumentsContract.buildChildDocumentsUriUsingTree(
+                    tree, DocumentsContract.getDocumentId(parent));
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid storage folder URI", invalidUri);
+        }
+        ArrayList<DirectoryEntry> entries = new ArrayList<>();
+        try (Cursor cursor = resolver.query(children, new String[]{
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+            if (cursor == null) throw new IOException("Storage provider could not list this folder");
+            while (cursor.moveToNext()) {
+                OperationCancellation.checkCurrent();
+                if (entries.size() >= TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Storage folder contains too many entries to browse safely");
+                }
+                String id = cursor.getString(0);
+                String name = cursor.getString(1);
+                if (id == null || name == null) {
+                    throw new IOException("Storage provider returned an incomplete document entry");
+                }
+                entries.add(new DirectoryEntry(id, name,
+                        DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))));
+            }
+        } catch (SecurityException denied) {
+            throw new IOException("Storage provider denied access to this folder", denied);
+        } catch (RuntimeException providerFailure) {
+            throw new IOException("Storage provider failed while listing this folder", providerFailure);
+        }
+        return entries;
+    }
+
+    /** Returns true when target is the directory itself or appears anywhere below it. */
+    static boolean containsDocument(ContentResolver resolver, Uri tree, Uri directory, Uri target)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || directory == null || target == null) {
+            throw new IOException("Storage tree and document URIs are required");
+        }
+        final String targetId;
+        try {
+            targetId = DocumentsContract.getDocumentId(target);
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid target document URI", invalidUri);
+        }
+        ArrayList<Uri> pending = new ArrayList<>();
+        HashSet<String> visited = new HashSet<>();
+        pending.add(directory);
+        int cursor = 0;
+        int scanned = 0;
+        while (cursor < pending.size()) {
+            OperationCancellation.checkCurrent();
+            if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
+                    || pending.size() > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                throw new IOException("Destination subtree is too large to validate safely");
+            }
+            Uri current = pending.get(cursor++);
+            String currentId;
+            try { currentId = DocumentsContract.getDocumentId(current); }
+            catch (IllegalArgumentException invalidUri) {
+                throw new IOException("Storage provider returned an invalid folder URI", invalidUri);
+            }
+            if (targetId.equals(currentId)) return true;
+            if (!visited.add(currentId)) continue;
+            for (DirectoryEntry entry : listChildren(resolver, tree, current)) {
+                Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
+                if (targetId.equals(entry.documentId)) return true;
+                if (entry.directory && !visited.contains(entry.documentId)) pending.add(child);
+            }
+        }
+        return false;
+    }
+
     static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent)
             throws IOException {
         return copyLocalTree(resolver, source, parent, new TreeTraversalBudget(), 0);

@@ -1747,38 +1747,31 @@ public class MainActivity extends ComponentActivity {
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
         ToxiVisualSystem.toast(this, "Loadingâ¦");
         io.execute(() -> {
-            final List<String[]> rows = new ArrayList<>();
+            final List<SafStorageOperations.DirectoryEntry> rows;
             boolean querySucceeded = false;
+            List<SafStorageOperations.DirectoryEntry> loaded = new ArrayList<>();
             try {
-                Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(docUri));
-                try (Cursor c = getContentResolver().query(children, new String[]{
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
-                    if (c != null) {
-                        querySucceeded = true;
-                        while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1),
-                                DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
-                    }
-                }
+                loaded = SafStorageOperations.listChildren(getContentResolver(), tree, docUri);
+                querySucceeded = true;
             } catch (Exception ignored) { }
+            rows = loaded;
             final boolean readable = querySucceeded;
             runOnUiThread(() -> {
                 if (!readable) { ToxiVisualSystem.toast(this, "This storage provider could not read the folder"); return; }
                 if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
-                for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i)[1];
+                for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i).name;
                 AlertDialog listing = new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
-                    String[] row = rows.get(w);
-                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
-                    if ("1".equals(row[2])) showSafLevel(tree, childUri, row[1]);
-                    else importSafDoc(childUri, row[1]);
+                    SafStorageOperations.DirectoryEntry row = rows.get(w);
+                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, row.documentId);
+                    if (row.directory) showSafLevel(tree, childUri, row.name);
+                    else importSafDoc(childUri, row.name);
                 }).setNegativeButton("Close", null).create();
                 listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
                         (parent, view, position, id) -> {
-                            String[] row = rows.get(position);
-                            Uri selected = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
-                            showSafDocumentActions(tree, docUri, title, selected, row[1], "1".equals(row[2]));
+                            SafStorageOperations.DirectoryEntry row = rows.get(position);
+                            Uri selected = DocumentsContract.buildDocumentUriUsingTree(tree, row.documentId);
+                            showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
                             return true;
                         }));
                 listing.show();
@@ -1850,19 +1843,16 @@ public class MainActivity extends ComponentActivity {
             final List<String[]> folders = new ArrayList<>();
             String failure = null;
             try {
-                Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(
-                        tree, DocumentsContract.getDocumentId(currentFolder));
-                try (Cursor cursor = getContentResolver().query(children, new String[]{
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
-                    if (cursor == null) throw new java.io.IOException("Storage provider could not list destination folders");
-                    while (cursor.moveToNext()) {
-                        if (!DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))) continue;
-                        Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
-                        if (sameSafDocument(child, sourceDocument)) continue;
-                        folders.add(new String[]{child.toString(), cursor.getString(1)});
-                    }
+                DocumentFile movingSource = safDocument(tree, sourceDocument);
+                boolean movingDirectory = movingSource != null && movingSource.isDirectory();
+                for (SafStorageOperations.DirectoryEntry entry :
+                        SafStorageOperations.listChildren(getContentResolver(), tree, currentFolder)) {
+                    if (!entry.directory) continue;
+                    Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
+                    if (sameSafDocument(child, sourceDocument)) continue;
+                    if (movingDirectory && SafStorageOperations.containsDocument(
+                            getContentResolver(), tree, child, sourceDocument)) continue;
+                    folders.add(new String[]{child.toString(), entry.name});
                 }
             } catch (Exception error) {
                 failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
