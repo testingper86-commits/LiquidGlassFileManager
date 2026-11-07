@@ -1864,16 +1864,9 @@ public class MainActivity extends ComponentActivity {
                 new AlertDialog.Builder(this).setTitle("Move " + sourceName + " to folder")
                         .setItems(choices.toArray(new String[0]), (dialog, which) -> {
                             if (canMoveHere && which == 0) {
-                                runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName, () -> {
-                                    DocumentFile source = safDocument(tree, sourceDocument);
-                                    DocumentFile from = safDocument(tree, sourceParent);
-                                    DocumentFile destination = safDocument(tree, currentFolder);
-                                    if (source == null || from == null || destination == null) {
-                                        throw new java.io.IOException("Storage provider returned an invalid move location");
-                                    }
-                                    SafStorageOperations.moveDocumentWithFallback(
-                                            this, getContentResolver(), source, from, destination);
-                                });
+                                runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName,
+                                        () -> SafStorageOperations.moveDocumentInTree(this, getContentResolver(),
+                                                tree, sourceDocument, sourceParent, currentFolder));
                             } else {
                                 int folderIndex = which - (canMoveHere ? 1 : 0);
                                 SafStorageOperations.DirectoryEntry selected = folders.get(folderIndex);

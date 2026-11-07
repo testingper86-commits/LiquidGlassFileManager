@@ -496,6 +496,50 @@ final class SafStorageOperations {
         }
     }
 
+    /** Resolves and validates a move entirely inside the selected SAF tree. */
+    static DocumentFile moveDocumentInTree(Context context, ContentResolver resolver, Uri tree,
+                                           Uri sourceDocument, Uri sourceParent, Uri targetParent)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || resolver == null || tree == null || sourceDocument == null
+                || sourceParent == null || targetParent == null) {
+            throw new IOException("Storage tree, source and parent document URIs are required");
+        }
+        String sourceId;
+        try {
+            sourceId = DocumentsContract.getDocumentId(sourceDocument);
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid source document URI", invalidUri);
+        }
+        boolean sourceIsChild = false;
+        for (DirectoryEntry entry : listChildren(resolver, tree, sourceParent)) {
+            OperationCancellation.checkCurrent();
+            if (sourceId.equals(entry.documentId)) {
+                sourceIsChild = true;
+                break;
+            }
+        }
+        if (!sourceIsChild) {
+            throw new IOException("The selected source is no longer inside its expected parent folder");
+        }
+        if (sameDocument(sourceDocument, targetParent)) {
+            throw new IOException("A document cannot be moved into itself");
+        }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        if (source.isDirectory() && containsDocument(resolver, tree, sourceDocument, targetParent)) {
+            throw new IOException("A folder cannot be moved into itself or one of its subfolders");
+        }
+        if (sameDocument(sourceParent, targetParent)) {
+            throw new IOException("The selected item is already in this destination folder");
+        }
+        DocumentFile from = findDocumentInTree(context, tree, sourceParent);
+        DocumentFile destination = findDocumentInTree(context, tree, targetParent);
+        if (!from.isDirectory() || !destination.isDirectory()) {
+            throw new IOException("Source and destination parents must be folders");
+        }
+        return moveDocumentWithFallback(context, resolver, source, from, destination);
+    }
+
     /**
      * Move a SAF entry with a provider-native operation where supported.
      * If native move is unsupported, copy fully before deleting the source.
