@@ -324,6 +324,7 @@ public class MainActivity extends ComponentActivity {
     @Override protected void onDestroy() {
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         cancellation.cancelActive();
+        LanTransfer.cancel();
         taskScope.close(true);
         super.onDestroy();
     }
