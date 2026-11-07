@@ -79,6 +79,20 @@ public class FileOperationEngineTest {
         long[] totals=new long[2];FileOperationEngine.treeSize(root,totals);assertEquals(5L,totals[0]);assertEquals(1L,totals[1]);
     }
 
+    @Test public void treeSizeBoundsDeepDirectoryTraversalWithoutRecursion() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-size-depth-").toFile();
+        java.nio.file.Path nested = root.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1, 2, 3});
+        long[] totals = new long[2];
+        FileOperationEngine.treeSize(root, totals);
+        assertEquals(0L, totals[0]);
+        assertEquals(0L, totals[1]);
+    }
+
     @Test public void deleteTreeRemovesNestedRegularFiles() throws Exception {
         File root=Files.createTempDirectory("toxifiles-delete-tree-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
         Files.write(new File(nested,"file.bin").toPath(),new byte[]{1});assertTrue(FileOperationEngine.deleteTree(root));assertFalse(root.exists());

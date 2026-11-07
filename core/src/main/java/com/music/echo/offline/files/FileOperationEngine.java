@@ -185,15 +185,39 @@ final class FileOperationEngine {
     }
 
     private static void treeSize(Path path, long[] totals) throws IOException {
-        if (Files.isSymbolicLink(path)) return;
-        BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-        if (attributes.isDirectory()) {
-            try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-                for (Path child : children) treeSize(child, totals);
+        java.util.ArrayDeque<TraversalNode> pending = new java.util.ArrayDeque<>();
+        TreeTraversalBudget budget = new TreeTraversalBudget();
+        budget.enter(0);
+        pending.push(new TraversalNode(path, 0));
+        while (!pending.isEmpty()) {
+            TraversalNode current = pending.pop();
+            BasicFileAttributes attributes;
+            try {
+                attributes = Files.readAttributes(current.path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            } catch (java.nio.file.NoSuchFileException missing) {
+                continue;
             }
-        } else if (attributes.isRegularFile()) {
-            totals[0] = saturatedAdd(totals[0], attributes.size());
-            totals[1] = totals[1] == Long.MAX_VALUE ? Long.MAX_VALUE : totals[1] + 1L;
+            if (attributes.isSymbolicLink()) continue;
+            if (attributes.isDirectory()) {
+                try (DirectoryStream<Path> children = Files.newDirectoryStream(current.path)) {
+                    for (Path child : children) {
+                        budget.enter(current.depth + 1);
+                        pending.push(new TraversalNode(child, current.depth + 1));
+                    }
+                }
+            } else if (attributes.isRegularFile()) {
+                totals[0] = saturatedAdd(totals[0], attributes.size());
+                totals[1] = totals[1] == Long.MAX_VALUE ? Long.MAX_VALUE : totals[1] + 1L;
+            }
+        }
+    }
+
+    private static final class TraversalNode {
+        final Path path;
+        final int depth;
+        TraversalNode(Path path, int depth) {
+            this.path = path;
+            this.depth = depth;
         }
     }
 
