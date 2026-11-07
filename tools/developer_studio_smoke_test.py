@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "app/src/main/java/com/music/echo/offline/files"
 activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
-core = (BASE / "DeveloperStudioCore.java").read_text(encoding="utf-8")
+core = (ROOT / "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
 tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
 uri_permissions = (BASE / "ToxiUriPermissions.java").read_text(encoding="utf-8")

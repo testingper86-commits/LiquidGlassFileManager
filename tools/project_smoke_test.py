@@ -20,7 +20,7 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/BrowserView.java",
         "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
-        "app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
+        "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
@@ -28,8 +28,11 @@ def main():
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
         "core/src/main/java/com/music/echo/offline/files/ArchivePath.java",
         "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java",
+        "core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java",
+        "core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java",
+        "core/src/test/java/com/music/echo/offline/files/PinHashTest.java",
         "app/src/main/java/com/music/echo/offline/files/Vault.java",
-        "app/src/main/java/com/music/echo/offline/files/PinHash.java",
+        "core/src/main/java/com/music/echo/offline/files/PinHash.java",
         "app/src/main/java/com/music/echo/offline/files/LanTransfer.java",
         "app/src/main/java/com/music/echo/offline/files/Indexer.java",
         "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
@@ -45,7 +48,7 @@ def main():
     settings = source("settings.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
     require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
-    require((ROOT / "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java").is_file() and (ROOT / "core/src/main/java/com/music/echo/offline/files/ArchivePath.java").is_file(), "core module owns cancellation and archive path validation sources")
+    require(all((ROOT / "core/src/main/java/com/music/echo/offline/files/android-build.yml").is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
 
     manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
     app = manifest.find("application")
@@ -94,7 +97,7 @@ def main():
     require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
     require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
-    rename_engine = source("app/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
+    rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     require("parentPath.resolve(name).normalize()" in rename_engine and "candidate.startsWith(parentPath)" in rename_engine and "LinkOption.NOFOLLOW_LINKS" in rename_engine and "BatchRenameEngine.moveChild(e.f, t)" in source("app/src/main/java/com/music/echo/offline/files/BrowserView.java"), "filesystem rename uses normalized direct-child paths and refuses symlink traversal")
 
     require("setOnItemLongClickListener" in main and "showSafDocumentActions(tree, docUri, title, selected, row[1]" in main, "existing SAF browser exposes document actions only from the selected row context")
@@ -116,7 +119,7 @@ def main():
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 2, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
     java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
-    test_sources = list((ROOT / "app/src/test/java").rglob("*.java"))
+    test_sources = list((ROOT / "app/src/test/java").rglob("*.java")) + list((ROOT / "core/src/test/java").rglob("*.java"))
     all_java_sources = java_sources + test_sources
     legacy_cancel_callers = [str(path.relative_to(ROOT)) for path in all_java_sources if "FileOps.cancelRequested" in path.read_text(encoding="utf-8")]
     require(not legacy_cancel_callers, "no legacy global file-cancellation references remain in production or test Java sources")
@@ -134,10 +137,10 @@ def main():
     require('Copied to destination, but source could not be removed' in file_ops and 'Recycle Bin: removed' in source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java"), "move and Recycle Bin operations report cleanup failures accurately")
 
     vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
-    pin_hash = source("app/src/main/java/com/music/echo/offline/files/PinHash.java")
+    pin_hash = source("core/src/main/java/com/music/echo/offline/files/PinHash.java")
     require('AES/GCM/NoPadding' in vault and 'doFinal()' in vault and 'encrypted Vault cleanup was incomplete' in vault, "Vault uses authenticated encryption and reports incomplete cleanup")
     require('iterations < 10_000' in pin_hash and 'iterations > 1_000_000' in pin_hash and 'MessageDigest.isEqual' in pin_hash, "PIN verification bounds PBKDF2 work and compares verifiers in constant time")
-    require((ROOT / "app/src/test/java/com/music/echo/offline/files/PinHashTest.java").is_file(), "PIN verification has automated boundary tests")
+    require((ROOT / "core/src/test/java/com/music/echo/offline/files/PinHashTest.java").is_file(), "PIN verification has automated boundary tests")
     lan = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
     require('PBKDF2WithHmacSHA256' in lan and 'AES/GCM/NoPadding' in lan and 'authProof' in lan, "local Wi-Fi transfer authenticates pairing and encrypts payloads")
     require('getCanonicalPath().startsWith(rootPath)' in lan and 'Unsafe incoming filename rejected' in lan, "LAN receive validates names and canonical destination containment")
@@ -159,7 +162,7 @@ def main():
     require('AndroidKeyStore' in main and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in main and 'result.getCryptoObject()' in main and 'doFinal(challenge)' in main, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
     require('setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG)' in main and 'setUserAuthenticationValidityDurationSeconds(-1)' in main and 'KeyPermanentlyInvalidatedException' in main, "biometric Keystore key uses per-operation authentication and enrollment invalidation recovery")
     saf_operations = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
-    rename_engine = source("app/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
+    rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
     require('static File resolveChild(File parent, String name)' in rename_engine and 'candidate.startsWith(parentPath)' in rename_engine and 'candidate.toRealPath()' in rename_engine and 'LinkOption.NOFOLLOW_LINKS' in rename_engine, "User-derived child paths are normalized, parent-contained and symlink-checked")
@@ -170,7 +173,7 @@ def main():
     manifest = source("app/src/main/AndroidManifest.xml")
     require('PackageInstaller.SessionParams.MODE_FULL_INSTALL' in apk_install and 'session.commit(callback.getIntentSender())' in apk_install and 'Files.isSymbolicLink(file.toPath())' in apk_install and 'PendingIntent.FLAG_MUTABLE' in apk_install and 'FileOps.install(this, file, io)' in main and 'canRequestPackageInstalls()' in apk_install, "APK install streams a validated file through PackageInstaller on the lifecycle IO executor")
     require('STATUS_PENDING_USER_ACTION' in apk_receiver and 'Intent.EXTRA_INTENT' in apk_receiver and 'FLAG_ACTIVITY_NEW_TASK' in apk_receiver and '.files.ApkInstallStatusReceiver' in manifest and 'android:exported="false"' in manifest, "PackageInstaller status receiver launches only Android's explicit user-confirmation UI")
-    rename_tests = source("app/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java")
+    rename_tests = source("core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java")
     require('resolveChildRejectsTraversalAndSymlinkEscapes' in rename_tests, "canonical path resolution has traversal and symlink-escape regression tests")
     require('static DocumentFile findDocumentInTree(Context context, Uri tree, Uri target)' in saf_operations and 'DocumentFile.fromTreeUri(context, tree)' in saf_operations and 'current.listFiles()' in saf_operations, "SAF recursive operations resolve tree-aware DocumentFile wrappers")
     require('static DocumentFile moveDocumentWithFallback(Context context' in saf_operations and 'if (context == null || resolver == null || source == null' in saf_operations, "SAF move validates the Context required to wrap provider-returned document URIs")
@@ -191,7 +194,7 @@ def main():
     wrapper = source("gradle/wrapper/gradle-wrapper.properties")
     require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'version "8.10.1"' in root_gradle and 'gradle-8.11.1-bin.zip' in wrapper, "API 36 release uses compatible Android Gradle and wrapper versions")
     workflow = source(".github/workflows/release.yml")
-    require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and 'testDebugUnitTest lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
+    require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and ':core:test :app:testDebugUnitTest :app:lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
 
 if __name__ == "__main__":

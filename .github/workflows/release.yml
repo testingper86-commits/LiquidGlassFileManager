@@ -106,7 +106,7 @@ jobs:
             exit 1
           fi
       - name: Run unit tests and Android lint
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest lintDebug
+        run: ./gradlew --no-daemon --stacktrace :core:test :app:testDebugUnitTest :app:lintDebug
       - name: Assemble release APK
         run: ./gradlew --no-daemon --stacktrace assembleRelease
       - name: Verify release APK signature

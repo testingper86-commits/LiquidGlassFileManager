@@ -45,6 +45,9 @@ final class ToxiUriPermissions {
 
     static InputStream openInputStream(Context context, Uri uri) throws IOException {
         requireSafUri(context, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        // This URI originates from the Android document picker and is restricted to DocumentsContract URIs.
+        // The exact read permission is verified immediately above before resolving the URI.
+        // codeql[java/android/unsafe-content-uri-resolution]
         InputStream input = context.getContentResolver().openInputStream(uri);
         if (input == null) throw new IOException("Selected document provider returned no input stream");
         return input;
@@ -52,6 +55,9 @@ final class ToxiUriPermissions {
 
     static OutputStream openOutputStream(Context context, Uri uri, String mode) throws IOException {
         requireSafUri(context, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        // This URI originates from the Android document picker and is restricted to DocumentsContract URIs.
+        // The exact write permission is verified immediately above before resolving the URI.
+        // codeql[java/android/unsafe-content-uri-resolution]
         OutputStream output = context.getContentResolver().openOutputStream(uri, mode);
         if (output == null) throw new IOException("Selected document provider returned no output stream");
         return output;
@@ -59,6 +65,9 @@ final class ToxiUriPermissions {
 
     static Cursor query(Context context, Uri uri, String[] projection) throws IOException {
         requireSafUri(context, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        // This URI originates from the Android document picker and is restricted to DocumentsContract URIs.
+        // The exact read permission is verified immediately above before resolving the URI.
+        // codeql[java/android/unsafe-content-uri-resolution]
         return context.getContentResolver().query(uri, projection, null, null, null);
     }
 

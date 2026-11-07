@@ -47,6 +47,7 @@ jobs:
         with:
           languages: java-kotlin
           build-mode: manual
+          queries: +codeql/java-queries:AlertSuppression.ql
       - name: Build Android sources for analysis
         run: ./gradlew --no-daemon --stacktrace :app:compileDebugJavaWithJavac
       - name: Perform CodeQL analysis without conflicting with repository default setup

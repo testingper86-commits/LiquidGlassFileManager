@@ -37,8 +37,8 @@ jobs:
           test -s app/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
           test -s app/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
           test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java
-          test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
-          test -s app/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
+          test -s core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
+          test -s core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
           test -s tools/developer_studio_smoke_test.py
           test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
           test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
@@ -50,6 +50,10 @@ jobs:
           test -s core/build.gradle.kts
           test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
           test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
+          test -s core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java
+          test -s core/src/main/java/com/music/echo/offline/files/PinHash.java
+          test -s core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java
+          test -s core/src/test/java/com/music/echo/offline/files/PinHashTest.java
           chmod +x gradlew
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -80,7 +84,7 @@ jobs:
       - name: Inventory resolved runtime dependencies
         run: python3 tools/dependency_audit.py
       - name: Run Android unit tests and lint
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
       - name: Upload debug APK
