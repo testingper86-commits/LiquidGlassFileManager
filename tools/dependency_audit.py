@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve and inventory ToxiFiles runtime dependencies and their published license metadata."""
+"""Audit ToxiFiles runtime dependencies and verify selected Android plugin classpath versions."""
 from __future__ import annotations
 from pathlib import Path, PurePosixPath
 import re
@@ -20,6 +20,17 @@ DECLARATION = re.compile(
 )
 DYNAMIC = re.compile(r"(?:\+|latest\.(?:release|integration)|SNAPSHOT)", re.IGNORECASE)
 NOTICE_PREFIXES = ("license", "licence", "notice", "copying", "copyright")
+BUILD_SCRIPT_EXPECTED = {
+    ("org.apache.commons", "commons-lang3"): "3.18.0",
+    ("org.apache.httpcomponents", "httpclient"): "4.5.14",
+    ("org.apache.httpcomponents", "httpmime"): "4.5.14",
+    ("com.google.guava", "guava"): "33.7.2-jre",
+    ("com.google.guava", "failureaccess"): "1.0.3",
+    ("org.bouncycastle", "bcprov-jdk18on"): "1.85",
+    ("org.bouncycastle", "bcpkix-jdk18on"): "1.85",
+    ("org.bouncycastle", "bcutil-jdk18on"): "1.85",
+    ("org.jetbrains.kotlin", "kotlin-gradle-plugin"): "2.2.10",
+}
 
 
 def local_name(tag: str) -> str:
@@ -71,6 +82,32 @@ def safe_cell(value: str) -> str:
     return " ".join(value.replace("|", r"\|").split())
 
 
+def parse_resolved_versions(output: str) -> dict[tuple[str, str], set[str]]:
+    resolved: dict[tuple[str, str], set[str]] = {}
+    for line in output.splitlines():
+        match = COORDINATE.search(line)
+        if not match:
+            continue
+        group, artifact, requested = match.group("group", "artifact", "version")
+        version = requested
+        arrow = re.search(r"\s->\s+([^\s()]+)", line[match.end():])
+        if arrow:
+            version = arrow.group(1)
+        resolved.setdefault((group, artifact), set()).add(version)
+    return resolved
+
+
+def buildscript_version_issues(resolved: dict[tuple[str, str], set[str]]) -> list[str]:
+    issues: list[str] = []
+    for coordinate, expected in BUILD_SCRIPT_EXPECTED.items():
+        actual = resolved.get(coordinate, set())
+        if actual != {expected}:
+            name = ":".join(coordinate)
+            selected = ", ".join(sorted(actual)) if actual else "not resolved"
+            issues.append(f"{name}: expected {expected}, selected {selected}")
+    return issues
+
+
 def inspect_license(group: str, artifact: str, version: str) -> tuple[list[tuple[str, str]], list[str]]:
     cache_dir = GRADLE_CACHE / group / artifact / version
     licenses: list[tuple[str, str]] = []
@@ -92,6 +129,22 @@ def main() -> int:
         print(result.stdout[-12000:], file=sys.stderr)
         print("FAIL: Gradle could not resolve debugRuntimeClasspath", file=sys.stderr)
         return result.returncode
+    buildscript_result = subprocess.run(
+        [str(GRADLE), "--no-daemon", "--console=plain", ":app:buildEnvironment", ":foundation:buildEnvironment"],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    if buildscript_result.returncode:
+        print(buildscript_result.stdout[-12000:], file=sys.stderr)
+        print("FAIL: Gradle could not resolve Android plugin buildscript classpaths", file=sys.stderr)
+        return buildscript_result.returncode
+    buildscript_resolved = parse_resolved_versions(buildscript_result.stdout)
+    buildscript_issues = buildscript_version_issues(buildscript_resolved)
+    if buildscript_issues:
+        print("FAIL: Android plugin buildscript selected unexpected dependency versions:", file=sys.stderr)
+        for issue in buildscript_issues:
+            print(f"  {issue}", file=sys.stderr)
+        return 1
+
     resolved: dict[tuple[str, str], str] = {}
     for line in result.stdout.splitlines():
         match = COORDINATE.search(line)
@@ -117,6 +170,7 @@ def main() -> int:
     rows = [
         "# ToxiFiles dependency inventory", "",
         f"- Resolved runtime modules: **{len(resolved)}**",
+        f"- Android plugin classpath coordinates verified: **{len(BUILD_SCRIPT_EXPECTED)}**",
         f"- Declared dependency entries: **{len(declarations)}**",
         "- Configuration: :app:debugRuntimeClasspath",
         "- Version policy: direct declarations must use fixed versions.",
@@ -132,6 +186,10 @@ def main() -> int:
         license_text = "; ".join(name + (f" ({url})" if url else "") for name, url in licenses) or "Missing POM license metadata"
         notice_text = "; ".join(notices) or "No bundled notice found"
         rows.append(f"| {safe_cell(group)} | {safe_cell(artifact)} | {safe_cell(version)} | {safe_cell(license_text)} | {safe_cell(notice_text)} |")
+    rows.extend(["", "## Android plugin buildscript classpath", ""])
+    for (group, artifact), expected in sorted(BUILD_SCRIPT_EXPECTED.items()):
+        note = " (AGP-required; upstream advisory remains open)" if (group, artifact) == ("org.jetbrains.kotlin", "kotlin-gradle-plugin") else ""
+        rows.append(f"- `{group}:{artifact}`: `{expected}`{note}")
     rows.extend(["", "## Direct declarations", ""])
     rows.extend(f"- {item}" for item in sorted(set(declarations)))
     rows.extend([
@@ -139,7 +197,7 @@ def main() -> int:
         "This report inventories the resolved runtime graph and extracts license declarations from cached Maven POMs and bundled LICENSE/NOTICE files from JAR/AAR artifacts. Missing metadata is reported explicitly. It does not determine license compatibility, grant distribution rights, or replace inclusion of required license texts/notices. The project owner must approve the project license and distribution notices before publishing a release.", "",
     ])
     REPORT.write_text("\n".join(rows), encoding="utf-8")
-    print(f"PASS: resolved {len(resolved)} runtime modules; POM license metadata {metadata_count}/{len(resolved)}; report: {REPORT.relative_to(ROOT)}")
+    print(f"PASS: resolved {len(resolved)} runtime modules; verified {len(BUILD_SCRIPT_EXPECTED)} Android plugin classpath coordinates; POM license metadata {metadata_count}/{len(resolved)}; report: {REPORT.relative_to(ROOT)}")
     if not resolved:
         print("FAIL: dependency report contained no resolved external modules", file=sys.stderr)
         return 1
