@@ -21,7 +21,12 @@ final class SafStorageOperations {
 
     static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent)
             throws IOException {
-        OperationCancellation.checkCurrent();
+        return copyLocalTree(resolver, source, parent, new TreeTraversalBudget(), 0);
+    }
+
+    private static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent,
+                                              TreeTraversalBudget budget, int depth) throws IOException {
+        budget.enter(depth);
         if (resolver == null || source == null || parent == null) {
             throw new IOException("Source, destination and content resolver are required");
         }
@@ -44,7 +49,7 @@ final class SafStorageOperations {
             if (source.isDirectory()) {
                 File[] children = source.listFiles();
                 if (children == null) throw new IOException("Cannot enumerate source folder " + name);
-                for (File child : children) copyLocalTree(resolver, child, target);
+                for (File child : children) copyLocalTree(resolver, child, target, budget, depth + 1);
             } else {
                 try (InputStream in = new FileInputStream(source);
                      OutputStream out = resolver.openOutputStream(target.getUri(), "w")) {
@@ -70,26 +75,39 @@ final class SafStorageOperations {
 
     static DocumentFile copyDocumentTree(ContentResolver resolver, DocumentFile source,
                                          DocumentFile parent) throws IOException {
-        OperationCancellation.checkCurrent();
+        return copyDocumentTree(resolver, source, parent, new TreeTraversalBudget(), new HashSet<>(), 0);
+    }
+
+    private static DocumentFile copyDocumentTree(ContentResolver resolver, DocumentFile source,
+                                                  DocumentFile parent, TreeTraversalBudget budget,
+                                                  HashSet<String> visitedDirectories, int depth) throws IOException {
+        budget.enter(depth);
         if (resolver == null || source == null || parent == null || !source.exists()) {
             throw new IOException("Source document or destination is unavailable");
         }
         if (!parent.exists() || !parent.isDirectory() || !parent.canWrite()) {
             throw new IOException("Destination document folder is not writable");
         }
+        boolean directory = source.isDirectory();
+        if (directory && !visitedDirectories.add(documentIdentity(source.getUri()))) {
+            throw new IOException("Storage provider returned a repeated or cyclic directory");
+        }
         String name = source.getName();
         String invalid = BatchRenameEngine.validateName(name);
         if (invalid != null) throw new IOException(invalid + ": " + name);
-        String candidate = uniqueName(parent, name, source.isDirectory());
-        DocumentFile target = source.isDirectory()
+        String candidate = uniqueName(parent, name, directory);
+        DocumentFile target = directory
                 ? parent.createDirectory(candidate)
                 : parent.createFile(mimeType(candidate), candidate);
         if (target == null) throw new IOException("Provider could not create " + candidate);
         try {
-            if (source.isDirectory()) {
+            if (directory) {
                 DocumentFile[] children = source.listFiles();
                 if (children == null) throw new IOException("Provider could not enumerate " + name);
-                for (DocumentFile child : children) copyDocumentTree(resolver, child, target);
+                for (DocumentFile child : children) {
+                    if (child == null) throw new IOException("Provider returned an invalid child document");
+                    copyDocumentTree(resolver, child, target, budget, visitedDirectories, depth + 1);
+                }
             } else {
                 try (InputStream in = resolver.openInputStream(source.getUri());
                      OutputStream out = resolver.openOutputStream(target.getUri(), "w")) {
@@ -127,7 +145,13 @@ final class SafStorageOperations {
         try (Cursor cursor = resolver.query(children,
                 new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME}, null, null, null)) {
             if (cursor == null) throw new IOException("Provider could not inspect destination names");
-            while (cursor.moveToNext()) existing.add(cursor.getString(0));
+            int scanned = 0;
+            while (cursor.moveToNext()) {
+                if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Destination folder contains too many entries to safely duplicate into");
+                }
+                existing.add(cursor.getString(0));
+            }
         }
         String base = requestedName, extension = "";
         int dot = requestedName.lastIndexOf('.');
@@ -192,7 +216,8 @@ final class SafStorageOperations {
         int scannedDirectories = 0;
         while (cursor < pending.size()) {
             OperationCancellation.checkCurrent();
-            if (++scannedDirectories > 100_000 || pending.size() > 100_000) {
+            if (++scannedDirectories > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
+                    || pending.size() > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
                 throw new IOException("Storage tree is too large to resolve this document safely");
             }
             DocumentFile current = pending.get(cursor++);
@@ -306,14 +331,34 @@ final class SafStorageOperations {
     }
 
     static void deleteTree(DocumentFile target) throws IOException {
+        deleteTree(target, new TreeTraversalBudget(), new HashSet<>(), 0);
+    }
+
+    private static void deleteTree(DocumentFile target, TreeTraversalBudget budget,
+                                   HashSet<String> visitedDirectories, int depth) throws IOException {
         if (target == null || !target.exists()) return;
+        budget.enter(depth);
         if (target.isDirectory()) {
+            if (!visitedDirectories.add(documentIdentity(target.getUri()))) {
+                throw new IOException("Storage provider returned a repeated or cyclic directory during cleanup");
+            }
             DocumentFile[] children = target.listFiles();
             if (children == null) throw new IOException("Provider could not enumerate partial output for cleanup");
-            for (DocumentFile child : children) deleteTree(child);
+            for (DocumentFile child : children) {
+                if (child == null) throw new IOException("Provider returned an invalid child during cleanup");
+                deleteTree(child, budget, visitedDirectories, depth + 1);
+            }
         }
         if (target.exists() && !target.delete()) {
             throw new IOException("Provider refused to remove partial output: " + target.getName());
+        }
+    }
+
+    private static String documentIdentity(Uri uri) {
+        try {
+            return DocumentsContract.getDocumentId(uri);
+        } catch (IllegalArgumentException invalidDocumentUri) {
+            return uri.toString();
         }
     }
 
