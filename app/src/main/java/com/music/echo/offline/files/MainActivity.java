@@ -1179,64 +1179,80 @@ public class MainActivity extends ComponentActivity {
     // ---------------- STORAGE ANALYZER ----------------
     void openStorageAnalyzer() {
         if (!hasAccess()) { showStorageAccess(); return; }
-        ToxiVisualSystem.toast(this, "Analyzing storage\u2026");
+        ToxiVisualSystem.toast(this, "Analyzing storage…");
         io.execute(() -> {
-            File rootDir = Environment.getExternalStorageDirectory();
-            long[] totals = new long[6]; // images, video, audio, documents, archives, other
-            long[] counts = new long[6];
-            List<File> largest = new ArrayList<>();
-            long[] totalBytes = {0};
-            int[] totalFiles = {0};
-            scanStorage(rootDir, totals, counts, largest, totalBytes, totalFiles, 0);
-            largest.sort((a, b) -> Long.compare(b.length(), a.length()));
-            String[] labels = {"Images", "Videos", "Audio", "Documents", "Archives", "Other files"};
-            StringBuilder report = new StringBuilder();
-            report.append("Scanned internal shared storage\n\nFiles: ").append(totalFiles[0])
-                    .append("\nEstimated file size total: ").append(formatBytes(totalBytes[0])).append("\n\nBy category:\n");
-            for (int i = 0; i < labels.length; i++) report.append(labels[i]).append(": ").append(counts[i]).append(" files \u2022 ").append(formatBytes(totals[i])).append("\n");
-            report.append("\nLargest files found (up to 15):\n");
-            int n = Math.min(15, largest.size());
-            for (int i = 0; i < n; i++) report.append("\n").append(formatBytes(largest.get(i).length())).append(" \u2014 ").append(largest.get(i).getAbsolutePath());
-            if (n == 0) report.append("None found.");
-            final String result = report.toString();
-            runOnUiThread(() -> new AlertDialog.Builder(this).setTitle("Storage analysis")
-                    .setMessage(result).setPositiveButton("Done", null)
-                    .setNeutralButton("Share report", (d, w) -> {
-                        try {
-                            Intent share = new Intent(Intent.ACTION_SEND);
-                            share.setType("text/plain"); share.putExtra(Intent.EXTRA_TEXT, result);
-                            startActivity(Intent.createChooser(share, "Share storage report"));
-                        } catch (Exception ex) { ToxiVisualSystem.toast(this, "Unable to share report"); }
-                    }).show());
-        });
-    }
-
-    void scanStorage(File f, long[] totals, long[] counts, List<File> largest, long[] totalBytes, int[] totalFiles, int depth) {
-        if (f == null || depth > 60) return;
-        try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) return; } catch (Exception ignored) { return; }
-        try {
-            if (f.isDirectory()) {
-                File[] children = f.listFiles();
-                if (children != null) for (File child : children) scanStorage(child, totals, counts, largest, totalBytes, totalFiles, depth + 1);
+            OperationCancellation.Token operationToken = cancellation.begin();
+            final String result;
+            try {
+                File rootDir = Environment.getExternalStorageDirectory();
+                long[] totals = new long[6]; // images, video, audio, documents, archives, other
+                long[] counts = new long[6];
+                List<StorageIndexEngine.Snapshot> largest = new ArrayList<>();
+                long[] totalBytes = {0};
+                int[] totalFiles = {0};
+                StorageIndexEngine.Result scan = StorageIndexEngine.scan(rootDir, 60,
+                        StorageIndexEngine.MAX_INDEX_ENTRIES, true, true, snapshot -> {
+                            if (snapshot.directory) return;
+                            long size = snapshot.length;
+                            totalBytes[0] += size;
+                            totalFiles[0]++;
+                            Entry entry = new Entry(snapshot.file, false, snapshot.modifiedAt, size);
+                            int category = Math.min(5, Indexer.cat(entry.kind));
+                            totals[category] += size;
+                            counts[category]++;
+                            if (largest.size() < 15) {
+                                largest.add(snapshot);
+                            } else {
+                                int smallest = 0;
+                                for (int i = 1; i < largest.size(); i++) {
+                                    if (largest.get(i).length < largest.get(smallest).length) smallest = i;
+                                }
+                                if (size > largest.get(smallest).length) largest.set(smallest, snapshot);
+                            }
+                        });
+                largest.sort((a, b) -> Long.compare(b.length, a.length));
+                String[] labels = {"Images", "Videos", "Audio", "Documents", "Archives", "Other files"};
+                StringBuilder report = new StringBuilder();
+                report.append("Scanned internal shared storage\n\nFiles: ").append(totalFiles[0])
+                        .append("\nEstimated file size total: ").append(formatBytes(totalBytes[0])).append("\n\nBy category:\n");
+                for (int i = 0; i < labels.length; i++) {
+                    report.append(labels[i]).append(": ").append(counts[i]).append(" files • ")
+                            .append(formatBytes(totals[i])).append("\n");
+                }
+                report.append("\nLargest files found (up to 15):\n");
+                int count = Math.min(15, largest.size());
+                for (int i = 0; i < count; i++) {
+                    StorageIndexEngine.Snapshot item = largest.get(i);
+                    report.append("\n").append(formatBytes(item.length)).append(" — ").append(item.file.getAbsolutePath());
+                }
+                if (count == 0) report.append("None found.");
+                if (scan.incomplete) {
+                    report.append("\n\nNote: Scan was incomplete or reached the safety limit. Results are estimates.");
+                }
+                result = report.toString();
+            } catch (Exception failure) {
+                String detail = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    ToxiVisualSystem.toast(this, "Storage analysis failed: " + detail);
+                });
                 return;
+            } finally {
+                cancellation.finish(operationToken);
             }
-            if (!f.isFile() || !f.canRead()) return;
-            long size = f.length(); totalBytes[0] += size; totalFiles[0]++;
-            String name = f.getName().toLowerCase(java.util.Locale.ROOT);
-            int k = name.matches(".*\\.(jpg|jpeg|png|gif|webp|bmp|heic|heif)$") ? 0
-                    : name.matches(".*\\.(mp4|mkv|mov|webm|3gp|avi|m4v)$") ? 1
-                    : name.matches(".*\\.(mp3|m4a|aac|wav|ogg|flac|opus|wma)$") ? 2
-                    : name.matches(".*\\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|rtf|odt|ods|odp)$") ? 3
-                    : name.matches(".*\\.(zip|7z|rar|tar|gz|bz2|xz)$") ? 4 : 5;
-            totals[k] += size; counts[k]++;
-            // Bound memory on devices with very large storage; this report is an estimate.
-            if (largest.size() < 1000) largest.add(f);
-            else {
-                int smallest = 0;
-                for (int i = 1; i < largest.size(); i++) if (largest.get(i).length() < largest.get(smallest).length()) smallest = i;
-                if (size > largest.get(smallest).length()) largest.set(smallest, f);
-            }
-        } catch (SecurityException ignored) { }
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                new AlertDialog.Builder(this).setTitle("Storage analysis")
+                        .setMessage(result).setPositiveButton("Done", null)
+                        .setNeutralButton("Share report", (d, w) -> {
+                            try {
+                                Intent share = new Intent(Intent.ACTION_SEND);
+                                share.setType("text/plain"); share.putExtra(Intent.EXTRA_TEXT, result);
+                                startActivity(Intent.createChooser(share, "Share storage report"));
+                            } catch (Exception ex) { ToxiVisualSystem.toast(this, "Unable to share report"); }
+                        }).show();
+            });
+        });
     }
 
     String formatBytes(long b) {

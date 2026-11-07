@@ -207,6 +207,8 @@ def main():
     require("OperationCancellation.Token operationToken = cancellation.begin()" in indexer and "cancellation.finish(operationToken)" in indexer, "storage index worker binds cancellation to its actual background thread")
     require("Files.newDirectoryStream" in storage_index and "NOFOLLOW_LINKS" in storage_index and "MAX_INDEX_ENTRIES = 150_000" in storage_index and "OperationCancellation.checkCurrent()" in storage_index, "core storage traversal streams directories, rejects symlinks, checks cancellation and bounds entries")
     require("skipsHiddenEntriesAndRootAndroidDirectory" in storage_index_tests and "skipsSymbolicLinksWithoutFollowingTheirTargets" in storage_index_tests and "enforcesEntryLimitAndMarksResultsIncomplete" in storage_index_tests and "cancellationStopsTraversalInsteadOfPublishingPartialResults" in storage_index_tests, "core storage scanner has regression coverage for hidden paths, symlinks, limits and cancellation")
+    require("StorageIndexEngine.scan(Environment.getExternalStorageDirectory(), 60" in main and "StorageIndexEngine.MAX_INDEX_ENTRIES, true, true" in main and "scan.incomplete" in main and "scanStorage(" not in main, "storage analyzer reuses bounded core traversal and discloses incomplete scans")
+    require("includesHiddenEntriesAndRootAndroidDirectoryWhenRequested" in storage_index_tests, "core scanner supports explicit full-storage analysis without changing index defaults")
     dup_adapter = source("app/src/main/java/com/music/echo/offline/files/DupFinder.java")
     dup_finder = source("core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java")
     dup_tests = source("core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java")
