@@ -37,14 +37,4 @@ public class TreeTraversalBudgetTest {
         assertThrows(IllegalArgumentException.class, () -> new TreeTraversalBudget(1, -1));
     }
 
-    @Test public void cancellationStopsTraversalImmediately() throws Exception {
-        OperationCancellation cancellation = new OperationCancellation();
-        OperationCancellation.Token token = cancellation.begin();
-        try {
-            token.cancel();
-            assertThrows(IOException.class, () -> new TreeTraversalBudget().enter(0));
-        } finally {
-            cancellation.finish(token);
-        }
-    }
 }

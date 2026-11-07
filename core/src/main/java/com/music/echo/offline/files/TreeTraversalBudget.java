@@ -23,7 +23,6 @@ final class TreeTraversalBudget {
     }
 
     void enter(int depth) throws IOException {
-        OperationCancellation.checkCurrent();
         if (depth < 0) throw new IllegalArgumentException("depth must not be negative");
         if (depth > maxDepth) {
             throw new IOException("Directory nesting exceeds the supported limit of " + maxDepth);

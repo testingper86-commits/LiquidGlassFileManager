@@ -26,6 +26,7 @@ final class SafStorageOperations {
 
     private static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent,
                                               TreeTraversalBudget budget, int depth) throws IOException {
+        OperationCancellation.checkCurrent();
         budget.enter(depth);
         if (resolver == null || source == null || parent == null) {
             throw new IOException("Source, destination and content resolver are required");
@@ -81,6 +82,7 @@ final class SafStorageOperations {
     private static DocumentFile copyDocumentTree(ContentResolver resolver, DocumentFile source,
                                                   DocumentFile parent, TreeTraversalBudget budget,
                                                   HashSet<String> visitedDirectories, int depth) throws IOException {
+        OperationCancellation.checkCurrent();
         budget.enter(depth);
         if (resolver == null || source == null || parent == null || !source.exists()) {
             throw new IOException("Source document or destination is unavailable");
@@ -147,6 +149,7 @@ final class SafStorageOperations {
             if (cursor == null) throw new IOException("Provider could not inspect destination names");
             int scanned = 0;
             while (cursor.moveToNext()) {
+                OperationCancellation.checkCurrent();
                 if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
                     throw new IOException("Destination folder contains too many entries to safely duplicate into");
                 }
