@@ -39,10 +39,17 @@ final class ArchiveOperations {
     static File createZip(List<File> sources,File destinationDirectory)throws IOException{
         OperationCancellation.checkCurrent();
         if(sources==null||sources.isEmpty())throw new IOException("Select at least one item to archive");
-        for(File source:sources)if(source==null)throw new IOException("Archive source is missing");
+        for(File source:sources){
+            if(source==null)throw new IOException("Archive source is missing");
+            BasicFileAttributes attributes=Files.readAttributes(source.toPath(),BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);
+            if(attributes.isSymbolicLink())throw new IOException("Symbolic links cannot be archived");
+            if(!attributes.isDirectory()&&!attributes.isRegularFile())throw new IOException("Unsupported archive source: "+source.getName());
+        }
         if(destinationDirectory==null||!destinationDirectory.isDirectory())throw new IOException("Archive destination is unavailable");
-        File parent=destinationDirectory.getCanonicalFile();String base=sources.size()==1?sources.get(0).getName():"Archive";
-        if(sources.size()==1&&!sources.get(0).isDirectory()){int dot=base.lastIndexOf('.');if(dot>0)base=base.substring(0,dot);}
+        File parent=destinationDirectory.getCanonicalFile();
+        BasicFileAttributes firstAttributes=Files.readAttributes(sources.get(0).toPath(),BasicFileAttributes.class,LinkOption.NOFOLLOW_LINKS);
+        String base=sources.size()==1?sources.get(0).getName():"Archive";
+        if(sources.size()==1&&!firstAttributes.isDirectory()){int dot=base.lastIndexOf('.');if(dot>0)base=base.substring(0,dot);}
         File output=FileOperationEngine.createUniqueFile(parent,base+".zip");BuildState state=new BuildState();
         try(ZipOutputStream zip=new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(output,false)))){
             Set<String> rootNames=new HashSet<>();Path skip=output.toPath().toAbsolutePath().normalize();

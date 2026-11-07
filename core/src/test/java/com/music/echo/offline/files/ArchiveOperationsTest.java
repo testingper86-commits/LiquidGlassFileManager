@@ -35,6 +35,13 @@ public class ArchiveOperationsTest {
         try(ZipFile zip=new ZipFile(output)){assertNull(zip.getEntry("source/link.txt"));}
     }
 
+    @Test public void rejectsSymbolicLinksAsArchiveRoots() throws Exception {
+        File source=temporary.newFile("source.txt"),link=new File(temporary.getRoot(),"selected-link.txt");
+        Files.write(source.toPath(),new byte[]{1,2,3});Files.createSymbolicLink(link.toPath(),source.toPath());
+        try{ArchiveOperations.createZip(Arrays.asList(link),temporary.newFolder("archives"));fail("Symbolic link root produced an empty archive");}
+        catch(IOException expected){assertEquals("Symbolic links cannot be archived",expected.getMessage());}
+    }
+
     @Test public void extractsValidNestedEntriesAndReportsProgress() throws Exception {
         File parent=temporary.newFolder("extract"),archive=new File(parent,"bundle.zip");
         try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(archive.toPath()))){zip.putNextEntry(new ZipEntry("folder/"));zip.closeEntry();zip.putNextEntry(new ZipEntry("folder/data.txt"));zip.write("hello".getBytes(StandardCharsets.UTF_8));zip.closeEntry();}

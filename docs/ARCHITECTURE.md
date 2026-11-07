@@ -15,3 +15,16 @@ Move a component into `:core` only after verifying that it has no Android framew
 ## Current boundary limitation
 
 `MainActivity` remains a large legacy composition root. It is not split automatically because its UI, lifecycle, navigation, and storage state are tightly coupled. Further extraction must proceed by cohesive services with explicit ownership and tests, not by moving arbitrary methods into empty packages.
+
+## Six shared service domains
+
+1. **File Operations Engine** — `FileOperationEngine` owns staged local copy, atomic collision-free names, safe tree deletion and sizing; `BatchRenameEngine` owns batch rename validation; `ArchiveOperations` owns streaming ZIP create/list/extract; `SafStorageOperations` owns provider-aware SAF copy/move/delete.
+2. **Storage & Indexing** — `StorageIndexEngine` performs bounded, streaming, no-follow traversal; `Indexer` is the Android adapter that classifies and publishes snapshots.
+3. **Performance & Resource Management** — `TaskScheduler` owns bounded lanes and scoped work; `TaskCoordinator` applies Android thread-priority policy; `OperationCancellation` propagates cancellation into worker operations.
+4. **Security & Permissions** — `SafePathResolver`, `ArchivePath`, and `PinHash` are platform-neutral guards; `ToxiUriPermissions` owns validated persistable SAF grants; biometric and app-lock UI remain app-owned.
+5. **Reliability & Recovery** — `CrashLogger` records local diagnostics; `OperationCancellation` prevents stale work; recycle-bin and install-confirmation lifecycle adapters remain app-owned.
+6. **Shared UI & Presentation** — `ToxiVisualSystem`, icon, theme, and reusable row components remain in `:app` because they depend on Android resources and application presentation state.
+
+## Feature layer ownership
+
+The existing File Manager, Developer Studio, Archive Manager, File Transfers, Private Vault, Document Tools, and Settings surfaces remain app-level features. They consume the shared services above; they are not duplicated into empty Gradle modules. The current extraction deliberately establishes stable service boundaries first. `MainActivity` remains the legacy composition root noted below, and independent feature-module extraction is not claimed as complete.

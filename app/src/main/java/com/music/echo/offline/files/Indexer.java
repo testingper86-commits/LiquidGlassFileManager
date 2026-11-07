@@ -50,6 +50,8 @@ final class Indexer {
         truncated = false;
         tmpIncomplete = false;
         Runnable worker = () -> {
+            OperationCancellation cancellation = new OperationCancellation();
+            OperationCancellation.Token operationToken = cancellation.begin();
             try {
                 tmpAll = new ArrayList<>();
                 tmpCats = new ArrayList<>();
@@ -81,8 +83,10 @@ final class Indexer {
                 lastError = "";
                 finished = System.currentTimeMillis();
             } catch (Exception failure) {
+                incomplete = true;
                 lastError = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
             } finally {
+                cancellation.finish(operationToken);
                 running = false;
                 if (done != null) ui.post(done);
             }
