@@ -8,6 +8,8 @@ val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
 val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
 
 android {
+    // This module has Java sources only; do not apply the transitive Kotlin compiler plugin.
+    enableKotlin = false
     namespace = "com.music.echo.offline"
     compileSdk = 36
 

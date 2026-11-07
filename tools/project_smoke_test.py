@@ -250,6 +250,12 @@ def main():
     uri_guard = source("foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
     require('codeql[java/sql-injection]' in sql_editor and 'lgtm[java/sql-injection]' in sql_editor and 'DeveloperStudioCore.isReadOnlySql(sql)' in sql_editor and 'SQLiteDatabase.OPEN_READONLY' in sql_editor, "developer SQL editor is explicitly bounded to one read-only query on a read-only database")
     require('codeql[java/android/unsafe-content-uri-resolution]' in uri_guard and uri_guard.count('lgtm[java/android/unsafe-content-uri-resolution]') == 2 and 'DocumentsContract.isDocumentUri(context, uri)' in uri_guard and 'checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermission)' in uri_guard, "SAF URI resolution requires document URI validation and the exact read/write grant before resolver access")
+    root_gradle = source("build.gradle.kts")
+    app_gradle = source("app/build.gradle.kts")
+    foundation_gradle = source("foundation/build.gradle.kts")
+    patched_build_libraries = ("org.apache.commons:commons-lang3:3.18.0", "org.apache.httpcomponents:httpclient:4.5.14", "org.apache.httpcomponents:httpmime:4.5.14", "com.google.guava:guava:33.7.2-jre", "org.bouncycastle:bcprov-jdk18on:1.85", "org.bouncycastle:bcpkix-jdk18on:1.85", "org.bouncycastle:bcutil-jdk18on:1.85", "org.bitbucket.b_c:jose4j:0.9.6", "org.jdom:jdom2:2.0.6.1")
+    require(all(dep in root_gradle for dep in patched_build_libraries), "AGP transitive build dependencies are constrained to patched compatible versions")
+    require("enableKotlin = false" in app_gradle and "enableKotlin = false" in foundation_gradle, "Java-only Android modules disable unused built-in Kotlin compiler tasks")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
     manifest = source("app/src/main/AndroidManifest.xml")
