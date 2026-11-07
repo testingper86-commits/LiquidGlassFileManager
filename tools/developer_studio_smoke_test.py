@@ -9,6 +9,7 @@ activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
 core = (ROOT / "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
 tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
+settings_backup = (BASE / "SettingsBackupManager.java").read_text(encoding="utf-8")
 uri_permissions = (ROOT / "foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
@@ -50,8 +51,8 @@ require("checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermi
         "every SAF resolver operation requires the app's explicit per-URI grant")
 require("FLAG_GRANT_READ_URI_PERMISSION" in uri_permissions and "FLAG_GRANT_WRITE_URI_PERMISSION" in uri_permissions,
         "SAF read, query and write operations enforce their distinct permission modes")
-require("ToxiUriPermissions.openInputStream(this,uri)" in activity and "ToxiUriPermissions.openInputStream(this,uri)" in tools_activity and "ToxiUriPermissions.openInputStream(this, file)" in main,
-        "Developer Studio, built-in tools and settings import use the validated SAF stream boundary")
+require("ToxiUriPermissions.openInputStream(this,uri)" in activity and "ToxiUriPermissions.openInputStream(this,uri)" in tools_activity and "SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES" in main and "ToxiUriPermissions.openInputStream(context, uri)" in settings_backup,
+        "Developer Studio, built-in tools and extracted settings backup use the validated SAF stream boundary")
 for forbidden in ("java.net.", "HttpURLConnection", "OkHttpClient", "WebView", "ProcessBuilder", "Runtime.getRuntime", "DexClassLoader"):
     require(forbidden not in activity and forbidden not in core,
             "no remote networking or inspected-code execution reference: " + forbidden)
