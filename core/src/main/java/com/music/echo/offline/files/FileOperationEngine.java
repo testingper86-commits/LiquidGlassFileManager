@@ -90,7 +90,8 @@ final class FileOperationEngine {
         File staging = safeChild(parent, ".toxifiles-copy-" + UUID.randomUUID());
         if (Files.exists(staging.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new IOException("Unable to reserve copy staging path");
         try {
-            copyInto(sourcePath, staging.toPath());
+            TreeTraversalBudget budget = new TreeTraversalBudget();
+            copyInto(sourcePath, staging.toPath(), budget, 0);
             OperationCancellation.checkCurrent();
             File finalTarget = safeChild(parent, target.getName());
             if (Files.exists(finalTarget.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new FileAlreadyExistsException(finalTarget.getName());
@@ -107,8 +108,9 @@ final class FileOperationEngine {
         }
     }
 
-    private static void copyInto(Path source, Path target) throws IOException {
+    private static void copyInto(Path source, Path target, TreeTraversalBudget budget, int depth) throws IOException {
         OperationCancellation.checkCurrent();
+        budget.enter(depth);
         BasicFileAttributes attributes = Files.readAttributes(source, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
         if (attributes.isSymbolicLink()) throw new IOException("Symbolic links are not copied");
         if (attributes.isDirectory()) {
@@ -120,7 +122,7 @@ final class FileOperationEngine {
                     if (leaf == null) throw new IOException("Invalid source child path");
                     Path destination = target.resolve(leaf).normalize();
                     if (!target.equals(destination.getParent())) throw new IOException("Copy child escaped its staging folder");
-                    copyInto(child, destination);
+                    copyInto(child, destination, budget, depth + 1);
                 }
             }
             return;

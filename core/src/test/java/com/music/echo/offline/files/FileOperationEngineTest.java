@@ -58,6 +58,29 @@ public class FileOperationEngineTest {
         File[] leftovers=root.listFiles((dir,name)->name.startsWith(".toxifiles-copy-"));assertNotNull(leftovers);assertEquals(0,leftovers.length);
     }
 
+    @Test public void copyBoundsDeepDirectoryTraversalAndCleansStagingTree() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-copy-depth-").toFile();
+        File source = new File(root, "source");
+        assertTrue(source.mkdir());
+        java.nio.file.Path nested = source.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1, 2, 3});
+        File target = new File(root, "target");
+        try {
+            FileOperationEngine.copy(source, target);
+            fail("Copy accepted a directory tree beyond the supported depth");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("nesting"));
+        }
+        assertFalse(target.exists());
+        File[] leftovers = root.listFiles((dir, name) -> name.startsWith(".toxifiles-copy-"));
+        assertNotNull(leftovers);
+        assertEquals(0, leftovers.length);
+    }
+
     @Test public void refusesSymlinkSourcesAndDoesNotFollowLinksDuringCopy() throws Exception {
         File root=Files.createTempDirectory("toxifiles-copy-link-").toFile(),target=new File(root,"target.txt"),outside=Files.createTempFile("toxifiles-outside-",".txt").toFile();
         Files.write(outside.toPath(),new byte[]{7,8,9});File link=new File(root,"link.txt");Files.createSymbolicLink(link.toPath(),outside.toPath());
