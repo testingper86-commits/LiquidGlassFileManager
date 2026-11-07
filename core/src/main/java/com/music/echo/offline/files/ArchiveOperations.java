@@ -107,12 +107,15 @@ final class ArchiveOperations {
         File destination=FileOperationEngine.createUniqueDirectory(parentDirectory,base);
         try{
             Path root=destination.toPath().toRealPath();long initialFreeSpace=destination.getUsableSpace(),expanded=0L;Set<String> extractedPaths=new HashSet<>();
+            TreeTraversalBudget extractionBudget = new TreeTraversalBudget(MAX_ARCHIVE_ENTRIES, TreeTraversalBudget.DEFAULT_MAX_DEPTH);
             try(ZipFile zip=new ZipFile(archive)){int total=zip.size();if(total>MAX_ARCHIVE_ENTRIES)throw new IOException("Archive has too many entries");
                 Enumeration<? extends ZipEntry> entries=zip.entries();int index=0;
                 while(entries.hasMoreElements()){
                     OperationCancellation.checkCurrent();ZipEntry entry=entries.nextElement();index++;String rawName=entry.getName();
                     if(rawName==null||rawName.isEmpty())throw new IOException("Archive contains an empty entry path");
-                    String normalized=ArchivePath.normalize(rawName,entry.isDirectory());if(!extractedPaths.add(normalized))throw new IOException("Archive contains duplicate entry paths");
+                    String normalized=ArchivePath.normalize(rawName,entry.isDirectory());
+                    extractionBudget.enter(normalized.split("/", -1).length);
+                    if(!extractedPaths.add(normalized))throw new IOException("Archive contains duplicate entry paths");
                     Path output=root.resolve(normalized).normalize();if(output.equals(root)||!output.startsWith(root))throw new IOException("Archive entry escapes extraction folder");
                     if(listener!=null)listener.onProgress("Extracting "+index+" of "+total+": "+rawName);OperationCancellation.checkCurrent();
                     if(entry.isDirectory()){ensureDirectories(root,output);continue;}

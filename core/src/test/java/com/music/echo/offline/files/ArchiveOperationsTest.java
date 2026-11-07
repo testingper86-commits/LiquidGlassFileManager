@@ -76,6 +76,26 @@ public class ArchiveOperationsTest {
         assertFalse(new File(parent.getParentFile(),"escaped.txt").exists());assertFalse(new File(parent,"malicious").exists());
     }
 
+    @Test public void rejectsOverlyDeepEntryPathsAndCleansExtractionDirectory() throws Exception {
+        File parent = temporary.newFolder("deep-entry-zip");
+        File archive = new File(parent, "deep.zip");
+        StringBuilder path = new StringBuilder();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 1; i++) path.append("d/");
+        path.append("payload.bin");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive.toPath()))) {
+            zip.putNextEntry(new ZipEntry(path.toString()));
+            zip.write(1);
+            zip.closeEntry();
+        }
+        try {
+            ArchiveOperations.extractZip(archive, parent, null);
+            fail("Extraction accepted an entry path beyond the supported nesting depth");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("nesting"));
+        }
+        assertFalse(new File(parent, "deep").exists());
+    }
+
     @Test public void rejectsDuplicateNormalizedPaths() throws Exception {
         File parent=temporary.newFolder("duplicate-zip"),archive=new File(parent,"duplicate.zip");
         try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(archive.toPath()))){zip.putNextEntry(new ZipEntry("folder/"));zip.closeEntry();zip.putNextEntry(new ZipEntry("folder"));zip.write(1);zip.closeEntry();}
