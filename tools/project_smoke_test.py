@@ -256,7 +256,18 @@ def main():
     app_gradle = source("app/build.gradle.kts")
     foundation_gradle = source("foundation/build.gradle.kts")
     patched_build_libraries = ("org.apache.commons:commons-lang3:3.18.0", "org.apache.httpcomponents:httpclient:4.5.14", "org.apache.httpcomponents:httpmime:4.5.14", "com.google.guava:guava:33.7.2-jre", "org.bouncycastle:bcprov-jdk18on:1.85", "org.bouncycastle:bcpkix-jdk18on:1.85", "org.bouncycastle:bcutil-jdk18on:1.85", "org.bitbucket.b_c:jose4j:0.9.6", "org.jdom:jdom2:2.0.6.1")
-    require('classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(dep in root_gradle for dep in patched_build_libraries), "Android plugin classpath uses patched transitive build-library constraints")
+    patched_build_exclusions = (
+        'exclude(group = "org.apache.commons", module = "commons-lang3")',
+        'exclude(group = "org.apache.httpcomponents", module = "httpclient")',
+        'exclude(group = "org.apache.httpcomponents", module = "httpmime")',
+        'exclude(group = "com.google.guava", module = "guava")',
+        'exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")',
+        'exclude(group = "org.bouncycastle", module = "bcpkix-jdk18on")',
+        'exclude(group = "org.bouncycastle", module = "bcutil-jdk18on")',
+        'exclude(group = "org.bitbucket.b_c", module = "jose4j")',
+        'exclude(group = "org.jdom", module = "jdom2")',
+    )
+    require('classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and all(dep in root_gradle for dep in patched_build_libraries) and all(rule in root_gradle for rule in patched_build_exclusions), "Android plugin classpath excludes vulnerable transitive edges and adds patched binary-compatible libraries")
     require("enableKotlin = false" in app_gradle and "enableKotlin = false" in foundation_gradle, "Java-only Android modules disable unused built-in Kotlin compiler tasks")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
