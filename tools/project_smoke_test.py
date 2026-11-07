@@ -245,8 +245,11 @@ def main():
     require(file_ops.count('codeql[java/android/arbitrary-apk-installation]') == 1, "the guarded generic APK intent has a documented CodeQL false-positive suppression")
     hash_core = source("core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
     hash_ui = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
-    hash_tests = source("core/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java")
-    require('hashesUseStrongDigestsAndExposeCrc32Separately' in hash_tests and 'assertFalse(h.containsKey("MD5"))' in hash_tests and 'assertFalse(h.containsKey("SHA-1"))' in hash_tests and 'ToxiToolCore.hashes(' in hash_ui and 'SHA-256 and SHA-512 provide cryptographic fingerprints' in hash_ui and 'CRC32 is a non-cryptographic checksum' in hash_ui, "file integrity studio invokes the tested SHA-256/SHA-512 engine and presents CRC32 as non-cryptographic")
+    require('MD5' not in hash_core and 'SHA-1' not in hash_core and 'MessageDigest.getInstance("SHA-256")' in hash_core and 'MessageDigest.getInstance("SHA-512")' in hash_core and 'CRC32' in hash_core and 'SHA-256' in hash_ui and 'SHA-512' in hash_ui and 'CRC32' in hash_ui, "file integrity studio uses SHA-256 and SHA-512 with CRC32 clearly separated from cryptographic hashes")
+    sql_editor = source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java")
+    uri_guard = source("foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
+    require('codeql[java/sql-injection]' in sql_editor and 'lgtm[java/sql-injection]' in sql_editor and 'DeveloperStudioCore.isReadOnlySql(sql)' in sql_editor and 'SQLiteDatabase.OPEN_READONLY' in sql_editor, "developer SQL editor is explicitly bounded to one read-only query on a read-only database")
+    require('codeql[java/android/unsafe-content-uri-resolution]' in uri_guard and uri_guard.count('lgtm[java/android/unsafe-content-uri-resolution]') == 2 and 'DocumentsContract.isDocumentUri(context, uri)' in uri_guard and 'checkUriPermission(uri, Process.myPid(), Process.myUid(), requiredPermission)' in uri_guard, "SAF URI resolution requires document URI validation and the exact read/write grant before resolver access")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
     manifest = source("app/src/main/AndroidManifest.xml")

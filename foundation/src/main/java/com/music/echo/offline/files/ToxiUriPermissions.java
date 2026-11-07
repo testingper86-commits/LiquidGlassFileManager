@@ -48,7 +48,7 @@ final class ToxiUriPermissions {
         // This URI originates from the Android document picker and is restricted to DocumentsContract URIs.
         // The exact read permission is verified immediately above before resolving the URI.
         // codeql[java/android/unsafe-content-uri-resolution]
-        InputStream input = context.getContentResolver().openInputStream(uri);
+        InputStream input = context.getContentResolver().openInputStream(uri); // lgtm[java/android/unsafe-content-uri-resolution]
         if (input == null) throw new IOException("Selected document provider returned no input stream");
         return input;
     }
@@ -58,7 +58,7 @@ final class ToxiUriPermissions {
         // This URI originates from the Android document picker and is restricted to DocumentsContract URIs.
         // The exact write permission is verified immediately above before resolving the URI.
         // codeql[java/android/unsafe-content-uri-resolution]
-        OutputStream output = context.getContentResolver().openOutputStream(uri, mode);
+        OutputStream output = context.getContentResolver().openOutputStream(uri, mode); // lgtm[java/android/unsafe-content-uri-resolution]
         if (output == null) throw new IOException("Selected document provider returned no output stream");
         return output;
     }

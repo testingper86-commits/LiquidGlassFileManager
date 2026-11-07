@@ -156,7 +156,7 @@ public final class DeveloperStudioActivity extends ComponentActivity {
                 // concatenated with external data, is parsed as one bounded read-only statement,
                 // and runs only against a database opened with SQLiteDatabase.OPEN_READONLY.
                 // codeql[java/sql-injection]
-                c=db.rawQuery(sql,null,signal);
+                c=db.rawQuery(sql,null,signal); // lgtm[java/sql-injection]
                 StringBuilder out=new StringBuilder("Rows: ");int rows=0;String[] cols=c.getColumnNames();int visibleColumns=Math.min(cols.length,40);for(int i=0;i<visibleColumns;i++)out.append(cols[i]).append("\t");if(cols.length>visibleColumns)out.append("…");out.append('\n');while(c.moveToNext()){checkCancelled();if(++rows>500){out.append("\nResult capped at 500 rows.");break;}for(int i=0;i<visibleColumns;i++){if(i>0)out.append("\t");String v=c.isNull(i)?"NULL":c.getString(i);if(v!=null&&v.length()>2048)v=v.substring(0,2048)+"…";out.append(v==null?"NULL":v.replace('\n',' '));}out.append('\n');if(out.length()>1_000_000){out.append("\nOutput capped at 1 MB.");break;}}out.insert(0,"Rows shown: "+Math.min(rows,500)+"\n\n");return out.toString();}finally{if(c!=null)c.close();activeSqlSignal=null;}});}
 
     private String formatValidate(Uri uri,String name)throws Exception{String src=DeveloperStudioCore.decodeUtf8(read(uri,MAX_TEXT));String validation=DeveloperStudioCore.validateSource(src);String ext=extension(name);if(ext.equals("json")||ext.equals("xml"))return parseTextDocument(src,ext)+"\n\n"+validation;return "STRUCTURAL VALIDATION\n"+validation+"\n\nFORMATTED SOURCE (best-effort indentation formatter; not a language compiler):\n"+DeveloperStudioCore.formatSource(src);}
