@@ -296,6 +296,7 @@ def main():
     require("new android.graphics.drawable.BitmapDrawable(activity.getResources(), bitmap)" in about_builder and "BitmapDrawable(getResources(), bitmap)" not in about_builder, "Extracted About screen resolves resources from its owning Activity")
     back_navigation = source("app/src/main/java/com/music/echo/offline/files/ToxiBackNavigation.java")
     back_activities = [main, source("app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java"), source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java"), source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java"), source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")]
+    require('cancellation.cancelActive();\n        taskScope.close(true);\n        super.onDestroy();' in main, "MainActivity cancels active operations and interrupts scoped tasks before destruction")
     require("getOnBackPressedDispatcher().addCallback(activity" in back_navigation and "new OnBackPressedCallback(true)" in back_navigation and all("extends ComponentActivity" in activity and "ToxiBackNavigation.bind(this," in activity and "@Override public void onBackPressed" not in activity for activity in back_activities), "All activities use lifecycle-aware AndroidX predictive Back callbacks")
 
     base_theme = source("app/src/main/res/values/themes.xml")
