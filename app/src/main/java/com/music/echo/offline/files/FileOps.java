@@ -35,9 +35,25 @@ final class FileOps {
     static void treeSize(File file, long[] totals) { FileOperationEngine.treeSize(file, totals); }
 
 
-    static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
+    private static void execute(MainActivity a, Done done, String failureMessage, Runnable operation) {
         a.busy(true);
-        a.ops.execute(() -> {
+        try {
+            a.ops.execute(() -> {
+                try {
+                    operation.run();
+                } catch (RuntimeException failure) {
+                    String detail = failure.getMessage();
+                    String message = failureMessage + (detail == null || detail.trim().isEmpty() ? "" : ": " + detail);
+                    a.runUiIfAlive(() -> { a.busy(false); done.run(message); });
+                }
+            });
+        } catch (RuntimeException rejected) {
+            a.runUiIfAlive(() -> { a.busy(false); done.run(failureMessage + ": operation could not be queued"); });
+        }
+    }
+
+    static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
+        execute(a, d, move ? "Move failed" : "Copy failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 int ok = 0, fail = 0, skipped = 0;
@@ -76,8 +92,7 @@ final class FileOps {
     }
 
     static void delete(final MainActivity a, final List<File> fs, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "Delete failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 int ok = 0, failed = 0, total = fs.size(), idx = 0;
@@ -101,8 +116,7 @@ final class FileOps {
     }
 
     static void zip(final MainActivity a, final List<File> fs, final File destDir, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "ZIP creation failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 String message;
@@ -122,8 +136,7 @@ final class FileOps {
     }
 
     static void unzip(final MainActivity a, final File zip, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "ZIP extraction failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 String message;

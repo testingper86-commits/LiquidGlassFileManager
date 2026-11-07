@@ -120,6 +120,8 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
+    require("private static void execute(MainActivity a, Done done, String failureMessage, Runnable operation)" in file_ops and file_ops.count("execute(a, d,") == 4 and file_ops.count("a.ops.execute(") == 1 and "operation could not be queued" in file_ops and "catch (RuntimeException failure)" in file_ops, "file operations always clear busy state and report queue rejection or unexpected worker failures")
     settings_backup = source("app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java")
     about_builder = source("app/src/main/java/com/music/echo/offline/files/AboutScreenBuilder.java")
     require("AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName())" in main and "addAboutGridSection" not in main and "aboutText(" in about_builder and "openExternalUrl(" in about_builder, "About profile content and layout helpers are isolated from MainActivity")
