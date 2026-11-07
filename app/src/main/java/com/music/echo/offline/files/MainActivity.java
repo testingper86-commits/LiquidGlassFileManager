@@ -334,6 +334,13 @@ public class MainActivity extends ComponentActivity {
         Indexer.I.start(indexDoneCallback);
     }
 
+    void runUiIfAlive(Runnable action) {
+        if (action == null || isFinishing() || isDestroyed()) return;
+        runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) action.run();
+        });
+    }
+
     void onIndexDone() {
         if (isFinishing() || isDestroyed()) return;
         if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);

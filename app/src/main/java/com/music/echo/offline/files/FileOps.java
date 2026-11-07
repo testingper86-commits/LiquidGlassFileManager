@@ -48,7 +48,7 @@ final class FileOps {
                     idx++;
                     final int fi = idx, ft = total;
                     final String nm = s.getName();
-                    a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
+                    a.runUiIfAlive(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
                     try {
                         if (move && dst.equals(s.getParentFile())) { ok++; continue; }
                         if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
@@ -69,7 +69,7 @@ final class FileOps {
                 }
                 final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
                         + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
-                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
 
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -87,14 +87,14 @@ final class FileOps {
                     idx++;
                     final int fi = idx, ft = total;
                     final String nm = f.getName();
-                    a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
+                    a.runUiIfAlive(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
                     if (deleteTree(f)) ok++;
                     else if (OperationCancellation.isCancelled()) { cancelled = true; break; }
                     else failed++;
                 }
                 final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
                         + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
-                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
 
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -109,7 +109,7 @@ final class FileOps {
                 try { File output = ArchiveOperations.createZip(fs, destDir); message = "Created " + output.getName(); }
                 catch (Exception failure) { message = "Zip failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()); }
                 final String result = message;
-                a.runOnUiThread(() -> { a.busy(false); d.run(result); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(result); });
             } finally { a.cancellation.finish(operationToken); }
         });
     }
@@ -128,11 +128,11 @@ final class FileOps {
             try {
                 String message;
                 try {
-                    File destination = ArchiveOperations.extractZip(zip, zip.getParentFile(), progress -> a.runOnUiThread(() -> a.progress(progress)));
+                    File destination = ArchiveOperations.extractZip(zip, zip.getParentFile(), progress -> a.runUiIfAlive(() -> a.progress(progress)));
                     message = "Extracted to " + destination.getName();
                 } catch (Exception failure) { message = "Extract failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()); }
                 final String result = message;
-                a.runOnUiThread(() -> { a.busy(false); d.run(result); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(result); });
             } finally { a.cancellation.finish(operationToken); }
         });
     }
