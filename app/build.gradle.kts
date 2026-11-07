@@ -50,7 +50,7 @@ extensions.configure<ApplicationExtension>("android") {
 dependencies {
     add("implementation", project(":core"))
     add("implementation", project(":foundation"))
-    add("implementation", "androidx.core:core:1.18.0")
+    add("implementation", "androidx.core:core:1.19.1")
     add("implementation", "androidx.activity:activity:1.13.0")
     add("implementation", "androidx.lifecycle:lifecycle-runtime:2.10.0")
     add("implementation", "androidx.documentfile:documentfile:1.1.0")
