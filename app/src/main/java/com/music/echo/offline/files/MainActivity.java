@@ -1733,27 +1733,17 @@ public class MainActivity extends ComponentActivity {
         ops.execute(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
-                int ok = 0, failed = 0, idx = 0;
-                String error = "";
-                for (File file : files) {
-                    if (OperationCancellation.isCancelled()) { failed++; error = "Operation cancelled"; break; }
-                    final int current = ++idx;
-                    runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
-                    try { copyLocalToSaf(file, rootDoc); ok++; }
-                    catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
-                }
-                final int copied = ok, failures = failed; final String detail = error;
+                SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFiles(
+                        getContentResolver(), files, rootDoc, (current, total, source) ->
+                                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + total + ": " + source.getName())));
                 runOnUiThread(() -> {
                     busy(false);
-                    ToxiVisualSystem.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
+                    ToxiVisualSystem.toast(this, result.failed == 0
+                            ? "Copied " + result.copied + " item" + (result.copied == 1 ? "" : "s") + " to SD/USB"
+                            : "Copied " + result.copied + "; stopped: " + result.error);
                 });
-
             } finally { this.cancellation.finish(operationToken); }
         });
-    }
-
-    private void copyLocalToSaf(File source, DocumentFile parent) throws java.io.IOException {
-        SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);
     }
 
     private void deleteSafTree(DocumentFile target) throws java.io.IOException {

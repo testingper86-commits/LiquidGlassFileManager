@@ -138,7 +138,8 @@ def main():
 
 
     saf_ops = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
-    require("SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);" in main and "SafStorageOperations.deleteTree(target);" in main, "MainActivity routes local-to-SAF copies and rollback cleanup through the shared provider service")
+    require("SafStorageOperations.copyLocalFiles(" in main and "SafStorageOperations.copyLocalTree(ContentResolver resolver, File source" in saf_ops and "CopyProgressListener" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops and "SafStorageOperations.deleteTree(target);" in main, "MainActivity routes local-to-SAF copies and rollback cleanup through the shared provider service")
+    require("for (File file : files)" not in main and "static BatchCopyResult copyLocalFiles(" in saf_ops, "SAF batch copy orchestration and stop-on-first-failure behavior are service-owned")
     traversal_budget = source("core/src/main/java/com/music/echo/offline/files/TreeTraversalBudget.java")
     traversal_budget_test = source("core/src/test/java/com/music/echo/offline/files/TreeTraversalBudgetTest.java")
     require("budget.enter(depth);" in saf_ops and saf_ops.count("OperationCancellation.checkCurrent();") >= 4 and "new TreeTraversalBudget()" in saf_ops and "visitedDirectories" in saf_ops and "repeated or cyclic directory" in saf_ops and "DEFAULT_MAX_ENTRIES" in saf_ops and "Directory nesting exceeds the supported limit" in traversal_budget and "Tree contains more than the supported limit" in traversal_budget and "OperationCancellation.checkCurrent()" not in traversal_budget and all(name in traversal_budget_test for name in ("allowsTheConfiguredEntryLimit", "rejectsTheFirstEntryBeyondTheLimit", "rejectsExcessiveDirectoryDepth", "rejectsInvalidLimits")), "SAF copy enforces cancellable bounded traversal while rollback cleanup remains runnable after cancellation")

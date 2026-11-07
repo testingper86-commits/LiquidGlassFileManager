@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 /** Provider-aware operations for user-granted Storage Access Framework document trees. */
 final class SafStorageOperations {
@@ -198,6 +199,51 @@ final class SafStorageOperations {
             }
             throw failure;
         }
+    }
+
+    interface CopyProgressListener {
+        void onProgress(int current, int total, File source);
+    }
+
+    static final class BatchCopyResult {
+        final int copied;
+        final int failed;
+        final String error;
+
+        BatchCopyResult(int copied, int failed, String error) {
+            this.copied = copied;
+            this.failed = failed;
+            this.error = error;
+        }
+    }
+
+    /** Copies a batch to one SAF folder, stopping at the first failure or cancellation. */
+    static BatchCopyResult copyLocalFiles(ContentResolver resolver, List<File> sources,
+                                          DocumentFile parent, CopyProgressListener progress) {
+        if (resolver == null || sources == null || parent == null) {
+            return new BatchCopyResult(0, 1, "Source files and destination folder are required");
+        }
+        if (!parent.exists() || !parent.isDirectory() || !parent.canWrite()) {
+            return new BatchCopyResult(0, 1, "Destination storage folder is not writable");
+        }
+        int copied = 0;
+        int failed = 0;
+        String error = "";
+        for (int index = 0; index < sources.size(); index++) {
+            File source = sources.get(index);
+            try {
+                OperationCancellation.checkCurrent();
+                if (source == null) throw new IOException("Source file is unavailable");
+                if (progress != null) progress.onProgress(index + 1, sources.size(), source);
+                copyLocalTree(resolver, source, parent);
+                copied++;
+            } catch (Exception failure) {
+                failed = 1;
+                error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                break;
+            }
+        }
+        return new BatchCopyResult(copied, failed, error);
     }
 
     static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent)
