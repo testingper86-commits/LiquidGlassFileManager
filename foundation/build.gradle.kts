@@ -15,6 +15,6 @@ extensions.configure<LibraryExtension>("android") {
 }
 
 dependencies {
-    implementation(project(":core"))
-    implementation("androidx.documentfile:documentfile:1.1.0")
+    add("implementation", project(":core"))
+    add("implementation", "androidx.documentfile:documentfile:1.1.0")
 }

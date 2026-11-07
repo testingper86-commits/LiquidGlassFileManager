@@ -29,9 +29,14 @@ class DependencyAuditTests(unittest.TestCase):
             self.assertEqual(["META-INF/LICENSE.txt", "META-INF/NOTICE"], AUDIT.bundled_notices(cache))
 
     def test_fixed_dependency_declarations_and_dynamic_version_detection(self):
-        self.assertEqual(["androidx.core:core:1.19.1"], AUDIT.DECLARATION.findall('implementation("androidx.core:core:1.19.1")'))
-        self.assertIsNone(AUDIT.DYNAMIC.search("1.19.1"))
-        self.assertIsNotNone(AUDIT.DYNAMIC.search("1.+"))
+        coordinate = "androidx.core:core:1.19.1"
+        self.assertEqual([coordinate], AUDIT.declared_dependencies('implementation("' + coordinate + '")'))
+        self.assertEqual([coordinate], AUDIT.declared_dependencies('add("implementation", "' + coordinate + '")'))
+        self.assertEqual([coordinate], AUDIT.declared_dependencies('add("testImplementation", "' + coordinate + '")'))
+        dynamic = AUDIT.declared_dependencies('add("implementation", "androidx.core:core:1.+")')
+        self.assertEqual(["androidx.core:core:1.+"], dynamic)
+        self.assertIsNone(AUDIT.DYNAMIC.search(coordinate))
+        self.assertIsNotNone(AUDIT.DYNAMIC.search(dynamic[0]))
 
     def test_markdown_table_cells_escape_pipes_and_newlines(self):
         self.assertEqual("Apache " + chr(92) + "| MIT license", AUDIT.safe_cell("Apache | MIT" + chr(10) + "license"))
