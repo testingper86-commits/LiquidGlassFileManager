@@ -4,11 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:9.5.0") {
-            // These plugins are unused: both Android modules contain Java only and disable Kotlin.
-            exclude(group = "org.jetbrains.kotlin", module = "kotlin-gradle-plugin")
-            exclude(group = "com.google.devtools.ksp", module = "symbol-processing-gradle-plugin")
-        }
+        // AGP loads KotlinBaseApiPlugin during initialization even with Kotlin compilation disabled.
+        classpath("com.android.tools.build:gradle:9.5.0")
     }
     // Keep AGP's transitive build-tool libraries on patched, binary-compatible versions.
     configurations.getByName("classpath").resolutionStrategy.force(
