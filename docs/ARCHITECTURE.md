@@ -3,9 +3,9 @@
 ## Gradle modules
 
 - `:app` is the Android application boundary. It owns activities, Android framework integration, storage providers, UI, and application lifecycle.
-- `:core` is a Java 17 library for platform-neutral primitives shared by the application. Its extracted components are operation-scoped cancellation, strict ZIP-entry and filesystem child-path validation, read-only Developer Studio parsing/analysis, PIN-verifier primitives, and canonical filesystem path resolution. These utilities remain Android-free and have JVM regression tests in the core module. The bounded offline tool engine also lives here: strict text decoding, bounded reads, hashes, binary/hex conversion, folder comparison, and safe ZIP rewriting.
+- `:core` is a Java 17 library for platform-neutral primitives shared by the application. Its extracted components are operation-scoped cancellation, bounded background scheduling, strict ZIP-entry and filesystem child-path validation, read-only Developer Studio parsing/analysis, PIN-verifier primitives, and canonical filesystem path resolution. These utilities remain Android-free and have JVM regression tests in the core module. The bounded offline tool engine also lives here: strict text decoding, bounded reads, hashes, binary/hex conversion, folder comparison, and safe ZIP rewriting.
 
-The core module intentionally has no Android SDK dependency. Android-specific services remain in `:app` and depend on `:core`, never the reverse.
+The core module intentionally has no Android SDK dependency. Android-specific services remain in `:app` and depend on `:core`, never the reverse. `TaskCoordinator` is the Android priority-policy adapter; the queue limits, lane ownership, and cancellation scopes live in the Android-free `TaskScheduler`.
 
 ## Migration rule
 

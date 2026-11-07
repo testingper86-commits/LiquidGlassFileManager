@@ -26,6 +26,8 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
+        "core/src/main/java/com/music/echo/offline/files/TaskScheduler.java",
+        "core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java",
         "core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java",
         "core/src/main/java/com/music/echo/offline/files/ArchivePath.java",
         "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java",
@@ -54,6 +56,12 @@ def main():
     app_gradle = source("app/build.gradle.kts")
     require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
     require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
+    task_scheduler = source("core/src/main/java/com/music/echo/offline/files/TaskScheduler.java")
+    task_coordinator = source("app/src/main/java/com/music/echo/offline/files/TaskCoordinator.java")
+    task_scheduler_tests = source("core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java")
+    require("android." not in task_scheduler and "ArrayBlockingQueue" in task_scheduler and "ThreadPoolExecutor.AbortPolicy" in task_scheduler and "close(boolean cancelRunning)" in task_scheduler, "core scheduler owns bounded execution lanes and lifecycle cancellation without Android dependencies")
+    require("new TaskScheduler(() ->" in task_coordinator and "THREAD_PRIORITY_BACKGROUND" in task_coordinator and "TaskScheduler.ScopedExecutor" in task_coordinator, "Android app adapter applies background thread priority while delegating scheduling to core")
+    require("boundedQueuesRejectOverloadAndInitializerRunsOnWorkers" in task_scheduler_tests and "cancellingScopeInterruptsRunningWork" in task_scheduler_tests, "core scheduler tests cover queue bounds, worker initialization and cancellation")
     dependency_audit = source("tools/dependency_audit.py")
     app_build = source("app/build.gradle.kts")
     require('pom_licenses' in dependency_audit and 'bundled_notices' in dependency_audit and 'OWNER REVIEW REQUIRED' in dependency_audit, "dependency inventory extracts POM licenses and bundled notices without claiming legal approval")
