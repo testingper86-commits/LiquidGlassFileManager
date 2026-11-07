@@ -20,6 +20,14 @@ public class FileOperationEngineTest {
         assertEquals("report (1).txt",FileOperationEngine.unique(root,"report.txt").getName());
     }
 
+    @Test public void createUniqueDirectoryAtomicallyReservesCollisionFreeFolders() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-reserve-").toFile();
+        File first = FileOperationEngine.createUniqueDirectory(root, "unpacked");
+        File second = FileOperationEngine.createUniqueDirectory(root, "unpacked");
+        assertTrue(first.isDirectory()); assertTrue(second.isDirectory());
+        assertEquals("unpacked (1)", second.getName());
+    }
+
     @Test public void publishesCompleteFileWithoutReplacingExistingData() throws Exception {
         File root=Files.createTempDirectory("toxifiles-copy-").toFile(),source=new File(root,"source.txt"),target=new File(root,"target.txt");
         Files.write(source.toPath(),"complete payload".getBytes(StandardCharsets.UTF_8));FileOperationEngine.copy(source,target);

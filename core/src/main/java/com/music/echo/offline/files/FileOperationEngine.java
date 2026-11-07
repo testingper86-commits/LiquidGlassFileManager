@@ -51,6 +51,18 @@ final class FileOperationEngine {
         throw new IOException("Unable to reserve a unique output filename");
     }
 
+    static File createUniqueDirectory(File directory, String name) throws IOException {
+        if (directory == null || BatchRenameEngine.validateName(name) != null)
+            throw new IOException("Invalid destination folder name");
+        for (int index = 0; index < 1000; index++) {
+            String candidateName = index == 0 ? name : name + " (" + index + ")";
+            File candidate = safeChild(directory, candidateName);
+            try { Files.createDirectory(candidate.toPath()); return candidate; }
+            catch (FileAlreadyExistsException occupied) { /* Try the next collision-free name. */ }
+        }
+        throw new IOException("Unable to reserve a unique extraction folder");
+    }
+
     static void copy(File source, File requestedTarget) throws IOException {
         OperationCancellation.checkCurrent();
         if (source == null || requestedTarget == null) throw new IOException("Source and destination are required");
@@ -137,18 +149,20 @@ final class FileOperationEngine {
 
     private static void cleanupAfterFailure(File staging, Throwable failure) {
         try { deleteTreeOrThrow(staging.toPath()); }
-        catch (IOException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+        catch (IOException | RuntimeException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
     }
 
     static boolean deleteTree(File file) {
         if (file == null) return false;
         try { deleteTreeOrThrow(file.toPath()); return true; }
-        catch (IOException | SecurityException failure) { return false; }
+        catch (IOException | RuntimeException failure) { return false; }
     }
 
     private static void deleteTreeOrThrow(Path path) throws IOException {
-        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return;
-        if (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(path)) {
+        final BasicFileAttributes attributes;
+        try { attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS); }
+        catch (java.nio.file.NoSuchFileException missing) { return; }
+        if (attributes.isSymbolicLink() || !attributes.isDirectory()) {
             Files.deleteIfExists(path);
             return;
         }
@@ -161,7 +175,7 @@ final class FileOperationEngine {
     static void treeSize(File file, long[] totals) {
         if (file == null || totals == null || totals.length < 2) throw new IllegalArgumentException("Tree size output requires two counters");
         try { treeSize(file.toPath(), totals); }
-        catch (IOException | SecurityException ignored) { /* Keep the successfully measured partial total. */ }
+        catch (IOException | RuntimeException ignored) { /* Keep the successfully measured partial total. */ }
     }
 
     private static void treeSize(Path path, long[] totals) throws IOException {
