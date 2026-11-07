@@ -5,6 +5,7 @@ import com.music.echo.offline.R;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
@@ -16,7 +17,6 @@ import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
@@ -34,6 +34,7 @@ import android.provider.DocumentsContract;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -48,6 +49,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -58,37 +60,46 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.json.JSONObject;
+import androidx.activity.ComponentActivity;
 import androidx.core.content.FileProvider;
 import androidx.documentfile.provider.DocumentFile;
 
-public class MainActivity extends Activity {
-    final ExecutorService io = Executors.newFixedThreadPool(2);
-    final ExecutorService ops = Executors.newSingleThreadExecutor();
+public class MainActivity extends ComponentActivity {
+    private static final String BIOMETRIC_UNLOCK_KEY_ALIAS = "toxifiles_biometric_unlock_v1";
+    private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    final OperationCancellation cancellation = new OperationCancellation();
+    final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
+    final TaskCoordinator.ScopedExecutor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
     final Set<String> favs = new LinkedHashSet<>();
     File[] clip;
     boolean clipCut;
 
     FrameLayout root, content;
     BgView bg;
-    ScrollView homeScroll, settingsScroll, aboutScroll, recycleScroll, vaultScroll, themeScroll;
-    LinearLayout home, settings, about, recycle, vault;
+    ScrollView homeScroll, toolsScroll, settingsScroll, aboutScroll, recycleScroll, vaultScroll, themeScroll;
+    View homeScrollFooter;
+    LinearLayout home, tools, settings, about, recycle, vault;
     static final int REQ_SAF_TREE = 501, REQ_IMPORT_SETTINGS = 502;
     Uri safTree;
     ScrollView dupScroll;
     LinearLayout dup;
-    boolean unlocked = false;
+    static volatile boolean unlocked = false;
     BrowserView filesView, favView, listView;
     View[] screens;
     FrameLayout nav;
     View hl;
-    ImageView[] navIc = new ImageView[3];
-    TextView[] navTx = new TextView[3];
+    NebulaHomeView.Glyph[] navIc = new NebulaHomeView.Glyph[4];
+    TextView[] navTx = new TextView[4];
     TextView busyTv;
+    DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     View overlayView;
+    View overlayBackgroundScreen;
+    View overlayBackgroundContent;
+    int overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+    int overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+    int overlayBackgroundVisibility = View.VISIBLE;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
@@ -102,12 +113,13 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
-        setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
+        setTheme(R.style.AppTheme);
         super.onCreate(b);
+        ToxiBackNavigation.bind(this, this::handleBackNavigation);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(screenOffReceiver, screenOffFilter);
-        Ui.init(this);
+        ToxiVisualSystem.initialize(this);
         String savedSafTree = getSharedPreferences("lg_storage", MODE_PRIVATE).getString("saf_tree", null);
         if (savedSafTree != null) safTree = Uri.parse(savedSafTree);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
@@ -116,7 +128,7 @@ public class MainActivity extends Activity {
         favs.addAll(fp.getStringSet("paths", new HashSet<String>()));
 
         root = new FrameLayout(this);
-        root.setBackgroundColor(Ui.bg);
+        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 
@@ -126,14 +138,28 @@ public class MainActivity extends Activity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         homeScroll = new ScrollView(this);
+        homeScroll.setFillViewport(true);
+        homeScroll.setSmoothScrollingEnabled(true);
+        homeScroll.setFocusable(true);
+        homeScroll.setFocusableInTouchMode(true);
+        homeScroll.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+        homeScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         homeScroll.setVerticalScrollBarEnabled(false);
-        homeScroll.setClipToPadding(false);
+        homeScroll.setClipToPadding(true);
         home = new LinearLayout(this);
         home.setOrientation(LinearLayout.VERTICAL);
-        homeScroll.addView(home, new FrameLayout.LayoutParams(-1, -2));
+        homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
+        toolsScroll = new ScrollView(this);
+        toolsScroll.setVerticalScrollBarEnabled(false);
+        toolsScroll.setClipToPadding(false);
+        toolsScroll.setFillViewport(true);
+        tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.VERTICAL);
+        toolsScroll.addView(tools, new FrameLayout.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
         settingsScroll.setVerticalScrollBarEnabled(false);
-        settingsScroll.setClipToPadding(false);
+        // Keep Settings rows inside the scroll viewport; the bottom navigation overlays the screen root.
+        settingsScroll.setClipToPadding(true);
         settings = new LinearLayout(this);
         settings.setOrientation(LinearLayout.VERTICAL);
         settingsScroll.addView(settings, new FrameLayout.LayoutParams(-1, -2));
@@ -166,27 +192,29 @@ public class MainActivity extends Activity {
         dupScroll.addView(dup, new FrameLayout.LayoutParams(-1, -2));
 
         filesView = new BrowserView(this, false, false);
-        favView = new BrowserView(this, false, true);
+        favView = new BrowserView(this, true, true);
         listView = new BrowserView(this, true, false);
-        screens = new View[]{homeScroll, filesView, favView, settingsScroll};
-        View[] all = {homeScroll, filesView, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
+        screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};
+        View[] all = {homeScroll, filesView, toolsScroll, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
         for (View v : all) { content.addView(v, new FrameLayout.LayoutParams(-1, -1)); v.setVisibility(View.GONE); }
 
         buildNav();
-        busyTv = Ui.tv(this, "Working…", 13, Ui.WHITE, true);
-        busyTv.setBackground(Ui.accentPill(20));
-        busyTv.setPadding(Ui.dp(18), Ui.dp(10), Ui.dp(18), Ui.dp(10));
+        busyTv = ToxiVisualSystem.text(this, "Working\u2026", 13, ToxiVisualSystem.TEXT_PRIMARY, true);
+        busyTv.setBackground(ToxiVisualSystem.accentSurface(20));
+        busyTv.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
         busyTv.setVisibility(View.GONE);
         busyTv.setContentDescription("Operation progress. Tap to request cancellation.");
-        busyTv.setOnClickListener(v -> { FileOps.requestCancel(); LanTransfer.cancel(); Ui.toast(this, "Cancellation requested"); });
+        busyTv.setOnClickListener(v -> { cancellation.cancelActive(); LanTransfer.cancel(); ToxiVisualSystem.toast(this, "Cancellation requested"); });
         root.addView(busyTv, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         setContentView(root);
+        dynamicIsland = new DynamicIslandView(this);
+        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-                Ui.top = in.top; Ui.bottom = in.bottom;
-            } else { Ui.top = insets.getSystemWindowInsetTop(); Ui.bottom = insets.getSystemWindowInsetBottom(); }
+                ToxiVisualSystem.TOP_INSET = in.top; ToxiVisualSystem.BOTTOM_INSET = in.bottom;
+            } else { ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop(); ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom(); }
             applyInsets();
             return insets;
         });
@@ -202,27 +230,37 @@ public class MainActivity extends Activity {
     }
 
     void applyInsets() {
-        content.setPadding(0, Ui.top, 0, 0);
+        content.setPadding(0, ToxiVisualSystem.TOP_INSET, 0, 0);
         FrameLayout.LayoutParams np = (FrameLayout.LayoutParams) nav.getLayoutParams();
-        np.bottomMargin = Ui.bottom + Ui.dp(12);
+        np.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
         nav.setLayoutParams(np);
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
-        bp.topMargin = Ui.top + Ui.dp(8);
+        bp.topMargin = ToxiVisualSystem.TOP_INSET + ToxiVisualSystem.dp(8);
         busyTv.setLayoutParams(bp);
-        int pad = Ui.dp(120) + Ui.bottom;
-        homeScroll.setPadding(0, 0, 0, pad);
-        settingsScroll.setPadding(0, 0, 0, pad);
-        aboutScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
-        recycleScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
-        vaultScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
-        dupScroll.setPadding(0, 0, 0, Ui.dp(24) + Ui.bottom);
+        homeScroll.setPadding(0, 0, 0, 0);
+        if (homeScrollFooter != null) {
+            ViewGroup.LayoutParams footerParams = homeScrollFooter.getLayoutParams();
+            footerParams.height = ToxiVisualSystem.dp(160) + ToxiVisualSystem.BOTTOM_INSET;
+            homeScrollFooter.setLayoutParams(footerParams);
+        }
+        // Reserve enough scrollable space for the bottom navigation and system gesture area.
+        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET);
+        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
         filesView.applyInsets(); favView.applyInsets(); listView.applyInsets();
     }
 
     // ---------------- permissions ----------------
     boolean hasAccess() {
         if (Build.VERSION.SDK_INT >= 30) return Environment.isExternalStorageManager();
-        if (Build.VERSION.SDK_INT >= 23) return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= 23) {
+            boolean read = checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            boolean write = Build.VERSION.SDK_INT > 28 || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            return read && write;
+        }
         return true;
     }
 
@@ -241,7 +279,7 @@ public class MainActivity extends Activity {
                         startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName())));
                     } catch (Exception e) {
                         try { startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)); }
-                        catch (Exception e2) { Ui.toast(this, "Open Settings > Apps > Special access > All files access"); }
+                        catch (Exception e2) { ToxiVisualSystem.toast(this, "Open Settings > Apps > Special access > All files access"); }
                     }
                 }).show();
     }
@@ -277,22 +315,22 @@ public class MainActivity extends Activity {
     @Override protected void onDestroy() {
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
         super.onDestroy();
-        io.shutdown();
-        ops.shutdown();
+        taskScope.close(false);
     }
 
     // ---------------- index ----------------
     void startIndex() {
         if (!hasAccess()) return;
+        if(dynamicIsland!=null)dynamicIsland.update("Scanning storage",-1);
         Indexer.I.start(this::onIndexDone);
-        if (tab == 0 && overlayView == null) buildHome();
     }
 
     void onIndexDone() {
+        if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);
         String[] names = Indexer.CAT_NAMES;
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], Indexer.I.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", Indexer.I.all, true, true); pendingCat = -1; }
-        if (tab == 0 && overlayView == null) buildHome();
+        if (tab == 0 && overlayView == null && home.getVisibility() == View.VISIBLE) buildHome();
     }
 
     void afterOps() {
@@ -317,13 +355,26 @@ public class MainActivity extends Activity {
     void busy(boolean on) {
         busyCount = Math.max(0, busyCount + (on ? 1 : -1));
         busyTv.setVisibility(busyCount > 0 ? View.VISIBLE : View.GONE);
-        GlowRing.attach(busyTv);
-        GlowRing.setActive(busyTv, busyCount > 0);
-        if (busyCount == 1 && on) busyTv.setText("Working…"); // reset text for ops that don't call progress()
+        ToxiMotion.attach(busyTv);
+        ToxiMotion.setActive(busyTv, busyCount > 0);
+        if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
+        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" · tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
-    void progress(String text) { busyTv.setText(text + " · tap to cancel"); GlowRing.attach(busyTv); GlowRing.setActive(busyTv, true); }
+
+    /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
+    void progress(String text) {
+        busyTv.setText(text + " · tap to cancel");
+        ToxiMotion.attach(busyTv);
+        ToxiMotion.setActive(busyTv, true);
+        if (dynamicIsland != null) {
+            int percent = -1;
+            int[] counts = DeveloperStudioCore.parseProgressCount(text);
+            if (counts != null) percent = Math.max(0, Math.min(100, (int)(100L * counts[0] / counts[1])));
+            dynamicIsland.update(text, percent);
+        }
+    }
 
     // ---------------- opening things ----------------
     void openDir(File dir) {
@@ -333,41 +384,79 @@ public class MainActivity extends Activity {
     }
 
     void openFile(Entry e, List<Entry> ctx) {
-        if (e.dir) { openDir(e.f); return; }
-        int k = e.kind;
-        boolean inApp = Ui.bool("inapp", true);
-        if (inApp && (k == FileKinds.IMAGE || k == FileKinds.VIDEO || k == FileKinds.AUDIO || k == FileKinds.TEXT || k == FileKinds.PDF)) {
+        if (e == null || e.f == null) {
+            ToxiVisualSystem.toast(this, "This file is no longer available");
+            return;
+        }
+        if (e.dir || e.f.isDirectory()) { openDir(e.f); return; }
+        File file = e.f;
+        if (!file.isFile() || !file.canRead()) {
+            ToxiVisualSystem.toast(this, "This file is missing or cannot be read");
+            return;
+        }
+
+        // Built-in document viewers are mandatory for supported document extensions.
+        // Do not let the optional media in-app preference divert PDF/HTML to an external chooser.
+        String extension = FileKinds.extensionOf(file);
+        if (FileKinds.isHtmlExtension(extension)) {
+            Intent html = new Intent(this, HtmlViewerActivity.class);
+            html.putExtra(HtmlViewerActivity.EXTRA_FILE_PATH, file.getAbsolutePath());
+            startActivity(html);
+            return;
+        }
+
+        int kind = FileKinds.kindOfFile(file);
+        if (kind == FileKinds.PDF) {
+            openBuiltInViewer(file, 0);
+            return;
+        }
+
+        boolean inApp = ToxiVisualSystem.booleanPreference("inapp", true);
+        if (inApp && (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO
+                || kind == FileKinds.AUDIO || kind == FileKinds.TEXT)) {
             ArrayList<String> ps = new ArrayList<>();
             int idx = 0;
-            if (k == FileKinds.IMAGE || k == FileKinds.VIDEO || k == FileKinds.AUDIO) {
-                for (Entry x : ctx) if (x.kind == k) { if (x == e) idx = ps.size(); ps.add(x.f.getAbsolutePath()); }
+            if (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO || kind == FileKinds.AUDIO) {
+                if (ctx != null) for (Entry x : ctx) {
+                    if (x != null && !x.dir && FileKinds.kindOfFile(x.f) == kind && x.f.isFile()) {
+                        if (x.f.equals(file)) idx = ps.size();
+                        ps.add(x.f.getAbsolutePath());
+                    }
+                }
+                if (ps.isEmpty()) ps.add(file.getAbsolutePath());
                 if (ps.size() > 400) {
                     int from = Math.max(0, Math.min(idx - 200, ps.size() - 400));
                     ps = new ArrayList<>(ps.subList(from, from + 400));
                     idx -= from;
                 }
-            } else ps.add(e.f.getAbsolutePath());
+            } else {
+                ps.add(file.getAbsolutePath());
+            }
             Intent i = new Intent(this, ViewerActivity.class);
             i.putStringArrayListExtra("paths", ps);
             i.putExtra("index", idx);
             startActivity(i);
             return;
         }
-        if (k == FileKinds.ARCHIVE && e.ext.equals("zip")) { showZip(e.f); return; }
-        if (k == FileKinds.APK) { FileOps.install(this, e.f); return; }
-        FileOps.external(this, e.f, false);
+        if (kind == FileKinds.ARCHIVE && "zip".equals(extension)) { showZip(file); return; }
+        if (kind == FileKinds.APK) { FileOps.install(this, file, io); return; }
+        // Unsupported native formats are handed to Android's app chooser on the first tap.
+        FileOps.external(this, file, true);
+    }
+
+    private void openBuiltInViewer(File file, int index) {
+        ArrayList<String> paths = new ArrayList<>();
+        paths.add(file.getAbsolutePath());
+        Intent intent = new Intent(this, ViewerActivity.class);
+        intent.putStringArrayListExtra("paths", paths);
+        intent.putExtra("index", index);
+        startActivity(intent);
     }
 
     void showZip(final File z) {
-        try {
-            List<String> names = FileOps.listZip(z);
-            android.widget.ListView lv = new android.widget.ListView(this);
-            lv.setAdapter(new android.widget.ArrayAdapter<>(this, android.R.layout.simple_list_item_1, names));
-            new AlertDialog.Builder(this).setTitle(z.getName()).setView(lv).setNegativeButton("Close", null)
-                    .setPositiveButton("Extract", (d, w) -> FileOps.unzip(this, z, msg -> { Ui.toast(this, msg); afterOps(); })).show();
-        } catch (Exception ex) {
-            Ui.toast(this, "Can't read this ZIP file");
-        }
+        Intent tools = new Intent(this, ToxiToolsActivity.class);
+        tools.putExtra(ToxiToolsActivity.EXTRA_FILE_PATH, z.getAbsolutePath());
+        startActivity(tools);
     }
 
     void openCategory(int cat) {
@@ -388,7 +477,7 @@ public class MainActivity extends Activity {
     void selectTab(int i) {
         closeOverlay();
         tab = i;
-        nav.setVisibility(i == 3 ? View.GONE : View.VISIBLE);
+        syncNavigationVisibility(false);
         for (int k = 0; k < screens.length; k++) {
             screens[k].animate().cancel();
             screens[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
@@ -396,36 +485,75 @@ public class MainActivity extends Activity {
             screens[k].setTranslationY(0);
         }
         View s = screens[i];
-        if (Ui.bool("reduce_motion", true)) { s.setAlpha(1f); s.setTranslationY(0f); }
-        else { s.setAlpha(0f); s.setTranslationY(Ui.dp(8)); s.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) { s.setAlpha(1f); s.setTranslationY(0f); }
+        else { s.setAlpha(0f); s.setTranslationY(ToxiVisualSystem.dp(8)); s.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
         if (i == 0) buildHome();
         else if (i == 1) {
             if (filesView.cur == null) {
-                String def = Ui.sp.getString("default_folder", null);
+                String def = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
                 File start = (def != null && new File(def).isDirectory()) ? new File(def) : Environment.getExternalStorageDirectory();
                 filesView.showDir(start);
             }
         }
-        else if (i == 2) favView.refreshFavs();
+        else if (i == 2) buildTools();
         else buildSettings();
         moveHighlight(i);
     }
 
     void showOverlay(View v) {
-        overlayView = v;
-        if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        if (Build.VERSION.SDK_INT >= 31 && Ui.bool("blur", true) && !Ui.highContrast) {
-            screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(Ui.dp(18), Ui.dp(18), android.graphics.Shader.TileMode.CLAMP));
+        if (overlayView != null && overlayView != v) closeOverlay();
+        if (overlayView == null) {
+            overlayBackgroundScreen = screens[tab];
+            overlayBackgroundVisibility = overlayBackgroundScreen.getVisibility();
+            overlayBackgroundAccessibility = overlayBackgroundScreen.getImportantForAccessibility();
+            overlayBackgroundScreen.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            // ScrollView exposes its content LinearLayout as a separate accessibility branch.
+            // Hide that branch explicitly as well while a full-screen child screen is active.
+            if (overlayBackgroundScreen == settingsScroll) {
+                overlayBackgroundContent = settings;
+                overlayBackgroundContentAccessibility = settings.getImportantForAccessibility();
+                settings.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            }
         }
-        screens[tab].setVisibility(View.VISIBLE);
+        overlayView = v;
+        // Keep the active panels opaque, and stop content from the underlying screen bleeding
+        // through the overlay and appearing to overlap the active screen.
+        int overlayAlpha = ToxiVisualSystem.HIGH_CONTRAST ? 255 : 248;
+        v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(ToxiVisualSystem.CANVAS), Color.green(ToxiVisualSystem.CANVAS), Color.blue(ToxiVisualSystem.CANVAS)));
+        if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        boolean blurBackground = Build.VERSION.SDK_INT >= 31 && ToxiVisualSystem.booleanPreference("blur", false) && !ToxiVisualSystem.HIGH_CONTRAST;
+        if (blurBackground) {
+            screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), android.graphics.Shader.TileMode.CLAMP));
+            screens[tab].setVisibility(View.VISIBLE);
+        } else {
+            // A hidden background cannot bleed through translucent glass or remain touch/accessibility reachable.
+            screens[tab].setVisibility(View.INVISIBLE);
+        }
         v.setVisibility(View.VISIBLE);
-        if (Ui.bool("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
-        else { v.setAlpha(0f); v.setTranslationY(Ui.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
-        nav.setVisibility(v == listView ? View.GONE : View.VISIBLE);
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
+        else { v.setAlpha(0f); v.setTranslationY(ToxiVisualSystem.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
+        syncNavigationVisibility(false);
+    }
+
+    void restoreOverlayBackgroundAccessibility() {
+        if (overlayBackgroundContent != null) {
+            overlayBackgroundContent.setImportantForAccessibility(overlayBackgroundContentAccessibility);
+            overlayBackgroundContent = null;
+            overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+        }
+        if (overlayBackgroundScreen == null) return;
+        overlayBackgroundScreen.setImportantForAccessibility(overlayBackgroundAccessibility);
+        overlayBackgroundScreen.setVisibility(overlayBackgroundVisibility);
+        overlayBackgroundScreen = null;
+        overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
+        overlayBackgroundVisibility = View.VISIBLE;
     }
 
     void closeOverlay() {
-        if (overlayView == null) return;
+        if (overlayView == null) {
+            restoreOverlayBackgroundAccessibility();
+            return;
+        }
         boolean wasVault = overlayView == vaultScroll;
         if (overlayView == listView) { listView.closeSearch(); listView.selecting = false; listView.sel.clear(); pendingCat = -1; }
         overlayView.setVisibility(View.GONE);
@@ -433,82 +561,95 @@ public class MainActivity extends Activity {
         if (wasVault) getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         if (Build.VERSION.SDK_INT >= 31) screens[tab].setRenderEffect(null);
         screens[tab].setVisibility(View.VISIBLE);
-        nav.setVisibility(View.VISIBLE);
+        restoreOverlayBackgroundAccessibility();
+        syncNavigationVisibility(false);
         if (tab == 0) buildHome();
     }
 
-    void navForSelection(boolean selecting) { nav.setVisibility(selecting || overlayView == listView ? View.GONE : View.VISIBLE); }
+    void syncNavigationVisibility(boolean selecting) {
+        boolean hidden = overlayView != null || selecting;
+        nav.setVisibility(hidden ? View.GONE : View.VISIBLE);
+    }
 
-    @Override public void onBackPressed() {
-        if (overlayView == listView) { listView.handleBack(); return; }
+    void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
+
+    private void handleBackNavigation() {
+        if (overlayView == listView && listView.handleBack()) return;
         if (overlayView != null) { closeOverlay(); return; }
         if (tab == 1 && filesView.handleBack()) return;
-        if (tab == 2 && favView.handleBack()) return;
         if (tab != 0) { selectTab(0); return; }
-        super.onBackPressed();
+        finish();
     }
 
     void buildNav() {
         nav = new FrameLayout(this);
-        nav.setBackground(Ui.glass(30, true));
-        nav.setElevation(Ui.dp(12));
-        nav.setPadding(Ui.dp(6), Ui.dp(6), Ui.dp(6), Ui.dp(6));
+        nav.setBackground(NebulaHomeView.navigationSurface());
+        nav.setElevation(NebulaHomeView.dp(this, 8));
+        nav.setPadding(NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5));
         hl = new View(this);
-        hl.setBackground(Ui.accentPill(24));
+        hl.setBackground(NebulaHomeView.navigationHighlight());
         nav.addView(hl, new FrameLayout.LayoutParams(0, -1));
         LinearLayout items = new LinearLayout(this);
         items.setOrientation(LinearLayout.HORIZONTAL);
+        items.setGravity(Gravity.CENTER_VERTICAL);
         nav.addView(items, new FrameLayout.LayoutParams(-1, -1));
-        int[] gl = {Glyphs.HOME, Glyphs.FOLDER};
-        String[] lb = {"Home", "Files"};
-        for (int i = 0; i < 2; i++) {
-            final int idx = i;
-            LinearLayout it = new LinearLayout(this);
-            it.setOrientation(LinearLayout.VERTICAL);
-            it.setGravity(Gravity.CENTER);
-            navIc[i] = new ImageView(this);
-            navTx[i] = Ui.tv(this, lb[i], 10.5f, Ui.SUB, false);
-            navIc[i].setImageDrawable(Glyphs.get(gl[i], Ui.WHITE));
-            Ui.ringIcon(navIc[i]);
-            navIc[i].setContentDescription(lb[i]);
-            it.addView(navIc[i], new LinearLayout.LayoutParams(Ui.dp(24), Ui.dp(24)));
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
-            tp.topMargin = Ui.dp(3);
-            it.addView(navTx[i], tp);
-            it.setOnClickListener(v -> {
-                Ui.tick(v);
-                selectTab(idx);
-            });
-            Ui.press(it);
-            items.addView(it, new LinearLayout.LayoutParams(0, -1, 1f));
+        String[] glyphs = {"house", "folder", "grid", "settings"};
+        String[] labels = {"Home", "Files", "Tools", "Settings"};
+        for (int i = 0; i < labels.length; i++) {
+            final int index = i;
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setMinimumHeight(NebulaHomeView.dp(this, 48));
+            item.setBackground(NebulaHomeView.navigationItemSurface());
+            navIc[i] = new NebulaHomeView.Glyph(this, glyphs[i], NebulaHomeView.TEXT);
+            navIc[i].setContentDescription(labels[i]);
+            item.addView(navIc[i], new LinearLayout.LayoutParams(NebulaHomeView.dp(this, 21), NebulaHomeView.dp(this, 21)));
+            navTx[i] = new TextView(this);
+            navTx[i].setText(labels[i]);
+            navTx[i].setTextSize(10);
+            navTx[i].setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            navTx[i].setTextColor(NebulaHomeView.MUTED);
+            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-2, -2);
+            labelLp.topMargin = NebulaHomeView.dp(this, 3);
+            item.addView(navTx[i], labelLp);
+            item.setContentDescription(labels[i]);
+            item.setOnClickListener(v -> selectTab(index));
+            items.addView(item, new LinearLayout.LayoutParams(0, -1, 1f));
         }
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, Ui.dp(66), Gravity.BOTTOM);
-        lp.setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(12));
-        root.addView(nav, lp);
-        nav.addOnLayoutChangeListener((v, l, t, r, b, l0, t0, r0, b0) -> {
-            int iw = (r - l - Ui.dp(12)) / 2;
-            FrameLayout.LayoutParams hp = (FrameLayout.LayoutParams) hl.getLayoutParams();
-            if (hp.width != iw) { hp.width = iw; hl.setLayoutParams(hp); }
-            hl.setTranslationX(Math.min(tab, 1) * iw);
+        FrameLayout.LayoutParams navLp = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(this, 66), Gravity.BOTTOM);
+        navLp.setMargins(NebulaHomeView.dp(this, 14), 0, NebulaHomeView.dp(this, 14), NebulaHomeView.dp(this, 12));
+        root.addView(nav, navLp);
+        nav.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int itemWidth = Math.max(1, (right - left - NebulaHomeView.dp(this, 10)) / 4);
+            FrameLayout.LayoutParams highlight = (FrameLayout.LayoutParams) hl.getLayoutParams();
+            if (highlight.width != itemWidth) { highlight.width = itemWidth; hl.setLayoutParams(highlight); }
+            hl.setTranslationX(Math.min(3, Math.max(0, tab)) * itemWidth);
         });
     }
 
     void moveHighlight(int i) {
         int iw = hl.getLayoutParams().width;
-        int visualIndex = Math.min(i, 1);
-        if (Ui.bool("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
+        int visualIndex = Math.max(0, Math.min(3, i));
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
         else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
-        for (int k = 0; k < 2; k++) navTx[k].setTextColor(k == visualIndex ? Ui.WHITE : Ui.SUB);
+        for (int k = 0; k < 4; k++) {
+            navTx[k].setTextColor(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
+            navIc[k].setTint(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
+        }
     }
 
     void recolor() {
-        root.setBackgroundColor(Ui.bg);
+        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         bg.invalidate();
-        hl.setBackground(Ui.accentPill(24));
-        filesView.ad.notifyDataSetChanged();
-        favView.ad.notifyDataSetChanged();
-        listView.ad.notifyDataSetChanged();
+        nav.setBackground(NebulaHomeView.navigationSurface());
+        hl.setBackground(NebulaHomeView.navigationHighlight());
+        moveHighlight(tab);
+        filesView.recolor();
+        favView.recolor();
+        listView.recolor();
         buildHome();
+        buildTools();
         buildSettings();
         if (vault.getChildCount() > 0) buildVault();
         if (recycle.getChildCount() > 0) buildRecycleBin();
@@ -517,17 +658,36 @@ public class MainActivity extends Activity {
     // ---------------- HOME ----------------
     LinearLayout.LayoutParams lpm(int w, int h, int l, int t, int r, int b) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h);
-        p.setMargins(Ui.dp(l), Ui.dp(t), Ui.dp(r), Ui.dp(b));
+        p.setMargins(ToxiVisualSystem.dp(l), ToxiVisualSystem.dp(t), ToxiVisualSystem.dp(r), ToxiVisualSystem.dp(b));
         return p;
     }
 
+    int dialogListHeight() {
+        int available = getResources().getDisplayMetrics().heightPixels - ToxiVisualSystem.TOP_INSET - ToxiVisualSystem.BOTTOM_INSET - ToxiVisualSystem.dp(260);
+        return Math.max(ToxiVisualSystem.dp(180), Math.min(ToxiVisualSystem.dp(520), available));
+    }
+
+    void setLeadingIcon(TextView target, int symbol) {
+        android.graphics.drawable.Drawable icon = ToxiIcons.symbol(symbol, ToxiVisualSystem.ACCENT);
+        int size = ToxiVisualSystem.dp(17);
+        icon.setBounds(0, 0, size, size);
+        target.setCompoundDrawables(icon, null, null, null);
+        target.setCompoundDrawablePadding(ToxiVisualSystem.dp(10));
+    }
+
     TextView section(String t) {
-        TextView v = Ui.tv(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, Ui.WHITE, true);
+        TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setLetterSpacing(0.08f);
+        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setText(t.toUpperCase(java.util.Locale.ROOT));
+        setLeadingIcon(v, ToxiIcons.NEXT);
         v.setGravity(Gravity.CENTER_VERTICAL);
-        v.setPadding(Ui.dp(14), Ui.dp(11), Ui.dp(14), Ui.dp(11));
-        v.setBackground(Ui.glass(16, false));
-        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 18, 16, 8);
+        v.setMinHeight(ToxiVisualSystem.dp(48));
+        v.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11));
+        v.setBackground(ToxiVisualSystem.surface(16, false));
+        ToxiVisualSystem.interactive(v);
+        v.setContentDescription(t + ", collapsed settings section. Double tap to expand.");
+        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 14, 16, 6);
         v.setLayoutParams(p);
         v.setTag("settings_section");
         v.setOnClickListener(view -> {
@@ -544,259 +704,223 @@ public class MainActivity extends Activity {
                 if ("settings_section".equals(child.getTag())) break;
                 child.setVisibility(anyVisible ? View.GONE : View.VISIBLE);
             }
-            v.setText((anyVisible ? "＋  " : "⌄  ") + t.toUpperCase(java.util.Locale.ROOT));
-            Ui.tick(v);
+            v.setText(t.toUpperCase(java.util.Locale.ROOT));
+            setLeadingIcon(v, anyVisible ? ToxiIcons.NEXT : ToxiIcons.DOWN);
+            v.setContentDescription(t + (anyVisible ? ", collapsed settings section. Double tap to expand." : ", expanded settings section. Double tap to collapse."));
+            ToxiVisualSystem.feedback(v);
         });
         return v;
     }
 
-    void buildHome() {
-        home.removeAllViews();
-        Indexer ix = Indexer.I;
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(8), 0);
-        hd.addView(Ui.tv(this, "Your files", 30, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        ImageView settingsBtn = Ui.iconBtn(this, Glyphs.SETTINGS, Ui.WHITE);
-        settingsBtn.setContentDescription("Settings");
-        settingsBtn.setOnClickListener(v -> selectTab(3));
-        hd.addView(settingsBtn, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        home.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(60)));
-        TextView homeSub = Ui.tv(this, "Everything on your device, beautifully organized", 12.5f, Ui.SUB, false);
-        homeSub.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(10));
-        home.addView(homeSub);
-        if (ix.ready && ix.truncated) {
-            TextView limitNotice = Ui.tv(this, "Large library: quick search and overview are limited to the first 150,000 indexed entries. Open folders directly to browse remaining files.", 12, Ui.SUB, false);
-            limitNotice.setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(12));
-            limitNotice.setBackground(Ui.glass(16, false));
-            limitNotice.setContentDescription("Indexing limit notice. Some files may not appear in global search.");
-            home.addView(limitNotice, lpm(-1, -2, 16, 4, 16, 8));
-        }
+    TextView sectionLabel(String t) {
+        TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        v.setLetterSpacing(0.08f);
+        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setGravity(Gravity.CENTER_VERTICAL);
+        v.setMinHeight(ToxiVisualSystem.dp(48));
+        v.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11));
+        v.setBackground(ToxiVisualSystem.surface(16, false));
+        v.setFocusable(false);
+        v.setLayoutParams(lpm(-1, -2, 16, 14, 16, 6));
+        return v;
+    }
 
-        if (!hasAccess()) {
-            LinearLayout c = new LinearLayout(this);
-            c.setOrientation(LinearLayout.VERTICAL);
-            c.setBackground(Ui.glass(24, true));
-            c.setPadding(Ui.dp(20), Ui.dp(20), Ui.dp(20), Ui.dp(20));
-            c.addView(Ui.tv(this, "Allow access to your files", 18, Ui.WHITE, true));
-            TextView d = Ui.tv(this, "Grant \"All files access\" so LiquidFiles can browse, open and manage files on your phone.", 13, Ui.SUB, false);
-            d.setPadding(0, Ui.dp(8), 0, Ui.dp(14));
-            c.addView(d);
-            TextView btn = Ui.tv(this, "Grant access", 14, Ui.WHITE, true);
-            btn.setBackground(Ui.accentPill(22));
-            btn.setGravity(Gravity.CENTER);
-            btn.setPadding(0, Ui.dp(13), 0, Ui.dp(13));
-            btn.setOnClickListener(v -> showStorageAccess());
-            Ui.press(btn);
-            c.addView(btn, new LinearLayout.LayoutParams(-1, -2));
-            home.addView(c, lpm(-1, -2, 16, 12, 16, 0));
+    // Home section labels are deliberately non-interactive; settings groups use section().
+    // Keeping the two helpers separate prevents Home headings from displaying a fake expand affordance.
+    View homeSection(String title) {
+        LinearLayout line = new LinearLayout(this);
+        line.setGravity(Gravity.CENTER_VERTICAL);
+        line.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
+        View marker = new View(this);
+        marker.setBackground(ToxiVisualSystem.accentSurface(3));
+        line.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(16)));
+        TextView label = ToxiVisualSystem.text(this, title, 15, ToxiVisualSystem.TEXT_PRIMARY, true);
+        label.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(12), 0);
+        line.addView(label, new LinearLayout.LayoutParams(-2, -2));
+        View rule = new View(this);
+        rule.setBackgroundColor(Color.argb(48, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)));
+        line.addView(rule, new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(1), 1f));
+        return line;
+    }
+
+    // NEBULA OS owns a separate visual system. The legacy brand resource remains for app-level identity,
+    // while existing file-management screens continue to use ToxiVisualSystem.surface and ToxiFileRow.
+    // ic_toxifiles_brand_mark is intentionally retained outside the new Home composition.
+    void buildHome() { NebulaHomeView.buildHome(this, home); }
+
+    void buildTools() { NebulaHomeView.buildTools(this, tools); }
+
+    void showFavorites() {
+        favView.refreshFavs();
+        showOverlay(favView);
+    }
+
+    void openDownloads() {
+        if (!hasAccess()) { showStorageAccess(); return; }
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (downloads == null || !downloads.isDirectory()) {
+            ToxiVisualSystem.toast(this, "Downloads folder is not available on this device");
             return;
         }
+        selectTab(1);
+        filesView.showDir(downloads);
+    }
 
-        // storage card
-        File root = Environment.getExternalStorageDirectory();
-        long total = root.getTotalSpace(), free = root.getFreeSpace(), used = Math.max(0, total - free);
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.glass(26, true));
-        card.setElevation(Ui.dp(5));
-        card.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(14));
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        int[] cc = {Color.rgb(46, 196, 140), Color.rgb(236, 72, 130), Color.rgb(160, 90, 250), Color.rgb(64, 130, 245), Color.rgb(255, 176, 64)};
-        long[] seg = new long[5];
-        if (ix.ready) {
-            seg[0] = ix.sizes[0]; seg[1] = ix.sizes[1]; seg[2] = ix.sizes[2]; seg[3] = ix.sizes[3];
-            seg[4] = ix.sizes[4] + ix.sizes[5] + ix.sizes[6];
-        }
-        DonutView dv = new DonutView(this);
-        float[] parts = new float[5];
-        if (total > 0) for (int i = 0; i < 5; i++) parts[i] = (float) ((double) seg[i] / total);
-        if (!ix.ready && total > 0) { parts = new float[]{(float) ((double) used / total)}; cc = new int[]{Ui.accent}; }
-        dv.set(parts, cc, total > 0 ? (int) (used * 100 / total) + "%" : "—", "used");
-        top.addView(dv, new LinearLayout.LayoutParams(Ui.dp(104), Ui.dp(104)));
-        LinearLayout info = new LinearLayout(this);
-        info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(Ui.dp(16), 0, 0, 0);
-        info.addView(Ui.tv(this, "Main storage", 17, Ui.WHITE, true));
-        TextView u = Ui.tv(this, Ui.size(used) + " of " + Ui.size(total), 13, Ui.SUB, false);
-        u.setPadding(0, Ui.dp(6), 0, 0);
-        info.addView(u);
-        TextView fr = Ui.tv(this, Ui.size(free) + " free", 14, Ui.accent, true);
-        fr.setPadding(0, Ui.dp(6), 0, 0);
-        info.addView(fr);
-        if (ix.running) {
-            TextView sc = Ui.tv(this, "Scanning files…", 12, Ui.SUB, false);
-            sc.setPadding(0, Ui.dp(8), 0, 0);
-            info.addView(sc);
-        }
-        top.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
-        card.addView(top, new LinearLayout.LayoutParams(-1, -2));
-        if (ix.ready) {
-            LinearLayout lg = new LinearLayout(this);
-            String[] ln = {"Images", "Videos", "Audio", "Docs", "Other"};
-            for (int i = 0; i < 5; i++) {
-                LinearLayout c1 = new LinearLayout(this);
-                c1.setOrientation(LinearLayout.VERTICAL);
-                c1.setGravity(Gravity.CENTER);
-                TextView n = Ui.tv(this, "● " + ln[i], 10.5f, Ui.SUB, false);
-                SpannableHelper.dot(n, cc[i]);
-                TextView sz = Ui.tv(this, Ui.size(seg[i]), 11, Ui.WHITE, true);
-                sz.setPadding(0, Ui.dp(3), 0, 0);
-                c1.addView(n);
-                c1.addView(sz);
-                lg.addView(c1, new LinearLayout.LayoutParams(0, -2, 1f));
+    void launchNebulaTool(int index) {
+        Intent launch = new Intent(this, ToxiToolsActivity.class);
+        launch.putExtra("tool_index", index);
+        startActivity(launch);
+    }
+
+    void showOtherSections() {
+        LinearLayout menu = new LinearLayout(this);
+        menu.setOrientation(LinearLayout.VERTICAL);
+        menu.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10));
+        List<View> actions = new ArrayList<>();
+
+        // Group related destinations under plain, familiar headings. Compatibility markers: APK installer files; System apps; Downloaded apps.
+        String[] groupNames = {"FILES", "APPS", "SETTINGS"};
+        String[] names = {"Other files", "APK files", "System apps", "Downloaded apps", "Settings"};
+        String[] descriptions = {
+                "Browse files outside Images, Videos, Music and Documents",
+                "Find APK installer files saved on this device",
+                "Apps included with your device",
+                "Apps you installed",
+                "Change ToxiFiles preferences"
+        };
+        int[] groupForItem = {0, 0, 1, 1, 2};
+        for (int i = 0; i < names.length; i++) {
+            if (i == 0 || groupForItem[i] != groupForItem[i - 1]) {
+                TextView group = ToxiVisualSystem.text(this, groupNames[groupForItem[i]], 10.5f, ToxiVisualSystem.ACCENT, true);
+                group.setLetterSpacing(0.09f);
+                group.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(i == 0 ? 4 : 14), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(7));
+                menu.addView(group, new LinearLayout.LayoutParams(-1, -2));
             }
-            card.addView(lg, lpm(-1, -2, 0, 14, 0, 0));
+            LinearLayout item = new LinearLayout(this);
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12));
+            item.setBackground(ToxiVisualSystem.surface(16, false));
+            item.setFocusable(true);
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.addView(ToxiVisualSystem.text(this, names[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
+            TextView sub = ToxiVisualSystem.text(this, descriptions[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
+            sub.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
+            labels.addView(sub);
+            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+            ImageView arrow = new ImageView(this);
+            arrow.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
+            arrow.setContentDescription("Open category");
+            item.addView(arrow, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(30)));
+            item.setContentDescription(names[i] + ". " + descriptions[i] + ". Open");
+            ToxiVisualSystem.interactive(item);
+            menu.addView(item, lpm(-1, -2, 0, 3, 0, 3));
+            actions.add(item);
         }
-        card.setContentDescription("Internal storage usage. " + Ui.size(used) + " used of " + Ui.size(total) + ". Tap to open storage analysis.");
-        card.setFocusable(true);
-        card.setOnClickListener(v -> openStorageAnalyzer());
-        home.addView(card, lpm(-1, -2, 16, 6, 16, 0));
 
-        // categories
-        home.addView(section("Quick access"));
-        // Keep every major media type directly accessible from Home, including audio.
-        int[] categoryIndices = {0, 1, 2, 3, 4, 6};
-        int[] categoryKinds = {FileKinds.IMAGE, FileKinds.VIDEO, FileKinds.AUDIO, FileKinds.DOC, FileKinds.ARCHIVE, FileKinds.OTHER};
-        for (int r = 0; r < (categoryIndices.length + 2) / 3; r++) {
-            LinearLayout row = new LinearLayout(this);
-            for (int c = 0; c < 3; c++) {
-                final int position = r * 3 + c;
-                if (position >= categoryIndices.length) {
-                    row.addView(new View(this), new LinearLayout.LayoutParams(0, Ui.dp(1), 1f));
-                    continue;
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(menu);
+        TextView title = ToxiVisualSystem.text(this, "Other", 24, ToxiVisualSystem.TEXT_PRIMARY, true);
+        title.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(4));
+        TextView subtitle = ToxiVisualSystem.text(this, "Other files, APKs, apps and settings", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        subtitle.setPadding(ToxiVisualSystem.dp(20), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
+        LinearLayout outer = new LinearLayout(this);
+        outer.setOrientation(LinearLayout.VERTICAL);
+        outer.addView(title);
+        outer.addView(subtitle);
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).create();
+        for (int i = 0; i < actions.size(); i++) {
+            final int choice = i;
+            actions.get(i).setOnClickListener(v -> {
+                ToxiVisualSystem.feedback(v);
+                dialog.dismiss();
+                switch (choice) {
+                    case 0: openCategory(6); break;
+                    case 1: openApkFiles(); break;
+                    case 2: showInstalledApps(true); break;
+                    case 3: showInstalledApps(false); break;
+                    case 4: selectTab(3); break;
                 }
-                final int cat = categoryIndices[position];
-                LinearLayout t = new LinearLayout(this);
-                t.setOrientation(LinearLayout.VERTICAL);
-                t.setBackground(Ui.glass(20, true));
-                t.setElevation(Ui.dp(3));
-                t.setPadding(Ui.dp(13), Ui.dp(14), Ui.dp(11), Ui.dp(14));
-                ImageView ic = new ImageView(this);
-                ic.setImageDrawable(cat == -1 ? Glyphs.get(Glyphs.SHIELD, Ui.accent) : Glyphs.tile(categoryKinds[position]));
-                Ui.ringIcon(ic);
-                t.addView(ic, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
-                String categoryName = Indexer.CAT_NAMES[cat];
-                String categorySub = ix.ready ? ix.counts[cat] + " files" : "…";
-                TextView nm = Ui.tv(this, categoryName, 14, Ui.WHITE, true);
-                nm.setPadding(0, Ui.dp(12), 0, 0);
-                t.addView(nm);
-                TextView sub = Ui.tv(this, categorySub, 11.5f, Ui.SUB, false);
-                sub.setPadding(0, Ui.dp(3), 0, 0);
-                t.addView(sub);
-                t.setContentDescription(categoryName + ", " + categorySub + ". Open category");
-                t.setFocusable(true);
-                t.setOnClickListener(v -> {
-                    Ui.tick(v);
-                    if (cat == 6) new AlertDialog.Builder(MainActivity.this).setTitle("Other")
-                            .setItems(new String[]{"Other files and APKs", "System Apps", "Downloaded Apps"}, (dialog, which) -> { if (which == 0) openCategory(6); else showInstalledApps(which == 1); }).show();
-                    else openCategory(cat);
-                });
-                Ui.press(t);
-                row.addView(t, lpm(0, -2, c == 0 ? 16 : 4, 0, c == 2 ? 16 : 4, 8));
-                ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
-            }
-            home.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            });
         }
+        dialog.show();
+    }
 
-        // Quick-file shortcuts removed at the user's request; browse through the organized categories or file browser.
-
-        // Recent-files panel intentionally omitted for a cleaner, section-first home screen.
+    void openApkFiles() {
+        Indexer ix = Indexer.I;
+        List<Entry> apks = new ArrayList<>();
+        if (ix.ready && ix.cats.size() > 6) {
+            for (Entry e : ix.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
+        }
+        listView.setList("APK files", apks, false, false);
+        if (!ix.ready) {
+            pendingCat = 6;
+            if (!ix.running) startIndex();
+            ToxiVisualSystem.toast(this, "Scanning storage for APK files\u2026");
+        }
+        showOverlay(listView);
     }
 
     TextView appLaunchButton(String title, String subtitle, int glyph) {
-        TextView v = Ui.tv(this, "", 14, Ui.WHITE, true);
+        TextView v = ToxiVisualSystem.text(this, "", 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setGravity(Gravity.CENTER);
-        v.setBackground(Ui.glass(18, true));
+        v.setBackground(ToxiVisualSystem.surface(18, true));
         v.setText(title + "\n" + subtitle);
-        v.setCompoundDrawablesWithIntrinsicBounds(Glyphs.get(glyph, Ui.accent), null, null, null);
-        v.setCompoundDrawablePadding(Ui.dp(8));
-        v.setOnTouchListener((view, event) -> { if (event.getAction() == android.view.MotionEvent.ACTION_UP) Ui.tick(view); return false; });
+        v.setCompoundDrawablesWithIntrinsicBounds(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT), null, null, null);
+        v.setCompoundDrawablePadding(ToxiVisualSystem.dp(8));
         return v;
     }
 
     void showInstalledApps(boolean system) {
         List<ApplicationInfo> apps = new ArrayList<>();
         PackageManager pm = getPackageManager();
-        Set<String> hidden = Ui.sp.getStringSet("dev_hidden_apps", new HashSet<String>());
+        Set<String> hidden = ToxiVisualSystem.PREFERENCES.getStringSet("dev_hidden_apps", new HashSet<String>());
         for (ApplicationInfo ai : pm.getInstalledApplications(PackageManager.GET_META_DATA)) {
             boolean isSystem = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0 || (ai.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
             if (isSystem == system && !hidden.contains(ai.packageName) && (system || pm.getLaunchIntentForPackage(ai.packageName) != null)) apps.add(ai);
         }
         java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
-        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
+        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(false);
         for (ApplicationInfo ai : apps) {
-            LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(Ui.dp(10), Ui.dp(9), Ui.dp(10), Ui.dp(9)); item.setBackground(Ui.glass(16, false));
+            LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9)); item.setBackground(ToxiVisualSystem.surface(16, false));
             ImageView icon = new ImageView(this); try { icon.setImageDrawable(pm.getApplicationIcon(ai)); } catch (Exception ignored) {}
-            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
-            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(Ui.dp(12), 0, 0, 0);
-            labels.addView(Ui.tv(this, String.valueOf(pm.getApplicationLabel(ai)), 14, Ui.WHITE, true));
-            labels.addView(Ui.tv(this, ai.packageName, 10, Ui.SUB, false));
+            item.addView(icon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(32), ToxiVisualSystem.dp(32)));
+            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
+            labels.addView(ToxiVisualSystem.text(this, String.valueOf(pm.getApplicationLabel(ai)), 14, ToxiVisualSystem.TEXT_PRIMARY, true));
+            labels.addView(ToxiVisualSystem.text(this, ai.packageName, 10, ToxiVisualSystem.TEXT_SECONDARY, false));
             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            item.setOnClickListener(v -> { try { Intent launch = pm.getLaunchIntentForPackage(ai.packageName); if (launch != null) startActivity(launch); else { Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ai.packageName)); startActivity(details); } } catch (Exception e) { Ui.toast(this, "This system component has no launchable screen"); } });
-            Ui.press(item); list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
+            item.setOnClickListener(v -> { try { Intent launch = pm.getLaunchIntentForPackage(ai.packageName); if (launch != null) startActivity(launch); else { Intent details = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ai.packageName)); startActivity(details); } } catch (Exception e) { ToxiVisualSystem.toast(this, "This system component has no launchable screen"); } });
+            ToxiVisualSystem.interactive(item); list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
         }
-        if (apps.isEmpty()) list.addView(Ui.tv(this, "No launchable apps found in this section.", 13, Ui.SUB, false));
+        if (apps.isEmpty()) list.addView(ToxiVisualSystem.text(this, "No launchable apps found in this section.", 13, ToxiVisualSystem.TEXT_SECONDARY, false));
         scroll.addView(list);
-        TextView heading = Ui.tv(this, system ? "System Apps" : "Downloaded Apps", 23, Ui.WHITE, true);
-        heading.setPadding(Ui.dp(18), Ui.dp(18), Ui.dp(18), Ui.dp(8));
-        LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+        TextView heading = ToxiVisualSystem.text(this, system ? "System Apps" : "Downloaded Apps", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
+        heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(8));
+        LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
+        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showBuiltInTools() {
-        String[] tools = {
-                "Built-in image viewer and image grid",
-                "Built-in video player",
-                "Built-in music player",
-                "Built-in text editor",
-                "ZIP archive inspection and extraction",
-                "PDF and document preview"
-        };
-        String[] details = {
-                "Opens image files inside ToxiFiles and displays image collections in a grid.",
-                "Plays supported local video files inside ToxiFiles.",
-                "Plays supported local audio files inside ToxiFiles.",
-                "Edits supported text files up to 1 MB and saves changes to the file.",
-                "Inspects ZIP contents and extracts supported ZIP archives.",
-                "Previews supported PDF and text documents inside the file manager."
-        };
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), Ui.dp(8));
-        int[] icons = {Glyphs.IMAGE, Glyphs.VIDEO, Glyphs.AUDIO, Glyphs.DOC, Glyphs.ARCHIVE, Glyphs.FILE};
+        String[] tools = {"Dual-Pane File Explorer", "Professional Hex Editor", "Folder Comparator", "Character Encoding Converter", "Advanced ZIP Editor", "File Integrity Verification Studio", "Advanced Text Editor"};
+        String[] details = {"Browse two folders side by side and copy, move or delete files.", "Inspect and edit binary data with hexadecimal offsets and ASCII.", "Compare folder trees and verify file content with SHA-256.", "Convert text between UTF-8, UTF-16, ASCII and legacy encodings.", "Rename, delete and add ZIP entries without extracting the archive.", "Calculate MD5, SHA-1, SHA-256, SHA-512 and CRC32.", "Regex search, encoding-aware save, syntax coloring and large-file limits."};
+        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
         for (int i = 0; i < tools.length; i++) {
-            LinearLayout item = new LinearLayout(this);
-            item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(Ui.dp(12), Ui.dp(12), Ui.dp(12), Ui.dp(12));
-            item.setBackground(Ui.glass(16, true));
-            ImageView icon = new ImageView(this);
-            icon.setImageDrawable(Glyphs.get(icons[i], Ui.accent));
-            item.addView(icon, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(30)));
-            LinearLayout copy = new LinearLayout(this);
-            copy.setOrientation(LinearLayout.VERTICAL);
-            copy.setPadding(Ui.dp(12), 0, 0, 0);
-            copy.addView(Ui.tv(this, tools[i], 14, Ui.WHITE, true));
-            TextView sub = Ui.tv(this, details[i], 11.5f, Ui.SUB, false);
-            sub.setPadding(0, Ui.dp(4), 0, 0);
-            copy.addView(sub);
-            item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
+            final int index = i; LinearLayout item = new LinearLayout(this); item.setOrientation(LinearLayout.VERTICAL);
+            item.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13)); item.setBackground(ToxiVisualSystem.surface(16, true));
+            item.addView(ToxiVisualSystem.text(this, tools[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
+            TextView detail = ToxiVisualSystem.text(this, details[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false); detail.setPadding(0, ToxiVisualSystem.dp(4), 0, 0); item.addView(detail);
+            item.setOnClickListener(v -> { Intent launch = new Intent(this, ToxiToolsActivity.class); launch.putExtra("tool_index", index); startActivity(launch); });
             list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
         }
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(list);
-        LinearLayout outer = new LinearLayout(this);
-        outer.setOrientation(LinearLayout.VERTICAL);
-        TextView heading = Ui.tv(this, "ToxiFiles built-in tools", 22, Ui.WHITE, true);
-        heading.setPadding(Ui.dp(18), Ui.dp(18), Ui.dp(18), Ui.dp(6));
-        TextView note = Ui.tv(this, "These features run inside the file manager. This list does not launch or manage your phone's separate apps.", 12, Ui.SUB, false);
-        note.setPadding(Ui.dp(18), 0, Ui.dp(18), Ui.dp(10));
-        outer.addView(heading);
-        outer.addView(note);
-        outer.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(430)));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Close", null).show();
+        ScrollView scroll = new ScrollView(this); scroll.addView(list); LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL);
+        TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
+        outer.addView(heading); outer.addView(ToxiVisualSystem.text(this, "Seven offline utilities integrated into the existing file manager.", 12, ToxiVisualSystem.TEXT_SECONDARY, false)); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
+        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showUsageDiagnostics() {
@@ -811,60 +935,63 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- SETTINGS ----------------
-    View row(int glyph, String title, String sub, View right, View.OnClickListener l) {
-        LinearLayout r = new LinearLayout(this);
-        r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setBackground(Ui.glass(20, true));
-        r.setElevation(Ui.dp(2));
-        r.setPadding(Ui.dp(14), Ui.dp(14), Ui.dp(14), Ui.dp(14));
-        FrameLayout ic = new FrameLayout(this);
-        ic.setBackground(Ui.accentPill(12));
-        ImageView g = new ImageView(this);
-        g.setImageDrawable(Glyphs.get(glyph, Ui.WHITE));
-        Ui.ringIcon(g);
-        ic.addView(g, new FrameLayout.LayoutParams(Ui.dp(22), Ui.dp(22), Gravity.CENTER));
-        r.addView(ic, new LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)));
-        LinearLayout tx = new LinearLayout(this);
-        tx.setOrientation(LinearLayout.VERTICAL);
-        tx.setPadding(Ui.dp(14), 0, Ui.dp(8), 0);
-        TextView titleView = Ui.tv(this, title, 15, Ui.WHITE, false);
+    View row(int glyph, String title, String sub, View right, View.OnClickListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBackground(ToxiVisualSystem.surface(15, false));
+        row.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(11));
+        row.setMinimumHeight(ToxiVisualSystem.dp(sub == null ? 62 : 76));
+        FrameLayout symbolPlate = new FrameLayout(this);
+        symbolPlate.setBackground(ToxiVisualSystem.surface(11, true));
+        ImageView symbol = new ImageView(this);
+        symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT));
+        symbol.setContentDescription(ToxiIcons.accessibilityLabel(glyph));
+        symbolPlate.addView(symbol, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), Gravity.CENTER));
+        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(36), ToxiVisualSystem.dp(36)));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(1), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(1));
+        TextView titleView = ToxiVisualSystem.text(this, title, 14.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         titleView.setMaxLines(2);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        tx.addView(titleView);
-        if (sub != null) {
-            TextView s = Ui.tv(this, sub, 12, Ui.SUB, false);
-            s.setMaxLines(2);
-            s.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            s.setPadding(0, Ui.dp(3), 0, 0);
-            tx.addView(s);
+        copy.addView(titleView);
+        if (sub != null && !sub.isEmpty()) {
+            TextView detail = ToxiVisualSystem.text(this, sub, 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
+            detail.setMaxLines(2);
+            detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams detailLp = new LinearLayout.LayoutParams(-1, -2);
+            detailLp.topMargin = ToxiVisualSystem.dp(4);
+            copy.addView(detail, detailLp);
         }
-        r.addView(tx, new LinearLayout.LayoutParams(0, -2, 1f));
-        if (right != null) r.addView(right);
-        if (l != null) {
-            GlowRing.attach(r);
-            GlowRing.setActive(r, false);
-            r.setOnClickListener(v -> {
-                GlowRing.setActive(r, true);
-                l.onClick(v);
-                r.postDelayed(() -> GlowRing.setActive(r, false), 420L);
-            });
-            Ui.press(r);
+        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
+        if (right != null) {
+            row.addView(right, new LinearLayout.LayoutParams(-2, -2));
+        } else if (listener != null) {
+            ImageView chevron = new ImageView(this);
+            chevron.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
+            chevron.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+            row.addView(chevron, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(28)));
         }
-        return r;
+        if (listener != null) {
+            row.setOnClickListener(view -> { ToxiVisualSystem.feedback(view); listener.onClick(view); });
+            ToxiVisualSystem.interactive(row);
+        }
+        return row;
     }
 
     Switch sw(final String key, boolean def, final Runnable onChange) {
         Switch s = new Switch(this);
-        s.setChecked(Ui.bool(key, def));
-        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Ui.accent, Color.rgb(200, 205, 215)}));
-        s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(Ui.accent), Color.green(Ui.accent), Color.blue(Ui.accent)), Color.argb(90, 255, 255, 255)}));
-        GlowRing.attach(s);
-        GlowRing.setActive(s, false);
+        s.setChecked(ToxiVisualSystem.booleanPreference(key, def));
+        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.ACCENT, Color.rgb(200, 205, 215)}));
+        s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)), Color.argb(90, 255, 255, 255)}));
+        ToxiMotion.attach(s);
+        ToxiMotion.setActive(s, false);
         s.setOnCheckedChangeListener((b, on) -> {
-            GlowRing.setActive(s, true);
-            Ui.set(key, on);
+            ToxiMotion.setActive(s, true);
+            ToxiVisualSystem.setBooleanPreference(key, on);
             if (onChange != null) onChange.run();
-            s.postDelayed(() -> GlowRing.setActive(s, false), 420L);
+            s.postDelayed(() -> ToxiMotion.setActive(s, false), 420L);
         });
         return s;
     }
@@ -874,106 +1001,158 @@ public class MainActivity extends Activity {
         return row(glyph, title, sub, s, v -> s.toggle());
     }
 
+    void addDynamicIslandSettings() {
+        final android.content.SharedPreferences p = DynamicIslandView.preferences(this);
+        Switch enabled = new Switch(this); enabled.setChecked(p.getBoolean("enabled",true));
+        enabled.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean("enabled",on).apply();if(dynamicIsland!=null)dynamicIsland.setEnabledFromSettings();});
+        settings.addView(row(ToxiIcons.SPARKLE,"Enable Dynamic Island","Show the draggable, theme-linked activity capsule",enabled,v->enabled.toggle()),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(ToxiIcons.PALETTE,"Island accent treatment",new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"}[Math.max(0,Math.min(3,p.getInt("palette",0)))],null,v->new AlertDialog.Builder(this).setTitle("Island accent treatment").setSingleChoiceItems(new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"},p.getInt("palette",0),(d,w)->{p.edit().putInt("palette",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
+        addIslandSlider(p,"Accent edge strength","glow",0,100,65);
+        addIslandSlider(p,"Transparency","transparency",80,255,225);
+        addIslandSlider(p,"Expansion transition speed","speed",90,420,180);
+        settings.addView(row(ToxiIcons.INFO,"Capsule size",p.getInt("size",0)==0?"Compact":"Large",null,v->new AlertDialog.Builder(this).setTitle("Capsule size").setSingleChoiceItems(new String[]{"Compact","Large"},p.getInt("size",0),(d,w)->{p.edit().putInt("size",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(ToxiIcons.TUNE,"Position alignment","Choose an edge or drag anywhere",null,v->new AlertDialog.Builder(this).setTitle("Island alignment").setItems(new String[]{"Left edge","Center","Right edge"},(d,w)->{if(dynamicIsland!=null)dynamicIsland.align(w);else p.edit().putFloat("x",w==0?0f:w==1?0.5f:1f).apply();}).show()),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show file operations","show_operations",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show video playback","show_playback",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Show storage scanning","show_scan",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Haptic feedback","haptics",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(islandSwitch(p,"Automatic activity expansion","auto_expand",true),lpm(-1,-2,16,0,16,8));
+        settings.addView(row(ToxiIcons.REFRESH,"Reset Dynamic Island preferences","Restore its default appearance and position",null,v->new AlertDialog.Builder(this).setTitle("Reset Dynamic Island?").setMessage("Only Dynamic Island preferences will be reset.").setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->{p.edit().clear().apply();if(dynamicIsland!=null){dynamicIsland.setEnabledFromSettings();dynamicIsland.refreshStyle();}buildSettings();}).show()),lpm(-1,-2,16,0,16,8));
+    }
+    View islandSwitch(android.content.SharedPreferences p,String title,String key,boolean def){Switch sw=new Switch(this);sw.setChecked(p.getBoolean(key,def));sw.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean(key,on).apply();if(dynamicIsland!=null)dynamicIsland.refreshStyle();});return row(ToxiIcons.SPARKLE,title,null,sw,v->sw.toggle());}
+    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(10));box.setBackground(ToxiVisualSystem.surface(14,false));TextView label=ToxiVisualSystem.text(this,title+" · "+p.getInt(key,def),13,ToxiVisualSystem.TEXT_PRIMARY,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(this);seek.setProgressTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));seek.setProgressBackgroundTintList(ColorStateList.valueOf(ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]));seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" · "+n);if(dynamicIsland!=null)dynamicIsland.refreshStyle();}});box.addView(seek);settings.addView(box,lpm(-1,-2,16,0,16,8));}
+
     void buildSettings() {
         settings.removeAllViews();
-        TextView t = Ui.tv(this, "Settings", 32, Ui.WHITE, true);
-        t.setPadding(Ui.dp(20), Ui.dp(18), Ui.dp(20), Ui.dp(2));
-        settings.addView(t);
+        LinearLayout settingsMasthead = new LinearLayout(this);
+        settingsMasthead.setGravity(Gravity.CENTER_VERTICAL);
+        settingsMasthead.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
+        ImageView settingsMark = new ImageView(this);
+        settingsMark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
+        LinearLayout settingsTitleBlock = new LinearLayout(this);
+        settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
+        settingsTitleBlock.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
+        TextView t = ToxiVisualSystem.text(this, "Control center", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
+        settingsTitleBlock.addView(t);
+        TextView settingsEyebrow = ToxiVisualSystem.text(this, "PERSONALIZE YOUR WORKSPACE", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        settingsEyebrow.setLetterSpacing(0.11f);
+        LinearLayout.LayoutParams eyebrowLp = new LinearLayout.LayoutParams(-2, -2);
+        eyebrowLp.topMargin = ToxiVisualSystem.dp(4);
+        settingsTitleBlock.addView(settingsEyebrow, eyebrowLp);
+        settingsMasthead.addView(settingsTitleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
+        settings.addView(settingsMasthead);
         t.setOnClickListener(v -> {
-            int taps = Ui.sp.getInt("developer_unlock_taps", 0) + 1;
+            int taps = ToxiVisualSystem.PREFERENCES.getInt("developer_unlock_taps", 0) + 1;
             if (taps >= 7) {
-                Ui.sp.edit().putBoolean("developer_options_unlocked", true).putInt("developer_unlock_taps", 0).apply();
-                Ui.toast(this, "Developer options unlocked");
+                ToxiVisualSystem.PREFERENCES.edit().putBoolean("developer_options_unlocked", true).putInt("developer_unlock_taps", 0).apply();
+                ToxiVisualSystem.toast(this, "Developer options unlocked");
                 buildSettings();
             } else {
-                Ui.sp.edit().putInt("developer_unlock_taps", taps).apply();
-                if (taps >= 4) Ui.toast(this, (7 - taps) + " more taps to unlock developer options");
+                ToxiVisualSystem.PREFERENCES.edit().putInt("developer_unlock_taps", taps).apply();
+                if (taps >= 4) ToxiVisualSystem.toast(this, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = Ui.tv(this, "Make LiquidFiles work your way", 13, Ui.SUB, false);
-        intro.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(8));
+        TextView intro = ToxiVisualSystem.text(this, "Shape the way your files are organized.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        intro.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
         settings.addView(intro);
-        TextView hint = Ui.tv(this, "Choose a section to reveal its controls", 11.5f, Ui.accent, false);
-        hint.setPadding(Ui.dp(22), 0, Ui.dp(20), Ui.dp(4));
+        TextView hint = ToxiVisualSystem.text(this, "Select a category to reveal its controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
+        hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
         settings.addView(hint);
-
         settings.addView(section("Appearance"));
-        settings.addView(row(Glyphs.PALETTE, "Theme", Ui.THEMES[Ui.theme], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[Ui.sp.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SUN, "Light mode", "Switches panels, text, and system dialogs for a bright background", "light", false, () -> { Ui.setLight(Ui.bool("light", false), true); recreate(); }), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SPARKLE, "Background blur", "Soft frosted glass look (Android 12+)", "blur", true, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[ToxiVisualSystem.PREFERENCES.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Files"));
-        settings.addView(switchRow(Glyphs.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.OPEN, "Open files inside the app", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.TRASH, "Confirm before deleting", null, "confirm", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Dynamic Island"));
+        addDynamicIslandSettings();
 
-        settings.addView(section("Storage"));
-        settings.addView(row(Glyphs.DATABASE, "All files access", hasAccess() ? "Allowed" : "Not allowed — tap to fix", null, v -> { if (!hasAccess()) showStorageAccess(); }), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.REFRESH, "Rescan storage", "Refresh categories, recents and search", null, v -> { Indexer.I.dirty = true; startIndex(); Ui.toast(this, "Scanning…"); }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Files & Folders"));
+        settings.addView(switchRow(ToxiIcons.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(ToxiIcons.OPEN, "Open files in ToxiFiles", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(ToxiIcons.TRASH, "Confirm before deleting", null, "confirm", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
+
+        settings.addView(section("Storage Access"));
+        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed · manage access" : "Not allowed · tap to fix", null, v -> {
+            if (!hasAccess()) { showStorageAccess(); return; }
+            try {
+                Intent manage = Build.VERSION.SDK_INT >= 30
+                        ? new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName()))
+                        : new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                startActivity(manage);
+            } catch (Exception e) { ToxiVisualSystem.toast(this, "Open Android Settings > Apps > ToxiFiles > Permissions"); }
+        }), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Recycle Bin"));
-        settings.addView(switchRow(Glyphs.TRASH, "Use Recycle Bin", "Deleted items are kept here before being removed for good", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(ToxiIcons.TRASH, "Move deleted files to Recycle Bin", "Keep deleted files here before permanent removal", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
         int binCount = RecycleBin.list(this).size();
-        settings.addView(row(Glyphs.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " • auto-removed after " + Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.TRASH, "Keep deleted items for", Ui.sp.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " \u2022 auto-removed after " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.TRASH, "Recycle Bin retention", ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("App Lock"));
-        settings.addView(row(Glyphs.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(Glyphs.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
-            if (Ui.bool("applock_on", false) && !AppLock.hasPin(this)) { Ui.toast(this, "Set an App Lock PIN first"); Ui.set("applock_on", false); buildSettings(); }
+        settings.addView(row(ToxiIcons.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(switchRow(ToxiIcons.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
+            if (ToxiVisualSystem.booleanPreference("applock_on", false) && !AppLock.hasPin(this)) { ToxiVisualSystem.toast(this, "Set an App Lock PIN first"); ToxiVisualSystem.setBooleanPreference("applock_on", false); buildSettings(); }
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        String defFolder = Ui.sp.getString("default_folder", null);
-        settings.addView(row(Glyphs.FOLDER, "Default start folder", defFolder != null ? defFolder : "Internal storage root (use ⋮ in Files to set another)", null, v -> {
-            if (defFolder == null) { Ui.toast(this, "Open a folder, then use ⋮ → Set as default start folder"); return; }
+        String defFolder = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
+        settings.addView(row(ToxiIcons.FOLDER, "Starting folder", defFolder != null ? defFolder : "Internal storage root (choose a folder in Files to set another)", null, v -> {
+            if (defFolder == null) { ToxiVisualSystem.toast(this, "Open a folder in Files, then choose Set as default start folder from its action menu"); return; }
             new AlertDialog.Builder(this).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
                     .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Reset", (d, w) -> { Ui.sp.edit().remove("default_folder").apply(); buildSettings(); }).show();
+                    .setPositiveButton("Reset", (d, w) -> { ToxiVisualSystem.PREFERENCES.edit().remove("default_folder").apply(); buildSettings(); }).show();
         }), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Storage Analysis"));
-        settings.addView(row(Glyphs.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Offline & Privacy"));
-        settings.addView(row(Glyphs.SHIELD, "Privacy and connectivity audit", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.ANALYTICS, "Crash logs & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Vault"));
-        settings.addView(row(Glyphs.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("Secure Vault"));
+        settings.addView(row(ToxiIcons.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
 
         settings.addView(section("Wi-Fi Transfer"));
-        settings.addView(row(Glyphs.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(Glyphs.WIFI, "Send via Wi-Fi", "Pick files first: select in Files, then ⋮ → Send via Wi-Fi…", null, v -> Ui.toast(this, "Select files in Files tab first, then use ⋮ → Send via Wi-Fi…")), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(row(ToxiIcons.WIFI, "Send via Wi-Fi", "Select files in Files, then choose Send via Wi-Fi from the file action menu", null, v -> ToxiVisualSystem.toast(this, "Select files in Files first, then choose Send via Wi-Fi from the file action menu")), lpm(-1, -2, 16, 0, 16, 8));
 
-        settings.addView(section("Other storage"));
-        settings.addView(row(Glyphs.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
+        settings.addView(section("SD Card & USB Storage"));
+        settings.addView(row(ToxiIcons.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
 
 
-        settings.addView(section("About"));
-        settings.addView(row(Glyphs.SPARKLE, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 8));
-
-        if (Ui.bool("developer_options_unlocked", false)) {
+        if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {
             settings.addView(section("Developer options"));
-            settings.addView(row(Glyphs.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(Glyphs.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(Glyphs.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
-            TextView backupHeading = Ui.tv(this, "Backup & Restore", 14, Ui.accent, true);
-            backupHeading.setPadding(Ui.dp(8), Ui.dp(12), 0, Ui.dp(2));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Developer Studio", "12 offline tools for source, APK, database, binary and asset inspection", null, v -> { if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) startActivity(new Intent(this, DeveloperStudioActivity.class)); }), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(section("Advanced tools"));
+            settings.addView(switchRow(ToxiIcons.SPARKLE, "Background blur", "Can affect performance on some devices", "blur", false, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(section("Storage Tools"));
+            settings.addView(row(ToxiIcons.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
+
+            settings.addView(section("Privacy & Diagnostics"));
+            settings.addView(row(ToxiIcons.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
+            // Former label: Crash logs & diagnostics.
+            settings.addView(row(ToxiIcons.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
+
+            settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh the index if file counts look outdated", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(switchRow(ToxiIcons.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(switchRow(ToxiIcons.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
+            TextView backupHeading = ToxiVisualSystem.text(this, "Backup & Restore", 14, ToxiVisualSystem.ACCENT, true);
+            backupHeading.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(2));
             settings.addView(backupHeading);
-            settings.addView(row(Glyphs.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(Glyphs.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(Glyphs.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(Glyphs.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(Glyphs.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(Glyphs.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> showBuiltInTools()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(Glyphs.REFRESH, "Reset developer options", "Hide this section again", null, v -> { Ui.sp.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(switchRow(ToxiIcons.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(switchRow(ToxiIcons.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(switchRow(ToxiIcons.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> showBuiltInTools()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.REFRESH, "Reset developer options", "Hide this section again", null, v -> { ToxiVisualSystem.PREFERENCES.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
         }
+
+        // Keep About at the end of Settings, in its own collapsible section.
+        // This prevents it from sitting above Storage Access or SD Card & USB Storage.
+        settings.addView(section("About"));
+        settings.addView(row(ToxiIcons.INFO, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 12));
 
         // Present settings as clear, collapsible groups instead of one long wall of options.
         // Appearance starts open; every other section is closed until the user selects it.
@@ -985,6 +1164,12 @@ public class MainActivity extends Activity {
                 inSection = true;
                 appearanceSection = child instanceof TextView && ((TextView) child).getText().toString().contains("APPEARANCE");
                 child.setVisibility(View.VISIBLE);
+                if (child instanceof TextView) {
+                    TextView heading = (TextView) child;
+                    String label = heading.getText().toString().replace("+  ", "").replace("-  ", "");
+                    heading.setText((appearanceSection ? "-  " : "+  ") + label);
+                    heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
+                }
             } else if (inSection) {
                 child.setVisibility(appearanceSection ? View.VISIBLE : View.GONE);
             }
@@ -994,7 +1179,7 @@ public class MainActivity extends Activity {
     // ---------------- STORAGE ANALYZER ----------------
     void openStorageAnalyzer() {
         if (!hasAccess()) { showStorageAccess(); return; }
-        Ui.toast(this, "Analyzing storage…");
+        ToxiVisualSystem.toast(this, "Analyzing storage\u2026");
         io.execute(() -> {
             File rootDir = Environment.getExternalStorageDirectory();
             long[] totals = new long[6]; // images, video, audio, documents, archives, other
@@ -1008,10 +1193,10 @@ public class MainActivity extends Activity {
             StringBuilder report = new StringBuilder();
             report.append("Scanned internal shared storage\n\nFiles: ").append(totalFiles[0])
                     .append("\nEstimated file size total: ").append(formatBytes(totalBytes[0])).append("\n\nBy category:\n");
-            for (int i = 0; i < labels.length; i++) report.append(labels[i]).append(": ").append(counts[i]).append(" files • ").append(formatBytes(totals[i])).append("\n");
+            for (int i = 0; i < labels.length; i++) report.append(labels[i]).append(": ").append(counts[i]).append(" files \u2022 ").append(formatBytes(totals[i])).append("\n");
             report.append("\nLargest files found (up to 15):\n");
             int n = Math.min(15, largest.size());
-            for (int i = 0; i < n; i++) report.append("\n").append(formatBytes(largest.get(i).length())).append(" — ").append(largest.get(i).getAbsolutePath());
+            for (int i = 0; i < n; i++) report.append("\n").append(formatBytes(largest.get(i).length())).append(" \u2014 ").append(largest.get(i).getAbsolutePath());
             if (n == 0) report.append("None found.");
             final String result = report.toString();
             runOnUiThread(() -> new AlertDialog.Builder(this).setTitle("Storage analysis")
@@ -1021,13 +1206,14 @@ public class MainActivity extends Activity {
                             Intent share = new Intent(Intent.ACTION_SEND);
                             share.setType("text/plain"); share.putExtra(Intent.EXTRA_TEXT, result);
                             startActivity(Intent.createChooser(share, "Share storage report"));
-                        } catch (Exception ex) { Ui.toast(this, "Unable to share report"); }
+                        } catch (Exception ex) { ToxiVisualSystem.toast(this, "Unable to share report"); }
                     }).show());
         });
     }
 
     void scanStorage(File f, long[] totals, long[] counts, List<File> largest, long[] totalBytes, int[] totalFiles, int depth) {
         if (f == null || depth > 60) return;
+        try { if (java.nio.file.Files.isSymbolicLink(f.toPath())) return; } catch (Exception ignored) { return; }
         try {
             if (f.isDirectory()) {
                 File[] children = f.listFiles();
@@ -1062,14 +1248,14 @@ public class MainActivity extends Activity {
 
     void showPrivacyAudit() {
         String report = "OFFLINE & PRIVACY REVIEW\n\n"
-                + "• File browsing and built-in viewing operate on local files.\n"
-                + "• No account or cloud-sync feature is provided by this app.\n"
-                + "• Wi-Fi transfer is a local-network feature; it requires network permission and both devices on a reachable network. It is not internet cloud storage.\n"
-                + "• All-files access gives broad access to shared storage. Disable it in Android settings when you no longer need it.\n"
-                + "• App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
-                + "• Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
+                + "\u2022 File browsing and built-in viewing operate on local files.\n"
+                + "\u2022 No account or cloud-sync feature is provided by this app.\n"
+                + "\u2022 Wi-Fi transfer is a local-network feature; it requires network permission and both devices on a reachable network. It is not internet cloud storage.\n"
+                + "\u2022 All-files access gives broad access to shared storage. Disable it in Android settings when you no longer need it.\n"
+                + "\u2022 App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
+                + "\u2022 Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
                 + "This is an in-app permission/feature summary, not an independent network-traffic audit. To verify network behavior, inspect the source and test traffic on the device.";
-        new AlertDialog.Builder(this).setTitle("Privacy and connectivity audit")
+        new AlertDialog.Builder(this).setTitle("Privacy & network information")
                 .setMessage(report).setPositiveButton("OK", null).show();
     }
 
@@ -1080,9 +1266,9 @@ public class MainActivity extends Activity {
                 .setView(wrapField(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (d, w) -> {
                     String p = in.getText().toString().trim();
-                    if (p.length() < 4) { Ui.toast(this, "Use at least 4 digits"); return; }
+                    if (p.length() < 4) { ToxiVisualSystem.toast(this, "Use at least 4 digits"); return; }
                     AppLock.setPin(this, p);
-                    Ui.toast(this, "App Lock PIN saved");
+                    ToxiVisualSystem.toast(this, "App Lock PIN saved");
                     buildSettings();
                 }).show();
     }
@@ -1093,25 +1279,25 @@ public class MainActivity extends Activity {
         final android.app.Dialog dlg = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dlg.setCancelable(false);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Ui.bg);
+        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
-        col.setPadding(Ui.dp(32), 0, Ui.dp(32), 0);
-        col.addView(Ui.tv(this, "LiquidFiles is locked", 18, Ui.WHITE, true), lpm(-2, -2, 0, 0, 0, 16));
+        col.setPadding(ToxiVisualSystem.dp(32), 0, ToxiVisualSystem.dp(32), 0);
+        col.addView(ToxiVisualSystem.text(this, "ToxiFiles is locked", 18, ToxiVisualSystem.TEXT_PRIMARY, true), lpm(-2, -2, 0, 0, 0, 16));
         final EditText in = pinField();
         col.addView(wrapField(in), new LinearLayout.LayoutParams(-1, -2));
-        TextView unlockBtn = Ui.tv(this, "Unlock", 16, Ui.accent, true);
+        TextView unlockBtn = ToxiVisualSystem.text(this, "Unlock", 16, ToxiVisualSystem.ACCENT, true);
         unlockBtn.setGravity(Gravity.CENTER);
-        unlockBtn.setBackground(Ui.glass(18, false));
-        unlockBtn.setPadding(0, Ui.dp(14), 0, Ui.dp(14));
-        Ui.press(unlockBtn);
+        unlockBtn.setBackground(ToxiVisualSystem.surface(18, false));
+        unlockBtn.setPadding(0, ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14));
+        ToxiVisualSystem.interactive(unlockBtn);
         unlockBtn.setOnClickListener(v -> {
             if (AppLock.checkPin(this, in.getText().toString().trim())) {
                 unlocked = true; getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE); dlg.dismiss();
             } else {
                 long remaining = AppLock.lockoutRemainingMs(this);
-                Ui.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
+                ToxiVisualSystem.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
             }
         });
         col.addView(unlockBtn, lpm(-1, -2, 0, 20, 0, 0));
@@ -1122,30 +1308,125 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);
     }
 
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
+    private javax.crypto.Cipher createBiometricUnlockCipher() throws Exception {
+        java.security.KeyStore keyStore = java.security.KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        if (keyStore.containsAlias(BIOMETRIC_UNLOCK_KEY_ALIAS)) {
+            try {
+                java.security.Key key = keyStore.getKey(BIOMETRIC_UNLOCK_KEY_ALIAS, null);
+                if (key instanceof javax.crypto.SecretKey) {
+                    javax.crypto.Cipher existing = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+                    existing.init(javax.crypto.Cipher.ENCRYPT_MODE, (javax.crypto.SecretKey) key);
+                    return existing;
+                }
+                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
+            } catch (android.security.keystore.KeyPermanentlyInvalidatedException invalidated) {
+                keyStore.deleteEntry(BIOMETRIC_UNLOCK_KEY_ALIAS);
+            }
+        }
+        android.security.keystore.KeyGenParameterSpec.Builder builder =
+                new android.security.keystore.KeyGenParameterSpec.Builder(
+                        BIOMETRIC_UNLOCK_KEY_ALIAS, android.security.keystore.KeyProperties.PURPOSE_ENCRYPT)
+                        .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setUserAuthenticationRequired(true)
+                        .setInvalidatedByBiometricEnrollment(true);
+        if (Build.VERSION.SDK_INT >= 30) {
+            builder.setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG);
+        } else {
+            builder.setUserAuthenticationValidityDurationSeconds(-1);
+        }
+        javax.crypto.KeyGenerator generator = javax.crypto.KeyGenerator.getInstance(
+                android.security.keystore.KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        generator.init(builder.build());
+        javax.crypto.SecretKey key = generator.generateKey();
+        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key);
+        return cipher;
+    }
+
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
     void tryBiometric(final android.app.Dialog dlg) {
         try {
-            android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
-                    .setTitle("Unlock LiquidFiles")
-                    .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
-                    .build();
-            prompt.authenticate(new android.os.CancellationSignal(), getMainExecutor(),
-                    new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
-                        @Override public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult result) {
-                            unlocked = true;
-                            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-                            dlg.dismiss();
-                        }
-                    });
-        } catch (Exception ignored) { } // no enrolled biometric / unsupported — PIN field stays usable
+            io.execute(() -> {
+                final javax.crypto.Cipher cipher;
+                try {
+                    cipher = createBiometricUnlockCipher();
+                } catch (Exception keystoreFailure) {
+                    android.util.Log.w("ToxiFiles", "Biometric Keystore unavailable; PIN remains available", keystoreFailure);
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
+                    try {
+                        android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
+                                .setTitle("Unlock ToxiFiles")
+                                .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
+                                .build();
+                        prompt.authenticate(new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher),
+                                new android.os.CancellationSignal(), getMainExecutor(),
+                                new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                                    @Override public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult result) {
+                                        if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
+                                        byte[] challenge = new byte[32];
+                                        byte[] proof = null;
+                                        try {
+                                            android.hardware.biometrics.BiometricPrompt.CryptoObject authenticated = result.getCryptoObject();
+                                            if (authenticated == null || authenticated.getCipher() == null) {
+                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is unavailable");
+                                            }
+                                            new java.security.SecureRandom().nextBytes(challenge);
+                                            proof = authenticated.getCipher().doFinal(challenge);
+                                            if (proof == null || proof.length <= challenge.length) {
+                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is invalid");
+                                            }
+                                            unlocked = true;
+                                            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+                                            dlg.dismiss();
+                                        } catch (Exception verificationFailure) {
+                                            android.util.Log.w("ToxiFiles", "Biometric Keystore verification failed; PIN remains available", verificationFailure);
+                                            ToxiVisualSystem.toast(MainActivity.this, "Biometric verification failed. Use PIN.");
+                                        } finally {
+                                            java.util.Arrays.fill(challenge, (byte) 0);
+                                            if (proof != null) java.util.Arrays.fill(proof, (byte) 0);
+                                        }
+                                    }
+                                });
+                    } catch (Exception promptFailure) {
+                        android.util.Log.w("ToxiFiles", "Biometric prompt unavailable; PIN remains available", promptFailure);
+                    }
+                });
+            });
+        } catch (RuntimeException executorFailure) {
+            android.util.Log.w("ToxiFiles", "Biometric setup unavailable; PIN remains available", executorFailure);
+        }
     }
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
-        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
-        Ui.toast(this, "Scanning for duplicates…");
+        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage — try again in a moment"); return; }
+        ToxiVisualSystem.toast(this, "Scanning for duplicates…");
         io.execute(() -> {
-            final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
-            runOnUiThread(() -> { buildDuplicates(groups); showOverlay(dupScroll); });
+            OperationCancellation.Token operationToken = this.cancellation.begin();
+            try {
+                final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    buildDuplicates(groups);
+                    showOverlay(dupScroll);
+                });
+            } catch (IOException scanFailure) {
+                if ("Operation cancelled".equals(scanFailure.getMessage())) return;
+                final String detail = scanFailure.getMessage();
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    ToxiVisualSystem.toast(this, "Duplicate scan failed: "
+                            + (detail == null || detail.trim().isEmpty() ? "a file could not be read" : detail));
+                });
+            } finally {
+                this.cancellation.finish(operationToken);
+            }
         });
     }
 
@@ -1153,33 +1434,34 @@ public class MainActivity extends Activity {
         dup.removeAllViews();
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
-        ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        hd.addView(Ui.tv(this, "Duplicate Files", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        hd.addView(ToxiVisualSystem.text(this, "Duplicate Files", 22, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
+        dup.addView(hd, new LinearLayout.LayoutParams(-1, -2));
 
         if (groups.isEmpty()) {
-            TextView w = Ui.tv(this, "No exact duplicates found", 14, Ui.SUB, false);
-            w.setPadding(Ui.dp(20), Ui.dp(20), 0, 0);
+            TextView w = ToxiVisualSystem.text(this, "No exact duplicates found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
+            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
             dup.addView(w);
             return;
         }
         long reclaimable = 0;
         for (DupFinder.Group g : groups) reclaimable += g.size * (g.files.size() - 1);
-        TextView sum = Ui.tv(this, groups.size() + " duplicate group" + (groups.size() == 1 ? "" : "s") + " — up to " + Ui.size(reclaimable) + " reclaimable", 12, Ui.SUB, false);
-        sum.setPadding(Ui.dp(20), Ui.dp(2), Ui.dp(20), Ui.dp(6));
+        TextView sum = ToxiVisualSystem.text(this, groups.size() + " duplicate group" + (groups.size() == 1 ? "" : "s") + " \u2014 up to " + ToxiVisualSystem.formatSize(reclaimable) + " reclaimable", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        sum.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
         dup.addView(sum);
 
-        TextView bulk = Ui.tv(this, "Move all but the oldest copy to Recycle Bin", 14, Ui.accent, true);
-        bulk.setBackground(Ui.glass(18, false));
-        bulk.setPadding(Ui.dp(16), Ui.dp(12), Ui.dp(16), Ui.dp(12));
+        TextView bulk = ToxiVisualSystem.text(this, "Move all but the oldest copy to Recycle Bin", 14, ToxiVisualSystem.ACCENT, true);
+        bulk.setBackground(ToxiVisualSystem.surface(18, false));
+        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
         bulk.setGravity(Gravity.CENTER);
-        Ui.press(bulk);
+        ToxiVisualSystem.interactive(bulk);
         bulk.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Move duplicates to Recycle Bin?")
-                .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin — they can still be restored from there.")
+                .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin \u2014 they can still be restored from there.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (d, w) -> {
                     List<File> victims = new ArrayList<>();
@@ -1188,22 +1470,22 @@ public class MainActivity extends Activity {
                         for (File f : g.files) if (f.lastModified() < keep.lastModified()) keep = f;
                         for (File f : g.files) if (f != keep) victims.add(f);
                     }
-                    RecycleBin.moveToBin(this, victims, msg -> { Ui.toast(this, msg); afterOps(); openDuplicates(); });
+                    RecycleBin.moveToBin(this, victims, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openDuplicates(); });
                 }).show());
         dup.addView(bulk, lpm(-1, -2, 16, 4, 16, 14));
 
         for (final DupFinder.Group g : groups) {
-            TextView gh = Ui.tv(this, g.files.size() + " copies • " + Ui.size(g.size) + " each", 12, Ui.SUB, true);
-            gh.setPadding(Ui.dp(20), Ui.dp(10), Ui.dp(20), Ui.dp(2));
+            TextView gh = ToxiVisualSystem.text(this, g.files.size() + " copies \u2022 " + ToxiVisualSystem.formatSize(g.size) + " each", 12, ToxiVisualSystem.TEXT_SECONDARY, true);
+            gh.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
             dup.addView(gh);
             for (final File f : g.files) {
                 Entry e = new Entry(f);
-                View rv = Rows.build(this);
-                Rows.H h = (Rows.H) rv.getTag();
-                Rows.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
+                View rv = ToxiFileRow.create(this);
+                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
+                ToxiFileRow.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
                 View.OnClickListener act = v -> new AlertDialog.Builder(this).setTitle("Move to Recycle Bin?").setMessage(f.getAbsolutePath())
                         .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Move", (d, w) -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { Ui.toast(this, msg); afterOps(); openDuplicates(); }))
+                        .setPositiveButton("Move", (d, w) -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openDuplicates(); }))
                         .show();
                 rv.setOnClickListener(act);
                 h.more.setOnClickListener(act);
@@ -1213,12 +1495,12 @@ public class MainActivity extends Activity {
     }
 
     void openCleanup() {
-        if (!Indexer.I.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
-        Ui.toast(this, "Scanning for empty folders…");
+        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
+        ToxiVisualSystem.toast(this, "Scanning for empty folders\u2026");
         io.execute(() -> {
             final List<File> empties = new ArrayList<>();
             for (Entry e : Indexer.I.all) {
-                if (e.dir) { File[] kids = e.f.listFiles(); if (kids == null || kids.length == 0) empties.add(e.f); }
+                if (e.dir) { File[] kids = e.f.listFiles(); if (kids != null && kids.length == 0) empties.add(e.f); }
             }
             runOnUiThread(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
         });
@@ -1228,42 +1510,43 @@ public class MainActivity extends Activity {
         dup.removeAllViews();
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
-        ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        hd.addView(Ui.tv(this, "Empty Folders", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        dup.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        hd.addView(ToxiVisualSystem.text(this, "Empty Folders", 22, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
+        dup.addView(hd, new LinearLayout.LayoutParams(-1, -2));
 
         if (empties.isEmpty()) {
-            TextView w = Ui.tv(this, "No empty folders found", 14, Ui.SUB, false);
-            w.setPadding(Ui.dp(20), Ui.dp(20), 0, 0);
+            TextView w = ToxiVisualSystem.text(this, "No empty folders found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
+            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
             dup.addView(w);
             return;
         }
-        TextView sum = Ui.tv(this, empties.size() + " empty folder" + (empties.size() == 1 ? "" : "s"), 12, Ui.SUB, false);
-        sum.setPadding(Ui.dp(20), Ui.dp(2), Ui.dp(20), Ui.dp(6));
+        TextView sum = ToxiVisualSystem.text(this, empties.size() + " empty folder" + (empties.size() == 1 ? "" : "s"), 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        sum.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
         dup.addView(sum);
 
-        TextView bulk = Ui.tv(this, "Delete all empty folders", 14, Ui.accent, true);
-        bulk.setBackground(Ui.glass(18, false));
-        bulk.setPadding(Ui.dp(16), Ui.dp(12), Ui.dp(16), Ui.dp(12));
+        TextView bulk = ToxiVisualSystem.text(this, "Delete all empty folders", 14, ToxiVisualSystem.ACCENT, true);
+        bulk.setBackground(ToxiVisualSystem.surface(18, false));
+        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
         bulk.setGravity(Gravity.CENTER);
-        Ui.press(bulk);
+        ToxiVisualSystem.interactive(bulk);
         bulk.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Delete " + empties.size() + " empty folders?")
                 .setMessage("They contain nothing, so this goes straight to Recycle Bin, same as any other delete.")
                 .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (d, w) -> RecycleBin.moveToBin(this, empties, msg -> { Ui.toast(this, msg); afterOps(); openCleanup(); }))
+                .setPositiveButton("Delete", (d, w) -> RecycleBin.moveToBin(this, empties, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openCleanup(); }))
                 .show());
         dup.addView(bulk, lpm(-1, -2, 16, 4, 16, 14));
 
         for (final File f : empties) {
             Entry e = new Entry(f);
-            View rv = Rows.build(this);
-            Rows.H h = (Rows.H) rv.getTag();
-            Rows.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
-            View.OnClickListener act = v -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { Ui.toast(this, msg); afterOps(); openCleanup(); });
+            View rv = ToxiFileRow.create(this);
+            ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
+            ToxiFileRow.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
+            View.OnClickListener act = v -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openCleanup(); });
             rv.setOnClickListener(act);
             h.more.setOnClickListener(act);
             dup.addView(rv, new LinearLayout.LayoutParams(-1, -2));
@@ -1273,7 +1556,7 @@ public class MainActivity extends Activity {
     // ---------------- VAULT ----------------
     EditText pinField() {
         EditText in = new EditText(this);
-        GlowRing.watchFocus(in);
+        ToxiMotion.watchFocus(in);
         in.setSingleLine(true);
         in.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
         in.setHint("4+ digit PIN");
@@ -1282,7 +1565,7 @@ public class MainActivity extends Activity {
 
     View wrapField(View v) {
         FrameLayout f = new FrameLayout(this);
-        f.setPadding(Ui.dp(22), Ui.dp(8), Ui.dp(22), 0);
+        f.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(22), 0);
         f.addView(v, new FrameLayout.LayoutParams(-1, -2));
         return f;
     }
@@ -1293,15 +1576,15 @@ public class MainActivity extends Activity {
                 .setView(wrapField(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (d, w) -> {
                     String p = in.getText().toString().trim();
-                    if (p.length() < 4) { Ui.toast(this, "Use at least 4 digits"); return; }
+                    if (p.length() < 4) { ToxiVisualSystem.toast(this, "Use at least 4 digits"); return; }
                     Vault.setPin(this, p);
-                    Ui.toast(this, "Vault PIN saved");
+                    ToxiVisualSystem.toast(this, "Vault PIN saved");
                     buildSettings();
                 }).show();
     }
 
     void promptVaultPin() {
-        if (!Vault.hasPin(this)) { Ui.toast(this, "Set a Vault PIN first"); return; }
+        if (!Vault.hasPin(this)) { ToxiVisualSystem.toast(this, "Set a Vault PIN first"); return; }
         final EditText in = pinField();
         new AlertDialog.Builder(this).setTitle("Enter Vault PIN")
                 .setView(wrapField(in)).setNegativeButton("Cancel", null)
@@ -1309,7 +1592,7 @@ public class MainActivity extends Activity {
                     if (Vault.checkPin(this, in.getText().toString().trim())) { buildVault(); showOverlay(vaultScroll); }
                     else {
                         long remaining = Vault.sp(this).getLong("blocked_until", 0L) - System.currentTimeMillis();
-                        Ui.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
+                        ToxiVisualSystem.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
                     }
                 }).show();
     }
@@ -1318,30 +1601,31 @@ public class MainActivity extends Activity {
         vault.removeAllViews();
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
-        ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         bk.setContentDescription("Back");
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        hd.addView(Ui.tv(this, "Vault", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        hd.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        vault.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        hd.addView(ToxiVisualSystem.text(this, "Vault", 24, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        hd.addView(new View(this), new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
+        vault.addView(hd, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView note = Ui.tv(this, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.", 12, Ui.SUB, false);
-        note.setPadding(Ui.dp(20), Ui.dp(2), Ui.dp(20), Ui.dp(10));
+        TextView note = ToxiVisualSystem.text(this, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
         vault.addView(note);
 
         List<Vault.Item> items = Vault.list(this);
         if (items.isEmpty()) {
-            TextView w = Ui.tv(this, "Vault is empty", 14, Ui.SUB, false);
-            w.setPadding(Ui.dp(20), Ui.dp(20), 0, 0);
+            TextView w = ToxiVisualSystem.text(this, "Vault is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
+            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
             vault.addView(w);
         } else {
             for (final Vault.Item it : items) {
                 Entry e = new Entry(it.file);
-                View rv = Rows.build(this);
-                Rows.H h = (Rows.H) rv.getTag();
-                Rows.bind(h, e, false, false, "from " + it.originalParent.getName());
+                View rv = ToxiFileRow.create(this);
+                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
+                ToxiFileRow.bind(h, e, false, false, "from " + it.originalParent.getName());
                 rv.setOnClickListener(v -> vaultItemMenu(it));
                 h.more.setOnClickListener(v -> vaultItemMenu(it));
                 vault.addView(rv, new LinearLayout.LayoutParams(-1, -2));
@@ -1352,44 +1636,44 @@ public class MainActivity extends Activity {
     void vaultItemMenu(final Vault.Item it) {
         String[] opts = {"Move out of Vault", "Delete forever"};
         new AlertDialog.Builder(this).setTitle(it.file.getName()).setItems(opts, (d, w) -> {
-            if (w == 0) Vault.restoreOut(this, it, msg -> { Ui.toast(this, msg); afterOps(); buildVault(); });
+            if (w == 0) Vault.restoreOut(this, it, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); buildVault(); });
             else new AlertDialog.Builder(this).setTitle("Delete forever?").setMessage("This can't be undone.")
                     .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Delete", (d2, w2) -> Vault.deleteForever(this, it, msg -> { Ui.toast(this, msg); buildVault(); }))
+                    .setPositiveButton("Delete", (d2, w2) -> Vault.deleteForever(this, it, msg -> { ToxiVisualSystem.toast(this, msg); buildVault(); }))
                     .show();
         }).show();
     }
 
     // ---------------- WI-FI TRANSFER ----------------
     void receiveViaWifi() {
-        final AlertDialog waitDlg = new AlertDialog.Builder(this).setTitle("Waiting for sender…")
-                .setMessage("Starting…")
+        final AlertDialog waitDlg = new AlertDialog.Builder(this).setTitle("Waiting for sender\u2026")
+                .setMessage("Starting\u2026")
                 .setNegativeButton("Cancel", (d, w) -> LanTransfer.cancel())
                 .setCancelable(false).show();
         File destDir = new File(Environment.getExternalStorageDirectory(), "Download/LanReceived");
         LanTransfer.receive(destDir, new LanTransfer.Listener() {
             @Override public void onWaiting(String ip, int port, String pairingCode) {
-                runOnUiThread(() -> waitDlg.setMessage("On the sending device, use ⋮ → Send via Wi-Fi… and enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
+                runOnUiThread(() -> waitDlg.setMessage("On the sending device, open the file action menu, choose Send via Wi-Fi, then enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
             }
             @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) {
                 runOnUiThread(() -> {
                     if (waitDlg.isShowing()) waitDlg.dismiss();
                     StringBuilder preview = new StringBuilder();
                     int shown = Math.min(8, names.size());
-                    for (int i = 0; i < shown; i++) preview.append("\n• ").append(names.get(i));
-                    if (names.size() > shown) preview.append("\n…and ").append(names.size() - shown).append(" more");
+                    for (int i = 0; i < shown; i++) preview.append("\n\u2022 ").append(names.get(i));
+                    if (names.size() > shown) preview.append("\n\u2026and ").append(names.size() - shown).append(" more");
                     new AlertDialog.Builder(MainActivity.this).setTitle("Incoming transfer")
-                            .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + Ui.size(totalBytes) + "\n\nFiles:" + preview)
+                            .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + ToxiVisualSystem.formatSize(totalBytes) + "\n\nFiles:" + preview)
                             .setCancelable(false)
                             .setNegativeButton("Decline", (d, w) -> reject.run())
-                            .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receiving…"); })
+                            .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receiving\u2026"); })
                             .show();
                 });
             }
             @Override public void onFileStart(int idx, int total, String name) { runOnUiThread(() -> progress("Receiving " + idx + " of " + total + ": " + name)); }
-            @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); Ui.toast(MainActivity.this, msg); afterOps(); }); }
+            @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); afterOps(); }); }
             @Override public void onError(String msg) {
-                runOnUiThread(() -> { busy(false); if (waitDlg.isShowing()) waitDlg.dismiss(); Ui.toast(MainActivity.this, msg); });
+                runOnUiThread(() -> { busy(false); if (waitDlg.isShowing()) waitDlg.dismiss(); ToxiVisualSystem.toast(MainActivity.this, msg); });
             }
         });
     }
@@ -1397,9 +1681,9 @@ public class MainActivity extends Activity {
     void sendViaWifi(final List<File> files) {
         if (files.isEmpty()) return;
         final EditText in = new EditText(this);
-        GlowRing.watchFocus(in); in.setHint("e.g. 192.168.1.42:52017"); in.setSingleLine(true);
+        ToxiMotion.watchFocus(in); in.setHint("e.g. 192.168.1.42:52017"); in.setSingleLine(true);
         final EditText code = new EditText(this);
-        GlowRing.watchFocus(code); code.setHint("10-character pairing code"); code.setSingleLine(true);
+        ToxiMotion.watchFocus(code); code.setHint("10-character pairing code"); code.setSingleLine(true);
         LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL);
         fields.addView(wrapField(in)); fields.addView(wrapField(code));
         new AlertDialog.Builder(this).setTitle("Send via Wi-Fi")
@@ -1408,16 +1692,16 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Send", (d, w) -> {
                     String raw = in.getText().toString().trim();
                     String pairingCode = code.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
-                    if (raw.isEmpty() || pairingCode.length() != 10) { Ui.toast(this, "Enter the address and 10-character pairing code"); return; }
+                    if (raw.isEmpty() || pairingCode.length() != 10) { ToxiVisualSystem.toast(this, "Enter the address and 10-character pairing code"); return; }
                     String ip = raw.contains(":") ? raw.substring(0, raw.indexOf(':')) : raw;
                     busy(true);
-                    progress("Connecting securely…");
+                    progress("Connecting securely\u2026");
                     LanTransfer.send(ip, pairingCode, files, new LanTransfer.Listener() {
                         @Override public void onWaiting(String ip2, int port, String pairingCode2) { }
                         @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) { }
                         @Override public void onFileStart(int idx, int total, String name) { runOnUiThread(() -> progress("Sending " + idx + " of " + total + ": " + name)); }
-                        @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); Ui.toast(MainActivity.this, msg); }); }
-                        @Override public void onError(String msg) { runOnUiThread(() -> { busy(false); Ui.toast(MainActivity.this, msg); }); }
+                        @Override public void onDone(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
+                        @Override public void onError(String msg) { runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
                     });
                 }).show();
     }
@@ -1427,7 +1711,7 @@ public class MainActivity extends Activity {
         try {
             Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
             startActivityForResult(i, REQ_SAF_TREE);
-        } catch (Exception ex) { Ui.toast(this, "Can't open the storage picker on this device"); }
+        } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open the storage picker on this device"); }
     }
 
     @Override protected void onActivityResult(int rq, int rc, Intent data) {
@@ -1437,7 +1721,7 @@ public class MainActivity extends Activity {
             Uri tree = data.getData();
             if (tree == null) return;
             int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            try { getContentResolver().takePersistableUriPermission(tree, grantedFlags); } catch (Exception ignored) { /* session grant may still work */ }
+            ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);
             safTree = tree;
             getSharedPreferences("lg_storage", MODE_PRIVATE).edit().putString("saf_tree", tree.toString()).putInt("saf_flags", grantedFlags).apply();
             String rootDoc = DocumentsContract.getTreeDocumentId(tree);
@@ -1449,89 +1733,219 @@ public class MainActivity extends Activity {
     }
 
     void copyToSafTree(final List<File> files) {
-        if (safTree == null || files == null || files.isEmpty()) { Ui.toast(this, "Choose an SD/USB destination first"); return; }
+        if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
         final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
-        if (rootDoc == null || !rootDoc.canWrite()) { Ui.toast(this, "This storage location is not writable"); return; }
+        if (rootDoc == null || !rootDoc.canWrite()) { ToxiVisualSystem.toast(this, "This storage location is not writable"); return; }
         busy(true);
         ops.execute(() -> {
-            FileOps.cancelRequested = false;
-            int ok = 0, failed = 0, idx = 0;
-            String error = "";
-            for (File file : files) {
-                if (FileOps.cancelRequested) { failed++; error = "Operation cancelled"; break; }
-                final int current = ++idx;
-                runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
-                try { copyLocalToSaf(file, rootDoc); ok++; }
-                catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
-            }
-            final int copied = ok, failures = failed; final String detail = error;
-            runOnUiThread(() -> {
-                busy(false);
-                Ui.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
-            });
+            OperationCancellation.Token operationToken = this.cancellation.begin();
+            try {
+                int ok = 0, failed = 0, idx = 0;
+                String error = "";
+                for (File file : files) {
+                    if (OperationCancellation.isCancelled()) { failed++; error = "Operation cancelled"; break; }
+                    final int current = ++idx;
+                    runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + files.size() + ": " + file.getName()));
+                    try { copyLocalToSaf(file, rootDoc); ok++; }
+                    catch (Exception ex) { failed++; error = String.valueOf(ex.getMessage()); break; }
+                }
+                final int copied = ok, failures = failed; final String detail = error;
+                runOnUiThread(() -> {
+                    busy(false);
+                    ToxiVisualSystem.toast(this, failures == 0 ? "Copied " + copied + " item" + (copied == 1 ? "" : "s") + " to SD/USB" : "Copied " + copied + "; stopped: " + detail);
+                });
+
+            } finally { this.cancellation.finish(operationToken); }
         });
     }
 
     private void copyLocalToSaf(File source, DocumentFile parent) throws java.io.IOException {
-        FileOps.checkCancelled();
-        if (java.nio.file.Files.isSymbolicLink(source.toPath())) throw new java.io.IOException("Symbolic links cannot be copied to external storage");
-        String base = source.getName(); String candidate = base; int suffix = 1;
-        while (parent.findFile(candidate) != null) {
-            int dot = source.isDirectory() ? -1 : base.lastIndexOf('.');
-            String stem = dot > 0 ? base.substring(0, dot) : base;
-            String ext = dot > 0 ? base.substring(dot) : "";
-            candidate = stem + " (" + suffix++ + ")" + ext;
-        }
-        String mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                android.webkit.MimeTypeMap.getFileExtensionFromUrl(candidate));
-        DocumentFile target = source.isDirectory() ? parent.createDirectory(candidate) : parent.createFile(mime == null ? "application/octet-stream" : mime, candidate);
-        if (target == null) throw new java.io.IOException("Could not create " + candidate + " on external storage");
-        try {
-            if (source.isDirectory()) {
-                File[] children = source.listFiles();
-                if (children == null) throw new java.io.IOException("Can't read folder " + source.getName());
-                for (File child : children) copyLocalToSaf(child, target);
-            } else {
-                try (InputStream in = new java.io.FileInputStream(source); OutputStream out = getContentResolver().openOutputStream(target.getUri(), "w")) {
-                    if (out == null) throw new java.io.IOException("External storage returned no output stream");
-                    byte[] buf = new byte[65536]; int n;
-                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
-                }
-            }
-        } catch (Exception copyError) {
-            deleteSafTree(target);
-            if (copyError instanceof java.io.IOException) throw (java.io.IOException) copyError;
-            throw new java.io.IOException("Copy failed: " + copyError.getMessage(), copyError);
-        }
+        SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);
     }
 
-    private void deleteSafTree(DocumentFile target) {
-        try { if (target.isDirectory()) { DocumentFile[] kids = target.listFiles(); if (kids != null) for (DocumentFile kid : kids) deleteSafTree(kid); } target.delete(); } catch (Exception ignored) { }
+    private void deleteSafTree(DocumentFile target) throws java.io.IOException {
+        SafStorageOperations.deleteTree(target);
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
-        Ui.toast(this, "Loading…");
+        ToxiVisualSystem.toast(this, "Loading…");
         io.execute(() -> {
-            final List<String[]> rows = new ArrayList<>(); // [docId, name, "1" dir / "0" file]
+            final List<String[]> rows = new ArrayList<>();
+            boolean querySucceeded = false;
             try {
                 Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getDocumentId(docUri));
-                Cursor c = getContentResolver().query(children, new String[]{
-                        DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
-                if (c != null) {
-                    while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1), DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
-                    c.close();
+                try (Cursor c = getContentResolver().query(children, new String[]{
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                    if (c != null) {
+                        querySucceeded = true;
+                        while (c.moveToNext()) rows.add(new String[]{c.getString(0), c.getString(1),
+                                DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2)) ? "1" : "0"});
+                    }
                 }
             } catch (Exception ignored) { }
+            final boolean readable = querySucceeded;
             runOnUiThread(() -> {
-                if (rows.isEmpty()) { Ui.toast(this, "Nothing here, or can't read this location"); return; }
+                if (!readable) { ToxiVisualSystem.toast(this, "This storage provider could not read the folder"); return; }
+                if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
-                for (int i = 0; i < rows.size(); i++) names[i] = (rows.get(i)[2].equals("1") ? "📁 " : "") + rows.get(i)[1];
-                new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
-                    String[] r = rows.get(w);
-                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, r[0]);
-                    if (r[2].equals("1")) showSafLevel(tree, childUri, r[1]);
-                    else importSafDoc(childUri, r[1]);
-                }).setNegativeButton("Close", null).show();
+                for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i)[1];
+                AlertDialog listing = new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
+                    String[] row = rows.get(w);
+                    Uri childUri = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
+                    if ("1".equals(row[2])) showSafLevel(tree, childUri, row[1]);
+                    else importSafDoc(childUri, row[1]);
+                }).setNegativeButton("Close", null).create();
+                listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
+                        (parent, view, position, id) -> {
+                            String[] row = rows.get(position);
+                            Uri selected = DocumentsContract.buildDocumentUriUsingTree(tree, row[0]);
+                            showSafDocumentActions(tree, docUri, title, selected, row[1], "1".equals(row[2]));
+                            return true;
+                        }));
+                listing.show();
+            });
+        });
+    }
+
+    private interface SafAction { void run() throws Exception; }
+
+    private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
+                                         String name, boolean directory) {
+        String[] actions = new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
+        new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
+            String action = actions[which];
+            if ("Duplicate here".equals(action)) {
+                runSafAction(tree, parent, title, "Duplicated " + name, () -> {
+                    if (directory) {
+                        DocumentFile source = safDocument(tree, document);
+                        DocumentFile destination = safDocument(tree, parent);
+                        if (source == null || destination == null) {
+                            throw new java.io.IOException("Storage provider returned an invalid copy location");
+                        }
+                        SafStorageOperations.copyDocumentTree(getContentResolver(), source, destination);
+                    } else {
+                        SafStorageOperations.copyDocumentFile(getContentResolver(), tree, document, parent, name);
+                    }
+                });
+            } else if ("Move to folder".equals(action)) {
+                showSafMoveFolderPicker(tree, parent, document, parent, title, name);
+            } else if ("Rename".equals(action)) {
+                EditText input = new EditText(this);
+                input.setSingleLine(true);
+                input.setText(name);
+                input.setSelection(input.length());
+                new AlertDialog.Builder(this).setTitle("Rename document").setView(input)
+                        .setPositiveButton("Rename", (d, w) -> {
+                            String newName = input.getText().toString();
+                            if (name.equals(newName)) return;
+                            runSafAction(tree, parent, title, "Renamed to " + newName,
+                                    () -> SafStorageOperations.renameDocument(getContentResolver(), document, newName));
+                        }).setNegativeButton("Cancel", null).show();
+            } else {
+                new AlertDialog.Builder(this).setTitle("Delete " + name + "?")
+                        .setMessage("This permanently deletes the selected item from the chosen storage provider.")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Delete", (d, w) -> runSafAction(tree, parent, title, "Deleted " + name,
+                                () -> SafStorageOperations.deleteDocument(getContentResolver(), document)))
+                        .show();
+            }
+        }).setNegativeButton("Cancel", null).show();
+    }
+
+    private DocumentFile safDocument(Uri tree, Uri document) throws java.io.IOException {
+        return SafStorageOperations.findDocumentInTree(this, tree, document);
+    }
+
+    private boolean sameSafDocument(Uri first, Uri second) {
+        if (first == null || second == null) return false;
+        try {
+            return DocumentsContract.getDocumentId(first).equals(DocumentsContract.getDocumentId(second));
+        } catch (IllegalArgumentException invalidUri) {
+            return first.equals(second);
+        }
+    }
+
+    private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
+                                         Uri sourceParent, String sourceParentTitle, String sourceName) {
+        io.execute(() -> {
+            final List<String[]> folders = new ArrayList<>();
+            String failure = null;
+            try {
+                Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(
+                        tree, DocumentsContract.getDocumentId(currentFolder));
+                try (Cursor cursor = getContentResolver().query(children, new String[]{
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+                    if (cursor == null) throw new java.io.IOException("Storage provider could not list destination folders");
+                    while (cursor.moveToNext()) {
+                        if (!DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))) continue;
+                        Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
+                        if (sameSafDocument(child, sourceDocument)) continue;
+                        folders.add(new String[]{child.toString(), cursor.getString(1)});
+                    }
+                }
+            } catch (Exception error) {
+                failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+            }
+            final String detail = failure;
+            runOnUiThread(() -> {
+                if (detail != null) {
+                    ToxiVisualSystem.toast(this, "Cannot browse destination folders: " + detail);
+                    return;
+                }
+                boolean canMoveHere = !sameSafDocument(currentFolder, sourceParent);
+                List<String> choices = new ArrayList<>();
+                if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
+                for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  ›");
+                if (choices.isEmpty()) {
+                    ToxiVisualSystem.toast(this, "No other destination folders are available here");
+                    return;
+                }
+                new AlertDialog.Builder(this).setTitle("Move " + sourceName + " to folder")
+                        .setItems(choices.toArray(new String[0]), (dialog, which) -> {
+                            if (canMoveHere && which == 0) {
+                                runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName, () -> {
+                                    DocumentFile source = safDocument(tree, sourceDocument);
+                                    DocumentFile from = safDocument(tree, sourceParent);
+                                    DocumentFile destination = safDocument(tree, currentFolder);
+                                    if (source == null || from == null || destination == null) {
+                                        throw new java.io.IOException("Storage provider returned an invalid move location");
+                                    }
+                                    SafStorageOperations.moveDocumentWithFallback(
+                                            this, getContentResolver(), source, from, destination);
+                                });
+                            } else {
+                                int folderIndex = which - (canMoveHere ? 1 : 0);
+                                String[] selected = folders.get(folderIndex);
+                                showSafMoveFolderPicker(tree, Uri.parse(selected[0]), sourceDocument,
+                                        sourceParent, sourceParentTitle, sourceName);
+                            }
+                        }).setNegativeButton("Cancel", null).show();
+            });
+        });
+    }
+
+    private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
+        busy(true);
+        ops.execute(() -> {
+            OperationCancellation.Token operationToken = cancellation.begin();
+            String error = null;
+            try { action.run(); }
+            catch (Exception failure) {
+                error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+            } finally { cancellation.finish(operationToken); }
+            final String detail = error;
+            runOnUiThread(() -> {
+                busy(false);
+                if (detail == null) {
+                    ToxiVisualSystem.toast(this, successMessage);
+                    showSafLevel(tree, parent, title);
+                } else {
+                    ToxiVisualSystem.toast(this, "Storage operation failed: " + detail);
+                }
             });
         });
     }
@@ -1539,129 +1953,80 @@ public class MainActivity extends Activity {
     void importSafDoc(final Uri doc, final String name) {
         busy(true);
         ops.execute(() -> {
-            FileOps.cancelRequested = false;
-            String msg;
-            File pending = null;
-            File dest = null;
+            OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
-                File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
-                dest = FileOps.unique(download, name);
-                pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
-                try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
-                    if (in == null) throw new java.io.IOException("External storage returned no input stream");
-                    byte[] buf = new byte[65536]; int n;
-                    while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                String msg;
+                File pending = null;
+                File dest = null;
+                try {
+                    File download = new File(Environment.getExternalStorageDirectory(), "Download");
+                    if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
+                    dest = FileOps.unique(download, name);
+                    pending = new File(download, ".toxifiles-import-" + java.util.UUID.randomUUID() + ".part");
+                    try (InputStream in = getContentResolver().openInputStream(doc); OutputStream out = new FileOutputStream(pending)) {
+                        if (in == null) throw new java.io.IOException("External storage returned no input stream");
+                        byte[] buf = new byte[65536]; int n;
+                        while ((n = in.read(buf)) > 0) { FileOps.checkCancelled(); out.write(buf, 0, n); }
+                    }
+                    FileOps.checkCancelled();
+                    try { java.nio.file.Files.move(pending.toPath(), dest.toPath()); } catch (java.io.IOException renameError) { FileOps.copy(pending, dest); pending.delete(); }
+                    msg = "Imported to Download/" + dest.getName();
+                } catch (Exception ex) {
+                    if (pending != null) pending.delete();
+                    msg = "Import failed: " + ex.getMessage();
                 }
-                FileOps.checkCancelled();
-                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
-                msg = "Imported to Download/" + dest.getName();
-            } catch (Exception ex) {
-                if (pending != null) pending.delete();
-                if (dest != null && dest.exists()) dest.delete();
-                msg = "Import failed: " + ex.getMessage();
-            }
-            final String m = msg;
-            runOnUiThread(() -> { busy(false); Ui.toast(this, m); afterOps(); });
+                final String m = msg;
+                runOnUiThread(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
+
+            } finally { this.cancellation.finish(operationToken); }
         });
     }
 
     // ---------------- SETTINGS BACKUP ----------------
     void exportSettings() {
         io.execute(() -> {
-            String msg;
             try {
-                JSONObject o = new JSONObject();
-                for (String key : portableSettingKeys()) {
-                    if (Ui.sp.contains(key)) o.put(key, Ui.sp.getAll().get(key));
-                }
-                File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                if (!download.isDirectory() && !download.mkdirs()) throw new java.io.IOException("Download folder is unavailable");
-                File dest = FileOps.unique(download, "liquidglass_settings.json");
-                File pending = new File(download, ".toxifiles-settings-" + java.util.UUID.randomUUID() + ".part");
-                try (OutputStream out = new FileOutputStream(pending)) { out.write(o.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
-                if (!pending.renameTo(dest)) { FileOps.copy(pending, dest); if (!pending.delete()) pending.deleteOnExit(); }
-                msg = "Saved to Download/" + dest.getName();
-                final File fd = dest;
-                final String exportMessage = msg;
+                final File exported = SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES);
                 runOnUiThread(() -> {
-                    Ui.toast(this, exportMessage);
+                    ToxiVisualSystem.toast(this, "Saved to Download/" + exported.getName());
                     try {
-                        Intent i = new Intent(Intent.ACTION_SEND);
-                        i.setType("application/json");
-                        i.putExtra(Intent.EXTRA_STREAM, FileOps.uri(this, fd));
-                        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(Intent.createChooser(i, "Share settings file"));
+                        Intent share = new Intent(Intent.ACTION_SEND);
+                        share.setType("application/json");
+                        share.putExtra(Intent.EXTRA_STREAM, FileOps.uri(this, exported));
+                        share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(share, "Share settings file"));
                     } catch (Exception ignored) { }
                 });
-                return;
-            } catch (Exception ex) { msg = "Export failed: " + ex.getMessage(); }
-            final String m = msg;
-            runOnUiThread(() -> Ui.toast(this, m));
+            } catch (Exception failure) {
+                final String message = "Export failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
+                runOnUiThread(() -> ToxiVisualSystem.toast(this, message));
+            }
         });
     }
 
     void importSettingsPick() {
         try {
-            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-            i.setType("*/*");
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(Intent.createChooser(i, "Choose settings file"), REQ_IMPORT_SETTINGS);
-        } catch (Exception ex) { Ui.toast(this, "Can't open file picker"); }
-    }
-
-    private static java.util.Set<String> portableSettingKeys() {
-        return new java.util.HashSet<>(java.util.Arrays.asList(
-                "theme", "light", "haptic", "blur", "hidden", "sort", "grid",
-                "font_family", "reduce_motion", "recyclebin_days", "dev_verbose",
-                "dev_debug_toasts", "dev_logging"));
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, "Choose settings file"), REQ_IMPORT_SETTINGS);
+        } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open file picker"); }
     }
 
     void applyImportedSettings(final Uri file) {
         io.execute(() -> {
-            String msg;
+            String message;
             try {
-                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-                try (InputStream in = getContentResolver().openInputStream(file)) {
-                    if (in == null) throw new java.io.IOException("Unable to open settings file");
-                    byte[] buffer = new byte[8192];
-                    int n;
-                    while ((n = in.read(buffer)) != -1) {
-                        if (bytes.size() + n > 1024 * 1024) throw new java.io.IOException("Settings file exceeds the 1 MB limit");
-                        bytes.write(buffer, 0, n);
-                    }
-                }
-                JSONObject o = new JSONObject(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
-                java.util.Set<String> allowed = portableSettingKeys();
-                SharedPreferences.Editor ed = Ui.sp.edit();
-                java.util.Iterator<String> keys = o.keys();
-                while (keys.hasNext()) {
-                    String k = keys.next();
-                    if (!allowed.contains(k)) continue;
-                    Object v = o.get(k);
-                    if ("theme".equals(k) && v instanceof Number) {
-                        int theme = ((Number) v).intValue();
-                        if (theme >= 0 && theme <= 14) ed.putInt(k, theme);
-                    } else if ("font_family".equals(k) && v instanceof Number) {
-                        int font = ((Number) v).intValue();
-                        if (font >= 0 && font <= 3) ed.putInt(k, font);
-                    } else if ("recyclebin_days".equals(k) && v instanceof Number) {
-                        int days = ((Number) v).intValue();
-                        if (days == 7 || days == 14 || days == 30 || days == 60 || days == 90) ed.putInt(k, days);
-                    } else if (v instanceof Boolean) {
-                        ed.putBoolean(k, (Boolean) v);
-                    } else if (v instanceof String && "sort".equals(k)) {
-                        String sort = (String) v;
-                        if (sort.length() <= 32) ed.putString(k, sort);
-                    }
-                }
-                ed.apply();
-                msg = "Settings restored (security settings were not imported)";
-            } catch (Exception ex) { msg = "Import failed: " + ex.getMessage(); }
-            final String m = msg;
+                SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES,
+                        ToxiVisualSystem.THEME_NAMES.length);
+                message = "Settings restored (security settings were not imported)";
+            } catch (Exception failure) {
+                message = "Import failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage());
+            }
+            final String result = message;
             runOnUiThread(() -> {
-                Ui.toast(this, m);
-                Ui.setTheme(Ui.sp.getInt("theme", 11), false);
+                ToxiVisualSystem.toast(this, result);
+                ToxiVisualSystem.applyTheme(ToxiVisualSystem.PREFERENCES.getInt("theme", 0), false);
                 recolor();
                 buildSettings();
             });
@@ -1671,7 +2036,7 @@ public class MainActivity extends Activity {
     // ---------------- LARGEST FILES ----------------
     void openLargest() {
         Indexer ix = Indexer.I;
-        if (!ix.ready) { Ui.toast(this, "Still scanning storage — try again in a moment"); return; }
+        if (!ix.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
         List<Entry> big = new ArrayList<>(ix.all);
         java.util.Collections.sort(big, (x, y) -> Long.compare(y.len, x.len));
         if (big.size() > 300) big = big.subList(0, 300);
@@ -1683,8 +2048,8 @@ public class MainActivity extends Activity {
         final int[] days = {7, 14, 30, 60, 90};
         String[] labels = new String[days.length];
         for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(this).setTitle("Keep deleted items for")
-                .setItems(labels, (d, w) -> { Ui.sp.edit().putInt("recyclebin_days", days[w]).apply(); buildSettings(); })
+        new AlertDialog.Builder(this).setTitle("Recycle Bin retention")
+                .setItems(labels, (d, w) -> { ToxiVisualSystem.PREFERENCES.edit().putInt("recyclebin_days", days[w]).apply(); buildSettings(); })
                 .show();
     }
 
@@ -1695,37 +2060,38 @@ public class MainActivity extends Activity {
         recycle.removeAllViews();
         LinearLayout hd = new LinearLayout(this);
         hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
-        ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        hd.addView(Ui.tv(this, "Recycle Bin", 24, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView emptyBtn = Ui.tv(this, "Empty", 14, Ui.accent, true);
-        emptyBtn.setPadding(Ui.dp(14), Ui.dp(10), Ui.dp(14), Ui.dp(10));
+        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        hd.addView(ToxiVisualSystem.text(this, "Recycle Bin", 24, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView emptyBtn = ToxiVisualSystem.text(this, "Empty", 14, ToxiVisualSystem.ACCENT, true);
+        emptyBtn.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
         emptyBtn.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Empty Recycle Bin?")
                 .setMessage("Every item will be permanently deleted. This can't be undone.")
                 .setNegativeButton("Cancel", null)
-                .setPositiveButton("Empty", (d, w) -> RecycleBin.empty(this, msg -> { Ui.toast(this, msg); buildRecycleBin(); }))
+                .setPositiveButton("Empty", (d, w) -> RecycleBin.empty(this, msg -> { ToxiVisualSystem.toast(this, msg); buildRecycleBin(); }))
                 .show());
-        Ui.press(emptyBtn);
+        ToxiVisualSystem.interactive(emptyBtn);
         hd.addView(emptyBtn, new LinearLayout.LayoutParams(-2, -2));
-        recycle.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
+        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
+        recycle.addView(hd, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView note = Ui.tv(this, "Items are kept for " + Ui.sp.getInt("recyclebin_days", 30) + " days, then removed automatically. Change this in Settings.", 12, Ui.SUB, false);
-        note.setPadding(Ui.dp(20), Ui.dp(2), Ui.dp(20), Ui.dp(10));
+        TextView note = ToxiVisualSystem.text(this, "Items are kept for " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days, then removed automatically. Change this in Settings.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
         recycle.addView(note);
 
         List<RecycleBin.Item> items = RecycleBin.list(this);
         if (items.isEmpty()) {
-            TextView w = Ui.tv(this, "Recycle Bin is empty", 14, Ui.SUB, false);
-            w.setPadding(Ui.dp(20), Ui.dp(20), 0, 0);
+            TextView w = ToxiVisualSystem.text(this, "Recycle Bin is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
+            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
             recycle.addView(w);
         } else {
             for (final RecycleBin.Item it : items) {
                 Entry e = new Entry(it.file);
-                View rv = Rows.build(this);
-                Rows.H h = (Rows.H) rv.getTag();
-                Rows.bind(h, e, false, false, "from " + it.originalParent.getName());
+                View rv = ToxiFileRow.create(this);
+                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
+                ToxiFileRow.bind(h, e, false, false, "from " + it.originalParent.getName());
                 rv.setOnClickListener(v -> recycleItemMenu(it));
                 h.more.setOnClickListener(v -> recycleItemMenu(it));
                 recycle.addView(rv, new LinearLayout.LayoutParams(-1, -2));
@@ -1737,11 +2103,11 @@ public class MainActivity extends Activity {
         String[] opts = {"Restore", "Delete forever"};
         new AlertDialog.Builder(this).setTitle(it.file.getName()).setItems(opts, (d, w) -> {
             if (w == 0) {
-                RecycleBin.restore(this, it, msg -> { Ui.toast(this, msg); afterOps(); buildRecycleBin(); });
+                RecycleBin.restore(this, it, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); buildRecycleBin(); });
             } else {
                 new AlertDialog.Builder(this).setTitle("Delete forever?").setMessage("This can't be undone.")
                         .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Delete", (d2, w2) -> RecycleBin.permanentDelete(this, java.util.Collections.singletonList(it), msg -> { Ui.toast(this, msg); buildRecycleBin(); }))
+                        .setPositiveButton("Delete", (d2, w2) -> RecycleBin.permanentDelete(this, java.util.Collections.singletonList(it), msg -> { ToxiVisualSystem.toast(this, msg); buildRecycleBin(); }))
                         .show();
             }
         }).show();
@@ -1754,8 +2120,8 @@ public class MainActivity extends Activity {
 
     void fontDialog() {
         String[] fonts = {"System Sans", "Rounded", "Serif", "Monospace"};
-        new AlertDialog.Builder(this).setTitle("Font style").setSingleChoiceItems(fonts, Ui.sp.getInt("font_family", 0), (d, which) -> {
-            Ui.sp.edit().putInt("font_family", which).apply();
+        new AlertDialog.Builder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
+            ToxiVisualSystem.PREFERENCES.edit().putInt("font_family", which).apply();
             d.dismiss();
             recreate();
         }).setNegativeButton("Cancel", null).show();
@@ -1771,70 +2137,71 @@ public class MainActivity extends Activity {
         themeScroll.removeAllViews();
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(Ui.dp(18), Ui.dp(24), Ui.dp(18), Ui.dp(112));
+        panel.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(112));
 
-        TextView title = Ui.tv(this, "Liquid Glass Studio", 28, Ui.WHITE, true);
-        title.setPadding(Ui.dp(2), Ui.dp(4), Ui.dp(2), Ui.dp(2));
+        TextView title = ToxiVisualSystem.text(this, "Appearance Lab", 28, ToxiVisualSystem.TEXT_PRIMARY, true);
+        title.setPadding(ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(2));
         panel.addView(title);
-        TextView subtitle = Ui.tv(this, "Choose a finish for your workspace", 13, Ui.SUB, false);
-        subtitle.setPadding(Ui.dp(3), 0, Ui.dp(3), Ui.dp(18)); panel.addView(subtitle);
+        TextView subtitle = ToxiVisualSystem.text(this, "Eight independent color systems. One consistent interface.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        subtitle.setPadding(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(18)); panel.addView(subtitle);
 
         LinearLayout current = new LinearLayout(this);
         current.setGravity(Gravity.CENTER_VERTICAL);
-        current.setPadding(Ui.dp(16), Ui.dp(16), Ui.dp(16), Ui.dp(16));
-        current.setBackground(Ui.glass(24, true));
+        current.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(16));
+        current.setBackground(ToxiVisualSystem.surface(24, true));
         FrameLayout currentIcon = new FrameLayout(this);
-        currentIcon.setBackground(Ui.accentPill(16));
-        TextView currentGlyph = Ui.tv(this, "◈", 25, Ui.WHITE, true); currentGlyph.setGravity(Gravity.CENTER);
+        currentIcon.setBackground(ToxiVisualSystem.accentSurface(16));
+        ImageView currentGlyph = new ImageView(this); currentGlyph.setImageResource(R.drawable.ic_toxifiles_brand_mark); currentGlyph.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7));
         currentIcon.addView(currentGlyph, new FrameLayout.LayoutParams(-1, -1));
-        current.addView(currentIcon, new LinearLayout.LayoutParams(Ui.dp(54), Ui.dp(54)));
+        current.addView(currentIcon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(54), ToxiVisualSystem.dp(54)));
         LinearLayout currentText = new LinearLayout(this); currentText.setOrientation(LinearLayout.VERTICAL);
-        currentText.setPadding(Ui.dp(14), 0, Ui.dp(8), 0);
-        currentText.addView(Ui.tv(this, "CURRENT FINISH", 10, Ui.accent, true));
-        TextView activeName = Ui.tv(this, Ui.THEMES[Ui.theme], 17, Ui.WHITE, true);
-        activeName.setPadding(0, Ui.dp(4), 0, 0); currentText.addView(activeName);
+        currentText.setPadding(ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(8), 0);
+        currentText.addView(ToxiVisualSystem.text(this, "ACTIVE IDENTITY", 10, ToxiVisualSystem.ACCENT, true));
+        TextView activeName = ToxiVisualSystem.text(this, ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], 17, ToxiVisualSystem.TEXT_PRIMARY, true);
+        activeName.setPadding(0, ToxiVisualSystem.dp(4), 0, 0); currentText.addView(activeName);
         current.addView(currentText, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView activeMark = Ui.tv(this, "✓", 22, Ui.accent, true); activeMark.setGravity(Gravity.CENTER);
-        current.addView(activeMark, new LinearLayout.LayoutParams(Ui.dp(30), Ui.dp(42)));
+        ImageView activeMark = new ImageView(this);
+        activeMark.setImageDrawable(ToxiIcons.symbol(ToxiIcons.CHECK, ToxiVisualSystem.ACCENT));
+        activeMark.setContentDescription("Active theme");
+        current.addView(activeMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(30), ToxiVisualSystem.dp(42)));
         panel.addView(current, lpm(-1, -2, 0, 0, 0, 20));
 
-        TextView allLabel = Ui.tv(this, "AVAILABLE FINISHES", 10.5f, Ui.SUB, true);
-        allLabel.setLetterSpacing(0.12f); allLabel.setPadding(Ui.dp(3), 0, 0, Ui.dp(8)); panel.addView(allLabel);
-        String[] marks = {"◈","◉","⬡","◇","✦","✧","◍","◐","◑","▣","⬢","◒","◓","✺","❖"};
-        String[] finishNotes = {"Crystal cyan on pure black", "Warm amber molten glass", "Silver mirror with soft edges", "Emerald prism reflections", "Violet deep-space glass", "Rose quartz gloss", "Arctic teal reflections", "Solar copper glass", "Aqua neon crystal", "Cobalt spectral glass", "Deep jade obsidian", "Smoked titanium", "Ultramarine liquid crystal", "Magenta aurora glass", "Icy blue polished glass"};
-        for (int index = 0; index < Ui.THEMES.length; index++) {
+        TextView allLabel = ToxiVisualSystem.text(this, "AVAILABLE THEMES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        allLabel.setLetterSpacing(0.12f); allLabel.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(8)); panel.addView(allLabel);
+        String[] finishNotes = ToxiVisualSystem.THEME_DESCRIPTIONS;
+        for (int index = 0; index < ToxiVisualSystem.THEME_NAMES.length; index++) {
             final int themeIndex = index;
-            boolean selected = index == Ui.theme;
+            boolean selected = index == ToxiVisualSystem.THEME_INDEX;
             LinearLayout tile = new LinearLayout(this);
             tile.setGravity(Gravity.CENTER_VERTICAL);
-            tile.setPadding(Ui.dp(13), Ui.dp(12), Ui.dp(13), Ui.dp(12));
-            tile.setBackground(selected ? Ui.accentPill(20) : Ui.glass(20, true));
+            tile.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12));
+            tile.setBackground(selected ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, true));
 
             FrameLayout swatch = new FrameLayout(this);
             android.graphics.drawable.GradientDrawable swatchBg = new android.graphics.drawable.GradientDrawable();
-            swatchBg.setColor(Ui.DOTS[index]); swatchBg.setCornerRadius(Ui.dp(14));
-            swatchBg.setStroke(Ui.dp(1), Color.argb(130, 255, 255, 255));
+            swatchBg.setColors(new int[]{ToxiThemeSystem.ACCENTS[index], ToxiThemeSystem.ACCENT_ENDS[index]}); swatchBg.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.TL_BR); swatchBg.setCornerRadius(ToxiVisualSystem.dp(14));
+            swatchBg.setStroke(ToxiVisualSystem.dp(1), Color.argb(130, 255, 255, 255));
             swatch.setBackground(swatchBg);
-            TextView glyph = Ui.tv(this, marks[index], 20, Color.WHITE, true); glyph.setGravity(Gravity.CENTER);
-            swatch.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
-            tile.addView(swatch, new LinearLayout.LayoutParams(Ui.dp(46), Ui.dp(46)));
+            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
 
             LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
-            labels.setPadding(Ui.dp(13), 0, Ui.dp(8), 0);
-            labels.addView(Ui.tv(this, Ui.THEMES[index], 14.5f, Ui.WHITE, selected));
-            TextView desc = Ui.tv(this, selected ? "Currently applied · " + finishNotes[index] : finishNotes[index], 11, Ui.SUB, false);
-            desc.setPadding(0, Ui.dp(3), 0, 0); labels.addView(desc);
+            labels.setPadding(ToxiVisualSystem.dp(13), 0, ToxiVisualSystem.dp(8), 0);
+            labels.addView(ToxiVisualSystem.text(this, ToxiVisualSystem.THEME_NAMES[index], 14.5f, ToxiVisualSystem.TEXT_PRIMARY, selected));
+            TextView desc = ToxiVisualSystem.text(this, selected ? "Currently applied \u00B7 " + ToxiVisualSystem.themeDescription(index) : ToxiVisualSystem.themeDescription(index), 11, ToxiVisualSystem.TEXT_SECONDARY, false);
+            desc.setPadding(0, ToxiVisualSystem.dp(3), 0, 0); labels.addView(desc);
             tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView status = Ui.tv(this, selected ? "✓" : "›", selected ? 20 : 25, selected ? Ui.accent : Ui.SUB, true);
-            status.setGravity(Gravity.CENTER); tile.addView(status, new LinearLayout.LayoutParams(Ui.dp(28), Ui.dp(42)));
+            ImageView status = new ImageView(this);
+            status.setImageDrawable(ToxiIcons.symbol(selected ? ToxiIcons.CHECK : ToxiIcons.NEXT, selected ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_SECONDARY));
+            status.setContentDescription(selected ? "Selected theme" : "Preview theme");
+            tile.addView(status, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(42)));
 
             tile.setOnClickListener(v -> {
-                Ui.tick(v);
-                Ui.setTheme(themeIndex, true);
+                ToxiVisualSystem.feedback(v);
+                ToxiVisualSystem.applyTheme(themeIndex, true);
                 recolor();
                 buildThemeScreen();
             });
-            Ui.press(tile);
+            ToxiVisualSystem.interactive(tile);
             panel.addView(tile, lpm(-1, -2, 0, 0, 0, 8));
         }
         themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
@@ -1847,7 +2214,7 @@ public class MainActivity extends Activity {
         CrashLogger.markPrompted(this, crashTime);
         new AlertDialog.Builder(this)
                 .setTitle("App crash report available")
-                .setMessage("LiquidFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
+                .setMessage("ToxiFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
                 .setPositiveButton("Share report", (d, w) -> shareCrashReport())
                 .setNegativeButton("Later", null)
                 .setNeutralButton("Delete report", (d, w) -> deleteCrashReport())
@@ -1857,11 +2224,11 @@ public class MainActivity extends Activity {
     void showCrashLogOptions() {
         if (!CrashLogger.hasReport(this)) {
             new AlertDialog.Builder(this).setTitle("Crash logs")
-                    .setMessage("No crash report has been captured yet. If the app closes unexpectedly, LiquidFiles will save diagnostic details locally and offer them the next time you open the app.")
+                    .setMessage("No crash report has been captured yet. If the app closes unexpectedly, ToxiFiles will save diagnostic details locally and offer them the next time you open the app.")
                     .setPositiveButton("OK", null).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Crash logs & diagnostics")
+        new AlertDialog.Builder(this).setTitle("Crash reports & diagnostics")
                 .setMessage("A crash report is stored privately inside the app. It includes the exception stack trace, app version, Android version, device model, and crashing thread. Nothing is uploaded automatically.")
                 .setPositiveButton("Share report", (d, w) -> shareCrashReport())
                 .setNegativeButton("Close", null)
@@ -1871,20 +2238,20 @@ public class MainActivity extends Activity {
     void shareCrashReport() {
         File report = CrashLogger.latest(this);
         if (!report.isFile() || report.length() == 0) {
-            Ui.toast(this, "No crash report available");
+            ToxiVisualSystem.toast(this, "No crash report available");
             return;
         }
         try {
             Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", report);
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("text/plain");
-            share.putExtra(Intent.EXTRA_SUBJECT, "LiquidFiles crash report");
+            share.putExtra(Intent.EXTRA_SUBJECT, "ToxiFiles crash report");
             share.putExtra(Intent.EXTRA_STREAM, uri);
             share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             share.setClipData(android.content.ClipData.newUri(getContentResolver(), "Crash report", uri));
             startActivity(Intent.createChooser(share, "Share crash report"));
         } catch (Exception e) {
-            Ui.toast(this, "Could not share crash report");
+            ToxiVisualSystem.toast(this, "Could not share crash report");
         }
     }
 
@@ -1896,208 +2263,30 @@ public class MainActivity extends Activity {
             File[] old = dir.listFiles((d, name) -> name.startsWith("crash-") && name.endsWith(".txt"));
             if (old != null) for (File f : old) try { f.delete(); } catch (Exception ignored) { }
         }
-        if (deleted) Ui.toast(this, "Crash reports deleted");
-        else Ui.toast(this, "Could not delete crash report");
+        if (deleted) ToxiVisualSystem.toast(this, "Crash reports deleted");
+        else ToxiVisualSystem.toast(this, "Could not delete crash report");
     }
 
     void showAbout() {
-        about.removeAllViews();
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(Ui.dp(8), 0, Ui.dp(8), 0);
-        ImageView bk = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
-        bk.setContentDescription("Back");
-        bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        hd.addView(Ui.tv(this, "About ToxiFiles", 22, Ui.WHITE, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        about.addView(hd, new LinearLayout.LayoutParams(-1, Ui.dp(56)));
-
-        LinearLayout hero = new LinearLayout(this);
-        hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setGravity(Gravity.CENTER);
-        hero.setBackground(Ui.glass(28, true));
-        hero.setPadding(Ui.dp(20), Ui.dp(26), Ui.dp(20), Ui.dp(24));
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ic_launcher_foreground);
-        Ui.ringIcon(logo);
-        logo.setBackground(Ui.glass(24, true));
-        logo.setPadding(Ui.dp(6), Ui.dp(6), Ui.dp(6), Ui.dp(6));
-        logo.setContentDescription("ToxiFiles liquid glass app logo");
-        hero.addView(logo, new LinearLayout.LayoutParams(Ui.dp(82), Ui.dp(82)));
-        TextView nm = Ui.tv(this, "ToxiFiles", 25, Ui.WHITE, true);
-        nm.setPadding(0, Ui.dp(14), 0, 0);
-        hero.addView(nm);
-        TextView subtitle = Ui.tv(this, "PREMIUM OFFLINE FILE MANAGER", 11, Ui.SUB, true);
-        subtitle.setLetterSpacing(0.12f);
-        subtitle.setPadding(0, Ui.dp(4), 0, 0);
-        hero.addView(subtitle);
-        TextView vs = Ui.tv(this, versionAndBuild(), 13, Ui.accent, true);
-        vs.setPadding(0, Ui.dp(10), 0, 0);
-        hero.addView(vs);
-        TextView tg = Ui.tv(this, "Your files. Your device. Your control.", 14, Ui.SUB, false);
-        tg.setGravity(Gravity.CENTER);
-        tg.setPadding(0, Ui.dp(10), 0, 0);
-        hero.addView(tg);
-        about.addView(hero, lpm(-1, -2, 16, 8, 16, 12));
-
-        about.addView(section("CREATOR"));
-        about.addView(aboutCard(Glyphs.INFO, "Created by", "CHANDU❤️‍🔥", null), lpm(-1, -2, 16, 0, 16, 8));
-
-        about.addView(section("ABOUT DEVELOPER"));
-        about.addView(aboutCard(Glyphs.INFO, "Facebook", "facebook.com/chand.p.319", "https://www.facebook.com/chand.p.319/"), lpm(-1, -2, 16, 0, 16, 8));
-        about.addView(aboutCard(Glyphs.INFO, "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1?stkn=MWxsNzJhNGpwZzluaA=="), lpm(-1, -2, 16, 0, 16, 8));
-        about.addView(aboutCard(Glyphs.INFO, "Telegram", "t.me/Toxiiii2k23", "https://t.me/Toxiiii2k23"), lpm(-1, -2, 16, 0, 16, 8));
-
-        about.addView(section("PROJECT & COMMUNITY"));
-        about.addView(aboutCard(Glyphs.SPARKLE, "Developer GitHub", "github.com/testingper86-commits", "https://github.com/testingper86-commits"), lpm(-1, -2, 16, 0, 16, 8));
-        about.addView(aboutCard(Glyphs.INFO, "LiquidFiles source project", "View project updates, source and build workflow", "https://github.com/testingper86-commits/LiquidGlassFileManager"), lpm(-1, -2, 16, 0, 16, 8));
-        LinearLayout social = new LinearLayout(this);
-        social.setOrientation(LinearLayout.VERTICAL);
-        social.setBackground(Ui.glass(20, true));
-        social.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        social.addView(Ui.tv(this, "CONNECT & SHARE", 11, Ui.accent, true));
-        TextView socialCopy = Ui.tv(this, "Follow the developer on Facebook, Instagram, Telegram, or GitHub. Links open in your browser or the relevant installed app.", 13, Ui.SUB, false);
-        socialCopy.setPadding(0, Ui.dp(6), 0, Ui.dp(12));
-        social.addView(socialCopy);
-        LinearLayout socialActions = new LinearLayout(this);
-        socialActions.setGravity(Gravity.CENTER_VERTICAL);
-        TextView githubAction = Ui.tv(this, "OPEN GITHUB  ↗", 12, Ui.WHITE, true);
-        githubAction.setGravity(Gravity.CENTER);
-        githubAction.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        githubAction.setBackground(Ui.glass(14, false));
-        githubAction.setOnClickListener(v -> openExternalUrl("https://github.com/testingper86-commits"));
-        socialActions.addView(githubAction, new LinearLayout.LayoutParams(0, -2, 1f));
-        View socialGap = new View(this);
-        socialActions.addView(socialGap, new LinearLayout.LayoutParams(Ui.dp(10), 1));
-        TextView shareAction = Ui.tv(this, "SHARE APP  ↗", 12, Ui.WHITE, true);
-        shareAction.setGravity(Gravity.CENTER);
-        shareAction.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        shareAction.setBackground(Ui.glass(14, false));
-        shareAction.setOnClickListener(v -> {
-            Intent share = new Intent(Intent.ACTION_SEND);
-            share.setType("text/plain");
-            share.putExtra(Intent.EXTRA_SUBJECT, "ToxiFiles");
-            share.putExtra(Intent.EXTRA_TEXT, "ToxiFiles\nYour files. Your device. Your control.\nFacebook: https://www.facebook.com/chand.p.319/\nInstagram: https://www.instagram.com/_chandu_rp_1?stkn=MWxsNzJhNGpwZzluaA==\nTelegram: https://t.me/Toxiiii2k23\nProject: https://github.com/testingper86-commits/LiquidGlassFileManager");
-            startActivity(Intent.createChooser(share, "Share LiquidFiles"));
-        });
-        socialActions.addView(shareAction, new LinearLayout.LayoutParams(0, -2, 1f));
-        social.addView(socialActions);
-        about.addView(social, lpm(-1, -2, 16, 0, 16, 12));
-
-        about.addView(section("APP DETAILS"));
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        details.setBackground(Ui.glass(20, false));
-        details.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        details.addView(Ui.tv(this, "BUILT FOR LOCAL FILE CONTROL", 11, Ui.accent, true));
-        TextView detailText = Ui.tv(this, "Browse and organize files on your device, manage common file actions, and use the built-in viewing tools. LiquidFiles is designed around an offline-first workflow; optional features may require Android permissions or local connectivity. Availability depends on the installed build.", 13, Ui.SUB, false);
-        detailText.setPadding(0, Ui.dp(7), 0, Ui.dp(12));
-        details.addView(detailText);
-        details.addView(aboutDetailRow("Product", "ToxiFiles"));
-        details.addView(aboutDetailRow("Version / build", versionAndBuild()));
-        details.addView(aboutDetailRow("Application ID", getPackageName()));
-        details.addView(aboutDetailRow("Platform", "Android 8.0+ (API 26+)"));
-        about.addView(details, lpm(-1, -2, 16, 0, 16, 12));
-
-        about.addView(section("PRIVACY & OFFLINE USE"));
-        LinearLayout privacy = aboutTextCard(
-                "Files are managed on your device. Core browsing and file operations are designed for local use. The app requests Internet permission for optional local Wi-Fi transfer features; that permission alone does not establish that data is sent to a remote service. No claim of zero network traffic is made here."
-        );
-        about.addView(privacy, lpm(-1, -2, 16, 0, 16, 8));
-
-        about.addView(section("OPEN-SOURCE ACKNOWLEDGEMENTS"));
-        LinearLayout licenses = new LinearLayout(this);
-        licenses.setOrientation(LinearLayout.VERTICAL);
-        licenses.setBackground(Ui.glass(18, false));
-        licenses.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        licenses.addView(Ui.tv(this, "Heroicons — MIT License", 14, Ui.WHITE, true));
-        TextView heroicons = Ui.tv(this, "Bundled outline icon assets are stored locally in the app. Attribution and the license are included with the assets.", 12, Ui.SUB, false);
-        heroicons.setPadding(0, Ui.dp(4), 0, Ui.dp(12));
-        licenses.addView(heroicons);
-        licenses.addView(Ui.tv(this, "AndroidX Core — Apache License 2.0", 14, Ui.WHITE, true));
-        TextView androidx = Ui.tv(this, "The project declares AndroidX Core as a dependency. This summary is not a complete transitive-dependency license report; release packaging should include all required notices.", 12, Ui.SUB, false);
-        androidx.setPadding(0, Ui.dp(4), 0, 0);
-        licenses.addView(androidx);
-        about.addView(licenses, lpm(-1, -2, 16, 0, 16, 8));
-
-        TextView footer = Ui.tv(this, "ToxiFiles", 12, Ui.SUB, false);
-        footer.setGravity(Gravity.CENTER);
-        footer.setPadding(0, Ui.dp(16), 0, Ui.dp(24));
-        about.addView(footer, new LinearLayout.LayoutParams(-1, -2));
+        aboutScroll.setFillViewport(false);
+        aboutScroll.setClipToPadding(false);
+        AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
+        aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
         showOverlay(aboutScroll);
-    }
-
-    void openExternalUrl(String url) {
-        try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(i);
-        } catch (Exception e) {
-            Ui.toast(this, "Could not open link");
-        }
-    }
-
-    View aboutDetailRow(String label, String value) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, Ui.dp(7), 0, Ui.dp(7));
-        TextView left = Ui.tv(this, label, 12, Ui.SUB, false);
-        row.addView(left, new LinearLayout.LayoutParams(0, -2, 0.9f));
-        TextView right = Ui.tv(this, value, 12, Ui.WHITE, true);
-        right.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        row.addView(right, new LinearLayout.LayoutParams(0, -2, 1.1f));
-        return row;
-    }
-
-    String versionAndBuild() {
-        try {
-            android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-            long code = android.os.Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
-            return "Version " + info.versionName + "  ·  Build " + code;
-        } catch (Exception e) { return versionName(); }
-    }
-
-    LinearLayout aboutCard(int icon, String title, String detail, String url) {
-        LinearLayout card = new LinearLayout(this);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setBackground(Ui.glass(18, false));
-        card.setPadding(Ui.dp(14), Ui.dp(13), Ui.dp(14), Ui.dp(13));
-        ImageView iv = Ui.iconBtn(this, icon, Ui.accent);
-        iv.setContentDescription(title);
-        card.addView(iv, new LinearLayout.LayoutParams(Ui.dp(38), Ui.dp(38)));
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.setPadding(Ui.dp(10), 0, Ui.dp(8), 0);
-        texts.addView(Ui.tv(this, title, 14, Ui.WHITE, true));
-        TextView d = Ui.tv(this, detail, 12, Ui.SUB, false);
-        d.setPadding(0, Ui.dp(3), 0, 0);
-        texts.addView(d);
-        card.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
-        if (url != null) {
-            ImageView ext = Ui.iconBtn(this, Glyphs.OPEN, Ui.SUB);
-            ext.setContentDescription("Open " + title);
-            card.addView(ext, new LinearLayout.LayoutParams(Ui.dp(32), Ui.dp(38)));
-            View.OnClickListener open = v -> {
-                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))); }
-                catch (Exception e) { Ui.toast(this, "Could not open project link"); }
-            };
-            card.setOnClickListener(open);
-            ext.setOnClickListener(open);
-        }
-        return card;
-    }
-
-    LinearLayout aboutTextCard(String text) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.glass(18, false));
-        card.setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(14));
-        card.addView(Ui.tv(this, text, 13, Ui.SUB, false));
-        return card;
     }
 
     // ---------------- background + donut ----------------
     static final class BgView extends View {
-        BgView(android.content.Context c) { super(c); setLayerType(LAYER_TYPE_HARDWARE, null); applyBlur(); }
+        final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        BgView(android.content.Context c) {
+            super(c);
+            setLayerType(LAYER_TYPE_NONE, null);
+            setWillNotDraw(false);
+            gridPaint.setStyle(Paint.Style.STROKE);
+            markerPaint.setStyle(Paint.Style.STROKE);
+            applyBlur();
+        }
 
         void applyBlur() {
             if (Build.VERSION.SDK_INT >= 31) {
@@ -2106,23 +2295,27 @@ public class MainActivity extends Activity {
                     android.app.ActivityManager am = (android.app.ActivityManager) getContext().getSystemService(android.content.Context.ACTIVITY_SERVICE);
                     lowRam = am != null && am.isLowRamDevice();
                 } catch (Exception ignored) { }
-                if (Ui.bool("blur", true) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(Ui.dp(24), Ui.dp(24), Shader.TileMode.CLAMP));
+                if (ToxiVisualSystem.booleanPreference("blur", false) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(10), Shader.TileMode.CLAMP));
                 else setRenderEffect(null);
             }
         }
 
-        @Override protected void onDraw(Canvas c) {
-            int w = getWidth(), h = getHeight();
-            c.drawColor(Ui.bg);
-            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            blob(c, p, w * 0.12f, h * 0.10f, w * 0.85f, Ui.blob1);
-            blob(c, p, w * 0.98f, h * 0.52f, w * 0.95f, Ui.blob2);
-            blob(c, p, w * 0.25f, h * 1.00f, w * 0.85f, Ui.blob3);
-        }
-
-        void blob(Canvas c, Paint p, float x, float y, float r, int col) {
-            p.setShader(new RadialGradient(x, y, r, col, Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawCircle(x, y, r, p);
+        @Override protected void onDraw(Canvas canvas) {
+            int width = getWidth(), height = getHeight();
+            canvas.drawColor(ToxiVisualSystem.CANVAS);
+            int accent = ToxiVisualSystem.ACCENT;
+            gridPaint.setColor(Color.argb(10, Color.red(accent), Color.green(accent), Color.blue(accent)));
+            gridPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(0.65f)));
+            float step = ToxiVisualSystem.dp(48);
+            for (float x = step * 0.5f; x < width; x += step) canvas.drawLine(x, 0, x, height, gridPaint);
+            for (float y = step * 0.5f; y < height; y += step) canvas.drawLine(0, y, width, y, gridPaint);
+            markerPaint.setColor(Color.argb(34, Color.red(accent), Color.green(accent), Color.blue(accent)));
+            markerPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(1.1f)));
+            float inset = ToxiVisualSystem.dp(20), mark = ToxiVisualSystem.dp(38);
+            canvas.drawLine(inset, inset, inset + mark, inset, markerPaint);
+            canvas.drawLine(inset, inset, inset, inset + mark, markerPaint);
+            canvas.drawLine(width - inset - mark, height - inset, width - inset, height - inset, markerPaint);
+            canvas.drawLine(width - inset, height - inset - mark, width - inset, height - inset, markerPaint);
         }
     }
 
@@ -2136,17 +2329,17 @@ public class MainActivity extends Activity {
         DonutView(android.content.Context c) {
             super(c);
             t.setTextAlign(Paint.Align.CENTER);
-            t.setColor(Ui.WHITE);
+            t.setColor(ToxiVisualSystem.TEXT_PRIMARY);
         }
 
         void set(float[] pa, int[] co, String b, String s) { parts = pa; cols = co; big = b; small = s; invalidate(); }
 
         @Override protected void onDraw(Canvas c) {
-            float sw = Ui.dp(11), pad = sw / 2f + Ui.dp(2);
+            float sw = ToxiVisualSystem.dp(11), pad = sw / 2f + ToxiVisualSystem.dp(2);
             r.set(pad, pad, getWidth() - pad, getHeight() - pad);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(sw);
-            p.setColor(Ui.light ? Color.argb(45, 20, 22, 30) : Color.argb(45, 255, 255, 255));
+            p.setColor(ToxiVisualSystem.LIGHT_MODE ? Color.argb(45, 20, 22, 30) : Color.argb(45, 255, 255, 255));
             c.drawArc(r, 0, 360, false, p);
             float start = -90;
             for (int i = 0; i < parts.length && i < cols.length; i++) {
@@ -2156,14 +2349,14 @@ public class MainActivity extends Activity {
                 c.drawArc(r, start, Math.max(sweep - 1.5f, 0.5f), false, p);
                 start += sweep;
             }
-            t.setColor(Ui.WHITE);
+            t.setColor(ToxiVisualSystem.TEXT_PRIMARY);
             t.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-            t.setTextSize(Ui.dp(22));
-            c.drawText(big, getWidth() / 2f, getHeight() / 2f + Ui.dp(5), t);
+            t.setTextSize(ToxiVisualSystem.dp(22));
+            c.drawText(big, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(5), t);
             t.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-            t.setTextSize(Ui.dp(11));
-            t.setColor(Ui.SUB);
-            c.drawText(small, getWidth() / 2f, getHeight() / 2f + Ui.dp(21), t);
+            t.setTextSize(ToxiVisualSystem.dp(11));
+            t.setColor(ToxiVisualSystem.TEXT_SECONDARY);
+            c.drawText(small, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(21), t);
         }
     }
 }

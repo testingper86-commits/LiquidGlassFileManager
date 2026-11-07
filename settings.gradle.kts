@@ -10,7 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
-rootProject.name = "LiquidFilesOfflineManager"
-include(":app")
+rootProject.name = "ToxiFiles"
+include(":app", ":core", ":foundation")

@@ -15,8 +15,8 @@ android {
         applicationId = "com.liquidfiles.offline"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
     signingConfigs {
@@ -46,7 +46,13 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core:1.13.1")
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation(project(":core"))
+    implementation(project(":foundation"))
+    implementation("androidx.core:core:1.18.0")
+    implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime:2.10.0")
+    implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation("androidx.webkit:webkit:1.18.0")
     testImplementation("junit:junit:4.13.2")
 }
+

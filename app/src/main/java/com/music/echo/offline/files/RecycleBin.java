@@ -19,7 +19,7 @@ import java.util.List;
  */
 final class RecycleBin {
     /** Days before auto-purge; user-configurable in Settings (default 30). */
-    static long maxAgeMs() { return Ui.sp.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
+    static long maxAgeMs() { return ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
 
     static final class Item {
         final File file;           // the real file/folder, kept under its original name
@@ -49,11 +49,12 @@ final class RecycleBin {
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             int ok = 0, fail = 0;
             int total = src.size(), idx = 0;
             for (File s : src) {
-                if (FileOps.cancelRequested) { fail++; break; }
+                if (OperationCancellation.isCancelled()) { fail++; break; }
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
@@ -63,10 +64,22 @@ final class RecycleBin {
                     if (parent == null) { fail++; continue; }
                     String wrapName = encode(parent.getAbsolutePath()) + "~" + java.util.UUID.randomUUID().toString();
                     File wrapper = new File(root(a), wrapName);
-                    if (!wrapper.mkdirs()) { fail++; continue; }
+                    if (!wrapper.mkdir()) { fail++; continue; }
                     File target = new File(wrapper, s.getName());
-                    if (!s.renameTo(target)) { FileOps.copy(s, target); FileOps.deleteTree(s); }
-                    ok++;
+                    boolean payloadSafe = false;
+                    try {
+                        try { java.nio.file.Files.move(s.toPath(), target.toPath()); payloadSafe = true; }
+                        catch (java.io.IOException moveError) {
+                            FileOps.copy(s, target);
+                            FileOps.checkCancelled();
+                            payloadSafe = true;
+                            if (!FileOps.deleteTree(s)) throw new java.io.IOException("Copied to Recycle Bin, but source could not be removed; both copies were kept");
+                        }
+                        ok++;
+                    } catch (Exception moveError) {
+                        if (!payloadSafe) FileOps.deleteTree(wrapper);
+                        throw moveError;
+                    }
                 } catch (Exception ex) { fail++; }
             }
             final int fok = ok, ffail = fail;
@@ -74,6 +87,8 @@ final class RecycleBin {
                     ? "Moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Recycle Bin"
                     : "Moved " + fok + ", failed " + ffail;
             a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
@@ -98,7 +113,8 @@ final class RecycleBin {
             } catch (Exception ignored) { }
             if (deletedAt > 0 && now - deletedAt > maxAgeMs()) { FileOps.deleteTree(w); continue; }
             File[] kids = w.listFiles();
-            if (kids == null || kids.length == 0) { FileOps.deleteTree(w); continue; }
+            if (kids == null) continue;
+            if (kids.length != 1) continue; // Preserve malformed wrappers instead of discarding unrecognized payloads.
             out.add(new Item(kids[0], w, new File(origPath), deletedAt));
         }
         out.sort((x, y) -> Long.compare(y.deletedAt, x.deletedAt));
@@ -108,40 +124,66 @@ final class RecycleBin {
     static void restore(final MainActivity a, final Item it, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             String msg;
             try {
                 File destDir = it.originalParent;
                 boolean fellBack = destDir == null || !destDir.isDirectory();
-                if (fellBack) destDir = Environment.getExternalStorageDirectory();
+                if (fellBack) {
+                    destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!destDir.isDirectory() && !destDir.mkdirs()) throw new java.io.IOException("Unable to create Downloads folder for restore");
+                }
                 File target = FileOps.unique(destDir, it.file.getName());
-                if (!it.file.renameTo(target)) { FileOps.copy(it.file, target); FileOps.deleteTree(it.file); }
-                FileOps.deleteTree(it.wrapper);
-                msg = fellBack ? "Restored to internal storage (original folder is gone)" : "Restored " + target.getName();
+                try { java.nio.file.Files.move(it.file.toPath(), target.toPath()); }
+                catch (java.io.IOException moveError) {
+                    FileOps.copy(it.file, target);
+                    FileOps.checkCancelled();
+                    if (!FileOps.deleteTree(it.file)) throw new java.io.IOException("Restored a copy, but the Recycle Bin source could not be removed; both copies were kept", moveError);
+                }
+                if (!FileOps.deleteTree(it.wrapper)) throw new java.io.IOException("Restored file, but Recycle Bin cleanup failed");
+                msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
             final String m = msg;
             a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             int ok = 0;
-            for (Item it : items) { if (FileOps.cancelRequested) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
+            for (Item it : items) { if (OperationCancellation.isCancelled()) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
             a.runOnUiThread(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void empty(final MainActivity a, final FileOps.Done d) {
         a.busy(true);
         a.ops.execute(() -> {
-            FileOps.cancelRequested = false;
+            OperationCancellation.Token operationToken = a.cancellation.begin();
+            try {
             File[] ws = root(a).listFiles();
-            int n = ws == null ? 0 : ws.length;
-            if (ws != null) for (File w : ws) { if (FileOps.cancelRequested) break; FileOps.deleteTree(w); }
-            a.runOnUiThread(() -> { a.busy(false); d.run("Recycle Bin emptied (" + n + " item" + (n == 1 ? "" : "s") + ")"); });
+            int deleted = 0, failed = 0;
+            boolean cancelled = false;
+            if (ws != null) for (File w : ws) {
+                if (OperationCancellation.isCancelled()) { cancelled = true; break; }
+                if (FileOps.deleteTree(w)) deleted++; else failed++;
+            }
+            final int fdeleted = deleted, ffailed = failed;
+            final boolean fcancelled = cancelled;
+            final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
+                    + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
+            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+        
+            } finally { a.cancellation.finish(operationToken); }
         });
     }
 

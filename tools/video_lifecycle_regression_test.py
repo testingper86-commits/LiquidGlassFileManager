@@ -1,4 +1,5 @@
 from pathlib import Path
+import xml.etree.ElementTree as ET
 p = Path('app/src/main/java/com/music/echo/offline/files/ViewerActivity.java')
 s = p.read_text(encoding='utf-8')
 checks = {
@@ -10,7 +11,7 @@ checks = {
     'surface recreation resumes only on playback intent': 'videoResumeAfterSurface && videoUserWantsPlayback' in s,
     'surface destruction saves position and detaches': 'videoPendingPosition = active.getCurrentPosition();' in s and 'active.setSurface(null);' in s,
     'landscape aspect-ratio transform retained': 'texture.setTransform(matrix);' in s,
-    'PiP manifest support enabled': 'android:supportsPictureInPicture="true"' in Path('app/src/main/AndroidManifest.xml').read_text(encoding='utf-8'),
+    'PiP manifest support enabled': any(a.attrib.get('{http://schemas.android.com/apk/res/android}supportsPictureInPicture') == 'true' for a in ET.parse('app/src/main/AndroidManifest.xml').getroot().find('application').findall('activity') if a.attrib.get('{http://schemas.android.com/apk/res/android}name') == '.files.ViewerActivity'),
 }
 for name, ok in checks.items():
     print(('PASS' if ok else 'FAIL') + ': ' + name)

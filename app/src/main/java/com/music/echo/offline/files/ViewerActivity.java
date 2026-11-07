@@ -4,6 +4,7 @@ package com.music.echo.offline.files;
 import com.music.echo.offline.R;
 
 import android.app.Activity;
+import androidx.activity.ComponentActivity;
 import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -60,19 +61,19 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /** Built-in viewer: images (pinch zoom), video, audio, PDF and text. Works without any other app installed. */
-public class ViewerActivity extends Activity {
+public class ViewerActivity extends ComponentActivity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
+    DynamicIslandView dynamicIsland;
     TextView titleTv, counterTv, editImageBtn;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
-    final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
     final Handler h = new Handler(Looper.getMainLooper());
     MediaPlayer mp;
     MediaPlayer videoPlayer;
@@ -87,10 +88,11 @@ public class ViewerActivity extends Activity {
     int videoPendingPosition = 0;
     PdfRenderer pdf;
     ParcelFileDescriptor pfd;
+    volatile long pdfGeneration;
     Runnable ticker;
     Runnable videoTicker;
     boolean seekingVideo = false;
-    boolean destroyed;
+    volatile boolean destroyed;
     boolean audioRepeat = false, audioShuffle = false, videoLoop = false;
     int audioRepeatMode = 0; // 0 off, 1 repeat one, 2 repeat all
     int audioLoopStartMs = -1, audioLoopEndMs = -1;
@@ -111,7 +113,8 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        Ui.init(this);
+        ToxiBackNavigation.bind(this, this::handleBackNavigation);
+        ToxiVisualSystem.initialize(this);
         if (AppLock.enabled(this)) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         paths = getIntent().getStringArrayListExtra("paths");
         idx = getIntent().getIntExtra("index", 0);
@@ -119,7 +122,7 @@ public class ViewerActivity extends Activity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF05070C);
+        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         stage = new FrameLayout(this);
@@ -127,46 +130,48 @@ public class ViewerActivity extends Activity {
 
         bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackground(Ui.glass(26, true));
-        bar.setPadding(Ui.dp(4), 0, Ui.dp(4), 0);
-        ImageView back = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        bar.setBackground(ToxiVisualSystem.surface(26, true));
+        bar.setPadding(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
+        ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(v -> finish());
-        titleTv = Ui.tv(this, "", 15, Ui.WHITE, true);
+        titleTv = ToxiVisualSystem.text(this, "", 15, ToxiVisualSystem.TEXT_PRIMARY, true);
         titleTv.setSingleLine(true);
         titleTv.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
-        counterTv = Ui.tv(this, "", 12, Ui.SUB, false);
-        ImageView open = Ui.iconBtn(this, Glyphs.OPEN, Ui.WHITE);
+        counterTv = ToxiVisualSystem.text(this, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
+        ImageView open = ToxiVisualSystem.iconButton(this, ToxiIcons.OPEN, ToxiVisualSystem.TEXT_PRIMARY);
         open.setOnClickListener(v -> FileOps.external(this, new File(paths.get(idx)), true));
-        ImageView share = Ui.iconBtn(this, Glyphs.SHARE, Ui.WHITE);
+        ImageView share = ToxiVisualSystem.iconButton(this, ToxiIcons.SHARE, ToxiVisualSystem.TEXT_PRIMARY);
         share.setOnClickListener(v -> { ArrayList<File> l = new ArrayList<>(); l.add(new File(paths.get(idx))); FileOps.share(this, l); });
-        bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         bar.addView(titleTv, new LinearLayout.LayoutParams(0, -2, 1f));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
-        cl.rightMargin = Ui.dp(6);
+        cl.rightMargin = ToxiVisualSystem.dp(6);
         bar.addView(counterTv, cl);
-        editImageBtn = Ui.tv(this, "Edit", 13, Ui.WHITE, true);
+        editImageBtn = ToxiVisualSystem.text(this, "Edit", 13, ToxiVisualSystem.TEXT_PRIMARY, true);
         editImageBtn.setGravity(Gravity.CENTER);
-        editImageBtn.setPadding(Ui.dp(10), 0, Ui.dp(10), 0);
-        editImageBtn.setBackground(Ui.glass(18, true));
+        editImageBtn.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(10), 0);
+        editImageBtn.setBackground(ToxiVisualSystem.surface(18, true));
         editImageBtn.setOnClickListener(v -> openImageEditor());
-        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, Ui.dp(36)));
-        bar.addView(open, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        bar.addView(share, new LinearLayout.LayoutParams(Ui.dp(48), Ui.dp(48)));
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, Ui.dp(52), Gravity.TOP);
-        bp.setMargins(Ui.dp(12), Ui.dp(8), Ui.dp(12), 0);
+        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(36)));
+        bar.addView(open, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        bar.addView(share, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(52), Gravity.TOP);
+        bp.setMargins(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(12), 0);
         root.addView(bar, bp);
 
-        prevBtn = edge(Glyphs.BACK, Gravity.START | Gravity.CENTER_VERTICAL, -1);
-        nextBtn = edge(Glyphs.NEXT, Gravity.END | Gravity.CENTER_VERTICAL, 1);
+        prevBtn = edge(ToxiIcons.BACK, Gravity.START | Gravity.CENTER_VERTICAL, -1);
+        nextBtn = edge(ToxiIcons.NEXT, Gravity.END | Gravity.CENTER_VERTICAL, 1);
 
         setContentView(root);
+        dynamicIsland = new DynamicIslandView(this);
+        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
                 topInset = in.top; bottomInset = in.bottom;
             } else { topInset = insets.getSystemWindowInsetTop(); bottomInset = insets.getSystemWindowInsetBottom(); }
             FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) bar.getLayoutParams();
-            if (p.topMargin != topInset + Ui.dp(8)) { p.topMargin = topInset + Ui.dp(8); bar.setLayoutParams(p); }
+            if (p.topMargin != topInset + ToxiVisualSystem.dp(8)) { p.topMargin = topInset + ToxiVisualSystem.dp(8); bar.setLayoutParams(p); }
             return insets;
         });
         root.requestApplyInsets();
@@ -175,13 +180,13 @@ public class ViewerActivity extends Activity {
 
     ImageView edge(int glyph, int gravity, final int delta) {
         ImageView v = new ImageView(this);
-        v.setImageDrawable(Glyphs.get(glyph, Ui.WHITE));
-        v.setBackground(Ui.glass(24, true));
-        v.setPadding(Ui.dp(10), Ui.dp(10), Ui.dp(10), Ui.dp(10));
+        v.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.TEXT_PRIMARY));
+        v.setBackground(ToxiVisualSystem.surface(24, true));
+        v.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(10));
         v.setOnClickListener(x -> go(delta));
-        Ui.press(v);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(Ui.dp(46), Ui.dp(46), gravity);
-        p.setMargins(Ui.dp(10), 0, Ui.dp(10), 0);
+        ToxiVisualSystem.interactive(v);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46), gravity);
+        p.setMargins(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(10), 0);
         root.addView(v, p);
         return v;
     }
@@ -216,14 +221,16 @@ public class ViewerActivity extends Activity {
         videoDock = null;
         videoWidth = videoHeight = 0;
         currentImageBitmap = null;
-        GlowRing.setActive(stage, false);
-        if (pdf != null) {
-            final PdfRenderer r = pdf;
-            final ParcelFileDescriptor f = pfd;
-            io.execute(() -> { try { r.close(); } catch (Exception ignored) { } try { if (f != null) f.close(); } catch (Exception ignored) { } });
-            pdf = null; pfd = null;
+        if (stage != null) ToxiMotion.setActive(stage, false);
+        ++pdfGeneration;
+        if (pdf != null || pfd != null) {
+            final PdfRenderer renderer = pdf;
+            final ParcelFileDescriptor descriptor = pfd;
+            pdf = null;
+            pfd = null;
+            closePdfResourcesAsync(renderer, descriptor);
         }
-        stage.removeAllViews();
+        if (stage != null) stage.removeAllViews();
     }
 
     void show() {
@@ -250,17 +257,17 @@ public class ViewerActivity extends Activity {
 
     // ---------------- image ----------------
     void showImage(final File f) {
-        GlowRing.attach(stage);
-        GlowRing.setActive(stage, true);
+        ToxiMotion.attach(stage);
+        ToxiMotion.setActive(stage, true);
         final ZoomImage z = new ZoomImage(this);
         stage.addView(z, new FrameLayout.LayoutParams(-1, -1));
         final int my = idx;
         io.execute(() -> {
             final Bitmap bm = decode(f, 2600);
             h.post(() -> {
-                if (destroyed || my != idx) return;
-                GlowRing.setActive(stage, false);
-                if (bm == null) Ui.toast(this, "Can't display this image");
+                if (destroyed || my != idx) { if (bm != null && !bm.isRecycled()) bm.recycle(); return; }
+                ToxiMotion.setActive(stage, false);
+                if (bm == null) ToxiVisualSystem.toast(this, "Can't display this image");
                 else { currentImageBitmap = bm; z.setImageBitmap(bm); }
             });
         });
@@ -269,7 +276,7 @@ public class ViewerActivity extends Activity {
     // Built-in lightweight image editor: non-destructive preview, crop presets, rotate/flip,
     // grayscale and brightness; saving creates a new JPEG next to the original.
     void openImageEditor() {
-        if (currentImageBitmap == null || currentImageBitmap.isRecycled()) { Ui.toast(this, "Image is still loading"); return; }
+        if (currentImageBitmap == null || currentImageBitmap.isRecycled()) { ToxiVisualSystem.toast(this, "Image is still loading"); return; }
         final Bitmap original = currentImageBitmap;
         final Bitmap[] working = { original.copy(Bitmap.Config.ARGB_8888, true) };
         final ImageView preview = new ImageView(this);
@@ -278,12 +285,12 @@ public class ViewerActivity extends Activity {
         preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(Ui.dp(12), Ui.dp(8), Ui.dp(12), Ui.dp(4));
-        panel.addView(preview, new LinearLayout.LayoutParams(-1, Ui.dp(230)));
+        panel.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4));
+        panel.addView(preview, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(230)));
         LinearLayout tools = new LinearLayout(this);
         tools.setGravity(Gravity.CENTER);
         tools.setOrientation(LinearLayout.HORIZONTAL);
-        panel.addView(tools, new LinearLayout.LayoutParams(-1, Ui.dp(48)));
+        panel.addView(tools, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(48)));
         final float[] brightness = {0f};
         final boolean[] gray = {false};
         final int[] crop = {0}; // 0 original, 1 square, 2 4:3, 3 16:9
@@ -317,9 +324,9 @@ public class ViewerActivity extends Activity {
         };
         String[] labels={"Rotate 90°","Flip","Crop","B&W"};
         for(int i=0;i<labels.length;i++) {
-            final int action=i; TextView btn=Ui.tv(this,labels[i],11,Ui.WHITE,true); btn.setGravity(Gravity.CENTER);
-            btn.setPadding(Ui.dp(6),0,Ui.dp(6),0); btn.setBackground(Ui.glass(14,true));
-            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,Ui.dp(38),1f); bp.setMargins(Ui.dp(3),0,Ui.dp(3),0); tools.addView(btn,bp);
+            final int action=i; TextView btn=ToxiVisualSystem.text(this,labels[i],11,ToxiVisualSystem.TEXT_PRIMARY,true); btn.setGravity(Gravity.CENTER);
+            btn.setPadding(ToxiVisualSystem.dp(6),0,ToxiVisualSystem.dp(6),0); btn.setBackground(ToxiVisualSystem.surface(14,true));
+            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,ToxiVisualSystem.dp(38),1f); bp.setMargins(ToxiVisualSystem.dp(3),0,ToxiVisualSystem.dp(3),0); tools.addView(btn,bp);
             btn.setOnClickListener(v->{
                 if(action==0){ rotation[0]=(rotation[0]+90)%360; render.run(); }
                 else if(action==1){flip[0]=!flip[0]; render.run();}
@@ -327,22 +334,43 @@ public class ViewerActivity extends Activity {
                 else {gray[0]=!gray[0];render.run();}
             });
         }
-        TextView brightLabel=Ui.tv(this,"Brightness",12,Ui.WHITE,true); panel.addView(brightLabel);
-        SeekBar bright=new SeekBar(this); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,Ui.dp(36)));
+        TextView brightLabel=ToxiVisualSystem.text(this,"Brightness",12,ToxiVisualSystem.TEXT_PRIMARY,true); panel.addView(brightLabel);
+        SeekBar bright=new SeekBar(this); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(36)));
         bright.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int p,boolean u){if(u){brightness[0]=(p-100)/100f;render.run();}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
         new AlertDialog.Builder(this).setTitle("Image editor").setView(panel).setNegativeButton("Cancel",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();}).setNeutralButton("Reset",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();currentImageBitmap=original;show();}).setPositiveButton("Save copy",(d,w)->saveEditedImage(working[0])).show();
     }
 
     void saveEditedImage(Bitmap bitmap) {
-        if(bitmap==null||bitmap.isRecycled()) return;
-        File src=new File(paths.get(idx)); String name=src.getName(); int dot=name.lastIndexOf('.');
-        String base=dot>0?name.substring(0,dot):name;
-        File out=new File(src.getParentFile(),base+"_edited.jpg"); int n=2;
-        while(out.exists()) out=new File(src.getParentFile(),base+"_edited"+(n++)+".jpg");
-        try(FileOutputStream fos=new FileOutputStream(out)) {
-            if(!bitmap.compress(Bitmap.CompressFormat.JPEG,94,fos)) throw new java.io.IOException("JPEG encoding failed");
-            fos.flush(); Ui.toast(this,"Saved copy: "+out.getName());
-        } catch(Exception ex) { Ui.toast(this,"Couldn't save beside original. Check folder write permission."); }
+        if (bitmap == null || bitmap.isRecycled() || paths == null || idx < 0 || idx >= paths.size()) return;
+        final File src = new File(paths.get(idx));
+        final File parent = src.getParentFile();
+        if (parent == null || !parent.isDirectory()) { ToxiVisualSystem.toast(this, "The original folder is unavailable"); return; }
+        final String name = src.getName();
+        final int dot = name.lastIndexOf('.');
+        final String base = dot > 0 ? name.substring(0, dot) : name;
+        io.execute(() -> {
+            File pending = null;
+            String savedName = null;
+            try {
+                pending = new File(parent, ".toxifiles-image-" + java.util.UUID.randomUUID() + ".part");
+                if (!pending.createNewFile()) throw new java.io.IOException("Unable to reserve temporary image output");
+                try (FileOutputStream fos = new FileOutputStream(pending, false)) {
+                    if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 94, fos)) throw new java.io.IOException("JPEG encoding failed");
+                    fos.flush();
+                    fos.getFD().sync();
+                }
+                for (int suffix = 1; suffix < 10000; suffix++) {
+                    File candidate = new File(parent, base + "_edited" + (suffix == 1 ? "" : suffix) + ".jpg");
+                    try { java.nio.file.Files.move(pending.toPath(), candidate.toPath()); savedName = candidate.getName(); pending = null; break; }
+                    catch (java.nio.file.FileAlreadyExistsException collision) { /* Try the next unique name without replacing user data. */ }
+                }
+                if (savedName == null) throw new java.io.IOException("Unable to reserve a unique edited-image filename");
+            } catch (Exception ex) {
+                if (pending != null) pending.delete();
+            }
+            final String result = savedName;
+            h.post(() -> { if (!destroyed) ToxiVisualSystem.toast(this, result == null ? "Couldn't save beside original. Check folder write permission." : "Saved copy: " + result); });
+        });
     }
 
     static Bitmap decode(File f, int max) {
@@ -364,9 +392,11 @@ public class ViewerActivity extends Activity {
                 else if (ori == ExifInterface.ORIENTATION_ROTATE_270) rot = 270;
             } catch (Exception ignored) { }
             if (rot != 0) {
+                Bitmap original = b;
                 Matrix m = new Matrix();
                 m.postRotate(rot);
-                b = Bitmap.createBitmap(b, 0, 0, b.getWidth(), b.getHeight(), m, true);
+                b = Bitmap.createBitmap(original, 0, 0, original.getWidth(), original.getHeight(), m, true);
+                if (b != original && !original.isRecycled()) original.recycle();
             }
             return b;
         } catch (Throwable t) {
@@ -470,12 +500,12 @@ public class ViewerActivity extends Activity {
     // TextureView keeps video frames in the normal view composition layer. This avoids
     // SurfaceView/Z-order rendering failures where audio plays but the video stays black.
     void showVideo(File f) {
-        GlowRing.attach(stage);
-        GlowRing.setActive(stage, true);
+        ToxiMotion.attach(stage);
+        ToxiMotion.setActive(stage, true);
         enterVideoImmersiveMode();
         // TextureView does not support background drawables on Android; put the black
         // fallback on its FrameLayout parent instead of the TextureView itself.
-        stage.setBackgroundColor(Color.BLACK);
+        stage.setBackgroundColor(ToxiVisualSystem.CANVAS);
         final TextureView texture = new TextureView(this);
         videoTexture = texture;
         // Keep the video texture opaque; some vendor renderers show audio-only playback
@@ -489,9 +519,9 @@ public class ViewerActivity extends Activity {
         videoDock = dock;
         dock.setOrientation(LinearLayout.VERTICAL);
         dock.setGravity(Gravity.CENTER);
-        dock.setPadding(Ui.dp(8), Ui.dp(7), Ui.dp(8), Ui.dp(7));
-        dock.setBackground(Ui.glass(24, true));
-        dock.setElevation(Ui.dp(10));
+        dock.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(7));
+        dock.setBackground(ToxiVisualSystem.surface(24, true));
+        dock.setElevation(ToxiVisualSystem.dp(10));
 
         LinearLayout seekRow = new LinearLayout(this);
         seekRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -501,24 +531,25 @@ public class ViewerActivity extends Activity {
         secondaryRow.setGravity(Gravity.CENTER);
         dock.addView(seekRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-        rowParams.topMargin = Ui.dp(4);
+        rowParams.topMargin = ToxiVisualSystem.dp(4);
         dock.addView(primaryRow, rowParams);
         LinearLayout.LayoutParams secondRowParams = new LinearLayout.LayoutParams(-1, -2);
-        secondRowParams.topMargin = Ui.dp(4);
+        secondRowParams.topMargin = ToxiVisualSystem.dp(4);
         dock.addView(secondaryRow, secondRowParams);
 
         TextView playbackToggle = videoChip("Play", true);
-        TextView currentTimeTv = Ui.tv(this, "0:00", 11, Ui.WHITE, false);
+        TextView currentTimeTv = ToxiVisualSystem.text(this, "0:00", 11, ToxiVisualSystem.TEXT_PRIMARY, false);
         currentTimeTv.setGravity(Gravity.CENTER);
-        currentTimeTv.setMinWidth(Ui.dp(36));
-        TextView durationTv = Ui.tv(this, "0:00", 11, Ui.SUB, false);
+        currentTimeTv.setMinWidth(ToxiVisualSystem.dp(36));
+        TextView durationTv = ToxiVisualSystem.text(this, "0:00", 11, ToxiVisualSystem.TEXT_SECONDARY, false);
         durationTv.setGravity(Gravity.CENTER);
-        durationTv.setMinWidth(Ui.dp(36));
-        SeekBar seekBar = new SquigglySeekBar(this);
+        durationTv.setMinWidth(ToxiVisualSystem.dp(36));
+        ToxiWaveSeekBar seekBar = new ToxiWaveSeekBar(this);
+        seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         seekBar.setMax(1);
-        LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, Ui.dp(34), 1f);
-        seekParams.leftMargin = Ui.dp(4);
-        seekParams.rightMargin = Ui.dp(4);
+        LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(34), 1f);
+        seekParams.leftMargin = ToxiVisualSystem.dp(4);
+        seekParams.rightMargin = ToxiVisualSystem.dp(4);
         seekRow.addView(playbackToggle, new LinearLayout.LayoutParams(-2, -2));
         seekRow.addView(currentTimeTv, new LinearLayout.LayoutParams(-2, -2));
         seekRow.addView(seekBar, seekParams);
@@ -557,8 +588,8 @@ public class ViewerActivity extends Activity {
             speed.setText("Speed " + videoSpeed + "×");
             try {
                 if (videoPlayer != null) videoPlayer.setPlaybackParams(new PlaybackParams().setSpeed(videoSpeed));
-                Ui.toast(this, "Playback speed: " + videoSpeed + "×");
-            } catch (Exception ex) { Ui.toast(this, "Playback speed isn't supported for this video"); }
+                ToxiVisualSystem.toast(this, "Playback speed: " + videoSpeed + "×");
+            } catch (Exception ex) { ToxiVisualSystem.toast(this, "Playback speed isn't supported for this video"); }
         });
 
         TextView repeat = videoChip(videoLoop ? "Repeat on" : "Repeat off", false);
@@ -566,7 +597,7 @@ public class ViewerActivity extends Activity {
         repeat.setOnClickListener(v -> {
             videoLoop = !videoLoop;
             repeat.setText(videoLoop ? "Repeat on" : "Repeat off");
-            repeat.setBackground(videoLoop ? Ui.accentPill(18) : Ui.glass(18, false));
+            repeat.setBackground(videoLoop ? ToxiVisualSystem.accentSurface(18) : ToxiVisualSystem.surface(18, false));
             try { if (videoPlayer != null) videoPlayer.setLooping(videoLoop); } catch (Exception ignored) { }
         });
 
@@ -594,8 +625,8 @@ public class ViewerActivity extends Activity {
                     } else {
                         videoPipRequested = false;
                     }
-                } catch (Exception ex) { videoPipRequested = false; Ui.toast(this, "Picture-in-Picture is unavailable on this device"); }
-            } else Ui.toast(this, "Picture-in-Picture requires Android 8 or newer");
+                } catch (Exception ex) { videoPipRequested = false; ToxiVisualSystem.toast(this, "Picture-in-Picture is unavailable on this device"); }
+            } else ToxiVisualSystem.toast(this, "Picture-in-Picture requires Android 8 or newer");
         });
 
         TextView lock = videoChip("Lock", false);
@@ -607,19 +638,19 @@ public class ViewerActivity extends Activity {
         addVideoChip(secondaryRow, lock, true);
 
         FrameLayout.LayoutParams dockParams = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        dockParams.setMargins(Ui.dp(12), 0, Ui.dp(12), Ui.dp(14));
+        dockParams.setMargins(ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(14));
         stage.addView(dock, dockParams);
 
         // MX Player-style touch level indicators: left side controls screen brightness,
         // right side controls media volume. They appear during vertical swipe gestures.
         final LevelSlider brightnessSlider = new LevelSlider(this, "Brightness", 0.5f);
         final LevelSlider volumeSlider = new LevelSlider(this, "Volume", getMediaVolumeFraction());
-        LinearLayout brightnessPanel = levelPanel(brightnessSlider, "☼");
-        LinearLayout volumePanel = levelPanel(volumeSlider, "♪");
-        FrameLayout.LayoutParams leftLevelLp = new FrameLayout.LayoutParams(Ui.dp(58), Ui.dp(210), Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        leftLevelLp.setMargins(Ui.dp(12), 0, 0, 0);
-        FrameLayout.LayoutParams rightLevelLp = new FrameLayout.LayoutParams(Ui.dp(58), Ui.dp(210), Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-        rightLevelLp.setMargins(0, 0, Ui.dp(12), 0);
+        LinearLayout brightnessPanel = levelPanel(brightnessSlider, ToxiIcons.SUN);
+        LinearLayout volumePanel = levelPanel(volumeSlider, ToxiIcons.VOLUME);
+        FrameLayout.LayoutParams leftLevelLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(58), ToxiVisualSystem.dp(210), Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        leftLevelLp.setMargins(ToxiVisualSystem.dp(12), 0, 0, 0);
+        FrameLayout.LayoutParams rightLevelLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(58), ToxiVisualSystem.dp(210), Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        rightLevelLp.setMargins(0, 0, ToxiVisualSystem.dp(12), 0);
         brightnessPanel.setVisibility(View.GONE);
         volumePanel.setVisibility(View.GONE);
         stage.addView(brightnessPanel, leftLevelLp);
@@ -658,7 +689,7 @@ public class ViewerActivity extends Activity {
                     int delta = event.getX() < texture.getWidth() / 2f ? -10000 : 10000;
                     int target = Math.max(0, Math.min(player.getDuration(), player.getCurrentPosition() + delta));
                     player.seekTo(target);
-                    Ui.toast(ViewerActivity.this, delta < 0 ? "−10 seconds" : "+10 seconds");
+                    ToxiVisualSystem.toast(ViewerActivity.this, delta < 0 ? "−10 seconds" : "+10 seconds");
                 } catch (IllegalStateException ignored) { }
                 return true;
             }
@@ -737,7 +768,7 @@ public class ViewerActivity extends Activity {
                             try { prepared.setPlaybackParams(new PlaybackParams().setSpeed(videoSpeed)); } catch (Exception ignored) { }
                             try { prepared.setLooping(videoLoop); } catch (Exception ignored) { }
                             videoPrepared = true;
-                            GlowRing.setActive(stage, false);
+                            ToxiMotion.setActive(stage, false);
                             videoUserWantsPlayback = true;
                             int duration = prepared.getDuration();
                             seekBar.setMax(Math.max(1, duration));
@@ -749,6 +780,10 @@ public class ViewerActivity extends Activity {
                             videoHeight = prepared.getVideoHeight();
                             fitVideoTexture();
                             prepared.start();
+                            if (dynamicIsland != null) {
+                                dynamicIsland.update("Playing video", initial > 0 && duration > 0 ? (int)(100L * initial / duration) : 0);
+                                dynamicIsland.setAction("Pause", ViewerActivity.this::toggleIslandVideo);
+                            }
                             setVideoPlayAnimation(playbackToggle, true);
                             if (videoTicker != null) h.removeCallbacks(videoTicker);
                             videoTicker = new Runnable() {
@@ -761,9 +796,16 @@ public class ViewerActivity extends Activity {
                                             seekBar.setProgress(position);
                                             currentTimeTv.setText(formatVideoTime(position));
                                         }
+                                        seekBar.setPlaying(active.isPlaying());
                                         int durationNow = active.getDuration();
-                                        float progressFraction = durationNow > 0 ? Math.max(0f, Math.min(1f, active.getCurrentPosition() / (float) durationNow)) : 0f;
-                                        playbackToggle.setText(active.isPlaying() ? "Pause" : "Play");
+                                        int positionNow = active.getCurrentPosition();
+                                        int percentNow = durationNow > 0 ? Math.max(0, Math.min(100, (int)(100L * positionNow / durationNow))) : -1;
+                                        boolean playingNow = active.isPlaying();
+                                        playbackToggle.setText(playingNow ? "Pause" : "Play");
+                                        if (dynamicIsland != null) {
+                                            dynamicIsland.update(playingNow ? "Playing video" : "Video paused", percentNow);
+                                            dynamicIsland.setAction(playingNow ? "Pause" : "Resume", ViewerActivity.this::toggleIslandVideo);
+                                        }
                                         h.postDelayed(this, 400);
                                     } catch (RuntimeException ex) {
                                         android.util.Log.w("LiquidFiles", "Video progress update stopped", ex);
@@ -773,7 +815,7 @@ public class ViewerActivity extends Activity {
                             h.post(videoTicker);
                         } catch (RuntimeException ex) {
                             android.util.Log.e("LiquidFiles", "Video preparation callback failed", ex);
-                            Ui.toast(ViewerActivity.this, "Video playback failed. Try Open with.");
+                            ToxiVisualSystem.toast(ViewerActivity.this, "Video playback failed. Try Open with.");
                             releaseVideoPlayer(prepared);
                         }
                     });
@@ -783,14 +825,15 @@ public class ViewerActivity extends Activity {
                         fitVideoTexture();
                     });
                     player.setOnInfoListener((bufferingPlayer, what, extra) -> {
-                        if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) GlowRing.setActive(stage, true);
-                        else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) GlowRing.setActive(stage, false);
+                        if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) ToxiMotion.setActive(stage, true);
+                        else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) ToxiMotion.setActive(stage, false);
                         return false;
                     });
-                    player.setOnCompletionListener(completed -> { if (!videoLoop) advanceToNextVideo(); });
+                    player.setOnCompletionListener(completed -> { if(dynamicIsland!=null){dynamicIsland.update("Video finished",100);dynamicIsland.setAction(null,null);} if (!videoLoop) advanceToNextVideo(); });
                     player.setOnErrorListener((failed, what, extra) -> {
+                        if(dynamicIsland!=null){dynamicIsland.update("Video playback failed",-1);dynamicIsland.setAction(null,null);}
                         android.util.Log.e("LiquidFiles", "MediaPlayer error what=" + what + " extra=" + extra);
-                        Ui.toast(ViewerActivity.this, "This video can't be played here. Try Open with.");
+                        ToxiVisualSystem.toast(ViewerActivity.this, "This video can't be played here. Try Open with.");
                         releaseVideoPlayer(failed);
                         return true;
                     });
@@ -798,8 +841,8 @@ public class ViewerActivity extends Activity {
                 } catch (Exception ex) {
                     android.util.Log.e("LiquidFiles", "Video surface setup failed", ex);
                     if (videoPlayer != null) releaseVideoPlayer(videoPlayer);
-                    GlowRing.setActive(stage, false);
-                    Ui.toast(ViewerActivity.this, "Unable to render this video. Try Open with.");
+                    ToxiMotion.setActive(stage, false);
+                    ToxiVisualSystem.toast(ViewerActivity.this, "Unable to render this video. Try Open with.");
                 }
             }
             @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { fitVideoTexture(); }
@@ -849,7 +892,10 @@ public class ViewerActivity extends Activity {
 
     private void releaseVideoPlayer(MediaPlayer player) {
         if (player == null) return;
-        if (videoPlayer == player) { videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPendingPosition = 0; }
+        if (videoPlayer == player) {
+            videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPendingPosition = 0;
+            if (dynamicIsland != null) dynamicIsland.setAction(null, null);
+        }
         if (videoTicker != null) { h.removeCallbacks(videoTicker); videoTicker = null; }
         if (videoPlayer == player) videoPlayer = null;
         try { player.setOnPreparedListener(null); player.setOnCompletionListener(null); player.setOnErrorListener(null); } catch (RuntimeException ignored) { }
@@ -872,18 +918,18 @@ public class ViewerActivity extends Activity {
     }
 
     TextView videoChip(String label, boolean highlighted) {
-        TextView chip = Ui.tv(this, label, 12, Ui.WHITE, true);
+        TextView chip = ToxiVisualSystem.text(this, label, 12, ToxiVisualSystem.TEXT_PRIMARY, true);
         chip.setGravity(Gravity.CENTER);
         chip.setSingleLine(true);
-        chip.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        chip.setBackground(highlighted ? Ui.accentPill(18) : Ui.glass(18, false));
-        Ui.press(chip);
+        chip.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        chip.setBackground(highlighted ? ToxiVisualSystem.accentSurface(18) : ToxiVisualSystem.surface(18, false));
+        ToxiVisualSystem.interactive(chip);
         return chip;
     }
 
     void addVideoChip(LinearLayout row, TextView chip, boolean weighted) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(weighted ? 0 : -2, -2, weighted ? 1f : 0f);
-        p.setMargins(Ui.dp(3), 0, Ui.dp(3), 0);
+        p.setMargins(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), 0);
         row.addView(chip, p);
     }
 
@@ -894,7 +940,7 @@ public class ViewerActivity extends Activity {
         if (prevBtn != null) prevBtn.setVisibility(locked ? View.GONE : (paths != null && paths.size() > 1 && idx > 0 ? View.VISIBLE : View.GONE));
         if (nextBtn != null) nextBtn.setVisibility(locked ? View.GONE : (paths != null && paths.size() > 1 && idx < paths.size() - 1 ? View.VISIBLE : View.GONE));
         lock.setText(locked ? "Unlock" : "Lock");
-        Ui.toast(this, locked ? "Controls hidden. Tap the video to unlock." : "Controls unlocked");
+        ToxiVisualSystem.toast(this, locked ? "Controls hidden. Tap the video to unlock." : "Controls unlocked");
     }
 
     void enterVideoImmersiveMode() {
@@ -920,7 +966,7 @@ public class ViewerActivity extends Activity {
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(Ui.dp(14), Ui.dp(8), Ui.dp(14), Ui.dp(8));
+        list.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8));
         scroll.addView(list);
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
             .setTitle("Playback queue · " + (idx + 1) + "/" + paths.size())
@@ -932,31 +978,30 @@ public class ViewerActivity extends Activity {
                 final int position = i;
                 LinearLayout row = new LinearLayout(this);
                 row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(Ui.dp(8), Ui.dp(6), Ui.dp(4), Ui.dp(6));
-                row.setBackground(Ui.glass(14, i == idx));
+                row.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(6));
+                row.setBackground(ToxiVisualSystem.surface(14, i == idx));
                 LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
-                rp.setMargins(0, 0, 0, Ui.dp(6));
-                TextView name = Ui.tv(this, (i == idx ? "▶  " : "") + new File(paths.get(i)).getName(), 12.5f, i == idx ? Ui.accent : Ui.WHITE, i == idx);
+                rp.setMargins(0, 0, 0, ToxiVisualSystem.dp(6));
+                ImageView currentMark = new ImageView(this);
+                currentMark.setImageDrawable(ToxiIcons.symbol(ToxiIcons.PLAY, ToxiVisualSystem.ACCENT));
+                currentMark.setContentDescription(i == idx ? "Currently playing" : "Queued track");
+                if (i != idx) currentMark.setVisibility(View.INVISIBLE);
+                row.addView(currentMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20)));
+                TextView name = ToxiVisualSystem.text(this, new File(paths.get(i)).getName(), 12.5f, i == idx ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_PRIMARY, i == idx);
                 name.setMaxLines(2);
                 name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                name.setPadding(Ui.dp(5), Ui.dp(8), Ui.dp(5), Ui.dp(8));
+                name.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(8));
                 name.setOnClickListener(view -> { idx = position; dialog.dismiss(); show(); });
                 row.addView(name, new LinearLayout.LayoutParams(0, -2, 1f));
-                TextView up = Ui.tv(this, "↑", 15, Ui.WHITE, true);
-                up.setGravity(Gravity.CENTER);
-                up.setPadding(Ui.dp(9), Ui.dp(8), Ui.dp(9), Ui.dp(8));
+                ImageView up = queueAction(ToxiIcons.UP, "Move track up");
                 up.setOnClickListener(view -> { if (position > 0) { java.util.Collections.swap(paths, position, position - 1); if (idx == position) idx--; else if (idx == position - 1) idx++; rebuild[0].run(); } });
-                row.addView(up);
-                TextView down = Ui.tv(this, "↓", 15, Ui.WHITE, true);
-                down.setGravity(Gravity.CENTER);
-                down.setPadding(Ui.dp(9), Ui.dp(8), Ui.dp(9), Ui.dp(8));
+                row.addView(up, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
+                ImageView down = queueAction(ToxiIcons.DOWN, "Move track down");
                 down.setOnClickListener(view -> { if (position < paths.size() - 1) { java.util.Collections.swap(paths, position, position + 1); if (idx == position) idx++; else if (idx == position + 1) idx--; rebuild[0].run(); } });
-                row.addView(down);
-                TextView remove = Ui.tv(this, "×", 16, Ui.SUB, true);
-                remove.setGravity(Gravity.CENTER);
-                remove.setPadding(Ui.dp(9), Ui.dp(8), Ui.dp(9), Ui.dp(8));
+                row.addView(down, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
+                ImageView remove = queueAction(ToxiIcons.CLOSE, "Remove track from queue");
                 remove.setOnClickListener(view -> {
-                    if (paths.size() <= 1) { Ui.toast(this, "Keep at least one item in the queue"); return; }
+                    if (paths.size() <= 1) { ToxiVisualSystem.toast(this, "Keep at least one item in the queue"); return; }
                     boolean removingCurrent = position == idx;
                     paths.remove(position);
                     if (position < idx) idx--;
@@ -964,7 +1009,7 @@ public class ViewerActivity extends Activity {
                     if (removingCurrent) { dialog.dismiss(); show(); }
                     else { dialog.setTitle("Playback queue · " + (idx + 1) + "/" + paths.size()); rebuild[0].run(); }
                 });
-                row.addView(remove);
+                row.addView(remove, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
                 list.addView(row, rp);
             }
         };
@@ -972,58 +1017,81 @@ public class ViewerActivity extends Activity {
         dialog.show();
     }
 
+    private void setCompoundIcon(TextView target, int symbol) {
+        android.graphics.drawable.Drawable icon = ToxiIcons.symbol(symbol, ToxiVisualSystem.TEXT_PRIMARY);
+        int size = ToxiVisualSystem.dp(18);
+        icon.setBounds(0, 0, size, size);
+        target.setCompoundDrawablesRelative(icon, null, null, null);
+        target.setCompoundDrawablePadding(ToxiVisualSystem.dp(6));
+        target.setGravity(Gravity.CENTER);
+    }
+
+    private ImageView queueAction(int symbol, String description) {
+        ImageView view = new ImageView(this);
+        view.setImageDrawable(ToxiIcons.symbol(symbol, ToxiVisualSystem.TEXT_PRIMARY));
+        view.setPadding(ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(9));
+        view.setBackground(ToxiVisualSystem.surface(10, false));
+        view.setContentDescription(description);
+        ToxiVisualSystem.interactive(view);
+        return view;
+    }
+
     // ---------------- audio ----------------
     void showAudio(File f, Entry e) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setBackground(Ui.glass(30, true));
-        card.setPadding(Ui.dp(22), Ui.dp(24), Ui.dp(22), Ui.dp(20));
-        card.setElevation(Ui.dp(10));
-        TextView nowPlaying = Ui.tv(this, "NOW PLAYING", 10.5f, Ui.accent, true);
+        card.setBackground(ToxiVisualSystem.surface(30, true));
+        card.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(20));
+        card.setElevation(ToxiVisualSystem.dp(10));
+        TextView nowPlaying = ToxiVisualSystem.text(this, "NOW PLAYING", 10.5f, ToxiVisualSystem.ACCENT, true);
         nowPlaying.setLetterSpacing(0.16f);
-        nowPlaying.setPadding(0, 0, 0, Ui.dp(14));
+        nowPlaying.setPadding(0, 0, 0, ToxiVisualSystem.dp(14));
         card.addView(nowPlaying);
         final ImageView art = new ImageView(this);
-        art.setImageDrawable(Glyphs.tile(FileKinds.AUDIO));
+        art.setImageDrawable(ToxiIcons.fileTile(FileKinds.AUDIO));
         art.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        art.setBackground(Ui.glass(28, true));
-        art.setPadding(Ui.dp(8), Ui.dp(8), Ui.dp(8), Ui.dp(8));
-        Ui.round(art, 28);
-        card.addView(art, new LinearLayout.LayoutParams(Ui.dp(180), Ui.dp(180)));
-        TextView nm = Ui.tv(this, f.getName(), 18, Ui.WHITE, true);
+        art.setBackground(ToxiVisualSystem.surface(28, true));
+        art.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
+        ToxiVisualSystem.clipRound(art, 28);
+        card.addView(art, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(180), ToxiVisualSystem.dp(180)));
+        TextView nm = ToxiVisualSystem.text(this, f.getName(), 18, ToxiVisualSystem.TEXT_PRIMARY, true);
         nm.setMaxLines(2);
         nm.setEllipsize(android.text.TextUtils.TruncateAt.END);
         nm.setGravity(Gravity.CENTER);
-        nm.setPadding(0, Ui.dp(18), 0, 0);
+        nm.setPadding(0, ToxiVisualSystem.dp(18), 0, 0);
         card.addView(nm, new LinearLayout.LayoutParams(-1, -2));
-        final TextView meta = Ui.tv(this, "", 13, Ui.SUB, false);
+        final TextView meta = ToxiVisualSystem.text(this, "", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
         meta.setGravity(Gravity.CENTER);
-        meta.setPadding(0, Ui.dp(6), 0, Ui.dp(14));
+        meta.setPadding(0, ToxiVisualSystem.dp(6), 0, ToxiVisualSystem.dp(14));
         card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
-        final SeekBar sb = new SquigglySeekBar(this);
+        final ToxiWaveSeekBar sb = new ToxiWaveSeekBar(this);
+        sb.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         card.addView(sb, new LinearLayout.LayoutParams(-1, -2));
-        final TextView time = Ui.tv(this, "0:00 / 0:00", 12, Ui.SUB, false);
+        final TextView time = ToxiVisualSystem.text(this, "0:00 / 0:00", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         time.setContentDescription("Playback position and duration");
         time.setGravity(Gravity.CENTER);
-        time.setPadding(0, Ui.dp(4), 0, Ui.dp(4));
+        time.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4));
         card.addView(time, new LinearLayout.LayoutParams(-1, -2));
 
         // Keep playback options inside the built-in player; no separate player app is launched.
         LinearLayout modes = new LinearLayout(this);
         modes.setGravity(Gravity.CENTER);
-        modes.setPadding(0, Ui.dp(8), 0, Ui.dp(2));
-        final TextView repeat = Ui.tv(this, repeatLabel(), 12.5f, Ui.WHITE, true);
-        final TextView shuffle = Ui.tv(this, audioShuffle ? "⤨ Shuffle: On" : "⤨ Shuffle", 12.5f, Ui.WHITE, true);
-        final TextView abRepeat = Ui.tv(this, "Set A", 12.5f, Ui.WHITE, true);
+        modes.setPadding(0, ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(2));
+        final TextView repeat = ToxiVisualSystem.text(this, repeatLabel(), 12.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        final TextView shuffle = ToxiVisualSystem.text(this, audioShuffle ? "Shuffle: On" : "Shuffle", 12.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        setCompoundIcon(repeat, ToxiIcons.REPEAT);
+        setCompoundIcon(shuffle, ToxiIcons.SHUFFLE);
+        final TextView abRepeat = ToxiVisualSystem.text(this, "Set A", 12.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        setCompoundIcon(abRepeat, ToxiIcons.CLOCK);
         repeat.setGravity(Gravity.CENTER);
         shuffle.setGravity(Gravity.CENTER); abRepeat.setGravity(Gravity.CENTER);
-        repeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        shuffle.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        abRepeat.setPadding(Ui.dp(12), Ui.dp(10), Ui.dp(12), Ui.dp(10));
-        repeat.setBackground(audioRepeatMode != 0 ? Ui.accentPill(20) : Ui.glass(20, false));
-        shuffle.setBackground(audioShuffle ? Ui.accentPill(20) : Ui.glass(20, false));
-        abRepeat.setBackground(Ui.glass(20, false));
+        repeat.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        shuffle.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        abRepeat.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        repeat.setBackground(audioRepeatMode != 0 ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, false));
+        shuffle.setBackground(audioShuffle ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, false));
+        abRepeat.setBackground(ToxiVisualSystem.surface(20, false));
         abRepeat.setContentDescription("A-B loop is off. Tap to mark loop start A.");
         repeat.setContentDescription("Repeat mode " + repeatLabel());
         shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
@@ -1031,83 +1099,83 @@ public class ViewerActivity extends Activity {
             audioRepeatMode = (audioRepeatMode + 1) % 3;
             audioRepeat = audioRepeatMode == 1;
             repeat.setText(repeatLabel());
-            repeat.setBackground(audioRepeatMode != 0 ? Ui.accentPill(20) : Ui.glass(20, false));
+            repeat.setBackground(audioRepeatMode != 0 ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, false));
             repeat.setContentDescription("Repeat mode " + repeatLabel());
-            Ui.tick(v);
+            ToxiVisualSystem.feedback(v);
         });
         shuffle.setOnClickListener(v -> {
             audioShuffle = !audioShuffle;
-            shuffle.setText(audioShuffle ? "⤨ Shuffle: On" : "⤨ Shuffle");
-            shuffle.setBackground(audioShuffle ? Ui.accentPill(20) : Ui.glass(20, false));
+            shuffle.setText(audioShuffle ? "Shuffle: On" : "Shuffle");
+            shuffle.setBackground(audioShuffle ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, false));
             shuffle.setContentDescription("Shuffle playback " + (audioShuffle ? "on" : "off"));
-            Ui.tick(v);
+            ToxiVisualSystem.feedback(v);
         });
         abRepeat.setOnClickListener(v -> {
             if (mp == null) return;
             try {
                 int position = mp.getCurrentPosition();
-                if (audioLoopStartMs < 0) { audioLoopStartMs = position; audioLoopEndMs = -1; Ui.toast(this, "Loop start A set at " + fmt(position)); }
+                if (audioLoopStartMs < 0) { audioLoopStartMs = position; audioLoopEndMs = -1; ToxiVisualSystem.toast(this, "Loop start A set at " + fmt(position)); }
                 else if (audioLoopEndMs < 0) {
-                    if (position <= audioLoopStartMs + 500) { Ui.toast(this, "Set point B at least half a second after A"); return; }
-                    audioLoopEndMs = position; Ui.toast(this, "A–B loop enabled");
-                } else { audioLoopStartMs = -1; audioLoopEndMs = -1; Ui.toast(this, "A–B loop cleared"); }
+                    if (position <= audioLoopStartMs + 500) { ToxiVisualSystem.toast(this, "Set point B at least half a second after A"); return; }
+                    audioLoopEndMs = position; ToxiVisualSystem.toast(this, "A–B loop enabled");
+                } else { audioLoopStartMs = -1; audioLoopEndMs = -1; ToxiVisualSystem.toast(this, "A–B loop cleared"); }
                 abRepeat.setText(audioLoopStartMs < 0 ? "Set A" : audioLoopEndMs < 0 ? "Set B" : "A–B On");
-                abRepeat.setBackground(audioLoopEndMs >= 0 ? Ui.accentPill(20) : Ui.glass(20, false));
+                abRepeat.setBackground(audioLoopEndMs >= 0 ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, false));
                 abRepeat.setContentDescription(audioLoopStartMs < 0 ? "A-B loop off. Tap to mark point A" : audioLoopEndMs < 0 ? "Point A set. Tap to mark point B" : "A-B loop enabled. Tap to clear loop");
-            } catch (Exception ignored) { Ui.toast(this, "A–B repeat is unavailable"); }
-            Ui.tick(v);
+            } catch (Exception ignored) { ToxiVisualSystem.toast(this, "A–B repeat is unavailable"); }
+            ToxiVisualSystem.feedback(v);
         });
-        Ui.press(repeat); Ui.press(shuffle); Ui.press(abRepeat);
-        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(-2, -2);
-        modeLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(repeat, modeLp);
-        LinearLayout.LayoutParams shuffleLp = new LinearLayout.LayoutParams(-2, -2);
-        shuffleLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(shuffle, shuffleLp);
-        LinearLayout.LayoutParams abLp = new LinearLayout.LayoutParams(-2, -2);
-        abLp.setMargins(Ui.dp(5), 0, Ui.dp(5), 0);
-        modes.addView(abRepeat, abLp);
+        ToxiVisualSystem.interactive(repeat); ToxiVisualSystem.interactive(shuffle); ToxiVisualSystem.interactive(abRepeat);
+        TextView[] modeActions = {repeat, shuffle, abRepeat};
+        for (TextView modeAction : modeActions) {
+            modeAction.setSingleLine(true);
+            modeAction.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            modeAction.setMinWidth(0);
+            LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, -2, 1f);
+            modeLp.setMargins(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), 0);
+            modes.addView(modeAction, modeLp);
+        }
         card.addView(modes, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout extras = new LinearLayout(this);
         extras.setOrientation(LinearLayout.VERTICAL);
         extras.setGravity(Gravity.CENTER);
-        extras.setPadding(0, Ui.dp(7), 0, Ui.dp(2));
+        extras.setPadding(0, ToxiVisualSystem.dp(7), 0, ToxiVisualSystem.dp(2));
         LinearLayout extrasTop = new LinearLayout(this);
         LinearLayout extrasBottom = new LinearLayout(this);
         extrasTop.setGravity(Gravity.CENTER);
         extrasBottom.setGravity(Gravity.CENTER);
-        TextView speedBtn = Ui.tv(this, "1.0× Speed", 12, Ui.WHITE, true);
-        TextView sleepBtn = Ui.tv(this, "Sleep timer", 12, Ui.WHITE, true);
-        TextView lyricsBtn = Ui.tv(this, "Lyrics", 12, Ui.WHITE, true);
-        TextView eqBtn = Ui.tv(this, "EQ / Bass", 12, Ui.WHITE, true);
-        TextView queueBtn = Ui.tv(this, "Queue", 12, Ui.WHITE, true);
+        TextView speedBtn = ToxiVisualSystem.text(this, "1.0× Speed", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView sleepBtn = ToxiVisualSystem.text(this, "Sleep timer", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView lyricsBtn = ToxiVisualSystem.text(this, "Lyrics", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView eqBtn = ToxiVisualSystem.text(this, "EQ / Bass", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView queueBtn = ToxiVisualSystem.text(this, "Queue", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
         TextView[] extraButtons = {speedBtn, sleepBtn, lyricsBtn, eqBtn, queueBtn};
         for (int i = 0; i < extraButtons.length; i++) {
             TextView b = extraButtons[i];
             b.setGravity(Gravity.CENTER);
-            b.setMinHeight(Ui.dp(42));
+            b.setMinHeight(ToxiVisualSystem.dp(42));
             b.setSingleLine(true);
             b.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            b.setPadding(Ui.dp(7), Ui.dp(9), Ui.dp(7), Ui.dp(9));
-            b.setBackground(Ui.glass(16, false));
+            b.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(9));
+            b.setBackground(ToxiVisualSystem.surface(16, false));
             LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(0, -2, i < 3 ? 1f : 1f);
-            ep.setMargins(Ui.dp(3), 0, Ui.dp(3), Ui.dp(0));
-            if (i >= 3) ep.width = Ui.dp(118);
+            ep.setMargins(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(0));
+            if (i >= 3) ep.width = 0;
             (i < 3 ? extrasTop : extrasBottom).addView(b, ep);
-            Ui.press(b);
+            ToxiVisualSystem.interactive(b);
         }
         extras.addView(extrasTop, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout.LayoutParams extrasBottomLp = new LinearLayout.LayoutParams(-1, -2);
-        extrasBottomLp.topMargin = Ui.dp(6);
+        extrasBottomLp.topMargin = ToxiVisualSystem.dp(6);
         extras.addView(extrasBottom, extrasBottomLp);
         // Balance the second row's two actions around the center.
         extrasBottom.setGravity(Gravity.CENTER);
         speedBtn.setOnClickListener(v -> {
             audioSpeed = audioSpeed >= 2.0f ? 0.75f : audioSpeed == 1.0f ? 1.25f : audioSpeed == 1.25f ? 1.5f : audioSpeed == 1.5f ? 2.0f : 1.0f;
             speedBtn.setText(audioSpeed + "×");
-            try { if (Build.VERSION.SDK_INT >= 23 && mp != null) mp.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); else Ui.toast(this, "Playback speed requires Android 6 or newer"); }
-            catch (Exception ex) { Ui.toast(this, "Speed change is not supported for this file"); }
+            try { if (Build.VERSION.SDK_INT >= 23 && mp != null) mp.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); else ToxiVisualSystem.toast(this, "Playback speed requires Android 6 or newer"); }
+            catch (Exception ex) { ToxiVisualSystem.toast(this, "Speed change is not supported for this file"); }
         });
         sleepBtn.setOnClickListener(v -> {
             String[] choices = {"Off", "15 minutes", "30 minutes", "45 minutes", "60 minutes"};
@@ -1123,65 +1191,65 @@ public class ViewerActivity extends Activity {
                         sleepDeadlineElapsed = 0L;
                     };
                     sleepHandler.postDelayed(sleepStopper, delay);
-                    Ui.toast(this, "Sleep timer set: " + choices[which]);
-                } else { sleepDeadlineElapsed = 0L; Ui.toast(this, "Sleep timer off"); }
+                    ToxiVisualSystem.toast(this, "Sleep timer set: " + choices[which]);
+                } else { sleepDeadlineElapsed = 0L; ToxiVisualSystem.toast(this, "Sleep timer off"); }
             }).show();
         });
         lyricsBtn.setOnClickListener(v -> showLocalLyrics(f));
         eqBtn.setOnClickListener(v -> showAudioEffects());
         queueBtn.setOnClickListener(v -> {
-            if (paths == null || paths.isEmpty()) { Ui.toast(this, "No files in this playback list"); return; }
+            if (paths == null || paths.isEmpty()) { ToxiVisualSystem.toast(this, "No files in this playback list"); return; }
             showQueueEditor();
         });
         card.addView(extras, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout volumeHeader = new LinearLayout(this);
         volumeHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView volLabel = Ui.tv(this, "VOLUME", 10.5f, Ui.SUB, true);
-        TextView volValue = Ui.tv(this, "100%", 10.5f, Ui.SUB, false);
+        TextView volLabel = ToxiVisualSystem.text(this, "VOLUME", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView volValue = ToxiVisualSystem.text(this, "100%", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
         volumeHeader.addView(volLabel, new LinearLayout.LayoutParams(0, -2, 1f));
         volumeHeader.addView(volValue, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout.LayoutParams volumeHeaderLp = new LinearLayout.LayoutParams(-1, -2);
-        volumeHeaderLp.topMargin = Ui.dp(7);
+        volumeHeaderLp.topMargin = ToxiVisualSystem.dp(7);
         card.addView(volumeHeader, volumeHeaderLp);
-        SeekBar volume = new SeekBar(this);
+        ToxiProgressSeekBar volume = new ToxiProgressSeekBar(this);
+        volume.setProgressColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
         audioVolume = getPreferences(MODE_PRIVATE).getInt("audio_volume", 100) / 100f;
         volume.setMax(100); volume.setProgress(Math.round(audioVolume * 100));
         volValue.setText(Math.round(audioVolume * 100) + "%");
-        volume.getProgressDrawable().setTint(Ui.accent); volume.getThumb().setTint(Ui.accent);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seek, int value, boolean fromUser) { volValue.setText(value + "%"); if (fromUser) { audioVolume = value / 100f; getPreferences(MODE_PRIVATE).edit().putInt("audio_volume", value).apply(); if (mp != null) try { mp.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {} } }
             public void onStartTrackingTouch(SeekBar seek) {} public void onStopTrackingTouch(SeekBar seek) {}
         });
-        card.addView(volume, new LinearLayout.LayoutParams(-1, Ui.dp(38)));
+        card.addView(volume, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(38)));
 
         LinearLayout ctl = new LinearLayout(this);
         ctl.setGravity(Gravity.CENTER);
-        ImageView pv = Ui.iconBtn(this, Glyphs.BACK, Ui.WHITE);
+        ImageView pv = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         final PlayAnimationImageView pp = new PlayAnimationImageView(this);
         pp.setPlaying(true);
-        ImageView nx = Ui.iconBtn(this, Glyphs.NEXT, Ui.WHITE);
-        pp.setBackground(Ui.accentPill(30));
+        ImageView nx = ToxiVisualSystem.iconButton(this, ToxiIcons.NEXT, ToxiVisualSystem.TEXT_PRIMARY);
+        pp.setBackground(ToxiVisualSystem.accentSurface(30));
         pv.setContentDescription("Previous track");
         pp.setContentDescription("Play or pause");
         nx.setContentDescription("Next track");
         pv.setOnClickListener(v -> { if (mp != null) { try { if (mp.getCurrentPosition() > 3000) { mp.seekTo(0); return; } } catch (Exception ignored) {} } go(-1); });
         nx.setOnClickListener(v -> go(1));
-        ctl.addView(pv, new LinearLayout.LayoutParams(Ui.dp(52), Ui.dp(52)));
-        LinearLayout.LayoutParams ppl = new LinearLayout.LayoutParams(Ui.dp(64), Ui.dp(64));
-        ppl.setMargins(Ui.dp(18), 0, Ui.dp(18), 0);
+        ctl.addView(pv, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(52), ToxiVisualSystem.dp(52)));
+        LinearLayout.LayoutParams ppl = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(64), ToxiVisualSystem.dp(64));
+        ppl.setMargins(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), 0);
         ctl.addView(pp, ppl);
-        ctl.addView(nx, new LinearLayout.LayoutParams(Ui.dp(52), Ui.dp(52)));
+        ctl.addView(nx, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(52), ToxiVisualSystem.dp(52)));
         LinearLayout.LayoutParams cll = new LinearLayout.LayoutParams(-1, -2);
-        cll.topMargin = Ui.dp(10);
+        cll.topMargin = ToxiVisualSystem.dp(10);
         card.addView(ctl, cll);
         FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        fp.setMargins(Ui.dp(22), 0, Ui.dp(22), 0);
+        fp.setMargins(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(22), 0);
         stage.addView(card, fp);
-        GlowRing.attach(art);
-        GlowRing.setActive(art, false);
-        GlowRing.attach(pp);
-        GlowRing.setActive(pp, false);
+        ToxiMotion.attach(art);
+        ToxiMotion.setActive(art, false);
+        ToxiMotion.attach(pp);
+        ToxiMotion.setActive(pp, false);
 
         final int my = idx;
         io.execute(() -> {
@@ -1196,7 +1264,7 @@ public class ViewerActivity extends Activity {
                 byte[] pic = r.getEmbeddedPicture();
                 if (pic != null) cover = BitmapFactory.decodeByteArray(pic, 0, pic.length);
             } catch (Throwable ignored) { } finally { try { r.release(); } catch (Throwable ignored) { } }
-            final String fi = info.isEmpty() ? Ui.size(e.len) : info;
+            final String fi = info.isEmpty() ? ToxiVisualSystem.formatSize(e.len) : info;
             final Bitmap fc = cover;
             h.post(() -> { if (destroyed || my != idx) return; meta.setText(fi); if (fc != null) art.setImageBitmap(fc); });
         });
@@ -1215,32 +1283,32 @@ public class ViewerActivity extends Activity {
                 try { m.setVolume(audioVolume, audioVolume); } catch (Exception ignored) {}
                 try { if (Build.VERSION.SDK_INT >= 23) m.setPlaybackParams(new PlaybackParams().setSpeed(audioSpeed)); } catch (Exception ignored) {}
                 m.start();
-                GlowRing.setActive(art, true);
-                GlowRing.setActive(pp, true);
+                ToxiMotion.setActive(art, true);
+                ToxiMotion.setActive(pp, true);
                 initAudioEffects(m.getAudioSessionId());
                 pp.setPlaying(true);
                 startTicker(sb, time);
             });
             mp.setOnCompletionListener(m -> {
                 if (audioRepeatMode == 1) {
-                    try { m.seekTo(0); m.start(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
-                    catch (Exception ignored) { GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
+                    try { m.seekTo(0); m.start(); ToxiMotion.setActive(art, true); ToxiMotion.setActive(pp, true); pp.setPlaying(true); }
+                    catch (Exception ignored) { ToxiMotion.setActive(art, false); ToxiMotion.setActive(pp, false); pp.setPlaying(false); }
                 } else if (paths.size() > 1 && audioShuffle) {
                     go(1);
                 } else if (idx < paths.size() - 1) go(1);
                 else if (audioRepeatMode == 2 && paths.size() > 0) { idx = 0; show(); }
-                else { GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
+                else { ToxiMotion.setActive(art, false); ToxiMotion.setActive(pp, false); pp.setPlaying(false); }
             });
-            mp.setOnErrorListener((m, w, x) -> { Ui.toast(this, "Can't play this audio file"); return true; });
+            mp.setOnErrorListener((m, w, x) -> { ToxiVisualSystem.toast(this, "Can't play this audio file"); return true; });
             mp.prepareAsync();
         } catch (Exception ex) {
-            Ui.toast(this, "Can't play this audio file");
+            ToxiVisualSystem.toast(this, "Can't play this audio file");
         }
         pp.setOnClickListener(v -> {
             if (mp == null) return;
             try {
-                if (mp.isPlaying()) { mp.pause(); GlowRing.setActive(art, false); GlowRing.setActive(pp, false); pp.setPlaying(false); }
-                else { mp.start(); GlowRing.setActive(art, true); GlowRing.setActive(pp, true); pp.setPlaying(true); }
+                if (mp.isPlaying()) { mp.pause(); ToxiMotion.setActive(art, false); ToxiMotion.setActive(pp, false); pp.setPlaying(false); }
+                else { mp.start(); ToxiMotion.setActive(art, true); ToxiMotion.setActive(pp, true); pp.setPlaying(true); }
             } catch (Exception ignored) { }
         });
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -1256,9 +1324,9 @@ public class ViewerActivity extends Activity {
     }
 
     String repeatLabel() {
-        if (audioRepeatMode == 1) return "↻ Repeat One";
-        if (audioRepeatMode == 2) return "↻ Repeat All";
-        return "↻ Repeat Off";
+        if (audioRepeatMode == 1) return "Repeat One";
+        if (audioRepeatMode == 2) return "Repeat All";
+        return "Repeat Off";
     }
 
     void releaseAudioEffects() {
@@ -1276,11 +1344,11 @@ public class ViewerActivity extends Activity {
     void showAudioEffects() {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(Ui.dp(20), Ui.dp(8), Ui.dp(20), Ui.dp(8));
-        TextView note = Ui.tv(this, "Audio effects depend on Android/device support and may reset when the track changes.", 12, Ui.SUB, false);
+        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
+        TextView note = ToxiVisualSystem.text(this, "Audio effects depend on Android/device support and may reset when the track changes.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         panel.addView(note);
         final SeekBar bass = new SeekBar(this); bass.setMax(1000);
-        panel.addView(Ui.tv(this, "Bass boost", 13, Ui.WHITE, true)); panel.addView(bass);
+        panel.addView(ToxiVisualSystem.text(this, "Bass boost", 13, ToxiVisualSystem.TEXT_PRIMARY, true)); panel.addView(bass);
         try { bass.setProgress(bassBoost == null ? 0 : bassBoost.getRoundedStrength()); } catch (Exception ignored) { }
         bass.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b, int value, boolean fromUser) { if (fromUser && bassBoost != null) try { bassBoost.setStrength((short)value); } catch (Exception ignored) { } }
@@ -1294,7 +1362,7 @@ public class ViewerActivity extends Activity {
                 for (short i = 0; i < count; i++) {
                     final short band = i;
                     int center = equalizer.getCenterFreq(band) / 1000;
-                    panel.addView(Ui.tv(this, center + " Hz", 12, Ui.SUB, false));
+                    panel.addView(ToxiVisualSystem.text(this, center + " Hz", 12, ToxiVisualSystem.TEXT_SECONDARY, false));
                     SeekBar seek = new SeekBar(this); seek.setMax(range[1] - range[0]);
                     seek.setProgress(equalizer.getBandLevel(band) - range[0]);
                     seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -1316,7 +1384,7 @@ public class ViewerActivity extends Activity {
         File lrc = new File(base + ".lrc");
         File txt = new File(base + ".txt");
         File chosen = lrc.isFile() ? lrc : (txt.isFile() ? txt : null);
-        if (chosen == null) { Ui.toast(this, "No local .lrc or matching .txt lyrics found"); return; }
+        if (chosen == null) { ToxiVisualSystem.toast(this, "No local .lrc or matching .txt lyrics found"); return; }
         io.execute(() -> {
             java.util.ArrayList<Long> times = new java.util.ArrayList<>();
             java.util.ArrayList<String> lines = new java.util.ArrayList<>();
@@ -1342,10 +1410,10 @@ public class ViewerActivity extends Activity {
             h.post(() -> {
                 if (isFinishing()) return;
                 lyricTimes.clear(); lyricTimes.addAll(ft); lyricText.clear(); lyricText.addAll(fl);
-                LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(Ui.dp(18), Ui.dp(12), Ui.dp(18), Ui.dp(12));
-                TextView current = Ui.tv(this, "Lyrics", 18, Ui.WHITE, true); current.setGravity(Gravity.CENTER); panel.addView(current, new LinearLayout.LayoutParams(-1, -2));
-                TextView all = Ui.tv(this, raw, 13, Ui.SUB, false); all.setTextIsSelectable(true);
-                ScrollView scroll = new ScrollView(this); scroll.addView(all); panel.addView(scroll, new LinearLayout.LayoutParams(-1, Ui.dp(300)));
+                LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(12));
+                TextView current = ToxiVisualSystem.text(this, "Lyrics", 18, ToxiVisualSystem.TEXT_PRIMARY, true); current.setGravity(Gravity.CENTER); panel.addView(current, new LinearLayout.LayoutParams(-1, -2));
+                TextView all = ToxiVisualSystem.text(this, raw, 13, ToxiVisualSystem.TEXT_SECONDARY, false); all.setTextIsSelectable(true);
+                ScrollView scroll = new ScrollView(this); scroll.addView(all); panel.addView(scroll, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(300)));
                 android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this).setTitle(chosen.getName()).setView(panel).setPositiveButton("Close", null).create();
                 dialog.setOnDismissListener(d -> { if (lyricTicker != null) { subtitleHandler.removeCallbacks(lyricTicker); lyricTicker = null; } });
                 dialog.show();
@@ -1353,8 +1421,8 @@ public class ViewerActivity extends Activity {
                     lyricTicker = new Runnable() { @Override public void run() {
                         if (!dialog.isShowing()) return;
                         int pos = 0; try { if (mp != null) pos = mp.getCurrentPosition(); } catch (Exception ignored) { }
-                        String active = "♪  " + (lyricText.isEmpty() ? "" : lyricText.get(0));
-                        for (int i = 0; i < lyricTimes.size(); i++) if (lyricTimes.get(i) <= pos) active = "♪  " + lyricText.get(i); else break;
+                        String active = lyricText.isEmpty() ? "" : lyricText.get(0);
+                        for (int i = 0; i < lyricTimes.size(); i++) if (lyricTimes.get(i) <= pos) active = lyricText.get(i); else break;
                         current.setText(active); subtitleHandler.postDelayed(this, 300);
                     }};
                     subtitleHandler.post(lyricTicker);
@@ -1375,6 +1443,7 @@ public class ViewerActivity extends Activity {
                         mp.seekTo(audioLoopStartMs); p = audioLoopStartMs;
                     }
                     sb.setProgress(p);
+                    if (sb instanceof ToxiWaveSeekBar) ((ToxiWaveSeekBar) sb).setPlaying(mp.isPlaying());
                     int duration = mp.getDuration();
                             time.setText(fmt(p) + " / " + fmt(duration));
                     getPreferences(MODE_PRIVATE).edit().putInt("audio_pos_" + paths.get(idx), p).apply();
@@ -1393,15 +1462,15 @@ public class ViewerActivity extends Activity {
         t.setTextSize(13);
         t.setTypeface(Typeface.MONOSPACE);
         t.setTextIsSelectable(true);
-        t.setPadding(Ui.dp(18), Ui.dp(72) + topInset, Ui.dp(18), Ui.dp(40) + bottomInset);
+        t.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(72) + topInset, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(40) + bottomInset);
         t.setText("Loading…");
         sv.addView(t, new FrameLayout.LayoutParams(-1, -2));
         stage.addView(sv, new FrameLayout.LayoutParams(-1, -1));
-        TextView edit = Ui.tv(this, "Edit text", 12, Ui.WHITE, true);
-        edit.setGravity(Gravity.CENTER); edit.setPadding(Ui.dp(14), Ui.dp(9), Ui.dp(14), Ui.dp(9));
-        edit.setBackground(Ui.glass(16, true));
+        TextView edit = ToxiVisualSystem.text(this, "Edit text", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        edit.setGravity(Gravity.CENTER); edit.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9));
+        edit.setBackground(ToxiVisualSystem.surface(16, true));
         FrameLayout.LayoutParams editLp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
-        editLp.setMargins(0, Ui.dp(16) + topInset, Ui.dp(16), 0);
+        editLp.setMargins(0, ToxiVisualSystem.dp(16) + topInset, ToxiVisualSystem.dp(16), 0);
         stage.addView(edit, editLp);
         edit.setOnClickListener(v -> openTextEditor(f));
         final int my = idx;
@@ -1409,9 +1478,15 @@ public class ViewerActivity extends Activity {
             String s;
             try (FileInputStream in = new FileInputStream(f)) {
                 byte[] buf = new byte[300 * 1024];
-                int n = in.read(buf);
-                s = new String(buf, 0, Math.max(n, 0), "UTF-8");
-                if (f.length() > buf.length) s += "\n\n… file truncated (showing first 300 KB)";
+                int total = 0;
+                while (total < buf.length) {
+                    int n = in.read(buf, total, buf.length - total);
+                    if (n < 0) break;
+                    if (n == 0) continue;
+                    total += n;
+                }
+                s = new String(buf, 0, total, "UTF-8");
+                if (f.length() > total) s += "\n\n… file truncated (showing first 300 KB)";
             } catch (Exception ex) { s = "Can't read this file."; }
             final String fs = s;
             h.post(() -> { if (!destroyed && my == idx) t.setText(fs); });
@@ -1419,52 +1494,97 @@ public class ViewerActivity extends Activity {
     }
 
     void openTextEditor(File file) {
-        if (!file.isFile() || file.length() > 1024 * 1024) { Ui.toast(this, "For safety, the built-in editor supports text files up to 1 MB"); return; }
-        io.execute(() -> {
-            String content;
-            try (FileInputStream in = new FileInputStream(file)) {
-                byte[] bytes = new byte[(int) file.length()]; int n = in.read(bytes);
-                content = new String(bytes, 0, Math.max(0, n), "UTF-8");
-            } catch (Exception e) { h.post(() -> Ui.toast(this, "Couldn't read this text file")); return; }
-            final String initial = content;
-            h.post(() -> {
-                EditText editor = new EditText(ViewerActivity.this);
-                editor.setText(initial); editor.setTextSize(13); editor.setTypeface(Typeface.MONOSPACE);
-                editor.setTextColor(Ui.WHITE); editor.setHintTextColor(Ui.SUB); editor.setGravity(Gravity.TOP | Gravity.LEFT);
-                editor.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-                editor.setPadding(Ui.dp(14), Ui.dp(14), Ui.dp(14), Ui.dp(14));
-                editor.setBackground(Ui.glass(18, true));
-                ScrollView wrap = new ScrollView(ViewerActivity.this); wrap.setPadding(Ui.dp(16), Ui.dp(8), Ui.dp(16), 0);
-                wrap.addView(editor, new ScrollView.LayoutParams(-1, Ui.dp(380)));
-                new AlertDialog.Builder(ViewerActivity.this).setTitle("Edit · " + file.getName()).setView(wrap)
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Save", (d, w) -> io.execute(() -> {
-                        try (FileOutputStream out = new FileOutputStream(file, false)) {
-                            out.write(editor.getText().toString().getBytes("UTF-8")); out.flush();
-                            h.post(() -> { Ui.toast(ViewerActivity.this, "Text file saved"); show(); });
-                        } catch (Exception ex) { h.post(() -> Ui.toast(ViewerActivity.this, "Couldn't save this file. Check write access.")); }
-                    })).show();
-            });
-        });
+        if (file == null || !file.isFile() || !file.canRead()) {
+            ToxiVisualSystem.toast(this, "This text file is unavailable");
+            return;
+        }
+        Intent advanced = new Intent(this, ToxiToolsActivity.class);
+        advanced.putExtra(ToxiToolsActivity.EXTRA_FILE_PATH, file.getAbsolutePath());
+        startActivity(advanced);
     }
 
     // ---------------- pdf ----------------
-    void showPdf(File f) {
-        try {
-            pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
-            pdf = new PdfRenderer(pfd);
-        } catch (Exception ex) {
-            Ui.toast(this, "Can't open this PDF here — try \"Open with\"");
-            return;
+    private static void closePdfResources(PdfRenderer renderer, ParcelFileDescriptor descriptor) {
+        if (renderer != null) {
+            synchronized (renderer) {
+                try { renderer.close(); } catch (Exception ignored) { }
+            }
         }
-        final PdfRenderer r = pdf;
-        final int count = r.getPageCount();
-        final int w = getResources().getDisplayMetrics().widthPixels;
-        final LruCache<Integer, Bitmap> cache = new LruCache<>(6);
+        if (descriptor != null) {
+            try { descriptor.close(); } catch (Exception ignored) { }
+        }
+    }
+
+    private void closePdfResourcesAsync(PdfRenderer renderer, ParcelFileDescriptor descriptor) {
+        if (renderer == null && descriptor == null) return;
+        try {
+            io.execute(() -> closePdfResources(renderer, descriptor));
+        } catch (RuntimeException rejected) {
+            closePdfResources(renderer, descriptor);
+        }
+    }
+
+    void showPdf(File f) {
+        final long token = ++pdfGeneration;
+        io.execute(() -> {
+            if (destroyed || token != pdfGeneration) return;
+            ParcelFileDescriptor openedDescriptor = null;
+            PdfRenderer openedRenderer = null;
+            int pageCount = 0;
+            String failure = null;
+            try {
+                if (f == null || !f.isFile() || !f.canRead() || f.length() <= 0L) {
+                    failure = "This PDF is missing, empty, or unreadable";
+                } else {
+                    openedDescriptor = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
+                    openedRenderer = new PdfRenderer(openedDescriptor);
+                    pageCount = openedRenderer.getPageCount();
+                    if (pageCount <= 0) failure = "This PDF contains no readable pages";
+                }
+            } catch (Exception openFailure) {
+                failure = "Can't open this PDF here — try \"Open with\"";
+            }
+            if (failure != null) {
+                closePdfResources(openedRenderer, openedDescriptor);
+                final String message = failure;
+                h.post(() -> {
+                    if (!destroyed && token == pdfGeneration) ToxiVisualSystem.toast(this, message);
+                });
+                return;
+            }
+            final PdfRenderer renderer = openedRenderer;
+            final ParcelFileDescriptor descriptor = openedDescriptor;
+            final int count = pageCount;
+            if (destroyed || token != pdfGeneration) {
+                closePdfResources(renderer, descriptor);
+                return;
+            }
+            boolean posted = h.post(() -> {
+                if (destroyed || token != pdfGeneration) {
+                    closePdfResourcesAsync(renderer, descriptor);
+                    return;
+                }
+                pdf = renderer;
+                pfd = descriptor;
+                showPdfPages(renderer, count, token);
+            });
+            if (!posted) closePdfResources(renderer, descriptor);
+        });
+    }
+
+    private void showPdfPages(PdfRenderer r, int count, long token) {
+        final int w = Math.max(1, Math.min(2400, stage.getWidth() > 0 ? stage.getWidth() : getResources().getDisplayMetrics().widthPixels));
+        final int cacheBudgetBytes = (int)Math.max(4L * 1024L * 1024L, Runtime.getRuntime().maxMemory() / 8L);
+        final LruCache<Integer, Bitmap> cache = new LruCache<Integer, Bitmap>(cacheBudgetBytes) {
+            @Override protected int sizeOf(Integer key, Bitmap value) {
+                return Math.max(1, value.getByteCount());
+            }
+        };
+        final boolean[] pageErrorShown = {false};
         ListView lv = new ListView(this);
         lv.setDivider(null);
         lv.setClipToPadding(false);
-        lv.setPadding(0, Ui.dp(72) + topInset, 0, Ui.dp(24) + bottomInset);
+        lv.setPadding(0, ToxiVisualSystem.dp(72) + topInset, 0, ToxiVisualSystem.dp(24) + bottomInset);
         lv.setVerticalScrollBarEnabled(false);
         lv.setAdapter(new BaseAdapter() {
             @Override public int getCount() { return count; }
@@ -1487,12 +1607,28 @@ public class ViewerActivity extends Activity {
                     iv.setImageDrawable(null);
                     iv.setMinimumHeight((int) (w * 1.35f));
                     io.execute(() -> {
+                        if (destroyed || token != pdfGeneration) return;
                         Bitmap bm = renderPage(r, pos, w);
-                        if (bm == null) return;
+                        if (bm == null) {
+                            h.post(() -> {
+                                if (!destroyed && token == pdfGeneration && !pageErrorShown[0]) {
+                                    pageErrorShown[0] = true;
+                                    ToxiVisualSystem.toast(ViewerActivity.this, "One or more PDF pages could not be rendered");
+                                }
+                            });
+                            return;
+                        }
+                        if (destroyed || token != pdfGeneration) {
+                            bm.recycle();
+                            return;
+                        }
                         cache.put(pos, bm);
                         h.post(() -> {
                             Object tg = iv.getTag();
-                            if (!destroyed && tg != null && ((Integer) tg) == pos) { iv.setImageBitmap(bm); iv.setMinimumHeight(0); }
+                            if (!destroyed && token == pdfGeneration && tg != null && ((Integer) tg) == pos) {
+                                iv.setImageBitmap(bm);
+                                iv.setMinimumHeight(0);
+                            }
                         });
                     });
                 }
@@ -1503,18 +1639,30 @@ public class ViewerActivity extends Activity {
     }
 
     static Bitmap renderPage(PdfRenderer r, int pos, int w) {
+        PdfRenderer.Page page = null;
+        Bitmap bitmap = null;
         try {
             synchronized (r) {
-                PdfRenderer.Page p = r.openPage(pos);
-                float sc = (float) w / p.getWidth();
-                Bitmap b = Bitmap.createBitmap(w, Math.max(1, (int) (p.getHeight() * sc)), Bitmap.Config.ARGB_8888);
-                b.eraseColor(Color.WHITE);
-                p.render(b, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                p.close();
-                return b;
+                if (pos < 0 || pos >= r.getPageCount()) return null;
+                page = r.openPage(pos);
+                int pageWidth = Math.max(1, page.getWidth());
+                int pageHeight = Math.max(1, page.getHeight());
+                double pagePixels = (double) pageWidth * (double) pageHeight;
+                double scale = Math.min((double) Math.max(1, w) / pageWidth, Math.sqrt(16_000_000.0 / pagePixels));
+                int targetWidth = Math.max(1, (int) Math.ceil(pageWidth * scale));
+                int targetHeight = Math.max(1, (int) Math.ceil(pageHeight * scale));
+                bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
+                bitmap.eraseColor(Color.WHITE);
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                Bitmap result = bitmap;
+                bitmap = null;
+                return result;
             }
-        } catch (Throwable t) {
+        } catch (Exception | OutOfMemoryError ex) {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
             return null;
+        } finally {
+            if (page != null) try { page.close(); } catch (Exception ignored) { }
         }
     }
 
@@ -1524,19 +1672,24 @@ public class ViewerActivity extends Activity {
         return max <= 0 ? 0f : (float) am.getStreamVolume(AudioManager.STREAM_MUSIC) / max;
     }
 
-    LinearLayout levelPanel(LevelSlider slider, String glyph) {
+    LinearLayout levelPanel(LevelSlider slider, int symbol) {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER);
-        panel.setPadding(Ui.dp(8), Ui.dp(10), Ui.dp(8), Ui.dp(10));
-        panel.setBackground(Ui.glass(24, true));
-        TextView icon = Ui.tv(this, glyph, 20, Ui.WHITE, true);
-        icon.setGravity(Gravity.CENTER);
-        panel.addView(icon, new LinearLayout.LayoutParams(-1, Ui.dp(28)));
+        panel.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(10));
+        panel.setBackground(ToxiVisualSystem.surface(24, true));
+        ImageView icon = new ImageView(this);
+        icon.setImageDrawable(ToxiIcons.symbol(symbol, ToxiVisualSystem.TEXT_PRIMARY));
+        icon.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        icon.setAdjustViewBounds(false);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(28));
+        iconLp.gravity = Gravity.CENTER_HORIZONTAL;
+        panel.addView(icon, iconLp);
         panel.addView(slider, new LinearLayout.LayoutParams(-1, 0, 1f));
-        TextView label = Ui.tv(this, slider.label, 9.5f, Ui.SUB, true);
+        TextView label = ToxiVisualSystem.text(this, slider.label, 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setGravity(Gravity.CENTER);
-        panel.addView(label, new LinearLayout.LayoutParams(-1, Ui.dp(22)));
+        panel.addView(label, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(22)));
         return panel;
     }
 
@@ -1555,17 +1708,17 @@ public class ViewerActivity extends Activity {
         void setLevel(float value) { level = Math.max(0f, Math.min(1f, value)); invalidate(); }
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            float cx = getWidth() / 2f, top = Ui.dp(8), bottom = getHeight() - Ui.dp(8);
-            paint.setColor(0x553FFFFF); paint.setStrokeWidth(Ui.dp(4)); paint.setStrokeCap(Paint.Cap.ROUND);
+            float cx = getWidth() / 2f, top = ToxiVisualSystem.dp(8), bottom = getHeight() - ToxiVisualSystem.dp(8);
+            paint.setColor(0x553FFFFF); paint.setStrokeWidth(ToxiVisualSystem.dp(4)); paint.setStrokeCap(Paint.Cap.ROUND);
             canvas.drawLine(cx, top, cx, bottom, paint);
             float y = bottom - level * (bottom - top);
-            paint.setColor(Ui.accent); canvas.drawLine(cx, y, cx, bottom, paint);
-            paint.setColor(Color.WHITE); canvas.drawCircle(cx, y, Ui.dp(7), paint);
-            paint.setColor(0xFF18202D); canvas.drawCircle(cx, y, Ui.dp(3), paint);
+            paint.setColor(ToxiVisualSystem.ACCENT); canvas.drawLine(cx, y, cx, bottom, paint);
+            paint.setColor(Color.WHITE); canvas.drawCircle(cx, y, ToxiVisualSystem.dp(7), paint);
+            paint.setColor(0xFF18202D); canvas.drawCircle(cx, y, ToxiVisualSystem.dp(3), paint);
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE || event.getAction() == MotionEvent.ACTION_UP) {
-                float top = Ui.dp(8), bottom = getHeight() - Ui.dp(8);
+                float top = ToxiVisualSystem.dp(8), bottom = getHeight() - ToxiVisualSystem.dp(8);
                 setLevel(1f - Math.max(0f, Math.min(1f, (event.getY() - top) / Math.max(1f, bottom - top))));
                 if (listener != null) listener.onChanged(level);
                 return true;
@@ -1574,7 +1727,7 @@ public class ViewerActivity extends Activity {
         }
     }
 
-    @Override public void onBackPressed() {
+    private void handleBackNavigation() {
         // Back from the viewer must return to the file list, never leave a hidden player alive.
         try {
             if (videoPlayer != null) {
@@ -1667,6 +1820,7 @@ public class ViewerActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (AppLock.enabled(this) && !MainActivity.unlocked) { finish(); return; }
         if (backgroundAudioHandoff) {
             try {
                 String servicePath = BackgroundAudioService.activePath;
@@ -1697,35 +1851,39 @@ public class ViewerActivity extends Activity {
         if (sleepStopper != null) sleepHandler.removeCallbacks(sleepStopper);
         if (hideLevelOverlays != null) levelOverlayHandler.removeCallbacks(hideLevelOverlays);
         cleanup();
-        io.shutdown();
+        taskScope.close(false);
         super.onDestroy();
+    }
+
+    private void toggleIslandVideo() {
+        MediaPlayer player=videoPlayer;
+        if(player==null||!videoPrepared)return;
+        try { if(player.isPlaying()){player.pause();videoUserWantsPlayback=false;}else{player.start();videoUserWantsPlayback=true;} }
+        catch(IllegalStateException ex){ToxiVisualSystem.toast(this,"Video control is temporarily unavailable");}
     }
 
     private void setVideoPlayAnimation(TextView button, boolean playing) {
         // Keep playback feedback clear without a pulsing/radiant animation.
         button.clearAnimation();
         button.setScaleX(1f); button.setScaleY(1f);
-        button.setText(playing ? "Ⅱ  Playing" : "▶  Play");
+        button.setText(playing ? "Playing" : "Play");
+        setCompoundIcon(button, playing ? ToxiIcons.PAUSE : ToxiIcons.PLAY);
     }
 
 
     /** Stable, non-pulsing play/pause control; playback does not depend on any animation asset. */
     private static final class PlayAnimationImageView extends ImageView {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private boolean playing = false;
-        PlayAnimationImageView(android.content.Context context) { super(context); setContentDescription("Play or pause"); }
-        void setPlaying(boolean value) { playing = value; invalidate(); }
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            float cx = getWidth() * .5f, cy = getHeight() * .5f, unit = Math.min(getWidth(), getHeight()) * .24f;
-            paint.setColor(Color.WHITE); paint.setStyle(Paint.Style.FILL);
-            if (!playing) {
-                android.graphics.Path path = new android.graphics.Path();
-                path.moveTo(cx-unit*.55f, cy-unit); path.lineTo(cx+unit, cy); path.lineTo(cx-unit*.55f, cy+unit); path.close(); canvas.drawPath(path, paint);
-            } else {
-                canvas.drawRoundRect(cx-unit*.75f, cy-unit, cx-unit*.18f, cy+unit, unit*.12f, unit*.12f, paint);
-                canvas.drawRoundRect(cx+unit*.18f, cy-unit, cx+unit*.75f, cy+unit, unit*.12f, unit*.12f, paint);
-            }
+        PlayAnimationImageView(android.content.Context context) {
+            super(context);
+            setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            setContentDescription("Play or pause");
+            setImageDrawable(ToxiIcons.symbol(ToxiIcons.PLAY, ToxiVisualSystem.TEXT_PRIMARY));
+        }
+        void setPlaying(boolean value) {
+            playing = value;
+            setImageDrawable(ToxiIcons.symbol(playing ? ToxiIcons.PAUSE : ToxiIcons.PLAY, ToxiVisualSystem.TEXT_PRIMARY));
+            setContentDescription(playing ? "Pause playback" : "Start playback");
         }
     }
 }

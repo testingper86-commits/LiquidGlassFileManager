@@ -13,9 +13,9 @@ import java.security.MessageDigest;
 final class AppLock {
     static SharedPreferences sp(Context c) { return c.getSharedPreferences("lg_applock", Context.MODE_PRIVATE); }
     static boolean hasPin(Context c) { return sp(c).contains("pinhash"); }
-    static boolean enabled(Context c) { return Ui.bool("applock_on", false) && hasPin(c); }
+    static boolean enabled(Context c) { return ToxiVisualSystem.booleanPreference("applock_on", false) && hasPin(c); }
 
-    static void setPin(Context c, String pin) {
+    static synchronized void setPin(Context c, String pin) {
         sp(c).edit().putString("pinhash", PinHash.create(pin)).putInt("failed_attempts", 0).putLong("blocked_until", 0L).apply();
     }
 
@@ -23,7 +23,7 @@ final class AppLock {
 
     static long lockoutRemainingMs(Context c) { return Math.max(0L, sp(c).getLong("blocked_until", 0L) - System.currentTimeMillis()); }
 
-    static boolean checkPin(Context c, String pin) {
+    static synchronized boolean checkPin(Context c, String pin) {
         SharedPreferences prefs = sp(c);
         long now = System.currentTimeMillis();
         if (now < prefs.getLong("blocked_until", 0L)) return false;
@@ -41,5 +41,5 @@ final class AppLock {
         return false;
     }
 
-    static void clearPin(Context c) { sp(c).edit().clear().apply(); }
+    static synchronized void clearPin(Context c) { sp(c).edit().clear().apply(); }
 }

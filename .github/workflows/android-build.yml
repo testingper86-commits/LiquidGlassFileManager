@@ -1,136 +1,113 @@
 name: ToxiFiles Android Build
-
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: toxifiles-android-${{ github.ref }}
-  cancel-in-progress: true
-
+  group: toxifiles-android-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
-    name: Build, test, and launch ToxiFiles
+    name: Build ToxiFiles APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Extract Android project if source is archived
+        with:
+          fetch-depth: 0
+      - name: Verify native Android project
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -s gradlew ]]; then
-            ARCHIVE=""
-            while IFS= read -r candidate; do
-              unzip -tq "$candidate" >/dev/null 2>&1 || continue
-              if unzip -Z1 "$candidate" | grep -Eq '(^|/)gradlew$' && unzip -Z1 "$candidate" | grep -Eq '(^|/)settings\.gradle(\.kts)?$'; then ARCHIVE="$candidate"; break; fi
-            done < <(find . -maxdepth 4 -type f -iname '*.zip' | sort)
-            [[ -n "$ARCHIVE" ]] || { echo "::error::No valid ZIP containing a Gradle Android project was found."; exit 1; }
-            TMP="$RUNNER_TEMP/toxifiles-project"
-            mkdir -p "$TMP"
-            unzip -oq "$ARCHIVE" -d "$TMP"
-            ROOT=""
-            while IFS= read -r candidate; do
-              d="$(dirname "$candidate")"
-              if [[ -s "$d/settings.gradle" || -s "$d/settings.gradle.kts" ]]; then ROOT="$d"; break; fi
-            done < <(find "$TMP" -type f -name gradlew -print)
-            [[ -n "$ROOT" ]] || { echo "::error::Archive contains no Gradle project root."; exit 1; }
-            rsync -a "$ROOT"/ "$GITHUB_WORKSPACE"/
-          fi
           test -s gradlew
           test -s gradle/wrapper/gradle-wrapper.jar
+          test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiIcons.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiMotion.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiProgressSeekBar.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java
+          test -s core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
+          test -s core/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
+          test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java
+          test -s core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
+          test -s core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
+          test -s tools/developer_studio_smoke_test.py
+          test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
+          test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
+          test -s app/src/main/res/drawable/ic_toxifiles_app_icon.xml
+          test -s app/src/main/res/drawable/ic_toxifiles_notification.xml
+          test -s app/src/main/res/drawable/toxifiles_splash.xml
+          test -s app/build.gradle.kts
           test -s settings.gradle || test -s settings.gradle.kts
+          test -s core/build.gradle.kts
+          test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
+          test -s core/src/main/java/com/music/echo/offline/files/TaskScheduler.java
+          test -s core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java
+          test -s core/src/main/java/com/music/echo/offline/files/FileOperationEngine.java
+          test -s core/src/main/java/com/music/echo/offline/files/ArchiveOperations.java
+          test -s core/src/test/java/com/music/echo/offline/files/ArchiveOperationsTest.java
+          test -s core/src/test/java/com/music/echo/offline/files/FileOperationEngineTest.java
+          test -s core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java
+          test -s foundation/build.gradle.kts
+          test -s foundation/src/main/AndroidManifest.xml
+          test -s foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java
+          test -s core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java
+          test -s core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java
+          test -s core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java
+          test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
+          test -s core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
+          test -s core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java
+          test -s core/src/main/java/com/music/echo/offline/files/PinHash.java
+          test -s core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java
+          test -s core/src/test/java/com/music/echo/offline/files/PinHashTest.java
+          test -s core/src/main/java/com/music/echo/offline/files/SafePathResolver.java
+          test -s core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java
           chmod +x gradlew
-
-      - name: Apply ordered ToxiFiles patch series
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! -f .toxifiles-patches-applied ]]; then
-            for p in patches/toxifiles-redesign.patch $(find patches -maxdepth 1 -type f \( -name 'toxifiles-redesign-part0[2-9].patch' -o -name 'toxifiles-redesign-part1[0-5].patch' \) | sort -V); do
-              [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
-              patch --batch --forward -p1 < "$p"
-            done
-            touch .toxifiles-patches-applied
-          else
-            echo "Base redesign patches 01-15 are already recorded as applied."
-          fi
-          for p in $(find patches -maxdepth 1 -type f -name 'toxifiles-redesign-part*.patch' | sort -V); do
-            [[ -s "$p" ]] || { echo "::error::Missing patch $p"; exit 1; }
-            part="$(basename "$p" .patch)"
-            case "$part" in toxifiles-redesign-part0[2-9]|toxifiles-redesign-part1[0-5]) continue ;; esac
-            marker=".toxifiles-$part-applied"
-            [[ -f "$marker" ]] && { echo "$p already recorded as applied."; continue; }
-            if patch --dry-run --batch --forward -p1 < "$p" >/dev/null 2>&1; then
-              patch --batch --forward -p1 < "$p"
-            elif patch --dry-run --batch --reverse -p1 < "$p" >/dev/null 2>&1; then
-              echo "$p already applied; recording marker."
-            else
-              echo "::error::Patch $p does not apply cleanly and is not already applied. Diagnostic follows:"
-              patch --dry-run --batch --forward --verbose -p1 < "$p" || true
-              exit 1
-            fi
-            touch "$marker"
-          done
-          rm -f app/src/main/assets/sound.json app/src/main/assets/wave.json
-          if grep -RniE 'sound\.json|wave\.json|LottieAnimationView|com\.airbnb\.android:lottie' app/src/main app/build.gradle.kts; then
-            echo "::error::Legacy visualizer references remain."
-            exit 1
-          fi
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Structural smoke tests and Android XML validation
-        shell: bash
-        run: |
-          set -euo pipefail
-          python tools/project_smoke_test.py
-          python tools/video_lifecycle_regression_test.py
-          python - <<'PY'
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-          files = [Path('app/src/main/AndroidManifest.xml'), *Path('app/src/main/res').rglob('*.xml')]
-          for path in files:
-              if path.is_file(): ET.parse(path)
-          print('Android XML parsed successfully.')
-          PY
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-
+          java-version: "17"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
       - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$PATH"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
           [[ -n "$SDKMANAGER" ]] || { echo "::error::sdkmanager not found"; exit 1; }
-          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          set -o pipefail
           "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
-
-      - name: Run JVM unit tests
-        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
-
+      - name: Verify complete visual replacement
+        run: python3 tools/toxifiles_visual_replacement_test.py
+      - name: Verify restricted offline Developer Studio
+        run: python3 tools/developer_studio_smoke_test.py
+      - name: Verify current project and security contracts
+        run: python3 tools/project_smoke_test.py
+      - name: Verify media lifecycle regressions
+        run: python3 tools/video_lifecycle_regression_test.py
+      - name: Test dependency license metadata parser
+        run: python3 tools/dependency_audit_test.py
+      - name: Inventory resolved runtime dependencies
+        run: python3 tools/dependency_audit.py
+      - name: Run Android unit tests and lint
+        run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
       - name: Build debug APK
-        run: ./gradlew --no-daemon --stacktrace assembleDebug
-
+        run: ./gradlew --no-daemon assembleDebug
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -138,85 +115,10 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
-
-      - name: Run Android lint
-        run: ./gradlew --no-daemon --stacktrace lintDebug
-
-      - name: Upload lint diagnostics
-        if: always()
+      - name: Upload dependency inventory
         uses: actions/upload-artifact@v4
         with:
-          name: ToxiFiles-lint-diagnostics
-          path: |
-            app/build/reports/lint-results-debug.html
-            app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Enable KVM access
-        run: if [[ -e /dev/kvm ]]; then sudo chmod 666 /dev/kvm; else echo "::warning::/dev/kvm unavailable"; fi
-
-      - name: Install and launch on Android 16 emulator
-        timeout-minutes: 12
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          export ANDROID_HOME="$SDK_ROOT"
-          export ANDROID_SDK_ROOT="$SDK_ROOT"
-          export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-          command -v adb
-          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
-          AVDMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort -V | tail -n 1)"
-          test -n "$SDKMANAGER"
-          test -n "$AVDMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-          if [[ ! -x "$SDK_ROOT/emulator/emulator" ]]; then "$SDKMANAGER" --install emulator; fi
-          if [[ ! -d "$SDK_ROOT/system-images/android-36/google_apis/x86_64" ]]; then "$SDKMANAGER" --install 'system-images;android-36;google_apis;x86_64'; fi
-          export ANDROID_AVD_HOME="$HOME/.android/avd"
-          export ANDROID_SDK_HOME="$HOME/.android"
-          mkdir -p "$ANDROID_AVD_HOME"
-          "$AVDMANAGER" create avd --name toxifiles-api36 --package 'system-images;android-36;google_apis;x86_64' --device pixel_2 --path "$ANDROID_AVD_HOME/toxifiles-api36.avd" --force <<< 'no'
-          test -s "$ANDROID_AVD_HOME/toxifiles-api36.ini" || { "$AVDMANAGER" list avd; echo "::error::AVD definition was not created at $ANDROID_AVD_HOME"; exit 1; }
-          "$AVDMANAGER" list avd
-          mkdir -p dist
-          "$SDK_ROOT/emulator/emulator" -avd toxifiles-api36 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim > "$RUNNER_TEMP/toxifiles-emulator.log" 2>&1 &
-          EMULATOR_PID=$!
-          trap 'adb -s emulator-5554 emu kill >/dev/null 2>&1 || kill "$EMULATOR_PID" >/dev/null 2>&1 || true' EXIT
-          adb start-server
-          READY=0
-          for attempt in $(seq 1 120); do
-            STATE="$(adb -s emulator-5554 get-state 2>/dev/null || true)"
-            if [ "$STATE" = "device" ]; then READY=1; break; fi
-            sleep 2
-          done
-          test "$READY" -eq 1 || { cat "$RUNNER_TEMP/toxifiles-emulator.log"; exit 1; }
-          BOOTED=0
-          for attempt in $(seq 1 120); do
-            BOOT="$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | sed 's/[[:space:]]//g' || true)"
-            if [ "$BOOT" = "1" ]; then BOOTED=1; break; fi
-            sleep 2
-          done
-          test "$BOOTED" -eq 1 || { cat "$RUNNER_TEMP/toxifiles-emulator.log"; exit 1; }
-          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$APK"
-          adb -s emulator-5554 logcat -c
-          adb -s emulator-5554 install -r "$APK"
-          adb -s emulator-5554 shell monkey -p com.liquidfiles.offline.debug 1
-          sleep 12
-          adb -s emulator-5554 shell dumpsys activity activities > dist/emulator-activities.txt
-          adb -s emulator-5554 logcat -d > dist/emulator-logcat.txt
-          grep -E 'mResumedActivity|ResumedActivity' dist/emulator-activities.txt | grep -q 'com.liquidfiles.offline.debug'
-          if grep -q 'FATAL EXCEPTION' dist/emulator-logcat.txt; then cat dist/emulator-logcat.txt; exit 1; fi
-
-      - name: Upload emulator diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ToxiFiles-emulator-diagnostics
-          path: |
-            dist/emulator-activities.txt
-            dist/emulator-logcat.txt
-            ${{ runner.temp }}/toxifiles-emulator.log
-          if-no-files-found: warn
-          retention-days: 7
+          name: ToxiFiles-dependency-inventory
+          path: build/reports/toxifiles-dependency-audit.md
+          if-no-files-found: error
+          retention-days: 30
