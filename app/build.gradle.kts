@@ -47,6 +47,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":foundation"))
     implementation("androidx.core:core:1.17.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.webkit:webkit:1.18.0")

@@ -21,12 +21,18 @@ def main():
         "app/src/main/java/com/music/echo/offline/files/RecycleBin.java",
         "app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java",
         "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java",
-        "app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
+        "foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java",
         "app/src/main/java/com/music/echo/offline/files/ToxiIcons.java",
         "app/src/main/java/com/music/echo/offline/files/FileOps.java",
         "core/src/main/java/com/music/echo/offline/files/OperationCancellation.java",
         "core/src/main/java/com/music/echo/offline/files/TaskScheduler.java",
+        "foundation/build.gradle.kts",
+        "foundation/src/main/AndroidManifest.xml",
+        "foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java",
+        "foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java",
+        "foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java",
+        "foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java",
         "core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java",
         "core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java",
         "core/src/main/java/com/music/echo/offline/files/ArchivePath.java",
@@ -44,7 +50,7 @@ def main():
         "core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java",
         "app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java",
         "app/src/main/java/com/music/echo/offline/files/ViewerActivity.java",
-        "app/src/main/java/com/music/echo/offline/files/CrashLogger.java",
+        "foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java",
         "tools/developer_studio_smoke_test.py",
         "tools/video_lifecycle_regression_test.py",
     ]
@@ -54,13 +60,17 @@ def main():
 
     settings = source("settings.gradle.kts")
     app_gradle = source("app/build.gradle.kts")
-    require('include(":app", ":core")' in settings and 'implementation(project(":core"))' in app_gradle and (ROOT / "core/build.gradle.kts").is_file(), "platform-neutral security and archive primitives are isolated in the Java core module")
+    foundation_gradle = source("foundation/build.gradle.kts")
+    require('include(":app", ":core", ":foundation")' in settings and 'implementation(project(":core"))' in app_gradle and 'implementation(project(":foundation"))' in app_gradle and 'implementation(project(":core"))' in foundation_gradle and (ROOT / "core/build.gradle.kts").is_file(), "app, Android foundation and platform-neutral core modules have one-way dependency direction")
+    require('id("com.android.library")' in foundation_gradle and 'namespace = "com.music.echo.foundation"' in foundation_gradle and 'compileSdk = 36' in foundation_gradle and 'minSdk = 26' in foundation_gradle, "Android foundation module uses the project's supported SDK and Java platform")
     require(all((ROOT / "core/src/main/java/com/music/echo/offline/files" / name).is_file() for name in ("OperationCancellation.java", "ArchivePath.java", "DeveloperStudioCore.java", "BatchRenameEngine.java", "PinHash.java", "SafePathResolver.java")), "core module owns cancellation, archive/path safety, Developer Studio logic and PIN hashing")
     task_scheduler = source("core/src/main/java/com/music/echo/offline/files/TaskScheduler.java")
-    task_coordinator = source("app/src/main/java/com/music/echo/offline/files/TaskCoordinator.java")
+    task_coordinator = source("foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java")
     task_scheduler_tests = source("core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java")
     require("android." not in task_scheduler and "ArrayBlockingQueue" in task_scheduler and "ThreadPoolExecutor.AbortPolicy" in task_scheduler and "close(boolean cancelRunning)" in task_scheduler, "core scheduler owns bounded execution lanes and lifecycle cancellation without Android dependencies")
     require("new TaskScheduler(() ->" in task_coordinator and "THREAD_PRIORITY_BACKGROUND" in task_coordinator and "TaskScheduler.ScopedExecutor" in task_coordinator, "Android app adapter applies background thread priority while delegating scheduling to core")
+    foundation_services = [source("foundation/src/main/java/com/music/echo/offline/files/" + name) for name in ("TaskCoordinator.java", "SafStorageOperations.java", "ToxiUriPermissions.java", "CrashLogger.java")]
+    require(all("com.music.echo.offline.R" not in item and "MainActivity" not in item and "FileOps" not in item and "ToxiVisualSystem" not in item for item in foundation_services), "Android foundation services have no reverse dependency on app features or UI resources")
     require("boundedQueuesRejectOverloadAndInitializerRunsOnWorkers" in task_scheduler_tests and "cancellingScopeInterruptsRunningWork" in task_scheduler_tests, "core scheduler tests cover queue bounds, worker initialization and cancellation")
     dependency_audit = source("tools/dependency_audit.py")
     app_build = source("app/build.gradle.kts")
@@ -102,15 +112,15 @@ def main():
     require('private boolean developerUnlocked()' in developer and 'if(!developerUnlocked()){finish();return;}' in developer, "Developer Studio independently rejects direct access while locked")
     require('private static final String[] NAMES' in developer and 'openTool(int index)' in developer, "all Developer tools share one functional internal tool registry")
     require('Intent.ACTION_OPEN_DOCUMENT' in developer and 'Intent.ACTION_OPEN_DOCUMENT_TREE' in developer and 'ToxiUriPermissions.openInputStream(this,uri)' in developer and 'DocumentFile.fromTreeUri(this,root)' in developer, "Developer tools read user-selected files and folders through Android SAF")
-    uri_permissions = source("app/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
+    uri_permissions = source("foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java")
     require(uri_permissions.count("takePersistableUriPermission(") == 2 and "Intent.FLAG_GRANT_READ_URI_PERMISSION);" in uri_permissions and "Intent.FLAG_GRANT_WRITE_URI_PERMISSION);" in uri_permissions, "persistable URI permissions are stored one validated grant mode at a time")
-    java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
+    java_sources = list((ROOT / "app/src/main/java").rglob("*.java")) + list((ROOT / "foundation/src/main/java").rglob("*.java"))
     direct_uri_permission_calls = [str(path.relative_to(ROOT)) for path in java_sources if path.name != "ToxiUriPermissions.java" and "takePersistableUriPermission(" in path.read_text(encoding="utf-8")]
     require(not direct_uri_permission_calls, "all activities use the shared SAF permission helper; direct unsafe calls are blocked")
     require("ToxiUriPermissions.takeGranted(getContentResolver(),uri,data.getFlags());" in source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java") and "ToxiUriPermissions.takeGranted(getContentResolver(),u,data.getFlags());" in developer, "file tools and Developer Studio share the same validated SAF permission path")
 
 
-    saf_ops = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    saf_ops = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
     require("SafStorageOperations.copyLocalTree(getContentResolver(), source, parent);" in main and "SafStorageOperations.deleteTree(target);" in main, "MainActivity routes local-to-SAF copies and rollback cleanup through the shared provider service")
     require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
@@ -136,7 +146,7 @@ def main():
     require('OperationCancellation.checkCurrent()' in file_ops and 'OperationCancellation.isCancelled()' in file_ops and 'cancelRequested' not in file_ops and file_ops.count('a.cancellation.begin()') == 4 and file_ops.count('a.cancellation.finish(operationToken)') == 4 and 'cancellation.cancelActive()' in main and 'FileOps.cancelRequested' not in main, "file operations use isolated operation-scoped cancellation")
     require('ThreadLocal<Token>' in cancellation and 'ConcurrentHashMap.newKeySet()' in cancellation and 'void cancelActive()' in cancellation and main.count('this.cancellation.begin()') == 3, "cancellation is worker-thread-bound and scoped to the owning activity")
     require((ROOT / "app/src/test/java/com/music/echo/offline/files/OperationCancellationTest.java").is_file(), "operation cancellation has JVM regression tests")
-    java_sources = list((ROOT / "app/src/main/java").rglob("*.java"))
+    java_sources = list((ROOT / "app/src/main/java").rglob("*.java")) + list((ROOT / "foundation/src/main/java").rglob("*.java"))
     test_sources = list((ROOT / "app/src/test/java").rglob("*.java")) + list((ROOT / "core/src/test/java").rglob("*.java"))
     all_java_sources = java_sources + test_sources
     legacy_cancel_callers = [str(path.relative_to(ROOT)) for path in all_java_sources if "FileOps.cancelRequested" in path.read_text(encoding="utf-8")]
@@ -186,13 +196,13 @@ def main():
     pdf_open = viewer.split('void showPdf(File f)', 1)[1].split('private void showPdfPages', 1)[0]
     require('io.execute(' in pdf_open and 'ParcelFileDescriptor.open(f' in pdf_open and 'h.post(' in pdf_open and 'volatile long pdfGeneration' in viewer, "PDF descriptor and renderer open off the UI thread with stale-load protection")
     require('synchronized (renderer)' in viewer and 'closePdfResourcesAsync(renderer, descriptor)' in viewer, "PDF renderer close is serialized against page rendering")
-    crash = source("app/src/main/java/com/music/echo/offline/files/CrashLogger.java")
+    crash = source("foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java")
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
     require('AndroidKeyStore' in main and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in main and 'result.getCryptoObject()' in main and 'doFinal(challenge)' in main, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
     require('setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG)' in main and 'setUserAuthenticationValidityDurationSeconds(-1)' in main and 'KeyPermanentlyInvalidatedException' in main, "biometric Keystore key uses per-operation authentication and enrollment invalidation recovery")
-    saf_operations = source("app/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
+    saf_operations = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
     rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")

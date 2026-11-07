@@ -50,6 +50,12 @@ jobs:
           test -s core/build.gradle.kts
           test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
           test -s core/src/main/java/com/music/echo/offline/files/TaskScheduler.java
+          test -s foundation/build.gradle.kts
+          test -s foundation/src/main/AndroidManifest.xml
+          test -s foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java
+          test -s foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java
           test -s core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java
           test -s core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java
           test -s core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java
@@ -93,7 +99,7 @@ jobs:
       - name: Inventory resolved runtime dependencies
         run: python3 tools/dependency_audit.py
       - name: Run Android unit tests and lint
-        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug
+        run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
       - name: Upload debug APK
