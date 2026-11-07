@@ -120,6 +120,8 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    recycle_bin = source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java")
+    require("void executeOperation(Runnable task)" in main and recycle_bin.count("a.executeOperation(") == 4 and "a.ops.execute(" not in recycle_bin and "a.runOnUiThread(" not in recycle_bin and recycle_bin.count("a.runUiIfAlive(") >= 5, "RecycleBin operations handle bounded-queue rejection and suppress callbacks after Activity destruction")
     lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
     lan_hash = lan_transfer.split("private static String sha256(File f)", 1)[1].split("private static String hex(", 1)[0]
     require("OperationCancellation.checkCurrent();" in lan_hash and "private static String sha256(File f) throws IOException" in lan_transfer and lan_transfer.count("OperationCancellation.checkCurrent();") >= 10, "LAN transfers cooperatively stop file hashing and encrypted send/receive loops when cancelled")

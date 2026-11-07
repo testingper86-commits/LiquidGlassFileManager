@@ -48,7 +48,7 @@ final class RecycleBin {
     /** Moves each file/folder into the bin. Falls back to copy+delete if renameTo fails (e.g. cross-volume). */
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             int ok = 0, fail = 0;
@@ -58,7 +58,7 @@ final class RecycleBin {
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
-                a.runOnUiThread(() -> a.progress("Moving to Recycle Bin " + fi + " of " + ft + ": " + nm));
+                a.runUiIfAlive(() -> a.progress("Moving to Recycle Bin " + fi + " of " + ft + ": " + nm));
                 try {
                     File parent = s.getParentFile();
                     if (parent == null) { fail++; continue; }
@@ -86,7 +86,7 @@ final class RecycleBin {
             final String msg = ffail == 0
                     ? "Moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Recycle Bin"
                     : "Moved " + fok + ", failed " + ffail;
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -123,7 +123,7 @@ final class RecycleBin {
 
     static void restore(final MainActivity a, final Item it, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             String msg;
@@ -145,7 +145,7 @@ final class RecycleBin {
                 msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
             final String m = msg;
-            a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(m); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -153,13 +153,13 @@ final class RecycleBin {
 
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             int ok = 0;
             for (Item it : items) { if (OperationCancellation.isCancelled()) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
-            a.runOnUiThread(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -167,7 +167,7 @@ final class RecycleBin {
 
     static void empty(final MainActivity a, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             File[] ws = root(a).listFiles();
@@ -181,7 +181,7 @@ final class RecycleBin {
             final boolean fcancelled = cancelled;
             final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
                     + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
         
             } finally { a.cancellation.finish(operationToken); }
         });

@@ -350,7 +350,7 @@ public class MainActivity extends ComponentActivity {
         }
     }
 
-    private void executeOperation(Runnable task) {
+    void executeOperation(Runnable task) {
         try {
             ops.execute(task);
         } catch (RejectedExecutionException rejected) {
