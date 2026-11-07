@@ -9,7 +9,7 @@ activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
 core = (ROOT / "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
 tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
-uri_permissions = (BASE / "ToxiUriPermissions.java").read_text(encoding="utf-8")
+uri_permissions = (ROOT / "foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java").read_text(encoding="utf-8")
 manifest = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
 TOOLS = [
