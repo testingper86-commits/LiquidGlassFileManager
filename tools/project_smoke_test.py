@@ -232,8 +232,9 @@ def main():
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
-    require('AndroidKeyStore' in main and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in main and 'result.getCryptoObject()' in main and 'doFinal(challenge)' in main, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
-    require('setUserAuthenticationParameters(0, android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG)' in main and 'setUserAuthenticationValidityDurationSeconds(-1)' in main and 'KeyPermanentlyInvalidatedException' in main, "biometric Keystore key uses per-operation authentication and enrollment invalidation recovery")
+    biometric_keystore = source("app/src/main/java/com/music/echo/offline/files/BiometricUnlockKeyStore.java")
+    require('BiometricUnlockKeyStore.createCipher()' in main and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in main and 'result.getCryptoObject()' in main and 'doFinal(challenge)' in main, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
+    require('AndroidKeyStore' in biometric_keystore and 'setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)' in biometric_keystore and 'setUserAuthenticationValidityDurationSeconds(-1)' in biometric_keystore and 'KeyPermanentlyInvalidatedException' in biometric_keystore and 'setInvalidatedByBiometricEnrollment(true)' in biometric_keystore, "biometric Keystore key uses per-operation authentication and enrollment invalidation recovery")
     saf_operations = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
     rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
