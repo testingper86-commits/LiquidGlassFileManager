@@ -223,6 +223,27 @@ final class SafStorageOperations {
         }
     }
 
+    /** Resolves and validates a granted tree root before copying a local batch into it. */
+    static BatchCopyResult copyLocalFilesToTree(Context context, ContentResolver resolver,
+                                                List<File> sources, Uri tree,
+                                                CopyProgressListener progress) {
+        if (context == null || tree == null) {
+            return new BatchCopyResult(0, 1, "Storage context and destination tree are required");
+        }
+        DocumentFile parent;
+        try {
+            parent = DocumentFile.fromTreeUri(context, tree);
+        } catch (RuntimeException failure) {
+            String detail = failure.getMessage() == null
+                    ? failure.getClass().getSimpleName() : failure.getMessage();
+            return new BatchCopyResult(0, 1, "Cannot access destination storage: " + detail);
+        }
+        if (parent == null || !parent.exists() || !parent.isDirectory() || !parent.canWrite()) {
+            return new BatchCopyResult(0, 1, "Destination storage folder is not writable");
+        }
+        return copyLocalFiles(resolver, sources, parent, progress);
+    }
+
     /** Copies a batch to one SAF folder, stopping at the first failure or cancellation. */
     static BatchCopyResult copyLocalFiles(ContentResolver resolver, List<File> sources,
                                           DocumentFile parent, CopyProgressListener progress) {

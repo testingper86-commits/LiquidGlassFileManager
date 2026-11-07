@@ -138,7 +138,7 @@ def main():
 
 
     saf_ops = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
-    require("SafStorageOperations.copyLocalFiles(" in main and "static DocumentFile copyLocalTree(ContentResolver resolver, File source" in saf_ops and "CopyProgressListener" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops and "SafStorageOperations.deleteTree(target);" in main, "MainActivity routes local-to-SAF copies and rollback cleanup through the shared provider service")
+    require("SafStorageOperations.copyLocalFilesToTree(" in main and "static BatchCopyResult copyLocalFilesToTree(Context context, ContentResolver resolver" in saf_ops and "DocumentFile.fromTreeUri(context, tree)" in saf_ops and "static DocumentFile copyLocalTree(ContentResolver resolver, File source" in saf_ops and "CopyProgressListener" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops and "SafStorageOperations.deleteTree(target);" in main and "DocumentFile.fromTreeUri(this, safTree)" not in main, "SAF tree resolution, destination validation, batch copying and rollback cleanup are owned by the shared provider service")
     require("for (File file : files)" not in main and "static BatchCopyResult copyLocalFiles(" in saf_ops, "SAF batch copy orchestration and stop-on-first-failure behavior are service-owned")
     traversal_budget = source("core/src/main/java/com/music/echo/offline/files/TreeTraversalBudget.java")
     traversal_budget_test = source("core/src/test/java/com/music/echo/offline/files/TreeTraversalBudgetTest.java")

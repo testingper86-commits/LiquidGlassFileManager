@@ -1727,14 +1727,13 @@ public class MainActivity extends ComponentActivity {
 
     void copyToSafTree(final List<File> files) {
         if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
-        final DocumentFile rootDoc = DocumentFile.fromTreeUri(this, safTree);
-        if (rootDoc == null || !rootDoc.canWrite()) { ToxiVisualSystem.toast(this, "This storage location is not writable"); return; }
         busy(true);
         ops.execute(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
-                SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFiles(
-                        getContentResolver(), files, rootDoc, (current, total, source) ->
+                SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFilesToTree(
+                        getApplicationContext(), getContentResolver(), files, safTree,
+                        (current, total, source) ->
                                 runOnUiThread(() -> progress("Copying to SD/USB " + current + " of " + total + ": " + source.getName())));
                 runOnUiThread(() -> {
                     busy(false);
