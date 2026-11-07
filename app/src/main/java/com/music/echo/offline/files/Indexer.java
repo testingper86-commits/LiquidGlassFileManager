@@ -9,6 +9,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.lang.ref.WeakReference;
+import java.util.Iterator;
 
 /** Android adapter: categorizes core filesystem snapshots and publishes them on the UI thread. */
 final class Indexer {
@@ -25,6 +27,7 @@ final class Indexer {
     int[] counts = new int[7];
 
     private final Handler ui = new Handler(Looper.getMainLooper());
+    private final List<WeakReference<Runnable>> completionCallbacks = new ArrayList<>();
     private List<Entry> tmpAll;
     private List<List<Entry>> tmpCats;
     private long[] tmpSizes;
@@ -44,6 +47,7 @@ final class Indexer {
     }
 
     synchronized void start(final Runnable done) {
+        registerCompletionCallback(done);
         if (running) return;
         running = true;
         dirty = false;
@@ -87,16 +91,37 @@ final class Indexer {
                 lastError = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
             } finally {
                 cancellation.finish(operationToken);
-                running = false;
-                if (done != null) ui.post(done);
+                postCompletionCallbacks();
             }
         };
         try {
             TaskCoordinator.execute(TaskCoordinator.Lane.INDEXING, worker);
         } catch (RuntimeException startError) {
-            running = false;
             lastError = startError.getMessage() == null ? startError.getClass().getSimpleName() : startError.getMessage();
-            if (done != null) ui.post(done);
+            postCompletionCallbacks();
         }
+    }
+
+    private synchronized void registerCompletionCallback(Runnable callback) {
+        if (callback == null) return;
+        for (Iterator<WeakReference<Runnable>> it = completionCallbacks.iterator(); it.hasNext();) {
+            Runnable existing = it.next().get();
+            if (existing == null) it.remove();
+            else if (existing == callback) return;
+        }
+        completionCallbacks.add(new WeakReference<>(callback));
+    }
+
+    private void postCompletionCallbacks() {
+        List<Runnable> callbacks = new ArrayList<>();
+        synchronized (this) {
+            running = false;
+            for (WeakReference<Runnable> reference : completionCallbacks) {
+                Runnable callback = reference.get();
+                if (callback != null) callbacks.add(callback);
+            }
+            completionCallbacks.clear();
+        }
+        for (Runnable callback : callbacks) ui.post(callback);
     }
 }

@@ -62,6 +62,7 @@ import androidx.core.content.FileProvider;
 
 public class MainActivity extends ComponentActivity {
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = new OperationCancellation();
     final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
     final TaskCoordinator.ScopedExecutor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
@@ -330,10 +331,11 @@ public class MainActivity extends ComponentActivity {
     void startIndex() {
         if (!hasAccess()) return;
         if(dynamicIsland!=null)dynamicIsland.update("Scanning storage",-1);
-        Indexer.I.start(this::onIndexDone);
+        Indexer.I.start(indexDoneCallback);
     }
 
     void onIndexDone() {
+        if (isFinishing() || isDestroyed()) return;
         if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);
         String[] names = Indexer.CAT_NAMES;
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], Indexer.I.cats.get(pendingCat), false, false); pendingCat = -1; }
