@@ -399,7 +399,7 @@ final class AboutScreenBuilder {
             paint.setColor(Color.rgb(206, 184, 255));
             canvas.drawLine(size * .55f, size * .25f, size * .45f, size * .75f, paint);
         }
-        android.graphics.drawable.BitmapDrawable drawable = new android.graphics.drawable.BitmapDrawable(getResources(), bitmap);
+        android.graphics.drawable.BitmapDrawable drawable = new android.graphics.drawable.BitmapDrawable(activity.getResources(), bitmap);
         drawable.setFilterBitmap(true);
         return drawable;
     }
