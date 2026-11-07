@@ -116,6 +116,35 @@ final class SafStorageOperations {
         return false;
     }
 
+    /** Returns only safe child-folder destinations for moving the selected document. */
+    static ArrayList<DirectoryEntry> listMoveDestinations(ContentResolver resolver, Uri tree,
+                                                           Uri currentFolder, Uri sourceDocument,
+                                                           boolean sourceIsDirectory) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || currentFolder == null || sourceDocument == null) {
+            throw new IOException("Storage tree and move document URIs are required");
+        }
+        ArrayList<DirectoryEntry> destinations = new ArrayList<>();
+        for (DirectoryEntry entry : listChildren(resolver, tree, currentFolder)) {
+            OperationCancellation.checkCurrent();
+            if (!entry.directory) continue;
+            Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
+            if (sameDocument(child, sourceDocument)) continue;
+            if (sourceIsDirectory && containsDocument(resolver, tree, child, sourceDocument)) continue;
+            destinations.add(entry);
+        }
+        return destinations;
+    }
+
+    static boolean sameDocument(Uri first, Uri second) {
+        if (first == null || second == null) return false;
+        try {
+            return DocumentsContract.getDocumentId(first).equals(DocumentsContract.getDocumentId(second));
+        } catch (IllegalArgumentException invalidUri) {
+            return first.equals(second);
+        }
+    }
+
     /** Imports one provider document into local storage using a private staging file. */
     static File importDocument(Context context, Uri document, File destinationDirectory,
                                String requestedName) throws IOException {

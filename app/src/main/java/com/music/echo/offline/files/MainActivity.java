@@ -1825,32 +1825,16 @@ public class MainActivity extends ComponentActivity {
         return SafStorageOperations.findDocumentInTree(this, tree, document);
     }
 
-    private boolean sameSafDocument(Uri first, Uri second) {
-        if (first == null || second == null) return false;
-        try {
-            return DocumentsContract.getDocumentId(first).equals(DocumentsContract.getDocumentId(second));
-        } catch (IllegalArgumentException invalidUri) {
-            return first.equals(second);
-        }
-    }
-
     private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
                                          Uri sourceParent, String sourceParentTitle, String sourceName) {
         io.execute(() -> {
-            final List<String[]> folders = new ArrayList<>();
+            final List<SafStorageOperations.DirectoryEntry> folders = new ArrayList<>();
             String failure = null;
             try {
                 DocumentFile movingSource = safDocument(tree, sourceDocument);
                 boolean movingDirectory = movingSource != null && movingSource.isDirectory();
-                for (SafStorageOperations.DirectoryEntry entry :
-                        SafStorageOperations.listChildren(getContentResolver(), tree, currentFolder)) {
-                    if (!entry.directory) continue;
-                    Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
-                    if (sameSafDocument(child, sourceDocument)) continue;
-                    if (movingDirectory && SafStorageOperations.containsDocument(
-                            getContentResolver(), tree, child, sourceDocument)) continue;
-                    folders.add(new String[]{child.toString(), entry.name});
-                }
+                folders.addAll(SafStorageOperations.listMoveDestinations(
+                        getContentResolver(), tree, currentFolder, sourceDocument, movingDirectory));
             } catch (Exception error) {
                 failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
             }
@@ -1860,7 +1844,7 @@ public class MainActivity extends ComponentActivity {
                     ToxiVisualSystem.toast(this, "Cannot browse destination folders: " + detail);
                     return;
                 }
-                boolean canMoveHere = !sameSafDocument(currentFolder, sourceParent);
+                boolean canMoveHere = !SafStorageOperations.sameDocument(currentFolder, sourceParent);
                 List<String> choices = new ArrayList<>();
                 if (canMoveHere) choices.add("Move here: " + DocumentsContract.getDocumentId(currentFolder));
                 for (String[] folder : folders) choices.add("Open folder: " + folder[1] + "  âº");
@@ -1883,8 +1867,9 @@ public class MainActivity extends ComponentActivity {
                                 });
                             } else {
                                 int folderIndex = which - (canMoveHere ? 1 : 0);
-                                String[] selected = folders.get(folderIndex);
-                                showSafMoveFolderPicker(tree, Uri.parse(selected[0]), sourceDocument,
+                                SafStorageOperations.DirectoryEntry selected = folders.get(folderIndex);
+                                Uri selectedFolder = DocumentsContract.buildDocumentUriUsingTree(tree, selected.documentId);
+                                showSafMoveFolderPicker(tree, selectedFolder, sourceDocument,
                                         sourceParent, sourceParentTitle, sourceName);
                             }
                         }).setNegativeButton("Cancel", null).show();
