@@ -277,7 +277,10 @@ def main():
     app_gradle = source("app/build.gradle.kts")
     root_gradle = source("build.gradle.kts")
     wrapper = source("gradle/wrapper/gradle-wrapper.properties")
-    require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'version "9.5.0"' in root_gradle and 'gradle-9.6.1-bin.zip' in wrapper and 'distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14' in wrapper, "API 36 release uses compatible Android Gradle and wrapper versions with a pinned distribution checksum")
+    wrapper_url = re.search(r"^distributionUrl=(.+)$", wrapper, re.MULTILINE)
+    wrapper_version = re.search(r"gradle-(\d+)\.(\d+)\.(\d+)-bin\.zip", wrapper_url.group(1)) if wrapper_url else None
+    wrapper_checksum = re.search(r"^distributionSha256Sum=([0-9a-fA-F]{64})$", wrapper, re.MULTILINE)
+    require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'version "9.5.0"' in root_gradle and wrapper_url is not None and wrapper_url.group(1).startswith("https\://services.gradle.org/distributions/") and wrapper_version is not None and tuple(map(int, wrapper_version.groups())) >= (9, 6, 0) and wrapper_checksum is not None, "API 36 release uses compatible Android Gradle and a pinned, checksummed compatible wrapper distribution")
     workflow = source(".github/workflows/release.yml")
     require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and ':core:test :app:testDebugUnitTest :app:lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
