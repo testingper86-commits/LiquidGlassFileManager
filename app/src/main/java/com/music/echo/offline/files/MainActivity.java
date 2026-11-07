@@ -56,6 +56,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import org.json.JSONObject;
 import androidx.activity.ComponentActivity;
 import androidx.core.content.FileProvider;
@@ -339,6 +340,25 @@ public class MainActivity extends ComponentActivity {
         runOnUiThread(() -> {
             if (!isFinishing() && !isDestroyed()) action.run();
         });
+    }
+
+    private void executeIo(Runnable task) {
+        try {
+            io.execute(task);
+        } catch (RejectedExecutionException rejected) {
+            runUiIfAlive(() -> ToxiVisualSystem.toast(this, "Background task queue is busy. Try again shortly."));
+        }
+    }
+
+    private void executeOperation(Runnable task) {
+        try {
+            ops.execute(task);
+        } catch (RejectedExecutionException rejected) {
+            runUiIfAlive(() -> {
+                busy(false);
+                ToxiVisualSystem.toast(this, "Operation could not be started. Try again shortly.");
+            });
+        }
     }
 
     void onIndexDone() {
@@ -1197,7 +1217,7 @@ public class MainActivity extends ComponentActivity {
     void openStorageAnalyzer() {
         if (!hasAccess()) { showStorageAccess(); return; }
         ToxiVisualSystem.toast(this, "Analyzing storageâ¦");
-        io.execute(() -> {
+        executeIo(() -> {
             OperationCancellation.Token operationToken = cancellation.begin();
             final String result;
             try {
@@ -1344,7 +1364,7 @@ public class MainActivity extends ComponentActivity {
     @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
     void tryBiometric(final android.app.Dialog dlg) {
         try {
-            io.execute(() -> {
+            executeIo(() -> {
                 final javax.crypto.Cipher cipher;
                 try {
                     cipher = BiometricUnlockKeyStore.createCipher();
@@ -1402,7 +1422,7 @@ public class MainActivity extends ComponentActivity {
     void openDuplicates() {
         if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage â try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for duplicatesâ¦");
-        io.execute(() -> {
+        executeIo(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
@@ -1492,7 +1512,7 @@ public class MainActivity extends ComponentActivity {
     void openCleanup() {
         if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for empty folders\u2026");
-        io.execute(() -> {
+        executeIo(() -> {
             final List<File> empties = new ArrayList<>();
             for (Entry e : Indexer.I.all) {
                 if (e.dir) { File[] kids = e.f.listFiles(); if (kids != null && kids.length == 0) empties.add(e.f); }
@@ -1735,7 +1755,7 @@ public class MainActivity extends ComponentActivity {
     void copyToSafTree(final List<File> files) {
         if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
         busy(true);
-        ops.execute(() -> {
+        executeOperation(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFilesToTree(
@@ -1754,7 +1774,7 @@ public class MainActivity extends ComponentActivity {
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
         ToxiVisualSystem.toast(this, "Loadingâ¦");
-        io.execute(() -> {
+        executeIo(() -> {
             final List<SafStorageOperations.DirectoryEntry> rows;
             boolean querySucceeded = false;
             List<SafStorageOperations.DirectoryEntry> loaded = new ArrayList<>();
@@ -1825,7 +1845,7 @@ public class MainActivity extends ComponentActivity {
 
     private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
                                          Uri sourceParent, String sourceParentTitle, String sourceName) {
-        io.execute(() -> {
+        executeIo(() -> {
             final List<SafStorageOperations.DirectoryEntry> folders = new ArrayList<>();
             String failure = null;
             try {
@@ -1868,7 +1888,7 @@ public class MainActivity extends ComponentActivity {
 
     private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
         busy(true);
-        ops.execute(() -> {
+        executeOperation(() -> {
             OperationCancellation.Token operationToken = cancellation.begin();
             String error = null;
             try { action.run(); }
@@ -1890,7 +1910,7 @@ public class MainActivity extends ComponentActivity {
 
     void importSafDoc(final Uri doc, final String name) {
         busy(true);
-        ops.execute(() -> {
+        executeOperation(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
                 String msg;
@@ -1911,7 +1931,7 @@ public class MainActivity extends ComponentActivity {
 
     // ---------------- SETTINGS BACKUP ----------------
     void exportSettings() {
-        io.execute(() -> {
+        executeIo(() -> {
             try {
                 final File exported = SettingsBackupManager.exportToDownloads(this, ToxiVisualSystem.PREFERENCES);
                 runUiIfAlive(() -> {
@@ -1941,7 +1961,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     void applyImportedSettings(final Uri file) {
-        io.execute(() -> {
+        executeIo(() -> {
             String message;
             try {
                 SettingsBackupManager.importFromUri(this, file, ToxiVisualSystem.PREFERENCES,

@@ -120,6 +120,7 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    require(main.count("io.execute(") == 1 and main.count("ops.execute(") == 1 and main.count("executeIo(") >= 8 and main.count("executeOperation(") == 4 and "catch (RejectedExecutionException rejected)" in main and "busy(false);" in main, "bounded MainActivity task submissions recover from queue rejection without leaving operations busy")
     require(main.count("runOnUiThread(") == 1 and main.count("runUiIfAlive(") >= 20, "all MainActivity background UI callbacks use the destruction-safe dispatcher")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     require("private static void execute(MainActivity a, Done done, String failureMessage, Runnable operation)" in file_ops and file_ops.count("execute(a, d,") == 4 and file_ops.count("a.ops.execute(") == 1 and "operation could not be queued" in file_ops and "catch (RuntimeException failure)" in file_ops, "file operations always clear busy state and report queue rejection or unexpected worker failures")
