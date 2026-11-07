@@ -117,14 +117,20 @@ final class SafStorageOperations {
         return false;
     }
 
-    /** Returns only safe child-folder destinations for moving the selected document. */
-    static ArrayList<DirectoryEntry> listMoveDestinations(ContentResolver resolver, Uri tree,
-                                                           Uri currentFolder, Uri sourceDocument,
-                                                           boolean sourceIsDirectory) throws IOException {
+    /** Resolves the moving document and returns only safe child-folder destinations. */
+    static ArrayList<DirectoryEntry> listMoveDestinations(Context context, ContentResolver resolver,
+                                                           Uri tree, Uri currentFolder,
+                                                           Uri sourceDocument) throws IOException {
         OperationCancellation.checkCurrent();
-        if (resolver == null || tree == null || currentFolder == null || sourceDocument == null) {
+        if (context == null || resolver == null || tree == null || currentFolder == null
+                || sourceDocument == null) {
             throw new IOException("Storage tree and move document URIs are required");
         }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        if (source == null || !source.exists()) {
+            throw new IOException("The document being moved is no longer available");
+        }
+        boolean sourceIsDirectory = source.isDirectory();
         ArrayList<DirectoryEntry> destinations = new ArrayList<>();
         for (DirectoryEntry entry : listChildren(resolver, tree, currentFolder)) {
             OperationCancellation.checkCurrent();

@@ -1821,20 +1821,14 @@ public class MainActivity extends ComponentActivity {
         }).setNegativeButton("Cancel", null).show();
     }
 
-    private DocumentFile safDocument(Uri tree, Uri document) throws java.io.IOException {
-        return SafStorageOperations.findDocumentInTree(this, tree, document);
-    }
-
     private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
                                          Uri sourceParent, String sourceParentTitle, String sourceName) {
         io.execute(() -> {
             final List<SafStorageOperations.DirectoryEntry> folders = new ArrayList<>();
             String failure = null;
             try {
-                DocumentFile movingSource = safDocument(tree, sourceDocument);
-                boolean movingDirectory = movingSource != null && movingSource.isDirectory();
                 folders.addAll(SafStorageOperations.listMoveDestinations(
-                        getContentResolver(), tree, currentFolder, sourceDocument, movingDirectory));
+                        this, getContentResolver(), tree, currentFolder, sourceDocument));
             } catch (Exception error) {
                 failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
             }
