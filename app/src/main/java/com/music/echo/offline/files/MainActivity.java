@@ -59,7 +59,6 @@ import java.util.Set;
 import org.json.JSONObject;
 import androidx.activity.ComponentActivity;
 import androidx.core.content.FileProvider;
-import androidx.documentfile.provider.DocumentFile;
 
 public class MainActivity extends ComponentActivity {
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
@@ -1741,10 +1740,6 @@ public class MainActivity extends ComponentActivity {
                 });
             } finally { this.cancellation.finish(operationToken); }
         });
-    }
-
-    private void deleteSafTree(DocumentFile target) throws java.io.IOException {
-        SafStorageOperations.deleteTree(target);
     }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) {
