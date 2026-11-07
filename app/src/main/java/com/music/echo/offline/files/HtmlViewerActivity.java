@@ -198,7 +198,7 @@ public final class HtmlViewerActivity extends Activity {
             if (rootPath == null || path == null || path.isEmpty()
                     || path.indexOf((char) 0) >= 0 || path.indexOf(92) >= 0) return null;
             try {
-                Path canonical = SafePathResolver.resolveExistingFile(rootPath, Uri.decode(path));
+                Path canonical = SafePathResolver.resolveExistingFile(rootPath, path);
                 String extension = extensionOf(canonical.toFile()).toLowerCase(Locale.ROOT);
                 if (!canonical.equals(documentPath) && !isAllowedAssetExtension(extension)) return null;
                 String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);

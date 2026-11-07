@@ -131,6 +131,9 @@ def main():
     require("DocumentsContract.moveDocument" in saf_ops and "DocumentsContract.renameDocument" in saf_ops and "DocumentsContract.deleteDocument" in saf_ops, "SAF service exposes provider-native move, rename and delete without filesystem-path assumptions")
     require("copyDocumentTree(ContentResolver resolver" in saf_ops and "copyLocalTree(ContentResolver resolver" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF service supports cancellable recursive provider-to-provider and local-to-provider copies")
     require("BatchRenameEngine.validateName(name)" in saf_ops and "uniqueName(parent, name" in saf_ops and "deleteTree(target)" in saf_ops, "SAF copies validate leaf names, avoid collisions and clean partial provider output")
+    html_viewer = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
+    safe_path_test = source("core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java")
+    require("SafePathResolver.resolveExistingFile(rootPath, path)" in html_viewer and "Uri.decode(path)" not in html_viewer and "preservesLiteralPercentEncodedLookingFileNamesWithoutDecodingAgain" in safe_path_test, "HTML asset loading does not double-decode WebViewAssetLoader's already-decoded path before canonical containment checks")
     rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")
     require("parentPath.resolve(name).normalize()" in rename_engine and "candidate.startsWith(parentPath)" in rename_engine and "LinkOption.NOFOLLOW_LINKS" in rename_engine and "BatchRenameEngine.moveChild(e.f, t)" in source("app/src/main/java/com/music/echo/offline/files/BrowserView.java"), "filesystem rename uses normalized direct-child paths and refuses symlink traversal")
 

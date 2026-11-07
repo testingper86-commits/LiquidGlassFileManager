@@ -26,6 +26,14 @@ public class SafePathResolverTest {
                 SafePathResolver.resolveExistingFile(root.toPath(), "assets/image.png"));
     }
 
+    @Test public void preservesLiteralPercentEncodedLookingFileNamesWithoutDecodingAgain() throws Exception {
+        File root = temporary.newFolder("root");
+        File asset = new File(root, "%2e%2e");
+        Files.write(asset.toPath(), new byte[]{4, 5, 6});
+        assertEquals(asset.getCanonicalFile().toPath(),
+                SafePathResolver.resolveExistingFile(root.toPath(), "%2e%2e"));
+    }
+
     @Test public void rejectsParentTraversalAbsoluteAndBackslashPaths() throws Exception {
         File root = temporary.newFolder("root");
         String[] unsafe = {"../outside.txt", "nested/../../outside.txt", new File(root, "absolute.txt").getAbsolutePath(), "assets\\image.png"};
