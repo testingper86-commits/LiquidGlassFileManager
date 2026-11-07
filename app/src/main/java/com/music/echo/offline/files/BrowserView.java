@@ -339,7 +339,7 @@ final class BrowserView extends FrameLayout {
         loading = true;
         updateEmpty();
         final Comparator<Entry> cmp = comparator();
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> res = new ArrayList<>();
             File[] fs = d.listFiles();
             boolean hid = ToxiVisualSystem.booleanPreference("hidden", false);
@@ -353,13 +353,18 @@ final class BrowserView extends FrameLayout {
                 applyFilter();
                 lv.setSelection(0);
             });
+        }, () -> {
+            if (token == loadGeneration && d == cur && mode == DIR) {
+                loading = false;
+                updateEmpty();
+            }
         });
     }
 
     void refreshFavs() {
         final long token = ++loadGeneration;
         final List<String> ps = new ArrayList<>(a.favs);
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> l = new ArrayList<>();
             for (String p : ps) { File f = new File(p); if (f.exists()) l.add(new Entry(f)); }
             post(() -> { if (token != loadGeneration || mode != LIST || !isFavs) return; loading = false; all = l; reconcileSelection(); applyFilter(); });
@@ -392,7 +397,7 @@ final class BrowserView extends FrameLayout {
     void pruneMissing() {
         final long token = ++loadGeneration;
         final List<Entry> snap = new ArrayList<>(all);
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> keep = new ArrayList<>();
             for (Entry e : snap) if (e.f.exists()) keep.add(e);
             post(() -> { if (token != loadGeneration) return; all = keep; reconcileSelection(); applyFilter(); });
@@ -547,7 +552,7 @@ final class BrowserView extends FrameLayout {
         final int count = snapshot.size();
         if (count == 0) return;
         title.setText(count + " selected · calculating size…");
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             if (token != selectionSummaryToken) return;
             long[] totals = new long[2];
             for (File f : snapshot) { if (token != selectionSummaryToken) return; if (f.exists()) FileOps.treeSize(f, totals); }
@@ -566,7 +571,7 @@ final class BrowserView extends FrameLayout {
                 .setPositiveButton("Select all", (d,w) -> selectAll()).create();
         final List<File> snapshot = files(sel);
         dialog.setOnShowListener(d -> {
-            a.io.execute(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
+            a.executeIo(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
                 final String value = snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files";
                 post(() -> { if (dialog.isShowing()) details.setText(value); });
             });
@@ -828,7 +833,7 @@ final class BrowserView extends FrameLayout {
             pendingPreview[0] = () -> {
                 final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
                 final List<File> sources = files(list);
-                a.io.execute(() -> {
+                a.executeIo(() -> {
                     List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                     StringBuilder text = new StringBuilder(); int shownCount = Math.min(12,plan.size());
                     for(int i=0;i<shownCount;i++){ BatchRenameEngine.Item item=plan.get(i); text.append(item.source == null ? "(missing)" : item.source.getName()).append("\n  to ").append(item.target == null ? "(invalid)" : item.target.getName()); if(!item.valid()) text.append("\n  ! ").append(item.problem); text.append("\n\n"); }
@@ -853,7 +858,7 @@ final class BrowserView extends FrameLayout {
             review.setEnabled(false); preview.setText("Validating destination names…");
             final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
             final List<File> sources = files(list);
-            a.io.execute(() -> {
+            a.executeIo(() -> {
                 List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                 List<String> problems = new ArrayList<>(); for(BatchRenameEngine.Item item:plan) if(!item.valid()) problems.add((item.source==null?"Missing file":item.source.getName())+": "+item.problem);
                 StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) { BatchRenameEngine.Item item=plan.get(i); summary.append(item.source==null?"(missing)":item.source.getName()).append(" to ").append(item.target==null?"(invalid)":item.target.getName()).append("\n"); }
@@ -889,9 +894,9 @@ final class BrowserView extends FrameLayout {
 
     private void executeBatchRename(final List<BatchRenameEngine.Item> plan) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             BatchRenameEngine.Result result=BatchRenameEngine.execute(plan);
-            a.runOnUiThread(() -> {
+            a.runUiIfAlive(() -> {
                 a.busy(false);
                 if(!result.completed.isEmpty()) for(BatchRenameEngine.Item item:result.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);}
                 if(result.success()) { endSelect(); a.afterOps(); showRenameResult(result,"Renamed "+result.completed.size()+" items."); }
@@ -907,7 +912,7 @@ final class BrowserView extends FrameLayout {
     }
 
     private void undoBatchRename(BatchRenameEngine.Result prior) {
-        a.busy(true); a.ops.execute(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runOnUiThread(() -> {
+        a.busy(true); a.executeOperation(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runUiIfAlive(() -> {
             a.busy(false); for(BatchRenameEngine.Item item:undone.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);} a.afterOps();
             String msg=undone.errors.isEmpty()?"Restored "+undone.completed.size()+" original names.":joinLines(undone.errors,8);
             new AlertDialog.Builder(a).setTitle(undone.errors.isEmpty()?"Undo complete":"Undo incomplete").setMessage(msg).setPositiveButton("OK",null).show();
@@ -1078,7 +1083,7 @@ final class BrowserView extends FrameLayout {
                 .setMessage("Creates a separate copy without GPS coordinates and related location tags. The original stays unchanged; camera and date metadata may remain.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
                     a.busy(true);
-                    a.ops.execute(() -> {
+                    a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                         File copy = null; String result;
@@ -1102,7 +1107,7 @@ final class BrowserView extends FrameLayout {
                             result = "GPS metadata removal failed: " + ex.getMessage();
                         }
                         final String message = result;
-                        a.runOnUiThread(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
+                        a.runUiIfAlive(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
                     
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -1140,13 +1145,13 @@ final class BrowserView extends FrameLayout {
                 if (cm != null) { cm.setPrimaryClip(android.content.ClipData.newPlainText("SHA-256", digest[0])); ToxiVisualSystem.toast(a, "SHA-256 copied"); }
             });
         }
-        if (e.dir) a.io.execute(() -> {
+        if (e.dir) a.executeIo(() -> {
             final long[] t = new long[2];
             FileOps.treeSize(e.f, t);
-            a.runOnUiThread(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
-        }); else a.io.execute(() -> {
+            a.runUiIfAlive(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
+        }); else a.executeIo(() -> {
             digest[0] = sha256(e.f);
-            a.runOnUiThread(() -> {
+            a.runUiIfAlive(() -> {
                 if (!dlg.isShowing()) return;
                 dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(e.f.length()), digest[0]));
                 copyHash.setEnabled(!"unavailable".equals(digest[0]));

@@ -120,6 +120,8 @@ def main():
     require(developer_activity is not None and developer_activity.attrib.get(ANDROID + "exported") == "false" and developer_activity.find("intent-filter") is None, "Developer Studio is a non-exported internal activity")
 
     main = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    browser = source("app/src/main/java/com/music/echo/offline/files/BrowserView.java")
+    require("boolean executeIo(Runnable task, Runnable onRejected)" in main and browser.count("a.executeIo(") == 9 and "a.io.execute(" not in browser and browser.count("a.executeOperation(") == 3 and "a.ops.execute(" not in browser and browser.count("a.runUiIfAlive(") == 5 and "a.runOnUiThread(" not in browser, "BrowserView background work uses lifecycle-safe dispatch and restores directory loading state when the bounded queue rejects work")
     destroy_lifecycle = main.split("@Override protected void onDestroy()", 1)[1].split("// ---------------- index", 1)[0]
     require("cancellation.cancelActive();" in destroy_lifecycle and "LanTransfer.cancel();" in destroy_lifecycle and destroy_lifecycle.index("LanTransfer.cancel();") < destroy_lifecycle.index("taskScope.close(true);"), "Activity destruction closes the independent LAN transfer session before shutting down scoped workers")
     require("int binCount = RecycleBin.count(this);" in main and "RecycleBin.list(this).size()" not in main, "Settings uses a lightweight Recycle Bin count instead of loading every item on the UI thread")

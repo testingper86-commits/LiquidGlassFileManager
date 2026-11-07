@@ -343,12 +343,19 @@ public class MainActivity extends ComponentActivity {
         });
     }
 
-    private boolean executeIo(Runnable task) {
+    boolean executeIo(Runnable task) {
+        return executeIo(task, null);
+    }
+
+    boolean executeIo(Runnable task, Runnable onRejected) {
         try {
             io.execute(task);
             return true;
         } catch (RejectedExecutionException rejected) {
-            runUiIfAlive(() -> ToxiVisualSystem.toast(this, "Background task queue is busy. Try again shortly."));
+            runUiIfAlive(() -> {
+                ToxiVisualSystem.toast(this, "Background task queue is busy. Try again shortly.");
+                if (onRejected != null) onRejected.run();
+            });
             return false;
         }
     }
