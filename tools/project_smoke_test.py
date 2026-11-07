@@ -245,7 +245,7 @@ def main():
     require(file_ops.count('codeql[java/android/arbitrary-apk-installation]') == 1, "the guarded generic APK intent has a documented CodeQL false-positive suppression")
     hash_core = source("core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java")
     hash_ui = source("app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java")
-    require('MD5 (legacy)' in hash_core and 'SHA-1 (legacy)' in hash_core and hash_core.count('codeql[java/potentially-weak-cryptographic-algorithm]') == 2 and 'not security checks' in hash_ui, "legacy MD5/SHA-1 fingerprints are clearly labeled and never presented as security-grade hashes")
+    require('MD5' not in hash_core and 'SHA-1' not in hash_core and hash_core.count('MessageDigest.getInstance("SHA-') == 2 and 'CRC32' in hash_core and 'SHA-256' in hash_ui and 'SHA-512' in hash_ui and 'CRC32' in hash_ui, "file integrity studio uses SHA-256 and SHA-512 with CRC32 clearly separated from cryptographic hashes")
     apk_install = file_ops.split('static void install(Activity activity, File file, java.util.concurrent.Executor executor)', 1)[1].split('static void share(Activity a, List<File> fs)', 1)[0]
     apk_receiver = source("app/src/main/java/com/music/echo/offline/files/ApkInstallStatusReceiver.java")
     manifest = source("app/src/main/AndroidManifest.xml")
