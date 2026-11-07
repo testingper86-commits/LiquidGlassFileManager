@@ -28,6 +28,12 @@ final class FileOps {
 
     static File unique(File dir, String name) { return FileOperationEngine.unique(dir, name); }
 
+    static void copy(File source, File target) throws IOException { FileOperationEngine.copy(source, target); }
+
+    static boolean deleteTree(File file) { return FileOperationEngine.deleteTree(file); }
+
+    static void treeSize(File file, long[] totals) { FileOperationEngine.treeSize(file, totals); }
+
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
         a.busy(true);
