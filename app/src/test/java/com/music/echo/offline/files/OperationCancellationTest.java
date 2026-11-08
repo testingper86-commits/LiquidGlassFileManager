@@ -47,6 +47,38 @@ public class OperationCancellationTest {
         assertFalse(OperationCancellation.isCancelled());
     }
 
+    @Test public void shutdownCancelsActiveAndImmediatelyCancelsLateOperations() throws Exception {
+        OperationCancellation controller = new OperationCancellation();
+        OperationCancellation.Token active = controller.begin();
+        controller.shutDown();
+        assertTrue(active.isCancelled());
+        OperationCancellation.Token late = controller.begin();
+        try {
+            assertTrue("work registered after owner shutdown must start cancelled", late.isCancelled());
+            assertTrue(OperationCancellation.isCancelled());
+            try {
+                OperationCancellation.checkCurrent();
+                fail("late operation escaped shutdown cancellation");
+            } catch (IOException expected) {
+                assertEquals("Operation cancelled", expected.getMessage());
+            }
+        } finally {
+            controller.finish(late);
+            controller.finish(active);
+        }
+        assertFalse(OperationCancellation.isCancelled());
+    }
+
+    @Test public void userCancellationDoesNotPermanentlyCloseController() {
+        OperationCancellation controller = new OperationCancellation();
+        OperationCancellation.Token first = controller.begin();
+        controller.cancelActive();
+        controller.finish(first);
+        OperationCancellation.Token second = controller.begin();
+        try { assertFalse("ordinary cancel must allow later operations", second.isCancelled()); }
+        finally { controller.finish(second); }
+    }
+
     @Test public void cancellationOnlyAffectsOperationsThatAreStillActive() {
         OperationCancellation controller = new OperationCancellation();
         OperationCancellation.Token completed = controller.begin();

@@ -9,11 +9,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class OperationCancellation {
     private static final ThreadLocal<Token> CURRENT = new ThreadLocal<>();
     private final Set<Token> active = ConcurrentHashMap.newKeySet();
+    private boolean shutDown;
 
-    Token begin() {
+    synchronized Token begin() {
         Token token = new Token();
-        active.add(token);
         token.previous = CURRENT.get();
+        if (shutDown) token.cancel();
+        else active.add(token);
         CURRENT.set(token);
         return token;
     }
@@ -37,7 +39,13 @@ final class OperationCancellation {
         else CURRENT.set(current);
     }
 
-    void cancelActive() {
+    synchronized void cancelActive() {
+        for (Token token : active) token.cancel();
+    }
+
+    /** Permanently rejects new work and cancels every operation during owner shutdown. */
+    synchronized void shutDown() {
+        shutDown = true;
         for (Token token : active) token.cancel();
     }
 
