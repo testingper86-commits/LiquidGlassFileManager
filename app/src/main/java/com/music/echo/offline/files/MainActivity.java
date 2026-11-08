@@ -88,6 +88,7 @@ public class MainActivity extends ComponentActivity {
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     private MainOverlayController overlayController;
+    private FileOpenCoordinator fileOpenCoordinator;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     @Override protected void onCreate(Bundle b) {
@@ -197,6 +198,7 @@ public class MainActivity extends ComponentActivity {
         listView = new BrowserView(this, true, false);
         screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};
         overlayController = new MainOverlayController(this);
+        fileOpenCoordinator = new FileOpenCoordinator(this);
         View[] all = {homeScroll, filesView, toolsScroll, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
         for (View v : all) { content.addView(v, new FrameLayout.LayoutParams(-1, -1)); v.setVisibility(View.GONE); }
 
@@ -404,81 +406,9 @@ public class MainActivity extends ComponentActivity {
         filesView.showDir(dir);
     }
 
-    void openFile(Entry e, List<Entry> ctx) {
-        if (e == null || e.f == null) {
-            ToxiVisualSystem.toast(this, "This file is no longer available");
-            return;
-        }
-        if (e.dir || e.f.isDirectory()) { openDir(e.f); return; }
-        File file = e.f;
-        if (!file.isFile() || !file.canRead()) {
-            ToxiVisualSystem.toast(this, "This file is missing or cannot be read");
-            return;
-        }
+    void openFile(Entry e, List<Entry> ctx) { fileOpenCoordinator.open(e, ctx); }
 
-        // Built-in document viewers are mandatory for supported document extensions.
-        // Do not let the optional media in-app preference divert PDF/HTML to an external chooser.
-        String extension = FileKinds.extensionOf(file);
-        if (FileKinds.isHtmlExtension(extension)) {
-            Intent html = new Intent(this, HtmlViewerActivity.class);
-            html.putExtra(HtmlViewerActivity.EXTRA_FILE_PATH, file.getAbsolutePath());
-            startActivity(html);
-            return;
-        }
-
-        int kind = FileKinds.kindOfFile(file);
-        if (kind == FileKinds.PDF) {
-            openBuiltInViewer(file, 0);
-            return;
-        }
-
-        boolean inApp = ToxiVisualSystem.booleanPreference("inapp", true);
-        if (inApp && (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO
-                || kind == FileKinds.AUDIO || kind == FileKinds.TEXT)) {
-            ArrayList<String> ps = new ArrayList<>();
-            int idx = 0;
-            if (kind == FileKinds.IMAGE || kind == FileKinds.VIDEO || kind == FileKinds.AUDIO) {
-                if (ctx != null) for (Entry x : ctx) {
-                    if (x != null && !x.dir && FileKinds.kindOfFile(x.f) == kind && x.f.isFile()) {
-                        if (x.f.equals(file)) idx = ps.size();
-                        ps.add(x.f.getAbsolutePath());
-                    }
-                }
-                if (ps.isEmpty()) ps.add(file.getAbsolutePath());
-                if (ps.size() > 400) {
-                    int from = Math.max(0, Math.min(idx - 200, ps.size() - 400));
-                    ps = new ArrayList<>(ps.subList(from, from + 400));
-                    idx -= from;
-                }
-            } else {
-                ps.add(file.getAbsolutePath());
-            }
-            Intent i = new Intent(this, ViewerActivity.class);
-            i.putStringArrayListExtra("paths", ps);
-            i.putExtra("index", idx);
-            startActivity(i);
-            return;
-        }
-        if (kind == FileKinds.ARCHIVE && "zip".equals(extension)) { showZip(file); return; }
-        if (kind == FileKinds.APK) { FileOps.install(this, file, io); return; }
-        // Unsupported native formats are handed to Android's app chooser on the first tap.
-        FileOps.external(this, file, true);
-    }
-
-    private void openBuiltInViewer(File file, int index) {
-        ArrayList<String> paths = new ArrayList<>();
-        paths.add(file.getAbsolutePath());
-        Intent intent = new Intent(this, ViewerActivity.class);
-        intent.putStringArrayListExtra("paths", paths);
-        intent.putExtra("index", index);
-        startActivity(intent);
-    }
-
-    void showZip(final File z) {
-        Intent tools = new Intent(this, ToxiToolsActivity.class);
-        tools.putExtra(ToxiToolsActivity.EXTRA_FILE_PATH, z.getAbsolutePath());
-        startActivity(tools);
-    }
+    void showZip(File file) { fileOpenCoordinator.showZip(file); }
 
     void openCategory(int cat) {
         Indexer ix = Indexer.I;
