@@ -13,6 +13,7 @@ final class OperationCancellation {
     Token begin() {
         Token token = new Token();
         active.add(token);
+        token.previous = CURRENT.get();
         CURRENT.set(token);
         return token;
     }
@@ -20,7 +21,20 @@ final class OperationCancellation {
     void finish(Token token) {
         if (token == null) return;
         active.remove(token);
-        if (CURRENT.get() == token) CURRENT.remove();
+        Token current = CURRENT.get();
+        if (current == token) {
+            current = token.previous;
+        } else {
+            for (Token cursor = current; cursor != null; cursor = cursor.previous) {
+                if (cursor.previous == token) {
+                    cursor.previous = token.previous;
+                    break;
+                }
+            }
+        }
+        token.previous = null;
+        if (current == null) CURRENT.remove();
+        else CURRENT.set(current);
     }
 
     void cancelActive() {
@@ -28,8 +42,10 @@ final class OperationCancellation {
     }
 
     static boolean isCancelled() {
-        Token token = CURRENT.get();
-        return token != null && token.isCancelled();
+        for (Token token = CURRENT.get(); token != null; token = token.previous) {
+            if (token.isCancelled()) return true;
+        }
+        return false;
     }
 
     static void checkCurrent() throws IOException {
@@ -38,6 +54,7 @@ final class OperationCancellation {
 
     static final class Token {
         private final AtomicBoolean cancelled = new AtomicBoolean(false);
+        private Token previous;
         void cancel() { cancelled.set(true); }
         boolean isCancelled() { return cancelled.get(); }
     }

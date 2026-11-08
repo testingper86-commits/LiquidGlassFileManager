@@ -23,6 +23,30 @@ public class OperationCancellationTest {
         }
     }
 
+    @Test public void nestedOperationScopesPreserveAndObserveParentCancellation() throws Exception {
+        OperationCancellation parent = new OperationCancellation();
+        OperationCancellation child = new OperationCancellation();
+        OperationCancellation.Token parentToken = parent.begin();
+        OperationCancellation.Token childToken = child.begin();
+        try {
+            assertFalse(OperationCancellation.isCancelled());
+            parent.cancelActive();
+            assertTrue("nested work must observe cancellation from its parent scope", OperationCancellation.isCancelled());
+            child.finish(childToken);
+            assertTrue("finishing nested work must restore the cancelled parent context", OperationCancellation.isCancelled());
+            try {
+                OperationCancellation.checkCurrent();
+                fail("Cancelled parent context was lost after nested work finished");
+            } catch (IOException expected) {
+                assertEquals("Operation cancelled", expected.getMessage());
+            }
+        } finally {
+            child.finish(childToken);
+            parent.finish(parentToken);
+        }
+        assertFalse(OperationCancellation.isCancelled());
+    }
+
     @Test public void cancellationOnlyAffectsOperationsThatAreStillActive() {
         OperationCancellation controller = new OperationCancellation();
         OperationCancellation.Token completed = controller.begin();
