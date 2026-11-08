@@ -557,10 +557,16 @@ final class BrowserView extends FrameLayout {
             long[] totals = new long[2];
             for (File f : snapshot) {
                 if (token != selectionSummaryToken) return;
-                if (f.exists() && !FileOps.treeSize(f, totals, () -> token != selectionSummaryToken)) return;
+                if (f.exists() && !FileOps.treeSize(f, totals, () -> token != selectionSummaryToken)) {
+                    if (token != selectionSummaryToken || Thread.currentThread().isInterrupted()) return;
+                    post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · size unavailable"); });
+                    return;
+                }
             }
             final long bytes = totals[0];
             post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + ToxiVisualSystem.formatSize(bytes)); });
+        }, () -> {
+            if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · size unavailable");
         });
     }
 
@@ -591,7 +597,7 @@ final class BrowserView extends FrameLayout {
                         ? snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files"
                         : snapshot.size() + " selected items\nCombined size unavailable";
                 post(() -> { if (dialog.isShowing() && !dismissed.get()) details.setText(value); });
-            });
+            }, () -> { if (dialog.isShowing() && !dismissed.get()) details.setText(snapshot.size() + " selected items\nCombined size unavailable"); });
         });
         dialog.show();
     }
@@ -1170,7 +1176,7 @@ final class BrowserView extends FrameLayout {
                 return;
             }
             a.runUiIfAlive(() -> { if (dlg.isShowing()) dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")); });
-        }); else a.executeIo(() -> {
+        }, () -> { if (dlg.isShowing()) dlg.setMessage(propText(e, "Size unavailable", "")); }); else a.executeIo(() -> {
             digest[0] = sha256(e.f);
             a.runUiIfAlive(() -> {
                 if (!dlg.isShowing()) return;
