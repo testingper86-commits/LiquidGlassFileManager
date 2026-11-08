@@ -373,9 +373,18 @@ public class MainActivity extends ComponentActivity {
 
     void onIndexDone() {
         if (isFinishing() || isDestroyed()) return;
-        if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);
+        Indexer ix = Indexer.I;
+        Indexer.PublishedSnapshot index = ix.snapshot();
+        if (dynamicIsland != null && busyCount == 0)
+            dynamicIsland.update(ix.incomplete ? "Storage index incomplete" : "ToxiFiles ready", -1);
+        if (!ix.lastError.isEmpty()) {
+            ToxiVisualSystem.toast(this, index.ready
+                    ? "Storage refresh failed. Showing the last successful index."
+                    : "Storage scan failed. Check storage access and retry.");
+        } else if (ix.incomplete) {
+            ToxiVisualSystem.toast(this, "Storage scan incomplete. Some files may be missing.");
+        }
         String[] names = Indexer.CAT_NAMES;
-        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], index.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", index.all, true, true); pendingCat = -1; }
         if (tab == 0 && overlayView == null && home.getVisibility() == View.VISIBLE) buildHome();

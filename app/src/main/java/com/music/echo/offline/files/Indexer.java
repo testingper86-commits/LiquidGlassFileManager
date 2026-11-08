@@ -116,6 +116,7 @@ final class Indexer {
         try {
             TaskCoordinator.execute(TaskCoordinator.Lane.INDEXING, worker);
         } catch (RuntimeException startError) {
+            incomplete = true;
             lastError = startError.getMessage() == null ? startError.getClass().getSimpleName() : startError.getMessage();
             postCompletionCallbacks();
         }
