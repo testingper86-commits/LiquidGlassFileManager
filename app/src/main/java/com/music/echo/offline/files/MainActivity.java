@@ -7,8 +7,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.BroadcastReceiver;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
@@ -63,6 +61,7 @@ import androidx.activity.ComponentActivity;
 public class MainActivity extends ComponentActivity {
     private CrashReportController crashReports;
     private StoragePermissionController storagePermissions;
+    private AppLockLifecycleController appLockLifecycle;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -99,25 +98,24 @@ public class MainActivity extends ComponentActivity {
     int overlayBackgroundVisibility = View.VISIBLE;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
-    private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) {
-            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
-                unlocked = false;
-                if (overlayView == vaultScroll) closeOverlay();
-            }
-        }
-    };
-
     @Override protected void onCreate(Bundle b) {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(R.style.AppTheme);
         super.onCreate(b);
         crashReports = new CrashReportController(this);
         storagePermissions = new StoragePermissionController(this);
+        appLockLifecycle = new AppLockLifecycleController(this,
+                () -> {
+                    unlocked = false;
+                    if (vaultScroll != null && overlayView == vaultScroll) closeOverlay();
+                },
+                () -> { if (AppLock.enabled(this) && !unlocked) showAppLock(); },
+                () -> {
+                    if (AppLock.enabled(this)) unlocked = false;
+                    if (vaultScroll != null && overlayView == vaultScroll) closeOverlay();
+                });
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
-        IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
-        else registerReceiver(screenOffReceiver, screenOffFilter);
+        appLockLifecycle.register();
         ToxiVisualSystem.initialize(this);
         android.content.SharedPreferences storagePreferences = getSharedPreferences("lg_storage", MODE_PRIVATE);
         String savedSafTree = storagePreferences.getString("saf_tree", null);
@@ -279,7 +277,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
-        if (AppLock.enabled(this) && !unlocked) showAppLock();
+        appLockLifecycle.onResume();
         if (hasAccess() != accessOk) onAccessChanged();
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
     }
@@ -288,8 +286,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onUserLeaveHint() {
         super.onUserLeaveHint();
-        if (AppLock.enabled(this)) unlocked = false;
-        if (overlayView == vaultScroll) closeOverlay(); // Vault locks when the user leaves the app.
+        appLockLifecycle.onUserLeaveHint();
     }
 
     void onAccessChanged() {
@@ -301,7 +298,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     @Override protected void onDestroy() {
-        try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
+        appLockLifecycle.unregister();
         taskRuntime.shutdown();
         super.onDestroy();
     }
