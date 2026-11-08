@@ -64,6 +64,7 @@ public class MainActivity extends ComponentActivity {
     private AppLockScreenController appLockScreen;
     private StorageAnalyzerController storageAnalyzerController;
     private RecycleBinScreenController recycleBinScreen;
+    private SettingsScreenController settingsScreenController;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -103,6 +104,7 @@ public class MainActivity extends ComponentActivity {
         appLockScreen = new AppLockScreenController(this);
         storageAnalyzerController = new StorageAnalyzerController(this);
         recycleBinScreen = new RecycleBinScreenController(this);
+        settingsScreenController = new SettingsScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -734,6 +736,8 @@ public class MainActivity extends ComponentActivity {
         new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
+    void showCrashLogOptions() { crashReports.showCrashLogOptions(); }
+
     void showUsageDiagnostics() {
         String msg = "Usage & diagnostics (stored locally)\n\n" +
                 "App version: " + versionName() + "\n" +
@@ -812,180 +816,7 @@ public class MainActivity extends ComponentActivity {
         return row(glyph, title, sub, s, v -> s.toggle());
     }
 
-    void addDynamicIslandSettings() {
-        final android.content.SharedPreferences p = DynamicIslandView.preferences(this);
-        Switch enabled = new Switch(this); enabled.setChecked(p.getBoolean("enabled",true));
-        enabled.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean("enabled",on).apply();if(dynamicIsland!=null)dynamicIsland.setEnabledFromSettings();});
-        settings.addView(row(ToxiIcons.SPARKLE,"Enable Dynamic Island","Show the draggable, theme-linked activity capsule",enabled,v->enabled.toggle()),lpm(-1,-2,16,0,16,8));
-        settings.addView(row(ToxiIcons.PALETTE,"Island accent treatment",new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"}[Math.max(0,Math.min(3,p.getInt("palette",0)))],null,v->new AlertDialog.Builder(this).setTitle("Island accent treatment").setSingleChoiceItems(new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"},p.getInt("palette",0),(d,w)->{p.edit().putInt("palette",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
-        addIslandSlider(p,"Accent edge strength","glow",0,100,65);
-        addIslandSlider(p,"Transparency","transparency",80,255,225);
-        addIslandSlider(p,"Expansion transition speed","speed",90,420,180);
-        settings.addView(row(ToxiIcons.INFO,"Capsule size",p.getInt("size",0)==0?"Compact":"Large",null,v->new AlertDialog.Builder(this).setTitle("Capsule size").setSingleChoiceItems(new String[]{"Compact","Large"},p.getInt("size",0),(d,w)->{p.edit().putInt("size",w).apply();d.dismiss();if(dynamicIsland!=null)dynamicIsland.refreshStyle();buildSettings();}).setNegativeButton("Cancel",null).show()),lpm(-1,-2,16,0,16,8));
-        settings.addView(row(ToxiIcons.TUNE,"Position alignment","Choose an edge or drag anywhere",null,v->new AlertDialog.Builder(this).setTitle("Island alignment").setItems(new String[]{"Left edge","Center","Right edge"},(d,w)->{if(dynamicIsland!=null)dynamicIsland.align(w);else p.edit().putFloat("x",w==0?0f:w==1?0.5f:1f).apply();}).show()),lpm(-1,-2,16,0,16,8));
-        settings.addView(islandSwitch(p,"Show file operations","show_operations",true),lpm(-1,-2,16,0,16,8));
-        settings.addView(islandSwitch(p,"Show video playback","show_playback",true),lpm(-1,-2,16,0,16,8));
-        settings.addView(islandSwitch(p,"Show storage scanning","show_scan",true),lpm(-1,-2,16,0,16,8));
-        settings.addView(islandSwitch(p,"Haptic feedback","haptics",true),lpm(-1,-2,16,0,16,8));
-        settings.addView(islandSwitch(p,"Automatic activity expansion","auto_expand",true),lpm(-1,-2,16,0,16,8));
-        settings.addView(row(ToxiIcons.REFRESH,"Reset Dynamic Island preferences","Restore its default appearance and position",null,v->new AlertDialog.Builder(this).setTitle("Reset Dynamic Island?").setMessage("Only Dynamic Island preferences will be reset.").setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->{p.edit().clear().apply();if(dynamicIsland!=null){dynamicIsland.setEnabledFromSettings();dynamicIsland.refreshStyle();}buildSettings();}).show()),lpm(-1,-2,16,0,16,8));
-    }
-    View islandSwitch(android.content.SharedPreferences p,String title,String key,boolean def){Switch sw=new Switch(this);sw.setChecked(p.getBoolean(key,def));sw.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean(key,on).apply();if(dynamicIsland!=null)dynamicIsland.refreshStyle();});return row(ToxiIcons.SPARKLE,title,null,sw,v->sw.toggle());}
-    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(10));box.setBackground(ToxiVisualSystem.surface(14,false));TextView label=ToxiVisualSystem.text(this,title+" Â· "+p.getInt(key,def),13,ToxiVisualSystem.TEXT_PRIMARY,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(this);seek.setProgressTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));seek.setProgressBackgroundTintList(ColorStateList.valueOf(ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]));seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" Â· "+n);if(dynamicIsland!=null)dynamicIsland.refreshStyle();}});box.addView(seek);settings.addView(box,lpm(-1,-2,16,0,16,8));}
-
-    void buildSettings() {
-        settings.removeAllViews();
-        LinearLayout settingsMasthead = new LinearLayout(this);
-        settingsMasthead.setGravity(Gravity.CENTER_VERTICAL);
-        settingsMasthead.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
-        ImageView settingsMark = new ImageView(this);
-        settingsMark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
-        settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
-        LinearLayout settingsTitleBlock = new LinearLayout(this);
-        settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
-        settingsTitleBlock.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
-        TextView t = ToxiVisualSystem.text(this, "Control center", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
-        settingsTitleBlock.addView(t);
-        TextView settingsEyebrow = ToxiVisualSystem.text(this, "PERSONALIZE YOUR WORKSPACE", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
-        settingsEyebrow.setLetterSpacing(0.11f);
-        LinearLayout.LayoutParams eyebrowLp = new LinearLayout.LayoutParams(-2, -2);
-        eyebrowLp.topMargin = ToxiVisualSystem.dp(4);
-        settingsTitleBlock.addView(settingsEyebrow, eyebrowLp);
-        settingsMasthead.addView(settingsTitleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
-        settings.addView(settingsMasthead);
-        t.setOnClickListener(v -> {
-            int taps = ToxiVisualSystem.PREFERENCES.getInt("developer_unlock_taps", 0) + 1;
-            if (taps >= 7) {
-                ToxiVisualSystem.PREFERENCES.edit().putBoolean("developer_options_unlocked", true).putInt("developer_unlock_taps", 0).apply();
-                ToxiVisualSystem.toast(this, "Developer options unlocked");
-                buildSettings();
-            } else {
-                ToxiVisualSystem.PREFERENCES.edit().putInt("developer_unlock_taps", taps).apply();
-                if (taps >= 4) ToxiVisualSystem.toast(this, (7 - taps) + " more taps to unlock developer options");
-            }
-        });
-        TextView intro = ToxiVisualSystem.text(this, "Shape the way your files are organized.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-        intro.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
-        settings.addView(intro);
-        TextView hint = ToxiVisualSystem.text(this, "Select a category to reveal its controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
-        hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
-        settings.addView(hint);
-        settings.addView(section("Appearance"));
-        settings.addView(row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> openThemeScreen()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[ToxiVisualSystem.PREFERENCES.getInt("font_family", 0)], null, v -> fontDialog()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Dynamic Island"));
-        addDynamicIslandSettings();
-
-        settings.addView(section("Files & Folders"));
-        settings.addView(switchRow(ToxiIcons.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> filesView.reload()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(ToxiIcons.OPEN, "Open files in ToxiFiles", "Built-in viewer for photos, video, audio, PDF and text", "inapp", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(ToxiIcons.TRASH, "Confirm before deleting", null, "confirm", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.SORT, "Default sort", null, null, v -> filesView.sortDialog()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Storage Access"));
-        settings.addView(row(ToxiIcons.DATABASE, "Storage permission", hasAccess() ? "Allowed Â· manage access" : "Not allowed Â· tap to fix", null, v -> {
-            if (!hasAccess()) { showStorageAccess(); return; }
-            try {
-                Intent manage = Build.VERSION.SDK_INT >= 30
-                        ? new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName()))
-                        : new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
-                startActivity(manage);
-            } catch (Exception e) { ToxiVisualSystem.toast(this, "Open Android Settings > Apps > ToxiFiles > Permissions"); }
-        }), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh categories and search", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Recycle Bin"));
-        settings.addView(switchRow(ToxiIcons.TRASH, "Move deleted files to Recycle Bin", "Keep deleted files here before permanent removal", "recyclebin", true, null), lpm(-1, -2, 16, 0, 16, 8));
-        int binCount = RecycleBin.count(this);
-        settings.addView(row(ToxiIcons.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " \u2022 auto-removed after " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> showRecycleBin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.TRASH, "Recycle Bin retention", ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> retentionDialog()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("App Lock"));
-        settings.addView(row(ToxiIcons.LOCK, AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN", "Biometric unlock is offered first on supported devices", null, v -> setAppLockPin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(switchRow(ToxiIcons.SHIELD, "Require unlock to open app", "Re-locks after you leave the app or the screen turns off", "applock_on", false, () -> {
-            if (ToxiVisualSystem.booleanPreference("applock_on", false) && !AppLock.hasPin(this)) { ToxiVisualSystem.toast(this, "Set an App Lock PIN first"); ToxiVisualSystem.setBooleanPreference("applock_on", false); buildSettings(); }
-        }), lpm(-1, -2, 16, 0, 16, 8));
-
-        String defFolder = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
-        settings.addView(row(ToxiIcons.FOLDER, "Starting folder", defFolder != null ? defFolder : "Internal storage root (choose a folder in Files to set another)", null, v -> {
-            if (defFolder == null) { ToxiVisualSystem.toast(this, "Open a folder in Files, then choose Set as default start folder from its action menu"); return; }
-            new AlertDialog.Builder(this).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Reset", (d, w) -> { ToxiVisualSystem.PREFERENCES.edit().remove("default_folder").apply(); buildSettings(); }).show();
-        }), lpm(-1, -2, 16, 0, 16, 8));
-
-
-        settings.addView(section("Secure Vault"));
-        settings.addView(row(ToxiIcons.LOCK, Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> setVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.FOLDER, "Open Vault", Vault.list(this).size() + " item" + (Vault.list(this).size() == 1 ? "" : "s"), null, v -> promptVaultPin()), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("Wi-Fi Transfer"));
-        settings.addView(row(ToxiIcons.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> receiveViaWifi()), lpm(-1, -2, 16, 0, 16, 8));
-        settings.addView(row(ToxiIcons.WIFI, "Send via Wi-Fi", "Select files in Files, then choose Send via Wi-Fi from the file action menu", null, v -> ToxiVisualSystem.toast(this, "Select files in Files first, then choose Send via Wi-Fi from the file action menu")), lpm(-1, -2, 16, 0, 16, 8));
-
-        settings.addView(section("SD Card & USB Storage"));
-        settings.addView(row(ToxiIcons.CLOUD, "Browse other storage", "Browse SD cards, USB drives or cloud documents; import files and copy files out", null, v -> openOtherStorage()), lpm(-1, -2, 16, 0, 16, 8));
-
-
-        if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) {
-            settings.addView(section("Developer options"));
-            settings.addView(row(ToxiIcons.ANALYTICS, "Usage & diagnostics", "Local app version, Android details, storage permission and crash status", null, v -> showUsageDiagnostics()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.ANALYTICS, "Developer Studio", "12 offline tools for source, APK, database, binary and asset inspection", null, v -> { if (ToxiVisualSystem.booleanPreference("developer_options_unlocked", false)) startActivity(new Intent(this, DeveloperStudioActivity.class)); }), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(section("Advanced tools"));
-            settings.addView(switchRow(ToxiIcons.SPARKLE, "Background blur", "Can affect performance on some devices", "blur", false, () -> bg.applyBlur()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(section("Storage Tools"));
-            settings.addView(row(ToxiIcons.DATABASE, "Archive manager", "List archive files; inspect ZIP contents and extract ZIP files. Other formats can be listed but are not extracted by this build.", null, v -> openCategory(4)), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.ANALYTICS, "Find duplicate files", "Matches by size, then confirms with a checksum", null, v -> openDuplicates()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.DATABASE, "Find empty folders", "Folders with nothing inside them", null, v -> openCleanup()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.ANALYTICS, "Storage analyzer", "Count files and estimate space by category; shows largest files without deleting anything", null, v -> openStorageAnalyzer()), lpm(-1, -2, 16, 0, 16, 8));
-
-            settings.addView(section("Privacy & Diagnostics"));
-            settings.addView(row(ToxiIcons.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
-            // Former label: Crash logs & diagnostics.
-            settings.addView(row(ToxiIcons.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> crashReports.showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
-
-            settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh the index if file counts look outdated", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(ToxiIcons.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(ToxiIcons.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), lpm(-1, -2, 16, 0, 16, 8));
-            TextView backupHeading = ToxiVisualSystem.text(this, "Backup & Restore", 14, ToxiVisualSystem.ACCENT, true);
-            backupHeading.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(2));
-            settings.addView(backupHeading);
-            settings.addView(row(ToxiIcons.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> exportSettings()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> importSettingsPick()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(ToxiIcons.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(ToxiIcons.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(switchRow(ToxiIcons.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> showBuiltInTools()), lpm(-1, -2, 16, 0, 16, 8));
-            settings.addView(row(ToxiIcons.REFRESH, "Reset developer options", "Hide this section again", null, v -> { ToxiVisualSystem.PREFERENCES.edit().putBoolean("developer_options_unlocked", false).apply(); buildSettings(); }), lpm(-1, -2, 16, 0, 16, 8));
-        }
-
-        // Keep About at the end of Settings, in its own collapsible section.
-        // This prevents it from sitting above Storage Access or SD Card & USB Storage.
-        settings.addView(section("About"));
-        settings.addView(row(ToxiIcons.INFO, "About ToxiFiles", versionName(), null, v -> showAbout()), lpm(-1, -2, 16, 0, 16, 12));
-
-        // Present settings as clear, collapsible groups instead of one long wall of options.
-        // Appearance starts open; every other section is closed until the user selects it.
-        boolean inSection = false;
-        boolean appearanceSection = false;
-        for (int i = 0; i < settings.getChildCount(); i++) {
-            View child = settings.getChildAt(i);
-            if ("settings_section".equals(child.getTag())) {
-                inSection = true;
-                appearanceSection = child instanceof TextView && ((TextView) child).getText().toString().contains("APPEARANCE");
-                child.setVisibility(View.VISIBLE);
-                if (child instanceof TextView) {
-                    TextView heading = (TextView) child;
-                    String label = heading.getText().toString().replace("+  ", "").replace("-  ", "");
-                    heading.setText((appearanceSection ? "-  " : "+  ") + label);
-                    heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
-                }
-            } else if (inSection) {
-                child.setVisibility(appearanceSection ? View.VISIBLE : View.GONE);
-            }
-        }
-    }
+    void buildSettings() { settingsScreenController.build(); }
 
     // ---------------- STORAGE ANALYZER ----------------
     void openStorageAnalyzer() { storageAnalyzerController.open(); }

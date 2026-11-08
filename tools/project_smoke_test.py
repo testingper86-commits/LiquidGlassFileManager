@@ -129,7 +129,9 @@ def main():
     destroy_lifecycle = main.split("@Override protected void onDestroy()", 1)[1].split("// ---------------- index", 1)[0]
     task_runtime = source("app/src/main/java/com/music/echo/offline/files/ActivityTaskRuntime.java")
     require("taskRuntime.shutdown();" in destroy_lifecycle and "cancellation.shutDown();" in task_runtime and "cancellation.cancelActive();" in task_runtime and "LanTransfer.cancel();" in task_runtime and task_runtime.index("LanTransfer.cancel();") < task_runtime.index("scope.close(true);"), "Activity task runtime permanently closes operation cancellation, the independent LAN transfer session, and scoped workers in order")
-    require("int binCount = RecycleBin.count(this);" in main and "RecycleBin.list(this).size()" not in main, "Settings uses a lightweight Recycle Bin count instead of loading every item on the UI thread")
+    settings_controller = source("app/src/main/java/com/music/echo/offline/files/SettingsScreenController.java")
+    require("int binCount = RecycleBin.count(activity);" in settings_controller and "RecycleBin.list(activity).size()" not in settings_controller, "Settings uses a lightweight Recycle Bin count instead of loading every item on the UI thread")
+    require("settingsScreenController = new SettingsScreenController(this);" in main and "settingsScreenController.build();" in main and "activity.showCrashLogOptions()" in settings_controller and "void showCrashLogOptions()" in main, "MainActivity delegates Settings composition while preserving the diagnostics action boundary")
     recycle_ui = source("app/src/main/java/com/music/echo/offline/files/RecycleBinScreenController.java")
     require("render(null, true);" in recycle_ui and "activity.executeIo(() ->" in recycle_ui and "RecycleBin.list(activity)" in recycle_ui and "activity.runUiIfAlive(() -> render(items, false))" in recycle_ui and "activity.recycle.addView" in recycle_ui, "Recycle Bin screen controller enumerates on IO and renders loading/results through the lifecycle-safe dispatcher")
     require("recycleBinScreen = new RecycleBinScreenController(this);" in main and "recycleBinScreen.show();" in main and "recycleBinScreen.reload();" in main, "MainActivity delegates Recycle Bin screen lifecycle to its dedicated controller")
@@ -193,7 +195,7 @@ def main():
     require('static void interactive(View view)' in visual and 'view.setOnTouchListener' not in visual and 'setOnClickListener' in main, "shared interaction styling does not intercept native click dispatch")
     require('Obsidian Alloy' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java") and 'hasIndependentTokens()' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java"), "current theme catalog uses independent design tokens")
     require('settingsScroll.setClipToPadding(true)' in main and 'ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET' in main, "Settings reserves scroll space above bottom navigation")
-    require('settings.addView(section("About"))' in main and 'About ToxiFiles' in main, "About remains at the bottom of Settings")
+    require('activity.settings.addView(activity.section("About"))' in settings_controller and 'About ToxiFiles' in settings_controller, "About remains at the bottom of Settings")
 
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
     archive_path = source("core/src/main/java/com/music/echo/offline/files/ArchivePath.java")
