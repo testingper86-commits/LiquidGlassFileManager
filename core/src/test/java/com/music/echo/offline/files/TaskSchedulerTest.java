@@ -58,6 +58,31 @@ public class TaskSchedulerTest {
         assertTrue(future.isCancelled()); assertTrue(interrupted.await(5, TimeUnit.SECONDS));
     }
 
+    @Test public void cancellingScopeImmediatelyReleasesQueuedLaneCapacity() throws Exception {
+        TaskScheduler scheduler = new TaskScheduler(() -> { });
+        TaskScheduler.Scope first = scheduler.newScope();
+        CountDownLatch started = new CountDownLatch(1);
+        Future<?> running = first.submit(TaskScheduler.Lane.SERIAL, () -> {
+            started.countDown();
+            try { new CountDownLatch(1).await(); }
+            catch (InterruptedException expected) { }
+        });
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+        for (int i = 0; i < 48; i++) first.submit(TaskScheduler.Lane.SERIAL, () -> { });
+
+        first.close(true);
+        assertTrue(running.isCancelled());
+
+        TaskScheduler.Scope second = scheduler.newScope();
+        try {
+            Future<?>[] accepted = new Future<?>[48];
+            for (int i = 0; i < accepted.length; i++) accepted[i] = second.submit(TaskScheduler.Lane.SERIAL, () -> { });
+            for (Future<?> task : accepted) task.get(5, TimeUnit.SECONDS);
+        } finally {
+            second.close(true);
+        }
+    }
+
     @Test public void boundedQueuesRejectOverloadAndInitializerRunsOnWorkers() throws Exception {
         AtomicInteger initialized = new AtomicInteger();
         TaskScheduler scheduler = new TaskScheduler(initialized::incrementAndGet);

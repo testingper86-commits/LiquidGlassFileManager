@@ -1,6 +1,5 @@
 package com.music.echo.offline.files;
 
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -92,7 +91,7 @@ final class TaskScheduler {
 
     static final class Scope implements AutoCloseable {
         private final TaskScheduler scheduler;
-        private final Set<FutureTask<?>> pending = ConcurrentHashMap.newKeySet();
+        private final ConcurrentHashMap<FutureTask<?>, ThreadPoolExecutor> pending = new ConcurrentHashMap<>();
         private volatile boolean closed;
         private Scope(TaskScheduler scheduler) { this.scheduler = scheduler; }
         ScopedExecutor executor(Lane lane) { scheduler.pool(lane); return new ScopedExecutor(this, lane); }
@@ -105,11 +104,12 @@ final class TaskScheduler {
             if (task == null) throw new NullPointerException("task");
             synchronized (this) {
                 if (closed) throw new RejectedExecutionException("Task scope is closed");
+                ThreadPoolExecutor executor = scheduler.pool(lane);
                 FutureTask<T> future = new FutureTask<T>(task) {
                     @Override protected void done() { pending.remove(this); }
                 };
-                pending.add(future);
-                try { scheduler.pool(lane).execute(future); }
+                pending.put(future, executor);
+                try { executor.execute(future); }
                 catch (RuntimeException | Error failure) {
                     pending.remove(future);
                     future.cancel(false);
@@ -121,7 +121,15 @@ final class TaskScheduler {
         void close(boolean cancelRunning) {
             synchronized (this) {
                 closed = true;
-                if (cancelRunning) for (FutureTask<?> task : pending) task.cancel(true);
+                if (cancelRunning) {
+                    for (java.util.Map.Entry<FutureTask<?>, ThreadPoolExecutor> entry : pending.entrySet()) {
+                        FutureTask<?> task = entry.getKey();
+                        task.cancel(true);
+                        // FutureTask cancellation does not remove queued work from a ThreadPoolExecutor.
+                        // Release that bounded queue capacity immediately; running tasks simply return false.
+                        entry.getValue().remove(task);
+                    }
+                }
             }
         }
         @Override public void close() { close(true); }
