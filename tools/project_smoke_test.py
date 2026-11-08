@@ -143,8 +143,10 @@ def main():
     lan_transfer = source("app/src/main/java/com/music/echo/offline/files/LanTransfer.java")
     lan_hash = lan_transfer.split("private static String sha256(File f)", 1)[1].split("private static String hex(", 1)[0]
     require("OperationCancellation.checkCurrent();" in lan_hash and "private static String sha256(File f) throws IOException" in lan_transfer and lan_transfer.count("OperationCancellation.checkCurrent();") >= 10, "LAN transfers cooperatively stop file hashing and encrypted send/receive loops when cancelled")
-    cleanup_scan = main.split("void openCleanup()", 1)[1].split("void buildEmptyFolders(", 1)[0]
-    require("OperationCancellation.Token operationToken = cancellation.begin();" in cleanup_scan and cleanup_scan.count("OperationCancellation.isCancelled()") >= 3 and "cancellation.finish(operationToken);" in cleanup_scan, "empty-folder scanning stops promptly when its Activity-scoped cancellation token is cancelled")
+    storage_maintenance = source("app/src/main/java/com/music/echo/offline/files/StorageMaintenanceScreenController.java")
+    cleanup_scan = storage_maintenance.split("void openCleanup()", 1)[1].split("void buildEmptyFolders(", 1)[0]
+    require("OperationCancellation.Token operationToken = activity.cancellation.begin();" in cleanup_scan and cleanup_scan.count("OperationCancellation.isCancelled()") >= 3 and "activity.cancellation.finish(operationToken);" in cleanup_scan, "empty-folder scanning stops promptly when its Activity-scoped cancellation token is cancelled")
+    require("storageMaintenanceScreen = new StorageMaintenanceScreenController(this);" in main and "storageMaintenanceScreen.openDuplicates();" in main and "storageMaintenanceScreen.openCleanup();" in main, "MainActivity delegates duplicate and empty-folder screen workflows to the storage-maintenance controller")
     require(main.count("io.execute(") == 1 and main.count("ops.execute(") == 1 and main.count("executeIo(") >= 8 and main.count("executeOperation(") == 4 and "catch (RejectedExecutionException rejected)" in main and "busy(false);" in main, "bounded MainActivity task submissions recover from queue rejection without leaving operations busy")
     require(main.count("runOnUiThread(") == 1 and main.count("runUiIfAlive(") >= 20, "all MainActivity background UI callbacks use the destruction-safe dispatcher")
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
@@ -255,7 +257,7 @@ def main():
     dup_tests = source("core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java")
     require('DuplicateFinder.find(snapshots)' in dup_adapter and 'new DuplicateFinder.Snapshot' in dup_adapter, "app duplicate adapter delegates to core snapshots")
     require(('snapshot.length < 0' in dup_finder or 'snapshot.length<0' in dup_finder) and 'throws IOException' in dup_finder and 'return null' not in dup_finder and 'Files.isSymbolicLink' in dup_finder and 'OperationCancellation.checkCurrent()' in dup_finder, "core duplicate detection rejects stale/symlink entries and propagates hash failures")
-    require('catch (IOException scanFailure)' in main and 'Duplicate scan failed:' in main and 'this.cancellation.finish(operationToken)' in main, "duplicate scan reports incomplete I/O failures to the user")
+    require('catch (IOException scanFailure)' in storage_maintenance and 'Duplicate scan failed:' in storage_maintenance and 'activity.cancellation.finish(operationToken)' in storage_maintenance, "duplicate scan reports incomplete I/O failures to the user")
     require('includesEmptyFilesAsExactDuplicates' in dup_tests and 'reportsDisappearingFilesInsteadOfReturningPartialResults' in dup_tests and 'honorsScopedOperationCancellation' in dup_tests, "duplicate scanner has regression coverage for empty and disappearing files")
     html = source("app/src/main/java/com/music/echo/offline/files/HtmlViewerActivity.java")
     require('setJavaScriptEnabled(false)' in html and 'setDomStorageEnabled(false)' in html and 'setAllowFileAccess(false)' in html and 'setAllowContentAccess(false)' in html and 'MIXED_CONTENT_NEVER_ALLOW' in html and 'SafePathResolver.resolveExistingFile(rootPath, path)' in html and 'Uri.decode(path)' not in html, "built-in HTML viewer disables active scripts and confines every asset to a canonical real-path root")

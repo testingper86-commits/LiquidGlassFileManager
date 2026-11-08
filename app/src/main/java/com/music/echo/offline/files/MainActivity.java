@@ -65,6 +65,7 @@ public class MainActivity extends ComponentActivity {
     private StorageAnalyzerController storageAnalyzerController;
     private RecycleBinScreenController recycleBinScreen;
     private SettingsScreenController settingsScreenController;
+    private StorageMaintenanceScreenController storageMaintenanceScreen;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -105,6 +106,7 @@ public class MainActivity extends ComponentActivity {
         storageAnalyzerController = new StorageAnalyzerController(this);
         recycleBinScreen = new RecycleBinScreenController(this);
         settingsScreenController = new SettingsScreenController(this);
+        storageMaintenanceScreen = new StorageMaintenanceScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -839,168 +841,14 @@ public class MainActivity extends ComponentActivity {
 
     void showAppLock() { appLockScreen.showLockScreen(); }
 
-    // ---------------- DUPLICATE FINDER ----------------
-    void openDuplicates() {
-        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
-        if (!index.ready) { ToxiVisualSystem.toast(this, "Still scanning storage â try again in a moment"); return; }
-        ToxiVisualSystem.toast(this, "Scanning for duplicatesâ¦");
-        executeIo(() -> {
-            OperationCancellation.Token operationToken = this.cancellation.begin();
-            try {
-                final List<DupFinder.Group> groups = DupFinder.find(index.all);
-                runUiIfAlive(() -> {
-                    if (isFinishing() || isDestroyed()) return;
-                    buildDuplicates(groups);
-                    showOverlay(dupScroll);
-                });
-            } catch (IOException scanFailure) {
-                if ("Operation cancelled".equals(scanFailure.getMessage())) return;
-                final String detail = scanFailure.getMessage();
-                runUiIfAlive(() -> {
-                    if (isFinishing() || isDestroyed()) return;
-                    ToxiVisualSystem.toast(this, "Duplicate scan failed: "
-                            + (detail == null || detail.trim().isEmpty() ? "a file could not be read" : detail));
-                });
-            } finally {
-                this.cancellation.finish(operationToken);
-            }
-        });
-    }
+    // ---------------- STORAGE MAINTENANCE ----------------
+    void openDuplicates() { storageMaintenanceScreen.openDuplicates(); }
 
-    void buildDuplicates(final List<DupFinder.Group> groups) {
-        dup.removeAllViews();
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
-        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
-        bk.setContentDescription("Back");
-        bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        hd.addView(ToxiVisualSystem.text(this, "Duplicate Files", 22, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
-        dup.addView(hd, new LinearLayout.LayoutParams(-1, -2));
+    void buildDuplicates(final List<DupFinder.Group> groups) { storageMaintenanceScreen.buildDuplicates(groups); }
 
-        if (groups.isEmpty()) {
-            TextView w = ToxiVisualSystem.text(this, "No exact duplicates found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            dup.addView(w);
-            return;
-        }
-        long reclaimable = 0;
-        for (DupFinder.Group g : groups) reclaimable += g.size * (g.files.size() - 1);
-        TextView sum = ToxiVisualSystem.text(this, groups.size() + " duplicate group" + (groups.size() == 1 ? "" : "s") + " \u2014 up to " + ToxiVisualSystem.formatSize(reclaimable) + " reclaimable", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        sum.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
-        dup.addView(sum);
+    void openCleanup() { storageMaintenanceScreen.openCleanup(); }
 
-        TextView bulk = ToxiVisualSystem.text(this, "Move all but the oldest copy to Recycle Bin", 14, ToxiVisualSystem.ACCENT, true);
-        bulk.setBackground(ToxiVisualSystem.surface(18, false));
-        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
-        bulk.setGravity(Gravity.CENTER);
-        ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Move duplicates to Recycle Bin?")
-                .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin \u2014 they can still be restored from there.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Move", (d, w) -> {
-                    List<File> victims = new ArrayList<>();
-                    for (DupFinder.Group g : groups) {
-                        File keep = g.files.get(0);
-                        for (File f : g.files) if (f.lastModified() < keep.lastModified()) keep = f;
-                        for (File f : g.files) if (f != keep) victims.add(f);
-                    }
-                    RecycleBin.moveToBin(this, victims, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openDuplicates(); });
-                }).show());
-        dup.addView(bulk, lpm(-1, -2, 16, 4, 16, 14));
-
-        for (final DupFinder.Group g : groups) {
-            TextView gh = ToxiVisualSystem.text(this, g.files.size() + " copies \u2022 " + ToxiVisualSystem.formatSize(g.size) + " each", 12, ToxiVisualSystem.TEXT_SECONDARY, true);
-            gh.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
-            dup.addView(gh);
-            for (final File f : g.files) {
-                Entry e = new Entry(f);
-                View rv = ToxiFileRow.create(this);
-                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
-                ToxiFileRow.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
-                View.OnClickListener act = v -> new AlertDialog.Builder(this).setTitle("Move to Recycle Bin?").setMessage(f.getAbsolutePath())
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Move", (d, w) -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openDuplicates(); }))
-                        .show();
-                rv.setOnClickListener(act);
-                h.more.setOnClickListener(act);
-                dup.addView(rv, new LinearLayout.LayoutParams(-1, -2));
-            }
-        }
-    }
-
-    void openCleanup() {
-        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
-        if (!index.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
-        ToxiVisualSystem.toast(this, "Scanning for empty folders\u2026");
-        executeIo(() -> {
-            OperationCancellation.Token operationToken = cancellation.begin();
-            try {
-                final List<File> empties = new ArrayList<>();
-                for (Entry e : index.all) {
-                    if (OperationCancellation.isCancelled()) return;
-                    if (e.dir) {
-                        File[] kids = e.f.listFiles();
-                        if (OperationCancellation.isCancelled()) return;
-                        if (kids != null && kids.length == 0) empties.add(e.f);
-                    }
-                }
-                if (OperationCancellation.isCancelled()) return;
-                runUiIfAlive(() -> { buildEmptyFolders(empties); showOverlay(dupScroll); });
-            } finally {
-                cancellation.finish(operationToken);
-            }
-        });
-    }
-
-    void buildEmptyFolders(final List<File> empties) {
-        dup.removeAllViews();
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
-        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
-        bk.setContentDescription("Back");
-        bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        hd.addView(ToxiVisualSystem.text(this, "Empty Folders", 22, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
-        dup.addView(hd, new LinearLayout.LayoutParams(-1, -2));
-
-        if (empties.isEmpty()) {
-            TextView w = ToxiVisualSystem.text(this, "No empty folders found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            dup.addView(w);
-            return;
-        }
-        TextView sum = ToxiVisualSystem.text(this, empties.size() + " empty folder" + (empties.size() == 1 ? "" : "s"), 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        sum.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
-        dup.addView(sum);
-
-        TextView bulk = ToxiVisualSystem.text(this, "Delete all empty folders", 14, ToxiVisualSystem.ACCENT, true);
-        bulk.setBackground(ToxiVisualSystem.surface(18, false));
-        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
-        bulk.setGravity(Gravity.CENTER);
-        ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Delete " + empties.size() + " empty folders?")
-                .setMessage("They contain nothing, so this goes straight to Recycle Bin, same as any other delete.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (d, w) -> RecycleBin.moveToBin(this, empties, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openCleanup(); }))
-                .show());
-        dup.addView(bulk, lpm(-1, -2, 16, 4, 16, 14));
-
-        for (final File f : empties) {
-            Entry e = new Entry(f);
-            View rv = ToxiFileRow.create(this);
-            ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
-            ToxiFileRow.bind(h, e, false, false, f.getParentFile() == null ? "" : f.getParentFile().getAbsolutePath());
-            View.OnClickListener act = v -> RecycleBin.moveToBin(this, java.util.Collections.singletonList(f), msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); openCleanup(); });
-            rv.setOnClickListener(act);
-            h.more.setOnClickListener(act);
-            dup.addView(rv, new LinearLayout.LayoutParams(-1, -2));
-        }
-    }
+    void buildEmptyFolders(final List<File> empties) { storageMaintenanceScreen.buildEmptyFolders(empties); }
 
     // ---------------- VAULT ----------------
     EditText pinField() {
