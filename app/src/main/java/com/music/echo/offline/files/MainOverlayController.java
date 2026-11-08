@@ -4,7 +4,6 @@ import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.ScrollView;
 
 /** Owns full-screen overlay transitions, secure-vault state and background restoration. */
 final class MainOverlayController {
