@@ -429,6 +429,8 @@ public class MainActivity extends ComponentActivity {
     // ---------------- tabs / overlay / nav ----------------
     void selectTab(int i) { navigationController.selectTab(i); }
 
+    View currentOverlay() { return overlayController == null ? null : overlayController.current(); }
+
     void showOverlay(View v) { overlayController.show(v); }
 
     void closeOverlay() { overlayController.close(); }

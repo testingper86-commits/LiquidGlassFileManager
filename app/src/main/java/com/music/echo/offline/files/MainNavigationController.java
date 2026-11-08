@@ -62,9 +62,9 @@ final class MainNavigationController {
     }
 
     void handleBackNavigation() {
-        if (activity.overlayController != null && activity.overlayController.current() == activity.listView
+        if (activity.currentOverlay() == activity.listView
                 && activity.listView.handleBack()) return;
-        if (activity.overlayController != null && activity.overlayController.current() != null) {
+        if (activity.currentOverlay() != null) {
             activity.closeOverlay();
             return;
         }
@@ -78,7 +78,7 @@ final class MainNavigationController {
 
     void syncVisibility(boolean selecting) {
         if (navigationBar == null) return;
-        boolean hidden = activity.overlayController != null && activity.overlayController.current() != null || selecting;
+        boolean hidden = activity.currentOverlay() != null || selecting;
         navigationBar.setVisible(!hidden);
     }
 
