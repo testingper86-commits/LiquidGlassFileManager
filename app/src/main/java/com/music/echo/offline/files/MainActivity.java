@@ -62,6 +62,7 @@ import androidx.activity.ComponentActivity;
 
 public class MainActivity extends ComponentActivity {
     private CrashReportController crashReports;
+    private StoragePermissionController storagePermissions;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = new OperationCancellation();
@@ -112,6 +113,7 @@ public class MainActivity extends ComponentActivity {
         setTheme(R.style.AppTheme);
         super.onCreate(b);
         crashReports = new CrashReportController(this);
+        storagePermissions = new StoragePermissionController(this);
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
@@ -264,35 +266,11 @@ public class MainActivity extends ComponentActivity {
     }
 
     // ---------------- permissions ----------------
-    boolean hasAccess() {
-        if (Build.VERSION.SDK_INT >= 30) return Environment.isExternalStorageManager();
-        if (Build.VERSION.SDK_INT >= 23) {
-            boolean read = checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-            boolean write = Build.VERSION.SDK_INT > 28 || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-            return read && write;
-        }
-        return true;
-    }
+    boolean hasAccess() { return storagePermissions.hasAccess(); }
 
-    void requestLegacyPerms() {
-        if (Build.VERSION.SDK_INT >= 23)
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 77);
-    }
+    void requestLegacyPerms() { storagePermissions.requestLegacyPermissions(); }
 
-    void showStorageAccess() {
-        if (Build.VERSION.SDK_INT < 30) { requestLegacyPerms(); return; }
-        new AlertDialog.Builder(this).setTitle("Allow access to all files")
-                .setMessage("A file manager needs \"All files access\" to show, open, copy, move and delete your files. Files never leave your device.")
-                .setNegativeButton("Not now", null)
-                .setPositiveButton("Open settings", (d, w) -> {
-                    try {
-                        startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName())));
-                    } catch (Exception e) {
-                        try { startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)); }
-                        catch (Exception e2) { ToxiVisualSystem.toast(this, "Open Settings > Apps > Special access > All files access"); }
-                    }
-                }).show();
-    }
+    void showStorageAccess() { storagePermissions.showAccessPrompt(); }
 
     @Override public void onRequestPermissionsResult(int rc, String[] p, int[] r) {
         super.onRequestPermissionsResult(rc, p, r);
