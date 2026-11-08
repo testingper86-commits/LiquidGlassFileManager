@@ -264,7 +264,9 @@ def main():
     crash = source("foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java")
     require('FATAL EXCEPTION' in crash and 'latest_crash.txt' in crash and 'printStackTrace' in crash, "crash diagnostics persist locally")
     require("private static synchronized void writeCrash" in crash and "public static synchronized boolean deleteReports(Context context)" in crash and "new AtomicFile(new File(dir, LATEST))" in crash and "latest.delete()" in crash, "crash report writes and deletion are serialized and AtomicFile recovery state is removed")
-    require("CrashLogger.deleteReports(this)" in main and 'name.startsWith("crash-")' not in main, "crash archive deletion remains inside the foundation service")
+    crash_ui = source("app/src/main/java/com/music/echo/offline/files/CrashReportController.java")
+    require("CrashLogger.deleteReports(activity)" in crash_ui and "FileProvider.getUriForFile(activity" in crash_ui and "activity.isFinishing() || activity.isDestroyed()" in crash_ui and 'name.startsWith("crash-")' not in main, "crash report UI delegates safe local deletion and FileProvider sharing to its lifecycle controller")
+    require("crashReports.maybeOfferCrashReport()" in main and main.count("crashReports.showCrashLogOptions()") == 2, "startup and settings diagnostics entry points delegate to the crash-report controller")
 
     require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
     biometric_keystore = source("app/src/main/java/com/music/echo/offline/files/BiometricUnlockKeyStore.java")

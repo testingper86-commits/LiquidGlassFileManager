@@ -59,9 +59,9 @@ import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
 import org.json.JSONObject;
 import androidx.activity.ComponentActivity;
-import androidx.core.content.FileProvider;
 
 public class MainActivity extends ComponentActivity {
+    private CrashReportController crashReports;
     private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = new OperationCancellation();
@@ -111,6 +111,7 @@ public class MainActivity extends ComponentActivity {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(R.style.AppTheme);
         super.onCreate(b);
+        crashReports = new CrashReportController(this);
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
         IntentFilter screenOffFilter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOffReceiver, screenOffFilter, Context.RECEIVER_NOT_EXPORTED);
@@ -235,7 +236,7 @@ public class MainActivity extends ComponentActivity {
             if (Build.VERSION.SDK_INT >= 30) ui.postDelayed(() -> { if (!isFinishing() && !isDestroyed() && !hasAccess()) showStorageAccess(); }, 600);
             else requestLegacyPerms();
         } else startIndex();
-        ui.postDelayed(this::maybeOfferCrashReport, 2200);
+        ui.postDelayed(() -> crashReports.maybeOfferCrashReport(), 2200);
     }
 
     void applyInsets() {
@@ -992,7 +993,7 @@ public class MainActivity extends ComponentActivity {
                 "Storage access: " + (hasAccess() ? "Granted" : "Not granted") + "\n" +
                 "Crash report: " + (CrashLogger.hasReport(this) ? "Available on this device" : "None saved") + "\n\n" +
                 "No usage data is uploaded by this screen. Diagnostics remain on this device unless you explicitly share a report.";
-        new AlertDialog.Builder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> showCrashLogOptions()).setNegativeButton("Close", null).show();
+        new AlertDialog.Builder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> crashReports.showCrashLogOptions()).setNegativeButton("Close", null).show();
     }
 
     // ---------------- SETTINGS ----------------
@@ -1193,7 +1194,7 @@ public class MainActivity extends ComponentActivity {
             settings.addView(section("Privacy & Diagnostics"));
             settings.addView(row(ToxiIcons.SHIELD, "Privacy & network information", "Review app permissions and what offline mode means", null, v -> showPrivacyAudit()), lpm(-1, -2, 16, 0, 16, 8));
             // Former label: Crash logs & diagnostics.
-            settings.addView(row(ToxiIcons.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
+            settings.addView(row(ToxiIcons.ANALYTICS, "Crash reports & diagnostics", CrashLogger.hasReport(this) ? "A crash report is saved on this device" : "Save crash details automatically if the app closes unexpectedly", null, v -> crashReports.showCrashLogOptions()), lpm(-1, -2, 16, 0, 16, 8));
 
             settings.addView(row(ToxiIcons.REFRESH, "Rescan storage", "Refresh the index if file counts look outdated", null, v -> { Indexer.I.dirty = true; startIndex(); ToxiVisualSystem.toast(this, "Scanning\u2026"); }), lpm(-1, -2, 16, 0, 16, 8));
             settings.addView(switchRow(ToxiIcons.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), lpm(-1, -2, 16, 0, 16, 8));
@@ -2201,60 +2202,6 @@ public class MainActivity extends ComponentActivity {
             panel.addView(tile, lpm(-1, -2, 0, 0, 0, 8));
         }
         themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
-    }
-
-    void maybeOfferCrashReport() {
-        if (isFinishing() || isDestroyed() || !CrashLogger.hasReport(this)) return;
-        long crashTime = CrashLogger.reportTime(this);
-        if (crashTime <= CrashLogger.promptedTime(this)) return;
-        CrashLogger.markPrompted(this, crashTime);
-        new AlertDialog.Builder(this)
-                .setTitle("App crash report available")
-                .setMessage("ToxiFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
-                .setPositiveButton("Share report", (d, w) -> shareCrashReport())
-                .setNegativeButton("Later", null)
-                .setNeutralButton("Delete report", (d, w) -> deleteCrashReport())
-                .show();
-    }
-
-    void showCrashLogOptions() {
-        if (!CrashLogger.hasReport(this)) {
-            new AlertDialog.Builder(this).setTitle("Crash logs")
-                    .setMessage("No crash report has been captured yet. If the app closes unexpectedly, ToxiFiles will save diagnostic details locally and offer them the next time you open the app.")
-                    .setPositiveButton("OK", null).show();
-            return;
-        }
-        new AlertDialog.Builder(this).setTitle("Crash reports & diagnostics")
-                .setMessage("A crash report is stored privately inside the app. It includes the exception stack trace, app version, Android version, device model, and crashing thread. Nothing is uploaded automatically.")
-                .setPositiveButton("Share report", (d, w) -> shareCrashReport())
-                .setNegativeButton("Close", null)
-                .setNeutralButton("Delete report", (d, w) -> deleteCrashReport()).show();
-    }
-
-    void shareCrashReport() {
-        File report = CrashLogger.latest(this);
-        if (!report.isFile() || report.length() == 0) {
-            ToxiVisualSystem.toast(this, "No crash report available");
-            return;
-        }
-        try {
-            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", report);
-            Intent share = new Intent(Intent.ACTION_SEND);
-            share.setType("text/plain");
-            share.putExtra(Intent.EXTRA_SUBJECT, "ToxiFiles crash report");
-            share.putExtra(Intent.EXTRA_STREAM, uri);
-            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            share.setClipData(android.content.ClipData.newUri(getContentResolver(), "Crash report", uri));
-            startActivity(Intent.createChooser(share, "Share crash report"));
-        } catch (Exception e) {
-            ToxiVisualSystem.toast(this, "Could not share crash report");
-        }
-    }
-
-    void deleteCrashReport() {
-        boolean deleted = CrashLogger.deleteReports(this);
-        if (deleted) ToxiVisualSystem.toast(this, "Crash reports deleted");
-        else ToxiVisualSystem.toast(this, "Could not delete crash report");
     }
 
     void showAbout() {
