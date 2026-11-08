@@ -6,12 +6,11 @@ import android.graphics.Typeface;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import androidx.activity.ComponentActivity;
 import java.util.function.IntConsumer;
 
 /** Builds and owns the persistent four-tab navigation surface. */
 final class MainNavigationBar {
-    private final ComponentActivity activity;
+    private final MainActivity activity;
     private final FrameLayout root;
     private final IntConsumer onTabSelected;
     private final FrameLayout view;
@@ -21,7 +20,7 @@ final class MainNavigationBar {
     private int selectedTab;
     private boolean built;
 
-    MainNavigationBar(ComponentActivity activity, FrameLayout root, IntConsumer onTabSelected) {
+    MainNavigationBar(MainActivity activity, FrameLayout root, IntConsumer onTabSelected) {
         if (activity == null || root == null || onTabSelected == null) throw new IllegalArgumentException("navigation dependencies must not be null");
         this.activity = activity;
         this.root = root;
