@@ -82,7 +82,7 @@ public class MainActivity extends ComponentActivity {
     static volatile boolean unlocked = false;
     BrowserView filesView, favView, listView;
     View[] screens;
-    private MainNavigationBar navigationBar;
+    private MainNavigationController navigationController;
     TextView busyTv;
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
@@ -94,6 +94,7 @@ public class MainActivity extends ComponentActivity {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
         setTheme(R.style.AppTheme);
         super.onCreate(b);
+        navigationController = new MainNavigationController(this);
         crashReports = new CrashReportController(this);
         storagePermissions = new StoragePermissionController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
@@ -234,7 +235,7 @@ public class MainActivity extends ComponentActivity {
 
     void applyInsets() {
         content.setPadding(0, ToxiVisualSystem.TOP_INSET, 0, 0);
-        navigationBar.applyBottomInset();
+        navigationController.applyBottomInset();
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
         bp.topMargin = ToxiVisualSystem.TOP_INSET + ToxiVisualSystem.dp(8);
         busyTv.setLayoutParams(bp);
@@ -426,62 +427,26 @@ public class MainActivity extends ComponentActivity {
     }
 
     // ---------------- tabs / overlay / nav ----------------
-    void selectTab(int i) {
-        closeOverlay();
-        tab = i;
-        syncNavigationVisibility(false);
-        for (int k = 0; k < screens.length; k++) {
-            screens[k].animate().cancel();
-            screens[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
-            screens[k].setAlpha(1f);
-            screens[k].setTranslationY(0);
-        }
-        View s = screens[i];
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) { s.setAlpha(1f); s.setTranslationY(0f); }
-        else { s.setAlpha(0f); s.setTranslationY(ToxiVisualSystem.dp(8)); s.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
-        if (i == 0) buildHome();
-        else if (i == 1) {
-            if (filesView.cur == null) {
-                String def = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
-                File start = (def != null && new File(def).isDirectory()) ? new File(def) : Environment.getExternalStorageDirectory();
-                filesView.showDir(start);
-            }
-        }
-        else if (i == 2) buildTools();
-        else buildSettings();
-        moveHighlight(i);
-    }
+    void selectTab(int i) { navigationController.selectTab(i); }
 
     void showOverlay(View v) { overlayController.show(v); }
 
     void closeOverlay() { overlayController.close(); }
 
-    void syncNavigationVisibility(boolean selecting) {
-        boolean hidden = overlayController != null && overlayController.current() != null || selecting;
-        navigationBar.setVisible(!hidden);
-    }
+    void syncNavigationVisibility(boolean selecting) { navigationController.syncVisibility(selecting); }
 
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
 
-    private void handleBackNavigation() {
-        if (overlayController.current() == listView && listView.handleBack()) return;
-        if (overlayController.current() != null) { closeOverlay(); return; }
-        if (tab == 1 && filesView.handleBack()) return;
-        if (tab != 0) { selectTab(0); return; }
-        finish();
-    }
+    private void handleBackNavigation() { navigationController.handleBackNavigation(); }
 
-    void buildNav() {
-        navigationBar = new MainNavigationBar(this, root, this::selectTab);
-        navigationBar.build();
-    }
+    void buildNav() { navigationController.build(); }
 
-    void moveHighlight(int i) { navigationBar.moveHighlight(i); }
+    void moveHighlight(int i) { navigationController.moveHighlight(i); }
 
     void recolor() {
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         bg.invalidate();
-        navigationBar.recolor(tab);
+        navigationController.recolor(tab);
         filesView.recolor();
         favView.recolor();
         listView.recolor();
