@@ -19,7 +19,7 @@ final class Indexer {
 
     volatile boolean ready, running, dirty, truncated, incomplete;
     volatile String lastError = "";
-    long finished;
+    volatile long finished;
     List<Entry> all = new ArrayList<>();
     List<Entry> recent = new ArrayList<>();
     List<List<Entry>> cats = new ArrayList<>();
