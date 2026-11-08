@@ -626,15 +626,15 @@ final class BrowserView extends FrameLayout {
     }
 
     void updatePaste() {
-        boolean show = mode == DIR && !overlay && a.clip != null && !selecting;
+        boolean show = mode == DIR && !overlay && a.clipboard.hasItems() && !selecting;
         pasteBtn.setVisibility(show ? VISIBLE : GONE);
-        if (show) pasteBtn.setText("Paste " + a.clip.length + " here");
+        if (show) pasteBtn.setText("Paste " + a.clipboard.size() + " here");
     }
 
     void paste() {
-        if (a.clip == null || cur == null) return;
-        final File[] src = a.clip;
-        final boolean cut = a.clipCut;
+        if (!a.clipboard.hasItems() || cur == null) return;
+        final File[] src = a.clipboard.snapshot();
+        final boolean cut = a.clipboard.isCut();
         FileOps.Done done = msg -> {
             if (cut) a.setClip(null, false);
             ToxiVisualSystem.toast(a, msg);
@@ -721,7 +721,7 @@ final class BrowserView extends FrameLayout {
         if (mode == DIR) {
             boolean on = ToxiVisualSystem.booleanPreference("hidden", false);
             add(l, r, on ? "Hide hidden files" : "Show hidden files", () -> { ToxiVisualSystem.setBooleanPreference("hidden", !on); reload(); });
-            if (a.clip != null) add(l, r, "Paste here", this::paste);
+            if (a.clipboard.hasItems()) add(l, r, "Paste here", this::paste);
             add(l, r, "Refresh", this::reload);
         }
         showMenu(a, "Options", l, r);

@@ -68,8 +68,7 @@ public class MainActivity extends ComponentActivity {
     final TaskCoordinator.ScopedExecutor ops = taskRuntime.ops;
     private final FavoritesRepository favoritesRepository = new FavoritesRepository();
     final Set<String> favs = favoritesRepository.paths();
-    File[] clip;
-    boolean clipCut;
+    final ClipboardController clipboard = new ClipboardController();
 
     FrameLayout root, content;
     BgView bg;
@@ -367,7 +366,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     // ---------------- clipboard / favourites / busy ----------------
-    void setClip(File[] f, boolean cut) { clip = f; clipCut = cut; filesView.updatePaste(); }
+    void setClip(File[] files, boolean cut) { clipboard.set(files, cut); filesView.updatePaste(); }
 
     void saveFavs() { favoritesRepository.save(getSharedPreferences("lg_favs", MODE_PRIVATE)); }
     boolean isFav(File f) { return favoritesRepository.contains(f); }
