@@ -20,19 +20,39 @@ final class Indexer {
     volatile boolean ready, running, dirty, truncated, incomplete;
     volatile String lastError = "";
     volatile long finished;
-    List<Entry> all = new ArrayList<>();
-    List<Entry> recent = new ArrayList<>();
-    List<List<Entry>> cats = new ArrayList<>();
-    long[] sizes = new long[7];
-    int[] counts = new int[7];
+    static final class PublishedSnapshot {
+        final boolean ready;
+        final List<Entry> all;
+        final List<Entry> recent;
+        final List<List<Entry>> cats;
+        final long[] sizes;
+        final int[] counts;
+
+        private PublishedSnapshot(boolean ready, List<Entry> all, List<Entry> recent,
+                                  List<List<Entry>> cats, long[] sizes, int[] counts) {
+            this.ready = ready;
+            this.all = Collections.unmodifiableList(new ArrayList<>(all));
+            this.recent = Collections.unmodifiableList(new ArrayList<>(recent));
+            List<List<Entry>> categoryCopies = new ArrayList<>(cats.size());
+            for (List<Entry> category : cats) categoryCopies.add(Collections.unmodifiableList(new ArrayList<>(category)));
+            this.cats = Collections.unmodifiableList(categoryCopies);
+            this.sizes = sizes.clone();
+            this.counts = counts.clone();
+        }
+
+        static PublishedSnapshot empty() {
+            List<List<Entry>> categories = new ArrayList<>();
+            for (int i = 0; i < 7; i++) categories.add(Collections.emptyList());
+            return new PublishedSnapshot(false, Collections.emptyList(), Collections.emptyList(),
+                    categories, new long[7], new int[7]);
+        }
+    }
+
+    private volatile PublishedSnapshot published = PublishedSnapshot.empty();
+    PublishedSnapshot snapshot() { return published; }
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final List<WeakReference<Runnable>> completionCallbacks = new ArrayList<>();
-    private List<Entry> tmpAll;
-    private List<List<Entry>> tmpCats;
-    private long[] tmpSizes;
-    private int[] tmpCounts;
-    private boolean tmpIncomplete;
 
     static int cat(int kind) {
         switch (kind) {
@@ -52,37 +72,36 @@ final class Indexer {
         running = true;
         dirty = false;
         truncated = false;
-        tmpIncomplete = false;
         Runnable worker = () -> {
             OperationCancellation cancellation = new OperationCancellation();
             OperationCancellation.Token operationToken = cancellation.begin();
             try {
-                tmpAll = new ArrayList<>();
-                tmpCats = new ArrayList<>();
-                for (int i = 0; i < 7; i++) tmpCats.add(new ArrayList<Entry>());
-                tmpSizes = new long[7];
-                tmpCounts = new int[7];
+                final List<Entry> scannedAll = new ArrayList<>();
+                final List<List<Entry>> scannedCats = new ArrayList<>();
+                for (int i = 0; i < 7; i++) scannedCats.add(new ArrayList<Entry>());
+                final long[] scannedSizes = new long[7];
+                final int[] scannedCounts = new int[7];
                 StorageIndexEngine.Result scan = StorageIndexEngine.scan(Environment.getExternalStorageDirectory(), snapshot -> {
                     Entry entry = new Entry(snapshot.file, snapshot.directory, snapshot.modifiedAt, snapshot.length);
-                    tmpAll.add(entry);
+                    scannedAll.add(entry);
                     if (!entry.dir) {
                         int category = cat(entry.kind);
-                        tmpCats.get(category).add(entry);
-                        tmpSizes[category] += entry.len;
-                        tmpCounts[category]++;
+                        scannedCats.get(category).add(entry);
+                        scannedSizes[category] += entry.len;
+                        scannedCounts[category]++;
                     }
                 });
                 truncated = scan.truncated;
-                tmpIncomplete = scan.incomplete;
                 java.util.Comparator<Entry> byDate = (x, y) -> Long.compare(y.mod, x.mod);
-                for (List<Entry> list : tmpCats) Collections.sort(list, byDate);
-                Collections.sort(tmpAll, byDate);
+                for (List<Entry> list : scannedCats) Collections.sort(list, byDate);
+                Collections.sort(scannedAll, byDate);
                 List<Entry> rec = new ArrayList<>();
-                for (Entry entry : tmpAll) {
+                for (Entry entry : scannedAll) {
                     if (!entry.dir && entry.kind != FileKinds.OTHER) { rec.add(entry); if (rec.size() >= 8) break; }
                 }
-                all = tmpAll; cats = tmpCats; sizes = tmpSizes; counts = tmpCounts; recent = rec;
-                incomplete = tmpIncomplete || truncated;
+                incomplete = scan.incomplete || scan.truncated;
+                PublishedSnapshot next = new PublishedSnapshot(true, scannedAll, rec, scannedCats, scannedSizes, scannedCounts);
+                published = next;
                 ready = true;
                 lastError = "";
                 finished = System.currentTimeMillis();

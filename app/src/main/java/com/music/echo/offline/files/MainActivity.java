@@ -375,8 +375,9 @@ public class MainActivity extends ComponentActivity {
         if (isFinishing() || isDestroyed()) return;
         if(dynamicIsland!=null && busyCount==0)dynamicIsland.update("ToxiFiles ready",-1);
         String[] names = Indexer.CAT_NAMES;
-        if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], Indexer.I.cats.get(pendingCat), false, false); pendingCat = -1; }
-        else if (pendingCat == -2) { listView.setList("Search", Indexer.I.all, true, true); pendingCat = -1; }
+        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
+        if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], index.cats.get(pendingCat), false, false); pendingCat = -1; }
+        else if (pendingCat == -2) { listView.setList("Search", index.all, true, true); pendingCat = -1; }
         if (tab == 0 && overlayView == null && home.getVisibility() == View.VISIBLE) buildHome();
     }
 
@@ -508,15 +509,17 @@ public class MainActivity extends ComponentActivity {
 
     void openCategory(int cat) {
         Indexer ix = Indexer.I;
-        listView.setList(Indexer.CAT_NAMES[cat], ix.ready ? ix.cats.get(cat) : null, false, false);
-        if (!ix.ready) { pendingCat = cat; if (!ix.running) startIndex(); }
+        Indexer.PublishedSnapshot index = ix.snapshot();
+        listView.setList(Indexer.CAT_NAMES[cat], index.ready ? index.cats.get(cat) : null, false, false);
+        if (!index.ready) { pendingCat = cat; if (!ix.running) startIndex(); }
         showOverlay(listView);
     }
 
     void openSearch() {
         Indexer ix = Indexer.I;
-        listView.setList("Search", ix.ready ? ix.all : null, true, true);
-        if (!ix.ready) { pendingCat = -2; if (!ix.running) startIndex(); }
+        Indexer.PublishedSnapshot index = ix.snapshot();
+        listView.setList("Search", index.ready ? index.all : null, true, true);
+        if (!index.ready) { pendingCat = -2; if (!ix.running) startIndex(); }
         showOverlay(listView);
     }
 
@@ -899,11 +902,12 @@ public class MainActivity extends ComponentActivity {
     void openApkFiles() {
         Indexer ix = Indexer.I;
         List<Entry> apks = new ArrayList<>();
-        if (ix.ready && ix.cats.size() > 6) {
-            for (Entry e : ix.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
+        Indexer.PublishedSnapshot index = ix.snapshot();
+        if (index.ready && index.cats.size() > 6) {
+            for (Entry e : index.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
         }
         listView.setList("APK files", apks, false, false);
-        if (!ix.ready) {
+        if (!index.ready) {
             pendingCat = 6;
             if (!ix.running) startIndex();
             ToxiVisualSystem.toast(this, "Scanning storage for APK files\u2026");
@@ -1430,12 +1434,13 @@ public class MainActivity extends ComponentActivity {
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
-        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage â try again in a moment"); return; }
+        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
+        if (!index.ready) { ToxiVisualSystem.toast(this, "Still scanning storage â try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for duplicatesâ¦");
         executeIo(() -> {
             OperationCancellation.Token operationToken = this.cancellation.begin();
             try {
-                final List<DupFinder.Group> groups = DupFinder.find(Indexer.I.all);
+                final List<DupFinder.Group> groups = DupFinder.find(index.all);
                 runUiIfAlive(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     buildDuplicates(groups);
@@ -1520,13 +1525,14 @@ public class MainActivity extends ComponentActivity {
     }
 
     void openCleanup() {
-        if (!Indexer.I.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
+        Indexer.PublishedSnapshot index = Indexer.I.snapshot();
+        if (!index.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
         ToxiVisualSystem.toast(this, "Scanning for empty folders\u2026");
         executeIo(() -> {
             OperationCancellation.Token operationToken = cancellation.begin();
             try {
                 final List<File> empties = new ArrayList<>();
-                for (Entry e : Indexer.I.all) {
+                for (Entry e : index.all) {
                     if (OperationCancellation.isCancelled()) return;
                     if (e.dir) {
                         File[] kids = e.f.listFiles();
@@ -2004,8 +2010,9 @@ public class MainActivity extends ComponentActivity {
     // ---------------- LARGEST FILES ----------------
     void openLargest() {
         Indexer ix = Indexer.I;
-        if (!ix.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
-        List<Entry> big = new ArrayList<>(ix.all);
+        Indexer.PublishedSnapshot index = ix.snapshot();
+        if (!index.ready) { ToxiVisualSystem.toast(this, "Still scanning storage \u2014 try again in a moment"); return; }
+        List<Entry> big = new ArrayList<>(index.all);
         java.util.Collections.sort(big, (x, y) -> Long.compare(y.len, x.len));
         if (big.size() > 300) big = big.subList(0, 300);
         listView.setList("Largest files", big, false, false);
