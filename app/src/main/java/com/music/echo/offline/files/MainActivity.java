@@ -63,6 +63,7 @@ public class MainActivity extends ComponentActivity {
     private AppLockLifecycleController appLockLifecycle;
     private AppLockScreenController appLockScreen;
     private StorageAnalyzerController storageAnalyzerController;
+    private RecycleBinScreenController recycleBinScreen;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -101,6 +102,7 @@ public class MainActivity extends ComponentActivity {
         storagePermissions = new StoragePermissionController(this);
         appLockScreen = new AppLockScreenController(this);
         storageAnalyzerController = new StorageAnalyzerController(this);
+        recycleBinScreen = new RecycleBinScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -1593,85 +1595,14 @@ public class MainActivity extends ComponentActivity {
         showOverlay(listView);
     }
 
-    void retentionDialog() {
-        final int[] days = {7, 14, 30, 60, 90};
-        String[] labels = new String[days.length];
-        for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(this).setTitle("Recycle Bin retention")
-                .setItems(labels, (d, w) -> { ToxiVisualSystem.PREFERENCES.edit().putInt("recyclebin_days", days[w]).apply(); buildSettings(); })
-                .show();
-    }
+    void retentionDialog() { recycleBinScreen.showRetentionDialog(); }
 
     // ---------------- RECYCLE BIN ----------------
-    void showRecycleBin() { buildRecycleBin(); showOverlay(recycleScroll); }
+    void showRecycleBin() { recycleBinScreen.show(); }
 
-    void buildRecycleBin() {
-        renderRecycleBin(null, true);
-        if (!executeIo(() -> {
-            List<RecycleBin.Item> items = RecycleBin.list(this);
-            runUiIfAlive(() -> renderRecycleBin(items, false));
-        })) renderRecycleBin(null, false);
-    }
+    void buildRecycleBin() { recycleBinScreen.reload(); }
 
-    private void renderRecycleBin(List<RecycleBin.Item> items, boolean loading) {
-        recycle.removeAllViews();
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
-        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
-        bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        hd.addView(ToxiVisualSystem.text(this, "Recycle Bin", 24, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView emptyBtn = ToxiVisualSystem.text(this, "Empty", 14, ToxiVisualSystem.ACCENT, true);
-        emptyBtn.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
-        emptyBtn.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Empty Recycle Bin?")
-                .setMessage("Every item will be permanently deleted. This can't be undone.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Empty", (d, w) -> RecycleBin.empty(this, msg -> { ToxiVisualSystem.toast(this, msg); buildRecycleBin(); }))
-                .show());
-        ToxiVisualSystem.interactive(emptyBtn);
-        hd.addView(emptyBtn, new LinearLayout.LayoutParams(-2, -2));
-        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
-        recycle.addView(hd, new LinearLayout.LayoutParams(-1, -2));
-
-        TextView note = ToxiVisualSystem.text(this, "Items are kept for " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days, then removed automatically. Change this in Settings.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
-        recycle.addView(note);
-
-        if (items == null) {
-            TextView status = ToxiVisualSystem.text(this, loading ? "Loading Recycle Bin…" : "Unable to load Recycle Bin. Try again.", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            status.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            recycle.addView(status);
-        } else if (items.isEmpty()) {
-            TextView w = ToxiVisualSystem.text(this, "Recycle Bin is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            recycle.addView(w);
-        } else {
-            for (final RecycleBin.Item it : items) {
-                Entry e = new Entry(it.file);
-                View rv = ToxiFileRow.create(this);
-                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
-                ToxiFileRow.bind(h, e, false, false, "from " + it.originalParent.getName());
-                rv.setOnClickListener(v -> recycleItemMenu(it));
-                h.more.setOnClickListener(v -> recycleItemMenu(it));
-                recycle.addView(rv, new LinearLayout.LayoutParams(-1, -2));
-            }
-        }
-    }
-
-    void recycleItemMenu(final RecycleBin.Item it) {
-        String[] opts = {"Restore", "Delete forever"};
-        new AlertDialog.Builder(this).setTitle(it.file.getName()).setItems(opts, (d, w) -> {
-            if (w == 0) {
-                RecycleBin.restore(this, it, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); buildRecycleBin(); });
-            } else {
-                new AlertDialog.Builder(this).setTitle("Delete forever?").setMessage("This can't be undone.")
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Delete", (d2, w2) -> RecycleBin.permanentDelete(this, java.util.Collections.singletonList(it), msg -> { ToxiVisualSystem.toast(this, msg); buildRecycleBin(); }))
-                        .show();
-            }
-        }).show();
-    }
+    void recycleItemMenu(final RecycleBin.Item item) { recycleBinScreen.showItemMenu(item); }
 
     String versionName() {
         try { return "Version " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
