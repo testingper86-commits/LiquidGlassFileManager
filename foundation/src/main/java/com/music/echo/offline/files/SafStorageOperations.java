@@ -517,6 +517,7 @@ final class SafStorageOperations {
         pending.add(root);
         int cursor = 0;
         int scannedDirectories = 0;
+        int scannedEntries = 0;
         while (cursor < pending.size()) {
             OperationCancellation.checkCurrent();
             if (++scannedDirectories > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
@@ -540,6 +541,10 @@ final class SafStorageOperations {
             }
             if (children == null) continue;
             for (DocumentFile child : children) {
+                OperationCancellation.checkCurrent();
+                if (++scannedEntries > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Storage tree contains too many entries to resolve this document safely");
+                }
                 if (child == null) continue;
                 String childId;
                 try {
