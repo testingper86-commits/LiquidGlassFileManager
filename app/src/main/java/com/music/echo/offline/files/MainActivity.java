@@ -63,11 +63,11 @@ import androidx.activity.ComponentActivity;
 public class MainActivity extends ComponentActivity {
     private CrashReportController crashReports;
     private StoragePermissionController storagePermissions;
-    private final TaskCoordinator.Scope taskScope = new TaskCoordinator.Scope();
+    private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
-    final OperationCancellation cancellation = new OperationCancellation();
-    final TaskCoordinator.ScopedExecutor io = taskScope.executor(TaskCoordinator.Lane.IO);
-    final TaskCoordinator.ScopedExecutor ops = taskScope.executor(TaskCoordinator.Lane.SERIAL);
+    final OperationCancellation cancellation = taskRuntime.cancellation;
+    final TaskCoordinator.ScopedExecutor io = taskRuntime.io;
+    final TaskCoordinator.ScopedExecutor ops = taskRuntime.ops;
     final Set<String> favs = new LinkedHashSet<>();
     File[] clip;
     boolean clipCut;
@@ -302,10 +302,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onDestroy() {
         try { unregisterReceiver(screenOffReceiver); } catch (Exception ignored) { }
-        cancellation.shutDown();
-        cancellation.cancelActive();
-        LanTransfer.cancel();
-        taskScope.close(true);
+        taskRuntime.shutdown();
         super.onDestroy();
     }
 
