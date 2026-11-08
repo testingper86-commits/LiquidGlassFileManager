@@ -1,5 +1,7 @@
 package com.music.echo.offline.files;
 
+import com.music.echo.offline.R;
+
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.res.ColorStateList;
