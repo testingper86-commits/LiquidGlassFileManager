@@ -87,8 +87,7 @@ public class MainActivity extends ComponentActivity {
     TextView busyTv;
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
-    View overlayView;
-    private final OverlayAccessibilityController overlayAccessibility = new OverlayAccessibilityController();
+    private MainOverlayController overlayController;
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     @Override protected void onCreate(Bundle b) {
@@ -100,12 +99,12 @@ public class MainActivity extends ComponentActivity {
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
-                    if (vaultScroll != null && overlayView == vaultScroll) closeOverlay();
+                    if (vaultScroll != null && overlayController != null && overlayController.current() == vaultScroll) closeOverlay();
                 },
                 () -> { if (AppLock.enabled(this) && !unlocked) showAppLock(); },
                 () -> {
                     if (AppLock.enabled(this)) unlocked = false;
-                    if (vaultScroll != null && overlayView == vaultScroll) closeOverlay();
+                    if (vaultScroll != null && overlayController != null && overlayController.current() == vaultScroll) closeOverlay();
                 });
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
         appLockLifecycle.register();
@@ -198,6 +197,7 @@ public class MainActivity extends ComponentActivity {
         favView = new BrowserView(this, true, true);
         listView = new BrowserView(this, true, false);
         screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};
+        overlayController = new MainOverlayController(this);
         View[] all = {homeScroll, filesView, toolsScroll, favView, settingsScroll, listView, aboutScroll, recycleScroll, vaultScroll, dupScroll, themeScroll};
         for (View v : all) { content.addView(v, new FrameLayout.LayoutParams(-1, -1)); v.setVisibility(View.GONE); }
 
@@ -352,14 +352,14 @@ public class MainActivity extends ComponentActivity {
         String[] names = Indexer.CAT_NAMES;
         if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], index.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", index.all, true, true); pendingCat = -1; }
-        if (tab == 0 && overlayView == null && home.getVisibility() == View.VISIBLE) buildHome();
+        if (tab == 0 && overlayController.current() == null && home.getVisibility() == View.VISIBLE) buildHome();
     }
 
     void afterOps() {
         Indexer.I.dirty = true;
         filesView.reload();
         favView.reload();
-        if (overlayView == listView) listView.reload();
+        if (overlayController.current() == listView) listView.reload();
         filesView.updatePaste();
         if (tab == 0) buildHome();
         if (!Indexer.I.running && hasAccess()) startIndex();
@@ -524,63 +524,20 @@ public class MainActivity extends ComponentActivity {
         moveHighlight(i);
     }
 
-    void showOverlay(View v) {
-        if (overlayView != null && overlayView != v) closeOverlay();
-        if (overlayView == null) {
-            View backgroundScreen = screens[tab];
-            // ScrollView exposes its content LinearLayout as a separate accessibility branch.
-            // Hide that branch explicitly as well while a full-screen child screen is active.
-            overlayAccessibility.hideBackground(backgroundScreen, backgroundScreen == settingsScroll ? settings : null);
-        }
-        overlayView = v;
-        // Keep the active panels opaque, and stop content from the underlying screen bleeding
-        // through the overlay and appearing to overlap the active screen.
-        int overlayAlpha = ToxiVisualSystem.HIGH_CONTRAST ? 255 : 248;
-        v.setBackgroundColor(Color.argb(overlayAlpha, Color.red(ToxiVisualSystem.CANVAS), Color.green(ToxiVisualSystem.CANVAS), Color.blue(ToxiVisualSystem.CANVAS)));
-        if (v == vaultScroll) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        boolean blurBackground = Build.VERSION.SDK_INT >= 31 && ToxiVisualSystem.booleanPreference("blur", false) && !ToxiVisualSystem.HIGH_CONTRAST;
-        if (blurBackground) {
-            screens[tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), android.graphics.Shader.TileMode.CLAMP));
-            screens[tab].setVisibility(View.VISIBLE);
-        } else {
-            // A hidden background cannot bleed through translucent glass or remain touch/accessibility reachable.
-            screens[tab].setVisibility(View.INVISIBLE);
-        }
-        v.setVisibility(View.VISIBLE);
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) { v.setAlpha(1f); v.setTranslationY(0f); }
-        else { v.setAlpha(0f); v.setTranslationY(ToxiVisualSystem.dp(8)); v.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start(); }
-        syncNavigationVisibility(false);
-    }
+    void showOverlay(View v) { overlayController.show(v); }
 
-    void restoreOverlayBackgroundAccessibility() { overlayAccessibility.restore(); }
-
-    void closeOverlay() {
-        if (overlayView == null) {
-            restoreOverlayBackgroundAccessibility();
-            return;
-        }
-        boolean wasVault = overlayView == vaultScroll;
-        if (overlayView == listView) { listView.closeSearch(); listView.selecting = false; listView.sel.clear(); pendingCat = -1; }
-        overlayView.setVisibility(View.GONE);
-        overlayView = null;
-        if (wasVault) getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        if (Build.VERSION.SDK_INT >= 31) screens[tab].setRenderEffect(null);
-        screens[tab].setVisibility(View.VISIBLE);
-        restoreOverlayBackgroundAccessibility();
-        syncNavigationVisibility(false);
-        if (tab == 0) buildHome();
-    }
+    void closeOverlay() { overlayController.close(); }
 
     void syncNavigationVisibility(boolean selecting) {
-        boolean hidden = overlayView != null || selecting;
+        boolean hidden = overlayController != null && overlayController.current() != null || selecting;
         navigationBar.setVisible(!hidden);
     }
 
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
 
     private void handleBackNavigation() {
-        if (overlayView == listView && listView.handleBack()) return;
-        if (overlayView != null) { closeOverlay(); return; }
+        if (overlayController.current() == listView && listView.handleBack()) return;
+        if (overlayController.current() != null) { closeOverlay(); return; }
         if (tab == 1 && filesView.handleBack()) return;
         if (tab != 0) { selectTab(0); return; }
         finish();
