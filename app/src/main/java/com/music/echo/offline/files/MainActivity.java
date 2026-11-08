@@ -67,6 +67,7 @@ public class MainActivity extends ComponentActivity {
     private SettingsScreenController settingsScreenController;
     private StorageMaintenanceScreenController storageMaintenanceScreen;
     private VaultScreenController vaultScreenController;
+    private LanTransferScreenController lanTransferScreen;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -109,6 +110,7 @@ public class MainActivity extends ComponentActivity {
         settingsScreenController = new SettingsScreenController(this);
         storageMaintenanceScreen = new StorageMaintenanceScreenController(this);
         vaultScreenController = new VaultScreenController(this);
+        lanTransferScreen = new LanTransferScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -878,66 +880,9 @@ public class MainActivity extends ComponentActivity {
     void vaultItemMenu(final Vault.Item item) { vaultScreenController.showItemMenu(item); }
 
     // ---------------- WI-FI TRANSFER ----------------
-    void receiveViaWifi() {
-        final AlertDialog waitDlg = new AlertDialog.Builder(this).setTitle("Waiting for sender\u2026")
-                .setMessage("Starting\u2026")
-                .setNegativeButton("Cancel", (d, w) -> LanTransfer.cancel())
-                .setCancelable(false).show();
-        File destDir = new File(Environment.getExternalStorageDirectory(), "Download/LanReceived");
-        LanTransfer.receive(destDir, new LanTransfer.Listener() {
-            @Override public void onWaiting(String ip, int port, String pairingCode) {
-                runUiIfAlive(() -> waitDlg.setMessage("On the sending device, open the file action menu, choose Send via Wi-Fi, then enter:\n\n" + ip + ":" + port + "\nPairing code: " + pairingCode + "\n\nKeep this code private. Files are encrypted during transfer."));
-            }
-            @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) {
-                runUiIfAlive(() -> {
-                    if (waitDlg.isShowing()) waitDlg.dismiss();
-                    StringBuilder preview = new StringBuilder();
-                    int shown = Math.min(8, names.size());
-                    for (int i = 0; i < shown; i++) preview.append("\n\u2022 ").append(names.get(i));
-                    if (names.size() > shown) preview.append("\n\u2026and ").append(names.size() - shown).append(" more");
-                    new AlertDialog.Builder(MainActivity.this).setTitle("Incoming transfer")
-                            .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s") + ", " + ToxiVisualSystem.formatSize(totalBytes) + "\n\nFiles:" + preview)
-                            .setCancelable(false)
-                            .setNegativeButton("Decline", (d, w) -> reject.run())
-                            .setPositiveButton("Accept", (d, w) -> { accept.run(); busy(true); progress("Receiving\u2026"); })
-                            .show();
-                });
-            }
-            @Override public void onFileStart(int idx, int total, String name) { runUiIfAlive(() -> progress("Receiving " + idx + " of " + total + ": " + name)); }
-            @Override public void onDone(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); afterOps(); }); }
-            @Override public void onError(String msg) {
-                runUiIfAlive(() -> { busy(false); if (waitDlg.isShowing()) waitDlg.dismiss(); ToxiVisualSystem.toast(MainActivity.this, msg); });
-            }
-        });
-    }
+    void receiveViaWifi() { lanTransferScreen.receive(); }
 
-    void sendViaWifi(final List<File> files) {
-        if (files.isEmpty()) return;
-        final EditText in = new EditText(this);
-        ToxiMotion.watchFocus(in); in.setHint("e.g. 192.168.1.42:52017"); in.setSingleLine(true);
-        final EditText code = new EditText(this);
-        ToxiMotion.watchFocus(code); code.setHint("10-character pairing code"); code.setSingleLine(true);
-        LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL);
-        fields.addView(wrapField(in)); fields.addView(wrapField(code));
-        new AlertDialog.Builder(this).setTitle("Send via Wi-Fi")
-                .setMessage("Enter the receiver address and one-time pairing code shown on the receiving device. Both devices must be on the same trusted Wi-Fi network.")
-                .setView(fields).setNegativeButton("Cancel", null)
-                .setPositiveButton("Send", (d, w) -> {
-                    String raw = in.getText().toString().trim();
-                    String pairingCode = code.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
-                    if (raw.isEmpty() || pairingCode.length() != 10) { ToxiVisualSystem.toast(this, "Enter the address and 10-character pairing code"); return; }
-                    String ip = raw.contains(":") ? raw.substring(0, raw.indexOf(':')) : raw;
-                    busy(true);
-                    progress("Connecting securely\u2026");
-                    LanTransfer.send(ip, pairingCode, files, new LanTransfer.Listener() {
-                        @Override public void onWaiting(String ip2, int port, String pairingCode2) { }
-                        @Override public void onIncoming(String fromIp, int count, long totalBytes, List<String> names, Runnable accept, Runnable reject) { }
-                        @Override public void onFileStart(int idx, int total, String name) { runUiIfAlive(() -> progress("Sending " + idx + " of " + total + ": " + name)); }
-                        @Override public void onDone(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
-                        @Override public void onError(String msg) { runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(MainActivity.this, msg); }); }
-                    });
-                }).show();
-    }
+    void sendViaWifi(final List<File> files) { lanTransferScreen.send(files); }
 
     // ---------------- OTHER STORAGE (SAF, read-only import) ----------------
     void openOtherStorage() {
