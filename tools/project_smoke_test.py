@@ -198,6 +198,8 @@ def main():
     require('setMinimumWidth(dp(48))' in visual and 'setMinimumHeight(dp(48))' in visual and 'ToxiIcons.accessibilityLabel(symbol)' in visual, "shared icon controls have accessible labels and 48dp touch targets")
     require('static void interactive(View view)' in visual and 'view.setOnTouchListener' not in visual and 'setOnClickListener' in main, "shared interaction styling does not intercept native click dispatch")
     require('Obsidian Alloy' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java") and 'hasIndependentTokens()' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java"), "current theme catalog uses independent design tokens")
+    theme_screen = source("app/src/main/java/com/music/echo/offline/files/ThemeScreenController.java")
+    require("themeScreenController = new ThemeScreenController(this);" in main and "themeScreenController.open();" in main and "themeScreenController.build();" in main and "ToxiVisualSystem.applyTheme(themeIndex, true);" in theme_screen and "activity.recolor();" in theme_screen and "activity.themeScroll.addView" in theme_screen, "MainActivity delegates Appearance Lab rendering and live theme previews to its screen controller")
     require('settingsScroll.setClipToPadding(true)' in main and 'ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET' in main, "Settings reserves scroll space above bottom navigation")
     require('activity.settings.addView(activity.section("About"))' in settings_controller and 'About ToxiFiles' in settings_controller, "About remains at the bottom of Settings")
 
