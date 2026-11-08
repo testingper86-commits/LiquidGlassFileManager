@@ -66,6 +66,7 @@ public class MainActivity extends ComponentActivity {
     private RecycleBinScreenController recycleBinScreen;
     private SettingsScreenController settingsScreenController;
     private StorageMaintenanceScreenController storageMaintenanceScreen;
+    private VaultScreenController vaultScreenController;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -107,6 +108,7 @@ public class MainActivity extends ComponentActivity {
         recycleBinScreen = new RecycleBinScreenController(this);
         settingsScreenController = new SettingsScreenController(this);
         storageMaintenanceScreen = new StorageMaintenanceScreenController(this);
+        vaultScreenController = new VaultScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -867,79 +869,13 @@ public class MainActivity extends ComponentActivity {
         return f;
     }
 
-    void setVaultPin() {
-        final EditText in = pinField();
-        new AlertDialog.Builder(this).setTitle(Vault.hasPin(this) ? "Change Vault PIN" : "Set Vault PIN")
-                .setView(wrapField(in)).setNegativeButton("Cancel", null)
-                .setPositiveButton("Save", (d, w) -> {
-                    String p = in.getText().toString().trim();
-                    if (p.length() < 4) { ToxiVisualSystem.toast(this, "Use at least 4 digits"); return; }
-                    Vault.setPin(this, p);
-                    ToxiVisualSystem.toast(this, "Vault PIN saved");
-                    buildSettings();
-                }).show();
-    }
+    void setVaultPin() { vaultScreenController.showSetPinDialog(); }
 
-    void promptVaultPin() {
-        if (!Vault.hasPin(this)) { ToxiVisualSystem.toast(this, "Set a Vault PIN first"); return; }
-        final EditText in = pinField();
-        new AlertDialog.Builder(this).setTitle("Enter Vault PIN")
-                .setView(wrapField(in)).setNegativeButton("Cancel", null)
-                .setPositiveButton("Unlock", (d, w) -> {
-                    if (Vault.checkPin(this, in.getText().toString().trim())) { buildVault(); showOverlay(vaultScroll); }
-                    else {
-                        long remaining = Vault.sp(this).getLong("blocked_until", 0L) - System.currentTimeMillis();
-                        ToxiVisualSystem.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
-                    }
-                }).show();
-    }
+    void promptVaultPin() { vaultScreenController.promptUnlock(); }
 
-    void buildVault() {
-        vault.removeAllViews();
-        LinearLayout hd = new LinearLayout(this);
-        hd.setGravity(Gravity.CENTER_VERTICAL);
-        hd.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
-        ImageView bk = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
-        bk.setContentDescription("Back");
-        bk.setOnClickListener(v -> closeOverlay());
-        hd.addView(bk, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        hd.addView(ToxiVisualSystem.text(this, "Vault", 24, ToxiVisualSystem.TEXT_PRIMARY, true), new LinearLayout.LayoutParams(0, -2, 1f));
-        hd.addView(new View(this), new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        hd.setMinimumHeight(ToxiVisualSystem.dp(56));
-        vault.addView(hd, new LinearLayout.LayoutParams(-1, -2));
+    void buildVault() { vaultScreenController.build(); }
 
-        TextView note = ToxiVisualSystem.text(this, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
-        vault.addView(note);
-
-        List<Vault.Item> items = Vault.list(this);
-        if (items.isEmpty()) {
-            TextView w = ToxiVisualSystem.text(this, "Vault is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            w.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            vault.addView(w);
-        } else {
-            for (final Vault.Item it : items) {
-                Entry e = new Entry(it.file);
-                View rv = ToxiFileRow.create(this);
-                ToxiFileRow.Holder h = (ToxiFileRow.Holder) rv.getTag();
-                ToxiFileRow.bind(h, e, false, false, "from " + it.originalParent.getName());
-                rv.setOnClickListener(v -> vaultItemMenu(it));
-                h.more.setOnClickListener(v -> vaultItemMenu(it));
-                vault.addView(rv, new LinearLayout.LayoutParams(-1, -2));
-            }
-        }
-    }
-
-    void vaultItemMenu(final Vault.Item it) {
-        String[] opts = {"Move out of Vault", "Delete forever"};
-        new AlertDialog.Builder(this).setTitle(it.file.getName()).setItems(opts, (d, w) -> {
-            if (w == 0) Vault.restoreOut(this, it, msg -> { ToxiVisualSystem.toast(this, msg); afterOps(); buildVault(); });
-            else new AlertDialog.Builder(this).setTitle("Delete forever?").setMessage("This can't be undone.")
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Delete", (d2, w2) -> Vault.deleteForever(this, it, msg -> { ToxiVisualSystem.toast(this, msg); buildVault(); }))
-                    .show();
-        }).show();
-    }
+    void vaultItemMenu(final Vault.Item item) { vaultScreenController.showItemMenu(item); }
 
     // ---------------- WI-FI TRANSFER ----------------
     void receiveViaWifi() {

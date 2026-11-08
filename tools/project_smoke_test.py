@@ -233,6 +233,8 @@ def main():
     require('Copied to destination, but source could not be removed' in file_ops and 'Recycle Bin: removed' in source("app/src/main/java/com/music/echo/offline/files/RecycleBin.java"), "move and Recycle Bin operations report cleanup failures accurately")
 
     vault = source("app/src/main/java/com/music/echo/offline/files/Vault.java")
+    vault_screen = source("app/src/main/java/com/music/echo/offline/files/VaultScreenController.java")
+    require("vaultScreenController = new VaultScreenController(this);" in main and "vaultScreenController.showSetPinDialog();" in main and "vaultScreenController.promptUnlock();" in main and "vaultScreenController.build();" in main and "Vault.list(activity)" in vault_screen and "Vault.restoreOut(activity" in vault_screen and "Vault.deleteForever(activity" in vault_screen, "MainActivity delegates Vault PIN, rendering and item actions to the dedicated Vault screen controller")
     pin_hash = source("core/src/main/java/com/music/echo/offline/files/PinHash.java")
     require('AES/GCM/NoPadding' in vault and 'doFinal()' in vault and 'encrypted Vault cleanup was incomplete' in vault, "Vault uses authenticated encryption and reports incomplete cleanup")
     require('iterations < 10_000' in pin_hash and 'iterations > 1_000_000' in pin_hash and 'MessageDigest.isEqual' in pin_hash, "PIN verification bounds PBKDF2 work and compares verifiers in constant time")
