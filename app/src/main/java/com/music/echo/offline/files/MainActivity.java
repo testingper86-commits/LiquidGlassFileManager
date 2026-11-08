@@ -83,10 +83,7 @@ public class MainActivity extends ComponentActivity {
     static volatile boolean unlocked = false;
     BrowserView filesView, favView, listView;
     View[] screens;
-    FrameLayout nav;
-    View hl;
-    NebulaHomeView.Glyph[] navIc = new NebulaHomeView.Glyph[4];
-    TextView[] navTx = new TextView[4];
+    private MainNavigationBar navigationBar;
     TextView busyTv;
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
@@ -241,9 +238,7 @@ public class MainActivity extends ComponentActivity {
 
     void applyInsets() {
         content.setPadding(0, ToxiVisualSystem.TOP_INSET, 0, 0);
-        FrameLayout.LayoutParams np = (FrameLayout.LayoutParams) nav.getLayoutParams();
-        np.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
-        nav.setLayoutParams(np);
+        navigationBar.applyBottomInset();
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
         bp.topMargin = ToxiVisualSystem.TOP_INSET + ToxiVisualSystem.dp(8);
         busyTv.setLayoutParams(bp);
@@ -601,7 +596,7 @@ public class MainActivity extends ComponentActivity {
 
     void syncNavigationVisibility(boolean selecting) {
         boolean hidden = overlayView != null || selecting;
-        nav.setVisibility(hidden ? View.GONE : View.VISIBLE);
+        navigationBar.setVisible(!hidden);
     }
 
     void navForSelection(boolean selecting) { syncNavigationVisibility(selecting); }
@@ -615,69 +610,16 @@ public class MainActivity extends ComponentActivity {
     }
 
     void buildNav() {
-        nav = new FrameLayout(this);
-        nav.setBackground(NebulaHomeView.navigationSurface());
-        nav.setElevation(NebulaHomeView.dp(this, 8));
-        nav.setPadding(NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5), NebulaHomeView.dp(this, 5));
-        hl = new View(this);
-        hl.setBackground(NebulaHomeView.navigationHighlight());
-        nav.addView(hl, new FrameLayout.LayoutParams(0, -1));
-        LinearLayout items = new LinearLayout(this);
-        items.setOrientation(LinearLayout.HORIZONTAL);
-        items.setGravity(Gravity.CENTER_VERTICAL);
-        nav.addView(items, new FrameLayout.LayoutParams(-1, -1));
-        String[] glyphs = {"house", "folder", "grid", "settings"};
-        String[] labels = {"Home", "Files", "Tools", "Settings"};
-        for (int i = 0; i < labels.length; i++) {
-            final int index = i;
-            LinearLayout item = new LinearLayout(this);
-            item.setOrientation(LinearLayout.VERTICAL);
-            item.setGravity(Gravity.CENTER);
-            item.setMinimumHeight(NebulaHomeView.dp(this, 48));
-            item.setBackground(NebulaHomeView.navigationItemSurface());
-            navIc[i] = new NebulaHomeView.Glyph(this, glyphs[i], NebulaHomeView.TEXT);
-            navIc[i].setContentDescription(labels[i]);
-            item.addView(navIc[i], new LinearLayout.LayoutParams(NebulaHomeView.dp(this, 21), NebulaHomeView.dp(this, 21)));
-            navTx[i] = new TextView(this);
-            navTx[i].setText(labels[i]);
-            navTx[i].setTextSize(10);
-            navTx[i].setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            navTx[i].setTextColor(NebulaHomeView.MUTED);
-            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-2, -2);
-            labelLp.topMargin = NebulaHomeView.dp(this, 3);
-            item.addView(navTx[i], labelLp);
-            item.setContentDescription(labels[i]);
-            item.setOnClickListener(v -> selectTab(index));
-            items.addView(item, new LinearLayout.LayoutParams(0, -1, 1f));
-        }
-        FrameLayout.LayoutParams navLp = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(this, 66), Gravity.BOTTOM);
-        navLp.setMargins(NebulaHomeView.dp(this, 14), 0, NebulaHomeView.dp(this, 14), NebulaHomeView.dp(this, 12));
-        root.addView(nav, navLp);
-        nav.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            int itemWidth = Math.max(1, (right - left - NebulaHomeView.dp(this, 10)) / 4);
-            FrameLayout.LayoutParams highlight = (FrameLayout.LayoutParams) hl.getLayoutParams();
-            if (highlight.width != itemWidth) { highlight.width = itemWidth; hl.setLayoutParams(highlight); }
-            hl.setTranslationX(Math.min(3, Math.max(0, tab)) * itemWidth);
-        });
+        navigationBar = new MainNavigationBar(this, root, this::selectTab);
+        navigationBar.build();
     }
 
-    void moveHighlight(int i) {
-        int iw = hl.getLayoutParams().width;
-        int visualIndex = Math.max(0, Math.min(3, i));
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) hl.setTranslationX(visualIndex * iw);
-        else hl.animate().translationX(visualIndex * iw).setDuration(220).setInterpolator(new DecelerateInterpolator()).start();
-        for (int k = 0; k < 4; k++) {
-            navTx[k].setTextColor(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
-            navIc[k].setTint(k == visualIndex ? NebulaHomeView.LIME : NebulaHomeView.MUTED);
-        }
-    }
+    void moveHighlight(int i) { navigationBar.moveHighlight(i); }
 
     void recolor() {
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         bg.invalidate();
-        nav.setBackground(NebulaHomeView.navigationSurface());
-        hl.setBackground(NebulaHomeView.navigationHighlight());
-        moveHighlight(tab);
+        navigationBar.recolor(tab);
         filesView.recolor();
         favView.recolor();
         listView.recolor();
