@@ -88,11 +88,7 @@ public class MainActivity extends ComponentActivity {
     DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     View overlayView;
-    View overlayBackgroundScreen;
-    View overlayBackgroundContent;
-    int overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
-    int overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
-    int overlayBackgroundVisibility = View.VISIBLE;
+    private final OverlayAccessibilityController overlayAccessibility = new OverlayAccessibilityController();
     boolean accessOk;
     final Handler ui = new Handler(Looper.getMainLooper());
     @Override protected void onCreate(Bundle b) {
@@ -531,17 +527,10 @@ public class MainActivity extends ComponentActivity {
     void showOverlay(View v) {
         if (overlayView != null && overlayView != v) closeOverlay();
         if (overlayView == null) {
-            overlayBackgroundScreen = screens[tab];
-            overlayBackgroundVisibility = overlayBackgroundScreen.getVisibility();
-            overlayBackgroundAccessibility = overlayBackgroundScreen.getImportantForAccessibility();
-            overlayBackgroundScreen.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            View backgroundScreen = screens[tab];
             // ScrollView exposes its content LinearLayout as a separate accessibility branch.
             // Hide that branch explicitly as well while a full-screen child screen is active.
-            if (overlayBackgroundScreen == settingsScroll) {
-                overlayBackgroundContent = settings;
-                overlayBackgroundContentAccessibility = settings.getImportantForAccessibility();
-                settings.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-            }
+            overlayAccessibility.hideBackground(backgroundScreen, backgroundScreen == settingsScroll ? settings : null);
         }
         overlayView = v;
         // Keep the active panels opaque, and stop content from the underlying screen bleeding
@@ -563,19 +552,7 @@ public class MainActivity extends ComponentActivity {
         syncNavigationVisibility(false);
     }
 
-    void restoreOverlayBackgroundAccessibility() {
-        if (overlayBackgroundContent != null) {
-            overlayBackgroundContent.setImportantForAccessibility(overlayBackgroundContentAccessibility);
-            overlayBackgroundContent = null;
-            overlayBackgroundContentAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
-        }
-        if (overlayBackgroundScreen == null) return;
-        overlayBackgroundScreen.setImportantForAccessibility(overlayBackgroundAccessibility);
-        overlayBackgroundScreen.setVisibility(overlayBackgroundVisibility);
-        overlayBackgroundScreen = null;
-        overlayBackgroundAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO;
-        overlayBackgroundVisibility = View.VISIBLE;
-    }
+    void restoreOverlayBackgroundAccessibility() { overlayAccessibility.restore(); }
 
     void closeOverlay() {
         if (overlayView == null) {
