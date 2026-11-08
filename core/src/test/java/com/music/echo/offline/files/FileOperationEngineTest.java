@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 public class FileOperationEngineTest {
@@ -99,7 +100,7 @@ public class FileOperationEngineTest {
         File root=Files.createTempDirectory("toxifiles-size-").toFile(),nested=new File(root,"nested");assertTrue(nested.mkdir());
         File data=new File(nested,"data.bin");Files.write(data.toPath(),new byte[]{1,2,3,4,5});File outside=Files.createTempFile("toxifiles-size-outside-",".bin").toFile();
         Files.write(outside.toPath(),new byte[]{1,2,3,4,5,6,7});Files.createSymbolicLink(new File(root,"link.bin").toPath(),outside.toPath());
-        long[] totals=new long[2];FileOperationEngine.treeSize(root,totals);assertEquals(5L,totals[0]);assertEquals(1L,totals[1]);
+        long[] totals=new long[2];assertTrue(FileOperationEngine.treeSize(root,totals));assertEquals(5L,totals[0]);assertEquals(1L,totals[1]);
     }
 
     @Test public void treeSizeBoundsDeepDirectoryTraversalWithoutRecursion() throws Exception {
@@ -111,9 +112,18 @@ public class FileOperationEngineTest {
         }
         Files.write(nested.resolve("deep.bin"), new byte[]{1, 2, 3});
         long[] totals = new long[2];
-        FileOperationEngine.treeSize(root, totals);
+        assertFalse(FileOperationEngine.treeSize(root, totals));
         assertEquals(0L, totals[0]);
         assertEquals(0L, totals[1]);
+    }
+
+    @Test public void treeSizeStopsWhenItsCallerNoLongerNeedsTheResult() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-size-cancel-").toFile();
+        for (int i = 0; i < 100; i++) Files.write(new File(root, "file-" + i + ".bin").toPath(), new byte[]{1, 2, 3});
+        long[] totals = new long[2];
+        AtomicInteger checks = new AtomicInteger();
+        assertFalse(FileOperationEngine.treeSize(root, totals, () -> checks.incrementAndGet() > 12));
+        assertTrue("Cancelled traversal must stop before measuring every file", totals[1] < 100L);
     }
 
     @Test public void deleteTreeHandlesDeepDirectoryTraversalWithoutRecursion() throws Exception {

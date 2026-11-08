@@ -57,7 +57,7 @@ final class BrowserView extends FrameLayout {
     final LinkedHashSet<Entry> sel = new LinkedHashSet<>();
     boolean selecting;
     String rangeAnchor;
-    long selectionSummaryToken;
+    volatile long selectionSummaryToken;
     long loadGeneration, filterGeneration;
     Future<?> filterTask;
     int columns = 1;
@@ -555,7 +555,10 @@ final class BrowserView extends FrameLayout {
         a.executeIo(() -> {
             if (token != selectionSummaryToken) return;
             long[] totals = new long[2];
-            for (File f : snapshot) { if (token != selectionSummaryToken) return; if (f.exists()) FileOps.treeSize(f, totals); }
+            for (File f : snapshot) {
+                if (token != selectionSummaryToken) return;
+                if (f.exists() && !FileOps.treeSize(f, totals, () -> token != selectionSummaryToken)) return;
+            }
             final long bytes = totals[0];
             post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + ToxiVisualSystem.formatSize(bytes)); });
         });
@@ -570,10 +573,14 @@ final class BrowserView extends FrameLayout {
                 .setNegativeButton("Close", null)
                 .setPositiveButton("Select all", (d,w) -> selectAll()).create();
         final List<File> snapshot = files(sel);
+        java.util.concurrent.atomic.AtomicBoolean dismissed = new java.util.concurrent.atomic.AtomicBoolean(false);
+        dialog.setOnDismissListener(d -> dismissed.set(true));
         dialog.setOnShowListener(d -> {
-            a.executeIo(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
+            a.executeIo(() -> {
+                long[] total = new long[2];
+                for (File f : snapshot) if (f.exists() && !FileOps.treeSize(f, total, dismissed::get)) return;
                 final String value = snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files";
-                post(() -> { if (dialog.isShowing()) details.setText(value); });
+                post(() -> { if (dialog.isShowing() && !dismissed.get()) details.setText(value); });
             });
         });
         dialog.show();
@@ -1147,7 +1154,7 @@ final class BrowserView extends FrameLayout {
         }
         if (e.dir) a.executeIo(() -> {
             final long[] t = new long[2];
-            FileOps.treeSize(e.f, t);
+            if (!FileOps.treeSize(e.f, t)) return;
             a.runUiIfAlive(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
         }); else a.executeIo(() -> {
             digest[0] = sha256(e.f);

@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 /** Shared local filesystem operations with staging, no-follow traversal and bounded resource use. */
 final class FileOperationEngine {
@@ -202,18 +203,28 @@ final class FileOperationEngine {
         }
     }
 
-    static void treeSize(File file, long[] totals) {
-        if (file == null || totals == null || totals.length < 2) throw new IllegalArgumentException("Tree size output requires two counters");
-        try { treeSize(file.toPath(), totals); }
-        catch (IOException | RuntimeException ignored) { /* Keep the successfully measured partial total. */ }
+    static boolean treeSize(File file, long[] totals) {
+        return treeSize(file, totals, () -> false);
     }
 
-    private static void treeSize(Path path, long[] totals) throws IOException {
+    static boolean treeSize(File file, long[] totals, BooleanSupplier cancelled) {
+        if (file == null || totals == null || totals.length < 2 || cancelled == null)
+            throw new IllegalArgumentException("Tree size output and cancellation predicate are required");
+        try {
+            treeSize(file.toPath(), totals, cancelled);
+            return true;
+        } catch (IOException | RuntimeException incomplete) {
+            return false;
+        }
+    }
+
+    private static void treeSize(Path path, long[] totals, BooleanSupplier cancelled) throws IOException {
         java.util.ArrayDeque<TraversalNode> pending = new java.util.ArrayDeque<>();
         TreeTraversalBudget budget = new TreeTraversalBudget();
         budget.enter(0);
         pending.push(new TraversalNode(path, 0));
         while (!pending.isEmpty()) {
+            checkTreeSizeCancellation(cancelled);
             TraversalNode current = pending.pop();
             BasicFileAttributes attributes;
             try {
@@ -225,6 +236,7 @@ final class FileOperationEngine {
             if (attributes.isDirectory()) {
                 try (DirectoryStream<Path> children = Files.newDirectoryStream(current.path)) {
                     for (Path child : children) {
+                        checkTreeSizeCancellation(cancelled);
                         budget.enter(current.depth + 1);
                         pending.push(new TraversalNode(child, current.depth + 1));
                     }
@@ -234,6 +246,11 @@ final class FileOperationEngine {
                 totals[1] = totals[1] == Long.MAX_VALUE ? Long.MAX_VALUE : totals[1] + 1L;
             }
         }
+    }
+
+    private static void checkTreeSizeCancellation(BooleanSupplier cancelled) throws IOException {
+        if (cancelled.getAsBoolean() || OperationCancellation.isCancelled() || Thread.currentThread().isInterrupted())
+            throw new IOException("Operation cancelled");
     }
 
     private static final class TraversalNode {

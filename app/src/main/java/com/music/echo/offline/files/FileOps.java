@@ -32,7 +32,9 @@ final class FileOps {
 
     static boolean deleteTree(File file) { return FileOperationEngine.deleteTree(file); }
 
-    static void treeSize(File file, long[] totals) { FileOperationEngine.treeSize(file, totals); }
+    static boolean treeSize(File file, long[] totals) { return FileOperationEngine.treeSize(file, totals); }
+
+    static boolean treeSize(File file, long[] totals, java.util.function.BooleanSupplier cancelled) { return FileOperationEngine.treeSize(file, totals, cancelled); }
 
 
     private static void execute(MainActivity a, Done done, String failureMessage, Runnable operation) {
