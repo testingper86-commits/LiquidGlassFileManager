@@ -887,6 +887,8 @@ public class MainActivity extends ComponentActivity {
         }
     }
 
+    boolean hasSafTree() { return safBrowserController != null && safBrowserController.hasTree(); }
+
     void copyToSafTree(final List<File> files) { safBrowserController.copyToSafTree(files); }
 
     void showSafLevel(final Uri tree, final Uri docUri, final String title) { safBrowserController.showSafLevel(tree, docUri, title); }

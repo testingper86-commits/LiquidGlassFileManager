@@ -36,6 +36,8 @@ final class SafBrowserController {
         }
     }
 
+    boolean hasTree() { return safTree != null; }
+
     void open() {
         try {
             activity.startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), MainActivity.REQ_SAF_TREE);
@@ -198,12 +200,12 @@ final class SafBrowserController {
     private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
         activity.busy(true);
         activity.executeOperation(() -> {
-            OperationCancellation.Token operationToken = cancellation.begin();
+            OperationCancellation.Token operationToken = activity.cancellation.begin();
             String error = null;
             try { action.run(); }
             catch (Exception failure) {
                 error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
-            } finally { cancellation.finish(operationToken); }
+            } finally { activity.cancellation.finish(operationToken); }
             final String detail = error;
             activity.runUiIfAlive(() -> {
                 activity.busy(false);
