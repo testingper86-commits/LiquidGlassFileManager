@@ -578,8 +578,18 @@ final class BrowserView extends FrameLayout {
         dialog.setOnShowListener(d -> {
             a.executeIo(() -> {
                 long[] total = new long[2];
-                for (File f : snapshot) if (f.exists() && !FileOps.treeSize(f, total, dismissed::get)) return;
-                final String value = snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files";
+                boolean complete = true;
+                for (File f : snapshot) {
+                    if (dismissed.get()) return;
+                    if (f.exists() && !FileOps.treeSize(f, total, dismissed::get)) {
+                        if (dismissed.get() || Thread.currentThread().isInterrupted()) return;
+                        complete = false;
+                        break;
+                    }
+                }
+                final String value = complete
+                        ? snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files"
+                        : snapshot.size() + " selected items\nCombined size unavailable";
                 post(() -> { if (dialog.isShowing() && !dismissed.get()) details.setText(value); });
             });
         });
@@ -1154,8 +1164,12 @@ final class BrowserView extends FrameLayout {
         }
         if (e.dir) a.executeIo(() -> {
             final long[] t = new long[2];
-            if (!FileOps.treeSize(e.f, t)) return;
-            a.runUiIfAlive(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
+            if (!FileOps.treeSize(e.f, t)) {
+                if (Thread.currentThread().isInterrupted()) return;
+                a.runUiIfAlive(() -> { if (dlg.isShowing()) dlg.setMessage(propText(e, "Size unavailable", "")); });
+                return;
+            }
+            a.runUiIfAlive(() -> { if (dlg.isShowing()) dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")); });
         }); else a.executeIo(() -> {
             digest[0] = sha256(e.f);
             a.runUiIfAlive(() -> {
