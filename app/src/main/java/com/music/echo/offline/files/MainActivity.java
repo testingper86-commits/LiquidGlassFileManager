@@ -69,6 +69,7 @@ public class MainActivity extends ComponentActivity {
     private VaultScreenController vaultScreenController;
     private LanTransferScreenController lanTransferScreen;
     private ThemeScreenController themeScreenController;
+    private SafBrowserController safBrowserController;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -84,7 +85,6 @@ public class MainActivity extends ComponentActivity {
     View homeScrollFooter;
     LinearLayout home, tools, settings, about, recycle, vault;
     static final int REQ_SAF_TREE = 501, REQ_IMPORT_SETTINGS = 502;
-    Uri safTree;
     ScrollView dupScroll;
     LinearLayout dup;
     static volatile boolean unlocked = false;
@@ -113,6 +113,7 @@ public class MainActivity extends ComponentActivity {
         vaultScreenController = new VaultScreenController(this);
         lanTransferScreen = new LanTransferScreenController(this);
         themeScreenController = new ThemeScreenController(this);
+        safBrowserController = new SafBrowserController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -126,21 +127,7 @@ public class MainActivity extends ComponentActivity {
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
         appLockLifecycle.register();
         ToxiVisualSystem.initialize(this);
-        android.content.SharedPreferences storagePreferences = getSharedPreferences("lg_storage", MODE_PRIVATE);
-        String savedSafTree = storagePreferences.getString("saf_tree", null);
-        if (savedSafTree != null) {
-            try {
-                Uri restoredTree = Uri.parse(savedSafTree);
-                int persistedFlags = ToxiUriPermissions.persistedFlags(getContentResolver(), restoredTree);
-                if ((persistedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
-                    safTree = restoredTree;
-                } else {
-                    storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
-                }
-            } catch (RuntimeException invalidSavedTree) {
-                storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
-            }
-        }
+        safBrowserController.restorePersistedTree();
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         favoritesRepository.load(getSharedPreferences("lg_favs", MODE_PRIVATE));
@@ -887,212 +874,24 @@ public class MainActivity extends ComponentActivity {
     void sendViaWifi(final List<File> files) { lanTransferScreen.send(files); }
 
     // ---------------- OTHER STORAGE (SAF, read-only import) ----------------
-    void openOtherStorage() {
-        try {
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            startActivityForResult(i, REQ_SAF_TREE);
-        } catch (Exception ex) { ToxiVisualSystem.toast(this, "Can't open the storage picker on this device"); }
-    }
+    void openOtherStorage() { safBrowserController.open(); }
 
     @Override protected void onActivityResult(int rq, int rc, Intent data) {
         super.onActivityResult(rq, rc, data);
         if (rc != RESULT_OK || data == null) return;
         if (rq == REQ_SAF_TREE) {
-            Uri tree = data.getData();
-            if (tree == null) return;
-            int grantedFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            int persistedFlags = ToxiUriPermissions.takeGranted(getContentResolver(), tree, grantedFlags);
-            safTree = tree;
-            android.content.SharedPreferences storagePreferences = getSharedPreferences("lg_storage", MODE_PRIVATE);
-            if ((persistedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
-                storagePreferences.edit().putString("saf_tree", tree.toString()).putInt("saf_flags", persistedFlags).apply();
-            } else {
-                storagePreferences.edit().remove("saf_tree").remove("saf_flags").apply();
-                ToxiVisualSystem.toast(this, "This provider grants temporary access only; select it again after restarting ToxiFiles");
-            }
-            showSafLevel(tree, SafStorageOperations.treeRootDocumentUri(tree), "Other storage");
+            safBrowserController.onTreeResult(data);
         } else if (rq == REQ_IMPORT_SETTINGS) {
             Uri file = data.getData();
             if (file != null) applyImportedSettings(file);
         }
     }
 
-    void copyToSafTree(final List<File> files) {
-        if (safTree == null || files == null || files.isEmpty()) { ToxiVisualSystem.toast(this, "Choose an SD/USB destination first"); return; }
-        busy(true);
-        executeOperation(() -> {
-            OperationCancellation.Token operationToken = this.cancellation.begin();
-            try {
-                SafStorageOperations.BatchCopyResult result = SafStorageOperations.copyLocalFilesToTree(
-                        getApplicationContext(), getContentResolver(), files, safTree,
-                        (current, total, source) ->
-                                runUiIfAlive(() -> progress("Copying to SD/USB " + current + " of " + total + ": " + source.getName())));
-                runUiIfAlive(() -> {
-                    busy(false);
-                    ToxiVisualSystem.toast(this, result.failed == 0
-                            ? "Copied " + result.copied + " item" + (result.copied == 1 ? "" : "s") + " to SD/USB"
-                            : "Copied " + result.copied + "; stopped: " + result.error);
-                });
-            } finally { this.cancellation.finish(operationToken); }
-        });
-    }
+    void copyToSafTree(final List<File> files) { safBrowserController.copyToSafTree(files); }
 
-    void showSafLevel(final Uri tree, final Uri docUri, final String title) {
-        ToxiVisualSystem.toast(this, "Loadingâ¦");
-        executeIo(() -> {
-            final List<SafStorageOperations.DirectoryEntry> rows;
-            boolean querySucceeded = false;
-            List<SafStorageOperations.DirectoryEntry> loaded = new ArrayList<>();
-            try {
-                loaded = SafStorageOperations.listChildren(getContentResolver(), tree, docUri);
-                querySucceeded = true;
-            } catch (Exception ignored) { }
-            rows = loaded;
-            final boolean readable = querySucceeded;
-            runUiIfAlive(() -> {
-                if (!readable) { ToxiVisualSystem.toast(this, "This storage provider could not read the folder"); return; }
-                if (rows.isEmpty()) { ToxiVisualSystem.toast(this, "This folder is empty"); return; }
-                String[] names = new String[rows.size()];
-                for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i).name;
-                AlertDialog listing = new AlertDialog.Builder(this).setTitle(title).setItems(names, (d, w) -> {
-                    SafStorageOperations.DirectoryEntry row = rows.get(w);
-                    Uri childUri = SafStorageOperations.documentUriInTree(tree, row.documentId);
-                    if (row.directory) showSafLevel(tree, childUri, row.name);
-                    else importSafDoc(childUri, row.name);
-                }).setNegativeButton("Close", null).create();
-                listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
-                        (parent, view, position, id) -> {
-                            SafStorageOperations.DirectoryEntry row = rows.get(position);
-                            Uri selected = SafStorageOperations.documentUriInTree(tree, row.documentId);
-                            showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
-                            return true;
-                        }));
-                listing.show();
-            });
-        });
-    }
+    void showSafLevel(final Uri tree, final Uri docUri, final String title) { safBrowserController.showSafLevel(tree, docUri, title); }
 
-    private interface SafAction { void run() throws Exception; }
-
-    private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
-                                         String name, boolean directory) {
-        String[] actions = new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
-        new AlertDialog.Builder(this).setTitle(name).setItems(actions, (dialog, which) -> {
-            String action = actions[which];
-            if ("Duplicate here".equals(action)) {
-                runSafAction(tree, parent, title, "Duplicated " + name,
-                        () -> SafStorageOperations.duplicateDocumentInTree(this, getContentResolver(),
-                                tree, document, parent, name, directory));
-            } else if ("Move to folder".equals(action)) {
-                showSafMoveFolderPicker(tree, parent, document, parent, title, name);
-            } else if ("Rename".equals(action)) {
-                EditText input = new EditText(this);
-                input.setSingleLine(true);
-                input.setText(name);
-                input.setSelection(input.length());
-                new AlertDialog.Builder(this).setTitle("Rename document").setView(input)
-                        .setPositiveButton("Rename", (d, w) -> {
-                            String newName = input.getText().toString();
-                            if (name.equals(newName)) return;
-                            runSafAction(tree, parent, title, "Renamed to " + newName,
-                                    () -> SafStorageOperations.renameDocument(getContentResolver(), document, newName));
-                        }).setNegativeButton("Cancel", null).show();
-            } else {
-                new AlertDialog.Builder(this).setTitle("Delete " + name + "?")
-                        .setMessage("This permanently deletes the selected item from the chosen storage provider.")
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Delete", (d, w) -> runSafAction(tree, parent, title, "Deleted " + name,
-                                () -> SafStorageOperations.deleteDocument(getContentResolver(), document)))
-                        .show();
-            }
-        }).setNegativeButton("Cancel", null).show();
-    }
-
-    private void showSafMoveFolderPicker(Uri tree, Uri currentFolder, Uri sourceDocument,
-                                         Uri sourceParent, String sourceParentTitle, String sourceName) {
-        executeIo(() -> {
-            final List<SafStorageOperations.DirectoryEntry> folders = new ArrayList<>();
-            String failure = null;
-            try {
-                folders.addAll(SafStorageOperations.listMoveDestinations(
-                        this, getContentResolver(), tree, currentFolder, sourceDocument));
-            } catch (Exception error) {
-                failure = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-            }
-            final String detail = failure;
-            runUiIfAlive(() -> {
-                if (detail != null) {
-                    ToxiVisualSystem.toast(this, "Cannot browse destination folders: " + detail);
-                    return;
-                }
-                boolean canMoveHere = !SafStorageOperations.sameDocument(currentFolder, sourceParent);
-                List<String> choices = new ArrayList<>();
-                if (canMoveHere) choices.add("Move here: " + SafStorageOperations.documentId(currentFolder));
-                for (SafStorageOperations.DirectoryEntry folder : folders) choices.add("Open folder: " + folder.name + "  âº");
-                if (choices.isEmpty()) {
-                    ToxiVisualSystem.toast(this, "No other destination folders are available here");
-                    return;
-                }
-                new AlertDialog.Builder(this).setTitle("Move " + sourceName + " to folder")
-                        .setItems(choices.toArray(new String[0]), (dialog, which) -> {
-                            if (canMoveHere && which == 0) {
-                                runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName,
-                                        () -> SafStorageOperations.moveDocumentInTree(this, getContentResolver(),
-                                                tree, sourceDocument, sourceParent, currentFolder));
-                            } else {
-                                int folderIndex = which - (canMoveHere ? 1 : 0);
-                                SafStorageOperations.DirectoryEntry selected = folders.get(folderIndex);
-                                Uri selectedFolder = SafStorageOperations.documentUriInTree(tree, selected.documentId);
-                                showSafMoveFolderPicker(tree, selectedFolder, sourceDocument,
-                                        sourceParent, sourceParentTitle, sourceName);
-                            }
-                        }).setNegativeButton("Cancel", null).show();
-            });
-        });
-    }
-
-    private void runSafAction(Uri tree, Uri parent, String title, String successMessage, SafAction action) {
-        busy(true);
-        executeOperation(() -> {
-            OperationCancellation.Token operationToken = cancellation.begin();
-            String error = null;
-            try { action.run(); }
-            catch (Exception failure) {
-                error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
-            } finally { cancellation.finish(operationToken); }
-            final String detail = error;
-            runUiIfAlive(() -> {
-                busy(false);
-                if (detail == null) {
-                    ToxiVisualSystem.toast(this, successMessage);
-                    showSafLevel(tree, parent, title);
-                } else {
-                    ToxiVisualSystem.toast(this, "Storage operation failed: " + detail);
-                }
-            });
-        });
-    }
-
-    void importSafDoc(final Uri doc, final String name) {
-        busy(true);
-        executeOperation(() -> {
-            OperationCancellation.Token operationToken = this.cancellation.begin();
-            try {
-                String msg;
-                try {
-                    File download = new File(Environment.getExternalStorageDirectory(), "Download");
-                    File destination = SafStorageOperations.importDocument(
-                            getApplicationContext(), doc, download, name);
-                    msg = "Imported to Download/" + destination.getName();
-                } catch (Exception ex) {
-                    msg = "Import failed: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
-                }
-                final String m = msg;
-                runUiIfAlive(() -> { busy(false); ToxiVisualSystem.toast(this, m); afterOps(); });
-
-            } finally { this.cancellation.finish(operationToken); }
-        });
-    }
+    void importSafDoc(final Uri doc, final String name) { safBrowserController.importSafDoc(doc, name); }
 
     // ---------------- SETTINGS BACKUP ----------------
     void exportSettings() {
