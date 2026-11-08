@@ -94,6 +94,7 @@ final class SafStorageOperations {
         pending.add(directory);
         int cursor = 0;
         int scanned = 0;
+        int scannedEntries = 0;
         while (cursor < pending.size()) {
             OperationCancellation.checkCurrent();
             if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
@@ -109,6 +110,10 @@ final class SafStorageOperations {
             if (targetId.equals(currentId)) return true;
             if (!visited.add(currentId)) continue;
             for (DirectoryEntry entry : listChildren(resolver, tree, current)) {
+                OperationCancellation.checkCurrent();
+                if (++scannedEntries > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Destination subtree is too large to validate safely");
+                }
                 Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
                 if (targetId.equals(entry.documentId)) return true;
                 if (entry.directory && !visited.contains(entry.documentId)) pending.add(child);
