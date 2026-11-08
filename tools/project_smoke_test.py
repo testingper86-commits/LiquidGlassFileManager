@@ -293,9 +293,11 @@ def main():
     require("CrashLogger.deleteReports(activity)" in crash_ui and "FileProvider.getUriForFile(activity" in crash_ui and "activity.isFinishing() || activity.isDestroyed()" in crash_ui and 'name.startsWith("crash-")' not in main, "crash report UI delegates safe local deletion and FileProvider sharing to its lifecycle controller")
     require("crashReports.maybeOfferCrashReport()" in main and main.count("crashReports.showCrashLogOptions()") == 2, "startup and settings diagnostics entry points delegate to the crash-report controller")
 
-    require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in main and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);' in main, "framework biometric prompt is guarded for API 28+")
+    app_lock_screen = source("app/src/main/java/com/music/echo/offline/files/AppLockScreenController.java")
+    require("appLockScreen = new AppLockScreenController(this);" in main and "appLockScreen.showSetPinDialog();" in main and "appLockScreen.showLockScreen();" in main, "MainActivity delegates App Lock UI to its dedicated screen controller")
+    require('@android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)' in app_lock_screen and 'if (Build.VERSION.SDK_INT >= 28) tryBiometric(dialog);' in app_lock_screen, "framework biometric prompt is guarded for API 28+")
     biometric_keystore = source("app/src/main/java/com/music/echo/offline/files/BiometricUnlockKeyStore.java")
-    require('BiometricUnlockKeyStore.createCipher()' in main and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in main and 'result.getCryptoObject()' in main and 'doFinal(challenge)' in main, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
+    require('BiometricUnlockKeyStore.createCipher()' in app_lock_screen and 'new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher)' in app_lock_screen and 'result.getCryptoObject()' in app_lock_screen and 'doFinal(challenge)' in app_lock_screen, "biometric app unlock verifies a per-use Android Keystore cryptographic proof")
     require('AndroidKeyStore' in biometric_keystore and 'setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)' in biometric_keystore and 'setUserAuthenticationValidityDurationSeconds(-1)' in biometric_keystore and 'KeyPermanentlyInvalidatedException' in biometric_keystore and 'setInvalidatedByBiometricEnrollment(true)' in biometric_keystore, "biometric Keystore key uses per-operation authentication and enrollment invalidation recovery")
     saf_operations = source("foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java")
     rename_engine = source("core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java")

@@ -61,6 +61,7 @@ public class MainActivity extends ComponentActivity {
     private CrashReportController crashReports;
     private StoragePermissionController storagePermissions;
     private AppLockLifecycleController appLockLifecycle;
+    private AppLockScreenController appLockScreen;
     private final ActivityTaskRuntime taskRuntime = new ActivityTaskRuntime();
     private final Runnable indexDoneCallback = this::onIndexDone;
     final OperationCancellation cancellation = taskRuntime.cancellation;
@@ -97,6 +98,7 @@ public class MainActivity extends ComponentActivity {
         navigationController = new MainNavigationController(this);
         crashReports = new CrashReportController(this);
         storagePermissions = new StoragePermissionController(this);
+        appLockScreen = new AppLockScreenController(this);
         appLockLifecycle = new AppLockLifecycleController(this,
                 () -> {
                     unlocked = false;
@@ -1081,110 +1083,9 @@ public class MainActivity extends ComponentActivity {
     }
 
     // ---------------- APP LOCK ----------------
-    void setAppLockPin() {
-        final EditText in = pinField();
-        new AlertDialog.Builder(this).setTitle(AppLock.hasPin(this) ? "Change App Lock PIN" : "Set App Lock PIN")
-                .setView(wrapField(in)).setNegativeButton("Cancel", null)
-                .setPositiveButton("Save", (d, w) -> {
-                    String p = in.getText().toString().trim();
-                    if (p.length() < 4) { ToxiVisualSystem.toast(this, "Use at least 4 digits"); return; }
-                    AppLock.setPin(this, p);
-                    ToxiVisualSystem.toast(this, "App Lock PIN saved");
-                    buildSettings();
-                }).show();
-    }
+    void setAppLockPin() { appLockScreen.showSetPinDialog(); }
 
-    /** Blocking, non-cancelable lock screen shown on launch/resume when App Lock is on. */
-    void showAppLock() {
-        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-        final android.app.Dialog dlg = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-        dlg.setCancelable(false);
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
-        LinearLayout col = new LinearLayout(this);
-        col.setOrientation(LinearLayout.VERTICAL);
-        col.setGravity(Gravity.CENTER);
-        col.setPadding(ToxiVisualSystem.dp(32), 0, ToxiVisualSystem.dp(32), 0);
-        col.addView(ToxiVisualSystem.text(this, "ToxiFiles is locked", 18, ToxiVisualSystem.TEXT_PRIMARY, true), lpm(-2, -2, 0, 0, 0, 16));
-        final EditText in = pinField();
-        col.addView(wrapField(in), new LinearLayout.LayoutParams(-1, -2));
-        TextView unlockBtn = ToxiVisualSystem.text(this, "Unlock", 16, ToxiVisualSystem.ACCENT, true);
-        unlockBtn.setGravity(Gravity.CENTER);
-        unlockBtn.setBackground(ToxiVisualSystem.surface(18, false));
-        unlockBtn.setPadding(0, ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14));
-        ToxiVisualSystem.interactive(unlockBtn);
-        unlockBtn.setOnClickListener(v -> {
-            if (AppLock.checkPin(this, in.getText().toString().trim())) {
-                unlocked = true; getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE); dlg.dismiss();
-            } else {
-                long remaining = AppLock.lockoutRemainingMs(this);
-                ToxiVisualSystem.toast(this, remaining > 0 ? "Too many attempts. Try again in " + Math.max(1, remaining / 1000) + " seconds" : "Wrong PIN");
-            }
-        });
-        col.addView(unlockBtn, lpm(-1, -2, 0, 20, 0, 0));
-        root.addView(col, new FrameLayout.LayoutParams(-1, -1));
-        dlg.setContentView(root);
-        dlg.setOnKeyListener((d, keyCode, event) -> keyCode == android.view.KeyEvent.KEYCODE_BACK);
-        dlg.show();
-        if (Build.VERSION.SDK_INT >= 28) tryBiometric(dlg);
-    }
-
-    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.P)
-    void tryBiometric(final android.app.Dialog dlg) {
-        try {
-            executeIo(() -> {
-                final javax.crypto.Cipher cipher;
-                try {
-                    cipher = BiometricUnlockKeyStore.createCipher();
-                } catch (Exception keystoreFailure) {
-                    android.util.Log.w("ToxiFiles", "Biometric Keystore unavailable; PIN remains available", keystoreFailure);
-                    return;
-                }
-                runUiIfAlive(() -> {
-                    if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
-                    try {
-                        android.hardware.biometrics.BiometricPrompt prompt = new android.hardware.biometrics.BiometricPrompt.Builder(this)
-                                .setTitle("Unlock ToxiFiles")
-                                .setNegativeButton("Use PIN", getMainExecutor(), (d, w) -> { })
-                                .build();
-                        prompt.authenticate(new android.hardware.biometrics.BiometricPrompt.CryptoObject(cipher),
-                                new android.os.CancellationSignal(), getMainExecutor(),
-                                new android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
-                                    @Override public void onAuthenticationSucceeded(android.hardware.biometrics.BiometricPrompt.AuthenticationResult result) {
-                                        if (isFinishing() || isDestroyed() || !dlg.isShowing()) return;
-                                        byte[] challenge = new byte[32];
-                                        byte[] proof = null;
-                                        try {
-                                            android.hardware.biometrics.BiometricPrompt.CryptoObject authenticated = result.getCryptoObject();
-                                            if (authenticated == null || authenticated.getCipher() == null) {
-                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is unavailable");
-                                            }
-                                            new java.security.SecureRandom().nextBytes(challenge);
-                                            proof = authenticated.getCipher().doFinal(challenge);
-                                            if (proof == null || proof.length <= challenge.length) {
-                                                throw new java.security.GeneralSecurityException("Biometric cryptographic proof is invalid");
-                                            }
-                                            unlocked = true;
-                                            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
-                                            dlg.dismiss();
-                                        } catch (Exception verificationFailure) {
-                                            android.util.Log.w("ToxiFiles", "Biometric Keystore verification failed; PIN remains available", verificationFailure);
-                                            ToxiVisualSystem.toast(MainActivity.this, "Biometric verification failed. Use PIN.");
-                                        } finally {
-                                            java.util.Arrays.fill(challenge, (byte) 0);
-                                            if (proof != null) java.util.Arrays.fill(proof, (byte) 0);
-                                        }
-                                    }
-                                });
-                    } catch (Exception promptFailure) {
-                        android.util.Log.w("ToxiFiles", "Biometric prompt unavailable; PIN remains available", promptFailure);
-                    }
-                });
-            });
-        } catch (RuntimeException executorFailure) {
-            android.util.Log.w("ToxiFiles", "Biometric setup unavailable; PIN remains available", executorFailure);
-        }
-    }
+    void showAppLock() { appLockScreen.showLockScreen(); }
 
     // ---------------- DUPLICATE FINDER ----------------
     void openDuplicates() {
