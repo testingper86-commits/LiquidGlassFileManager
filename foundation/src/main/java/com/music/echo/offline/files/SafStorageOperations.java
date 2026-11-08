@@ -79,6 +79,11 @@ final class SafStorageOperations {
     /** Returns true when target is the directory itself or appears anywhere below it. */
     static boolean containsDocument(ContentResolver resolver, Uri tree, Uri directory, Uri target)
             throws IOException {
+        return containsDocument(resolver, tree, directory, target, new TreeTraversalBudget());
+    }
+
+    private static boolean containsDocument(ContentResolver resolver, Uri tree, Uri directory, Uri target,
+                                            TreeTraversalBudget budget) throws IOException {
         OperationCancellation.checkCurrent();
         if (resolver == null || tree == null || directory == null || target == null) {
             throw new IOException("Storage tree and document URIs are required");
@@ -94,7 +99,6 @@ final class SafStorageOperations {
         pending.add(directory);
         int cursor = 0;
         int scanned = 0;
-        int scannedEntries = 0;
         while (cursor < pending.size()) {
             OperationCancellation.checkCurrent();
             if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
@@ -111,9 +115,7 @@ final class SafStorageOperations {
             if (!visited.add(currentId)) continue;
             for (DirectoryEntry entry : listChildren(resolver, tree, current)) {
                 OperationCancellation.checkCurrent();
-                if (++scannedEntries > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
-                    throw new IOException("Destination subtree is too large to validate safely");
-                }
+                budget.enter(0);
                 Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
                 if (targetId.equals(entry.documentId)) return true;
                 if (entry.directory && !visited.contains(entry.documentId)) pending.add(child);
@@ -136,13 +138,15 @@ final class SafStorageOperations {
             throw new IOException("The document being moved is no longer available");
         }
         boolean sourceIsDirectory = source.isDirectory();
+        TreeTraversalBudget budget = new TreeTraversalBudget();
         ArrayList<DirectoryEntry> destinations = new ArrayList<>();
         for (DirectoryEntry entry : listChildren(resolver, tree, currentFolder)) {
             OperationCancellation.checkCurrent();
+            budget.enter(0);
             if (!entry.directory) continue;
             Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
             if (sameDocument(child, sourceDocument)) continue;
-            if (sourceIsDirectory && containsDocument(resolver, tree, child, sourceDocument)) continue;
+            if (sourceIsDirectory && containsDocument(resolver, tree, child, sourceDocument, budget)) continue;
             destinations.add(entry);
         }
         return destinations;
