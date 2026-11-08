@@ -50,7 +50,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,7 +66,8 @@ public class MainActivity extends ComponentActivity {
     final OperationCancellation cancellation = taskRuntime.cancellation;
     final TaskCoordinator.ScopedExecutor io = taskRuntime.io;
     final TaskCoordinator.ScopedExecutor ops = taskRuntime.ops;
-    final Set<String> favs = new LinkedHashSet<>();
+    private final FavoritesRepository favoritesRepository = new FavoritesRepository();
+    final Set<String> favs = favoritesRepository.paths();
     File[] clip;
     boolean clipCut;
 
@@ -126,8 +126,7 @@ public class MainActivity extends ComponentActivity {
         }
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
-        SharedPreferences fp = getSharedPreferences("lg_favs", MODE_PRIVATE);
-        favs.addAll(fp.getStringSet("paths", new HashSet<String>()));
+        favoritesRepository.load(getSharedPreferences("lg_favs", MODE_PRIVATE));
 
         root = new FrameLayout(this);
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
@@ -368,11 +367,11 @@ public class MainActivity extends ComponentActivity {
     // ---------------- clipboard / favourites / busy ----------------
     void setClip(File[] f, boolean cut) { clip = f; clipCut = cut; filesView.updatePaste(); }
 
-    void saveFavs() { getSharedPreferences("lg_favs", MODE_PRIVATE).edit().putStringSet("paths", new HashSet<>(favs)).apply(); }
-    boolean isFav(File f) { return favs.contains(f.getAbsolutePath()); }
-    void toggleFav(File f) { String p = f.getAbsolutePath(); if (!favs.remove(p)) favs.add(p); saveFavs(); }
-    void removeFavs(List<File> fs) { for (File f : fs) favs.remove(f.getAbsolutePath()); saveFavs(); }
-    void renameFav(File from, File to) { if (favs.remove(from.getAbsolutePath())) { favs.add(to.getAbsolutePath()); saveFavs(); } }
+    void saveFavs() { favoritesRepository.save(getSharedPreferences("lg_favs", MODE_PRIVATE)); }
+    boolean isFav(File f) { return favoritesRepository.contains(f); }
+    void toggleFav(File f) { favoritesRepository.toggle(f); saveFavs(); }
+    void removeFavs(List<File> fs) { favoritesRepository.remove(fs); saveFavs(); }
+    void renameFav(File from, File to) { favoritesRepository.rename(from, to); saveFavs(); }
 
     void busy(boolean on) {
         busyCount = Math.max(0, busyCount + (on ? 1 : -1));
