@@ -1,31 +1,31 @@
 package com.music.echo.offline.files;
 
-/** Eight original, independent ToxiFiles visual identities. */
+/** ToxiFiles Prism design tokens: eight original colorways over one spatial material system. */
 final class ToxiThemeSystem {
-    static final String[] NAMES = {"Obsidian Alloy", "Mint Circuit", "Solar Ember", "Violet Arc", "Verdant Grid", "Arctic Pulse", "Nocturne Bloom", "Spectral Signal"};
+    static final String[] NAMES = {"Aether Black", "Glacier Mint", "Ion Cobalt", "Solar Alloy", "Orchid Flux", "Arctic Glass", "Verdant Signal", "Rose Quartz"};
     static final String[] DESCRIPTIONS = {
-        "Midnight graphite · mineral mint · precision depth",
-        "Deep evergreen · mineral mint · quiet clarity",
-        "Charcoal oxide · molten coral · focused energy",
-        "Ink violet · ion lavender · layered contrast",
-        "Forest black · phosphor green · terminal clarity",
-        "Polar navy · glacial cyan · cool precision",
-        "Midnight plum · orchid light · soft contrast",
-        "Blue-black · spectral periwinkle · crisp detail"
+        "Carbon depth · spectral jade · quiet precision",
+        "Deep teal · glacial mint · clear focus",
+        "Midnight blue · ion cyan · technical clarity",
+        "Graphite · molten amber · warm precision",
+        "Ink violet · orchid light · dimensional calm",
+        "Polar slate · electric blue · crisp contrast",
+        "Forest graphite · phosphor green · organic signal",
+        "Plum charcoal · rose quartz · soft luminosity"
     };
-    static final int[] ACCENTS = {0xFF9FE7C4,0xFF8FE8C2,0xFFFF916F,0xFFB7A0FF,0xFFB4EF76,0xFF72DDF2,0xFFE5A0D8,0xFFAAB9FF};
-    static final int[] ACCENT_ENDS = {0xFF5CC8A1,0xFF48B995,0xFFE85E48,0xFF7654D8,0xFF68B847,0xFF3D9FCA,0xFFB65CA9,0xFF697EE0};
-    static final int[] CANVAS = {0xFF090D13,0xFF07110E,0xFF140B09,0xFF0E0B17,0xFF091009,0xFF071118,0xFF130A14,0xFF0A0D19};
-    static final int[] SURFACES = {0xFF141B24,0xFF10221B,0xFF251510,0xFF1A1428,0xFF152014,0xFF10212A,0xFF241426,0xFF171C30};
-    static final int[] RAISED = {0xFF1C2733,0xFF183126,0xFF352019,0xFF271D3B,0xFF20311D,0xFF17313D,0xFF35203A,0xFF222A45};
-    static final int[] EDGES = {0xFF3C4A59,0xFF315B49,0xFF75402F,0xFF57447E,0xFF486A38,0xFF356170,0xFF71436A,0xFF485887};
-    static final int[] MUTED = {0xFF9AA8B7,0xFF94B8A8,0xFFC4A092,0xFFB3A6C9,0xFFA4B998,0xFF9DBBC5,0xFFC0A1BB,0xFFA7B2D1};
-    static final int[] SOFT_ACCENTS = {0xFF273441,0xFF1A3A2D,0xFF48251C,0xFF30244B,0xFF263C1F,0xFF1A3945,0xFF42233F,0xFF293451};
-    static final int[] LIGHT_CANVAS = {0xFFF3F6FA,0xFFF1F7F3,0xFFFFF4F0,0xFFF5F2FA,0xFFF4F7EF,0xFFF0F6F8,0xFFFAF2F7,0xFFF2F4FB};
-    static final int[] LIGHT_SURFACES = {0xFFFFFFFF,0xFFFCFFFD,0xFFFFFCFA,0xFFFEFCFF,0xFFFCFFF9,0xFFFBFEFF,0xFFFFFBFE,0xFFFCFDFF};
-    static final int[] LIGHT_RAISED = {0xFFE8EEF4,0xFFE5F1EA,0xFFF8EAE4,0xFFEDE7F7,0xFFEAF1E2,0xFFE2F0F4,0xFFF5E7F1,0xFFE7EBF8};
-    static final int[] LIGHT_EDGES = {0xFFC6D0DC,0xFFBBD5C5,0xFFE8C6B8,0xFFD0C3E5,0xFFC9D9B8,0xFFB9D2DA,0xFFE1C3D7,0xFFC5CDE5};
-    static final int[] LIGHT_MUTED = {0xFF596A7C,0xFF4D6B5A,0xFF806052,0xFF65577F,0xFF5A704B,0xFF4F6C78,0xFF79576D,0xFF566487};
+    static final int[] ACCENTS = {0xFF79F2C0,0xFF78E8D1,0xFF72C9FF,0xFFFFB66D,0xFFC3A0FF,0xFF8EDCFF,0xFFB8ED78,0xFFFFA7C8};
+    static final int[] ACCENT_ENDS = {0xFF35C99A,0xFF2DBFA9,0xFF398BEA,0xFFE9823F,0xFF8B67E8,0xFF4CA9D8,0xFF70BC43,0xFFE875A6};
+    static final int[] CANVAS = {0xFF070B10,0xFF07110F,0xFF080E19,0xFF110D0A,0xFF0F0B18,0xFF08121A,0xFF0A100B,0xFF140B12};
+    static final int[] SURFACES = {0xFF111A23,0xFF10201D,0xFF111C2B,0xFF211811,0xFF1B1528,0xFF10212A,0xFF172016,0xFF24151F};
+    static final int[] RAISED = {0xFF1A2934,0xFF19332D,0xFF1C3047,0xFF35251A,0xFF2C2140,0xFF1A3441,0xFF26351F,0xFF392330};
+    static final int[] EDGES = {0xFF355B58,0xFF32665C,0xFF365B83,0xFF775035,0xFF604B82,0xFF376B80,0xFF4E6D3C,0xFF75465F};
+    static final int[] MUTED = {0xFF9BB4B1,0xFF9CC8BD,0xFFA3BBD5,0xFFC8AD94,0xFFB9A9D1,0xFFA2C2D0,0xFFB2C29F,0xFFC9A8B8};
+    static final int[] SOFT_ACCENTS = {0xFF183B36,0xFF17483F,0xFF193A5C,0xFF51301D,0xFF392752,0xFF194557,0xFF31451F,0xFF4C2639};
+    static final int[] LIGHT_CANVAS = {0xFFF1F6F5,0xFFEFF8F5,0xFFF0F5FB,0xFFFFF5EC,0xFFF5F1FB,0xFFEEF7FA,0xFFF3F7EC,0xFFFBF1F5};
+    static final int[] LIGHT_SURFACES = {0xFFFFFFFF,0xFFFCFFFE,0xFFFFFFFF,0xFFFFFCF8,0xFFFFFDFF,0xFFFCFEFF,0xFFFCFFF9,0xFFFFFCFE};
+    static final int[] LIGHT_RAISED = {0xFFE6EFED,0xFFE1F2EC,0xFFE3EDF8,0xFFF7E9DB,0xFFEEE7F8,0xFFE1F0F5,0xFFE8F0DF,0xFFF6E5ED};
+    static final int[] LIGHT_EDGES = {0xFFB9D1CB,0xFFB2D8CC,0xFFB8CDE4,0xFFE6C6A8,0xFFD0C1E7,0xFFB6D6E0,0xFFC8D8B7,0xFFE5C1D1};
+    static final int[] LIGHT_MUTED = {0xFF536D68,0xFF4E7167,0xFF526A83,0xFF806044,0xFF695A84,0xFF4E707D,0xFF5D704C,0xFF80586C};
     private ToxiThemeSystem() { }
     static int normalize(int index) { return Math.max(0, Math.min(NAMES.length - 1, index)); }
     static String description(int index) { return DESCRIPTIONS[normalize(index)]; }

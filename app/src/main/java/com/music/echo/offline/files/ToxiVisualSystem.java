@@ -89,13 +89,16 @@ final class ToxiVisualSystem {
     static boolean booleanPreference(String key, boolean fallback) { return PREFERENCES != null && PREFERENCES.getBoolean(key, fallback); }
     static void setBooleanPreference(String key, boolean value) { if (PREFERENCES != null) PREFERENCES.edit().putBoolean(key, value).apply(); }
 
-    /** Matte, precision-cut panel with a theme-owned edge and restrained top reflection. */
+    /** Prism liquid material: tinted depth, a restrained specular edge and theme-aware contrast. */
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
-        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.rgb(Math.min(255, Color.red(fill) + 8), Math.min(255, Color.green(fill) + 8), Math.min(255, Color.blue(fill) + 8)), fill});
+        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 5 : 13)),
+                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 5 : 13)),
+                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 7 : 18)));
+        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{top, fill, CANVAS});
         panel.setCornerRadius(dp(radiusDp));
-        panel.setStroke(Math.max(1, dp(0.8f)), EDGE_STROKE);
+        panel.setStroke(Math.max(1, dp(0.9f)), EDGE_STROKE);
         return panel;
     }
 

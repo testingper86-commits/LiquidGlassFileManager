@@ -33,8 +33,9 @@ final class MainNavigationBar {
         if (built) return;
         built = true;
         view.setBackground(NebulaHomeView.navigationSurface());
+        ToxiVisualSystem.clipRound(view, 26);
         view.setElevation(NebulaHomeView.dp(activity, 8));
-        view.setPadding(NebulaHomeView.dp(activity, 5), NebulaHomeView.dp(activity, 5), NebulaHomeView.dp(activity, 5), NebulaHomeView.dp(activity, 5));
+        view.setPadding(NebulaHomeView.dp(activity, 7), NebulaHomeView.dp(activity, 7), NebulaHomeView.dp(activity, 7), NebulaHomeView.dp(activity, 7));
         highlight.setBackground(NebulaHomeView.navigationHighlight());
         view.addView(highlight, new FrameLayout.LayoutParams(0, -1));
         LinearLayout items = new LinearLayout(activity);
@@ -65,8 +66,8 @@ final class MainNavigationBar {
             item.setOnClickListener(v -> onTabSelected.accept(index));
             items.addView(item, new LinearLayout.LayoutParams(0, -1, 1f));
         }
-        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 66), Gravity.BOTTOM);
-        navParams.setMargins(NebulaHomeView.dp(activity, 14), 0, NebulaHomeView.dp(activity, 14), NebulaHomeView.dp(activity, 12));
+        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 72), Gravity.BOTTOM);
+        navParams.setMargins(NebulaHomeView.dp(activity, 18), 0, NebulaHomeView.dp(activity, 18), NebulaHomeView.dp(activity, 14));
         root.addView(view, navParams);
         view.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
             int itemWidth = Math.max(1, (right - left - NebulaHomeView.dp(activity, 10)) / 4);

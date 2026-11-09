@@ -59,82 +59,104 @@ final class NebulaHomeView {
         host.removeAllViews();
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
-        host.setPadding(dp(a, 18), dp(a, 10), dp(a, 18), 0);
+        host.setPadding(dp(a, 20), dp(a, 14), dp(a, 20), 0);
         host.setBackgroundColor(BACKGROUND);
 
-        LinearLayout brand = new LinearLayout(a);
-        brand.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout mast = new LinearLayout(a);
+        mast.setGravity(Gravity.CENTER_VERTICAL);
         ImageView mark = new ImageView(a);
         mark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
-        mark.setContentDescription("ToxiFiles logo");
+        mark.setContentDescription("ToxiFiles Prism mark");
         mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        brand.addView(mark, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
-        LinearLayout wordmarkBlock = new LinearLayout(a);
-        wordmarkBlock.setOrientation(LinearLayout.VERTICAL);
-        wordmarkBlock.setPadding(dp(a, 11), 0, 0, 0);
-        TextView wordmark = text(a, "TOXIFILES", 22, TEXT, true);
-        wordmark.setLetterSpacing(0.12f);
-        wordmarkBlock.addView(wordmark);
-        TextView brandLine = text(a, "FILE MANAGEMENT, REFINED", 8, MUTED, true);
-        brandLine.setLetterSpacing(0.13f);
-        LinearLayout.LayoutParams brandLineLp = new LinearLayout.LayoutParams(-2, -2);
-        brandLineLp.topMargin = dp(a, 4);
-        wordmarkBlock.addView(brandLine, brandLineLp);
-        brand.addView(wordmarkBlock, new LinearLayout.LayoutParams(0, -2, 1f));
-        host.addView(brand, margins(a, -1, -2, 0, 5, 0, 18));
+        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
+        LinearLayout identity = new LinearLayout(a);
+        identity.setOrientation(LinearLayout.VERTICAL);
+        identity.setPadding(dp(a, 12), 0, 0, 0);
+        TextView word = text(a, "TOXIFILES", 19, TEXT, true);
+        word.setLetterSpacing(0.16f);
+        identity.addView(word);
+        TextView edition = text(a, "PRISM  /  PERSONAL FILESPACE", 8.5f, MUTED, true);
+        edition.setLetterSpacing(0.13f);
+        identity.addView(edition, margins(a, -2, -2, 0, 4, 0, 0));
+        mast.addView(identity, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView live = text(a, "●  LOCAL", 9, LIME, true);
+        live.setLetterSpacing(0.08f);
+        live.setBackground(background(PANEL_ALT, BORDER, 18));
+        live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
+        mast.addView(live);
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 25));
 
-        TextView subtitle = text(a, "YOUR DIGITAL SPACE", 10, MUTED, true);
-        subtitle.setLetterSpacing(0.19f);
-        host.addView(subtitle, margins(a, -1, -2, 0, 4, 0, 18));
+        TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
+        overline.setLetterSpacing(0.2f);
+        host.addView(overline);
+        TextView headline = text(a, "Everything\nin its element.", 31, TEXT, true);
+        headline.setLineSpacing(dp(a, 1), 0.98f);
+        host.addView(headline, margins(a, -1, -2, 0, 8, 0, 7));
+        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 12, MUTED, false);
+        host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 21));
 
         if (!a.hasAccess()) {
-            LinearLayout access = panel(a, 18);
-            access.addView(text(a, "Storage access required", 17, TEXT, true));
-            access.addView(text(a, "Allow file access to show your device storage and browse your content.", 12, MUTED, false), margins(a, -1, -2, 0, 7, 0, 14));
-            TextView grant = actionText(a, "GRANT ACCESS", LIME);
+            LinearLayout access = panel(a, 22);
+            access.addView(text(a, "Connect your device storage", 17, TEXT, true));
+            access.addView(text(a, "Grant access to reveal your files, folders and storage intelligence.", 12, MUTED, false), margins(a, -1, -2, 0, 8, 0, 15));
+            TextView grant = actionText(a, "AUTHORIZE STORAGE  ↗", LIME);
             grant.setGravity(Gravity.CENTER);
-            grant.setBackground(background(PANEL_ALT, BORDER, 12));
-            grant.setPadding(0, dp(a, 13), 0, dp(a, 13));
+            grant.setBackground(background(PANEL_ALT, BORDER, 15));
+            grant.setPadding(0, dp(a, 14), 0, dp(a, 14));
             grant.setOnClickListener(v -> a.showStorageAccess());
+            ToxiVisualSystem.interactive(grant);
             access.addView(grant, new LinearLayout.LayoutParams(-1, -2));
-            host.addView(access, margins(a, -1, -2, 0, 0, 0, 16));
+            host.addView(access);
             return;
         }
 
         addStorage(a, host);
-        addSectionTitle(a, host, "BROWSE BY TYPE", "5 CATEGORIES");
+        LinearLayout section = new LinearLayout(a);
+        section.setGravity(Gravity.CENTER_VERTICAL);
+        TextView sectionTitle = text(a, "EXPLORE YOUR CONTENT", 10, TEXT, true);
+        sectionTitle.setLetterSpacing(0.14f);
+        section.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        section.addView(text(a, "05 CHANNELS", 8.5f, MUTED, true));
+        host.addView(section, margins(a, -1, -2, 0, 3, 0, 12));
+
         String[] names = {"Images", "Videos", "Audio", "Documents", "Downloads"};
-        String[] details = {"Photo library", "Video collection", "Music & sounds", "PDF & documents", "Recent downloads"};
+        String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
-        for (int row = 0; row < 2; row++) {
-            LinearLayout line = new LinearLayout(a);
-            line.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 2; col++) {
-                final int index = row * 2 + col;
-                View card = exploreCard(a, names[index], details[index], glyphs[index], ACCENTS[index]);
-                card.setOnClickListener(v -> {
-                    switch (index) {
-                        case 0: a.openCategory(0); break;
-                        case 1: a.openCategory(1); break;
-                        case 2: a.openCategory(2); break;
-                        case 3: a.openCategory(3); break;
-                    }
-                });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1f);
-                if (col == 0) lp.rightMargin = dp(a, 7);
-                else lp.leftMargin = dp(a, 7);
-                line.addView(card, lp);
-            }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 116));
-            rowLp.bottomMargin = dp(a, 12);
-            host.addView(line, rowLp);
+        int[] accents = {LIME, ICE, VIOLET, ICE, LIME};
+        for (int index = 0; index < names.length; index++) {
+            LinearLayout item = new LinearLayout(a);
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(dp(a, 14), dp(a, 12), dp(a, 13), dp(a, 12));
+            item.setBackground(ToxiVisualSystem.surface(18, index == 0));
+            Glyph icon = new Glyph(a, glyphs[index], accents[index]);
+            FrameLayout iconWell = new FrameLayout(a);
+            iconWell.setBackground(background(PANEL_ALT, BORDER, 13));
+            iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 25), dp(a, 25), Gravity.CENTER));
+            item.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
+            LinearLayout labels = new LinearLayout(a);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.setPadding(dp(a, 13), 0, dp(a, 8), 0);
+            labels.addView(text(a, names[index], 14, TEXT, true));
+            labels.addView(text(a, details[index], 10, MUTED, false), margins(a, -1, -2, 0, 4, 0, 0));
+            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView arrow = text(a, "↗", 17, accents[index], true);
+            item.addView(arrow);
+            final int target = index;
+            item.setOnClickListener(v -> {
+                ToxiVisualSystem.feedback(v);
+                if (target == 0) a.openCategory(0);
+                else if (target == 1) a.openCategory(1);
+                else if (target == 2) a.openCategory(2);
+                else if (target == 3) a.openCategory(3);
+                else a.openDownloads();
+            });
+            item.setContentDescription(names[index] + ". " + details[index]);
+            ToxiVisualSystem.interactive(item);
+            host.addView(item, margins(a, -1, -2, 0, 0, 0, 8));
         }
-        View downloadsCard = exploreCard(a, names[4], details[4], glyphs[4], ACCENTS[4]);
-        downloadsCard.setOnClickListener(v -> a.openDownloads());
-        host.addView(downloadsCard, margins(a, -1, dp(a, 92), 0, 0, 0, 12));
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 116) + ToxiVisualSystem.BOTTOM_INSET));
+        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 112) + ToxiVisualSystem.BOTTOM_INSET));
     }
 
     static void buildTools(MainActivity a, LinearLayout host) {
