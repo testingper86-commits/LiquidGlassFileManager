@@ -2,7 +2,7 @@ package com.music.echo.offline.files;
 
 /** ToxiFiles Prism design tokens: eight original colorways over one spatial material system. */
 final class ToxiThemeSystem {
-    static final String[] NAMES = {"Aether Black", "Glacier Mint", "Ion Cobalt", "Solar Alloy", "Orchid Flux", "Arctic Glass", "Verdant Signal", "Rose Quartz"};
+    static final String[] NAMES = {"Obsidian Alloy", "Glacier Mint", "Ion Cobalt", "Solar Alloy", "Orchid Flux", "Arctic Glass", "Verdant Signal", "Rose Quartz"};
     static final String[] DESCRIPTIONS = {
         "Carbon depth · spectral jade · quiet precision",
         "Deep teal · glacial mint · clear focus",
