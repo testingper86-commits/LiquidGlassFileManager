@@ -5,6 +5,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.graphics.Typeface;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,8 +22,8 @@ final class PrismNavigationDock {
     private final MainActivity activity;
     private final FrameLayout root;
     private final IntConsumer onTabSelected;
-    private final FrameLayout surface = new FrameLayout(null);
-    private final View selection = new View(null);
+    private final FrameLayout surface;
+    private final View selection;
     private final View[] items = new View[TAB_COUNT];
     private final NebulaHomeView.Glyph[] glyphs = new NebulaHomeView.Glyph[TAB_COUNT];
     private final TextView[] labels = new TextView[TAB_COUNT];
@@ -36,6 +37,8 @@ final class PrismNavigationDock {
         }
         this.activity = activity;
         this.root = root;
+        this.surface = new FrameLayout(activity);
+        this.selection = new View(activity);
         this.onTabSelected = onTabSelected;
     }
 
@@ -65,7 +68,7 @@ final class PrismNavigationDock {
             labels[i] = new TextView(activity);
             labels[i].setText(names[i]);
             labels[i].setTextSize(10);
-            labels[i].setTypeface(ToxiVisualSystem.typeface(true));
+            labels[i].setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
             labels[i].setTextColor(NebulaHomeView.MUTED);
             LinearLayout.LayoutParams label = new LinearLayout.LayoutParams(-2, -2);
             label.topMargin = NebulaHomeView.dp(activity, 3);
@@ -80,7 +83,6 @@ final class PrismNavigationDock {
             items[i] = item;
         }
         rebuildGeometry();
-        root.addView(surface);
         surface.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection());
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             boolean expanded = activity.getResources().getConfiguration().screenWidthDp >= 700;
