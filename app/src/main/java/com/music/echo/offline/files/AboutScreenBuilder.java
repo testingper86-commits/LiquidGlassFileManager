@@ -86,10 +86,13 @@ final class AboutScreenBuilder {
         profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
         profile.setBackground(aboutSurface(26, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
-        TextView avatar = aboutText("CH", 25, ABOUT_CYAN, true);
-        avatar.setGravity(Gravity.CENTER);
-        avatar.setBackground(aboutAvatarSurface());
-        profile.addView(avatar, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(76), ToxiVisualSystem.dp(76)));
+        ImageView avatar = new ImageView(activity);
+        avatar.setImageResource(R.drawable.chandu_profile);
+        avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        avatar.setBackground(aboutSurface(18, true));
+        avatar.setClipToOutline(true);
+        avatar.setContentDescription("Chandu profile photo");
+        profile.addView(avatar, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(112), ToxiVisualSystem.dp(200)));
         TextView name = aboutText("CHANDU", 29, ABOUT_TEXT, true);
         name.setLetterSpacing(0.09f);
         name.setGravity(Gravity.CENTER);
