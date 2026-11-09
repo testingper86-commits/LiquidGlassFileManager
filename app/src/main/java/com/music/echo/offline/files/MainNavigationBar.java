@@ -9,12 +9,18 @@ import java.util.function.IntConsumer;
  */
 final class MainNavigationBar {
     private final PrismNavigationDock delegate;
+    private final IntConsumer onTabSelected;
 
     MainNavigationBar(MainActivity activity, FrameLayout root, IntConsumer onTabSelected) {
         if (activity == null || root == null || onTabSelected == null) {
             throw new IllegalArgumentException("navigation dependencies must not be null");
         }
-        delegate = new PrismNavigationDock(activity, root, onTabSelected);
+        this.onTabSelected = onTabSelected;
+        delegate = new PrismNavigationDock(activity, root, this::selectTab);
+    }
+
+    private void selectTab(int index) {
+        onTabSelected.accept(index);
     }
 
     void build() {
