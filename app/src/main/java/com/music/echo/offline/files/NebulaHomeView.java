@@ -2,6 +2,7 @@ package com.music.echo.offline.files;
 
 import com.music.echo.offline.R;
 
+import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -14,7 +15,9 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Environment;
+import android.os.Build;
 import android.view.Gravity;
+import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -59,7 +62,7 @@ final class NebulaHomeView {
         host.removeAllViews();
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
-        host.setPadding(dp(a, 20), dp(a, 14), dp(a, 20), 0);
+        host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
         host.setBackgroundColor(BACKGROUND);
 
         LinearLayout mast = new LinearLayout(a);
@@ -84,7 +87,7 @@ final class NebulaHomeView {
         live.setBackground(background(PANEL_ALT, BORDER, 18));
         live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
         mast.addView(live);
-        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 25));
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 19));
 
         TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
         overline.setLetterSpacing(0.2f);
@@ -93,7 +96,7 @@ final class NebulaHomeView {
         headline.setLineSpacing(dp(a, 1), 0.98f);
         host.addView(headline, margins(a, -1, -2, 0, 8, 0, 7));
         TextView descriptor = text(a, "A calm, precise view of the content on this device.", 12, MUTED, false);
-        host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 21));
+        host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
         if (!a.hasAccess()) {
             LinearLayout access = panel(a, 22);
@@ -117,7 +120,7 @@ final class NebulaHomeView {
         sectionTitle.setLetterSpacing(0.14f);
         section.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         section.addView(text(a, "05 CHANNELS", 8.5f, MUTED, true));
-        host.addView(section, margins(a, -1, -2, 0, 3, 0, 12));
+        host.addView(section, margins(a, -1, -2, 0, 3, 0, 13));
 
         String[] names = {"Images", "Videos", "Audio", "Documents", "Downloads"};
         String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
@@ -129,13 +132,13 @@ final class NebulaHomeView {
             for (int col = 0; col < 2; col++) {
                 final int index = row * 2 + col;
                 if (index >= names.length) {
-                    gridRow.addView(new View(a), new LinearLayout.LayoutParams(0, dp(a, 126), 1f));
+                    gridRow.addView(new View(a), new LinearLayout.LayoutParams(0, -1, 1f));
                     continue;
                 }
                 LinearLayout item = new LinearLayout(a);
                 item.setOrientation(LinearLayout.VERTICAL);
-                item.setGravity(Gravity.CENTER_VERTICAL);
-                item.setPadding(dp(a, 15), dp(a, 14), dp(a, 13), dp(a, 13));
+                item.setGravity(Gravity.TOP);
+                item.setPadding(dp(a, 13), dp(a, 13), dp(a, 13), dp(a, 13));
                 item.setBackground(ToxiVisualSystem.surface(20, index == 0));
                 LinearLayout iconLine = new LinearLayout(a);
                 iconLine.setGravity(Gravity.CENTER_VERTICAL);
@@ -145,14 +148,17 @@ final class NebulaHomeView {
                 iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 27), dp(a, 27), Gravity.CENTER));
                 iconLine.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
                 TextView arrow = text(a, "↗", 17, accents[index], true);
-                LinearLayout.LayoutParams arrowLp = new LinearLayout.LayoutParams(-2, -2);
-                arrowLp.gravity = Gravity.CENTER_VERTICAL;
-                arrowLp.leftMargin = dp(a, 7);
+                LinearLayout.LayoutParams arrowLp = new LinearLayout.LayoutParams(0, -2, 1f);
+                arrow.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
                 iconLine.addView(arrow, arrowLp);
                 item.addView(iconLine, new LinearLayout.LayoutParams(-1, -2));
-                item.addView(text(a, names[index], 14, TEXT, true), margins(a, -1, -2, 0, 13, 0, 0));
+                TextView categoryName = text(a, names[index], 14, TEXT, true);
+                categoryName.setSingleLine(true);
+                categoryName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                item.addView(categoryName, margins(a, -1, -2, 0, 12, 0, 0));
                 TextView detail = text(a, details[index], 10, MUTED, false);
                 detail.setMaxLines(2);
+                detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 item.addView(detail, margins(a, -1, -2, 0, 5, 0, 0));
                 item.setContentDescription(names[index] + ". " + details[index]);
                 item.setFocusable(true);
@@ -165,18 +171,40 @@ final class NebulaHomeView {
                     else a.openDownloads();
                 });
                 ToxiVisualSystem.interactive(item);
-                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, dp(a, 126), 1f);
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, dp(a, 134), 1f);
                 if (col == 0) cardLp.rightMargin = dp(a, 6);
                 else cardLp.leftMargin = dp(a, 6);
                 gridRow.addView(item, cardLp);
+                animateHomeCard(a, item, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 126));
-            rowLp.bottomMargin = dp(a, 11);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 134));
+            rowLp.bottomMargin = dp(a, 10);
             host.addView(gridRow, rowLp);
         }
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 112) + ToxiVisualSystem.BOTTOM_INSET));
+    }
+
+    private static void animateHomeCard(MainActivity a, View card, int index) {
+        if (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled()) return;
+        card.setAlpha(0f);
+        card.setTranslationY(dp(a, 10));
+        card.post(() -> {
+            if (!card.isAttachedToWindow()) {
+                card.setAlpha(1f);
+                card.setTranslationY(0f);
+                return;
+            }
+            card.animate().cancel();
+            card.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(index * 35L)
+                    .setDuration(220L)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+        });
     }
 
     static void buildTools(MainActivity a, LinearLayout host) {
