@@ -127,7 +127,7 @@ final class PrismNavigationDock {
         } else {
             params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 78), Gravity.BOTTOM);
             params.setMargins(NebulaHomeView.dp(activity, 16), 0,
-                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 12));
+                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 18));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -154,7 +154,8 @@ final class PrismNavigationDock {
     void applyBottomInset() {
         if (rail) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
-        params.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + NebulaHomeView.dp(activity, 12);
+        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
+                + NebulaHomeView.dp(activity, 18);
         surface.setLayoutParams(params);
     }
 

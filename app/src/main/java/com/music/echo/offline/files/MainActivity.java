@@ -221,7 +221,9 @@ public class MainActivity extends ComponentActivity {
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-                ToxiVisualSystem.TOP_INSET = in.top; ToxiVisualSystem.BOTTOM_INSET = in.bottom;
+                android.graphics.Insets navigation = insets.getInsets(WindowInsets.Type.navigationBars() | WindowInsets.Type.displayCutout());
+                ToxiVisualSystem.TOP_INSET = in.top;
+                ToxiVisualSystem.BOTTOM_INSET = Math.max(navigation.bottom, ToxiVisualSystem.dp(24));
             } else { ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop(); ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom(); }
             applyInsets();
             return insets;
