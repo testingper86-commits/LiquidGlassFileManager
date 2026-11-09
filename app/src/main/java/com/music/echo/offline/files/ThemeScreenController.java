@@ -96,6 +96,7 @@ final class ThemeScreenController {
             panel.addView(tile, activity.lpm(-1, -2, 0, 0, 0, 8));
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
+        ToxiVisualSystem.revealChildren(panel);
     }
 
 

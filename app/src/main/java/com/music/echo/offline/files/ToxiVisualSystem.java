@@ -15,6 +15,7 @@ import android.util.TypedValue;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewOutlineProvider;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -180,6 +181,38 @@ final class ToxiVisualSystem {
             }
         });
         view.setClipToOutline(true);
+    }
+
+
+    /** Staggered entrance for screen-level panels; disabled when the user requests reduced motion. */
+    static void revealChildren(ViewGroup group) {
+        if (group == null || booleanPreference("reduce_motion", false)) return;
+        group.post(() -> {
+            if (!group.isAttachedToWindow()) return;
+            int visibleIndex = 0;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                final View child = group.getChildAt(i);
+                if (child.getVisibility() != View.VISIBLE) continue;
+                final long delay = Math.min(visibleIndex++, 8) * 28L;
+                child.animate().cancel();
+                child.setAlpha(0f);
+                child.setTranslationY(dp(9));
+                child.animate().alpha(1f).translationY(0f).setStartDelay(delay)
+                        .setDuration(210L)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                        .start();
+            }
+        });
+    }
+
+    /** Restrained spring response for touch targets, with no animation under reduced motion. */
+    static void touchSpring(View view) {
+        if (view == null || booleanPreference("reduce_motion", false)) return;
+        view.animate().cancel();
+        view.setScaleX(0.975f);
+        view.setScaleY(0.975f);
+        view.animate().scaleX(1f).scaleY(1f).setDuration(180L)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.15f)).start();
     }
 
     static void feedback(View view) {

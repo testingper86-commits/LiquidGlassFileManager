@@ -128,6 +128,7 @@ final class VaultScreenController {
                 11, ToxiVisualSystem.TEXT_SECONDARY, false);
         securityNote.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), 0);
         activity.vault.addView(securityNote);
+        ToxiVisualSystem.revealChildren(activity.vault);
     }
 
     private View metric(String value, String label) {

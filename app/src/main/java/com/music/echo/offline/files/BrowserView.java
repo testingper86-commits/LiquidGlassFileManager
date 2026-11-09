@@ -149,6 +149,7 @@ final class BrowserView extends FrameLayout {
         lv.setSelector(new ColorDrawable(Color.TRANSPARENT));
         lv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         col.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        ToxiVisualSystem.revealChildren(col);
 
         ad = new BaseAdapter() {
             @Override public int getViewTypeCount() { return 2; }

@@ -118,6 +118,7 @@ final class RecycleBinScreenController {
                 activity.recycle.addView(row, params(0, 0, 0, 5));
             }
         }
+        ToxiVisualSystem.revealChildren(activity.recycle);
     }
 
     private LinearLayout stateCard(String title, String description) {

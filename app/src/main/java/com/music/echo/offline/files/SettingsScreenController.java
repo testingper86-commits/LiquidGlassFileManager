@@ -204,6 +204,7 @@ final class SettingsScreenController {
                 child.setVisibility(appearanceSection ? View.VISIBLE : View.GONE);
             }
         }
+        ToxiVisualSystem.revealChildren(activity.settings);
     }
 
 

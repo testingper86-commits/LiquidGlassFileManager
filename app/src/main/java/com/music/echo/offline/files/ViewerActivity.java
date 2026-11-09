@@ -133,6 +133,7 @@ public class ViewerActivity extends ComponentActivity {
         bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(ToxiVisualSystem.surface(26, true));
+        ToxiVisualSystem.revealChildren(bar);
         bar.setPadding(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(v -> finish());
