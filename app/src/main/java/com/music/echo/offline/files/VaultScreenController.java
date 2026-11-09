@@ -1,6 +1,7 @@
 package com.music.echo.offline.files;
 
 import android.app.AlertDialog;
+import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
@@ -56,40 +57,100 @@ final class VaultScreenController {
 
     void build() {
         activity.vault.removeAllViews();
+        activity.vault.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4),
+                ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(28));
+
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        header.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
         header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        header.addView(ToxiVisualSystem.text(activity, "Vault", 24, ToxiVisualSystem.TEXT_PRIMARY, true),
-                new LinearLayout.LayoutParams(0, -2, 1f));
-        header.addView(new View(activity), new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        header.setMinimumHeight(ToxiVisualSystem.dp(56));
+        LinearLayout titleBlock = new LinearLayout(activity);
+        titleBlock.setOrientation(LinearLayout.VERTICAL);
+        titleBlock.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
+        titleBlock.addView(ToxiVisualSystem.text(activity, "PRIVATE SPACE", 9, ToxiVisualSystem.ACCENT, true));
+        titleBlock.addView(ToxiVisualSystem.text(activity, "Vault", 25, ToxiVisualSystem.TEXT_PRIMARY, true));
+        header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         activity.vault.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView note = ToxiVisualSystem.text(activity, "Encrypted with AES-256 (key stored in Android's hardware Keystore, not derived from your PIN). The PIN gates this screen; the encryption protects the file bytes even if someone pulls them off the device directly.",
-                12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        note.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
-        activity.vault.addView(note);
-
         List<Vault.Item> items = Vault.list(activity);
+        long totalBytes = 0L;
+        for (Vault.Item item : items) if (item.file.isFile()) totalBytes += Math.max(0L, item.file.length());
+
+        LinearLayout hero = new LinearLayout(activity);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
+        hero.setBackground(ToxiVisualSystem.accentSurface(26));
+        TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, 0xFFFFFFFF, true);
+        emblem.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        hero.addView(emblem);
+        hero.addView(ToxiVisualSystem.text(activity, "Your files. Your boundary.", 19, 0xFFFFFFFF, true), params(0, 8, 0, 5));
+        hero.addView(ToxiVisualSystem.text(activity,
+                "Protected file contents use AES-256 encryption with a key held by Android Keystore.",
+                12, 0xEFFFFFFF, false));
+        LinearLayout metrics = new LinearLayout(activity);
+        metrics.setGravity(Gravity.CENTER_VERTICAL);
+        metrics.setPadding(0, ToxiVisualSystem.dp(17), 0, 0);
+        metrics.addView(metric(items.size() + "", "SECURED ITEMS"), new LinearLayout.LayoutParams(0, -2, 1f));
+        metrics.addView(metric(ToxiVisualSystem.formatSize(totalBytes), "SPACE USED"), new LinearLayout.LayoutParams(0, -2, 1f));
+        hero.addView(metrics);
+        activity.vault.addView(hero, params(0, 8, 0, 18));
+
+        sectionLabel("ENCRYPTED CONTENT");
         if (items.isEmpty()) {
-            TextView empty = ToxiVisualSystem.text(activity, "Vault is empty", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            empty.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
-            activity.vault.addView(empty);
+            LinearLayout empty = new LinearLayout(activity);
+            empty.setGravity(Gravity.CENTER);
+            empty.setOrientation(LinearLayout.VERTICAL);
+            empty.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28));
+            empty.setBackground(ToxiVisualSystem.surface(22, false));
+            empty.addView(ToxiVisualSystem.text(activity, "◌", 32, ToxiVisualSystem.ACCENT, true));
+            empty.addView(ToxiVisualSystem.text(activity, "Nothing stored yet", 16, ToxiVisualSystem.TEXT_PRIMARY, true), params(0, 10, 0, 5));
+            empty.addView(ToxiVisualSystem.text(activity,
+                    "Send a file to Vault from its file actions to keep it encrypted and out of ordinary browsing.",
+                    12, ToxiVisualSystem.TEXT_SECONDARY, false));
+            activity.vault.addView(empty, params(0, 0, 0, 12));
         } else {
             for (Vault.Item item : items) {
                 Entry entry = new Entry(item.file);
                 View row = ToxiFileRow.create(activity);
                 ToxiFileRow.Holder holder = (ToxiFileRow.Holder) row.getTag();
-                ToxiFileRow.bind(holder, entry, false, false, "from " + item.originalParent.getName());
+                ToxiFileRow.bind(holder, entry, false, false, "SECURED  ·  from " + item.originalParent.getName());
                 row.setOnClickListener(view -> showItemMenu(item));
                 holder.more.setOnClickListener(view -> showItemMenu(item));
-                activity.vault.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                activity.vault.addView(row, params(0, 0, 0, 5));
             }
         }
+
+        TextView securityNote = ToxiVisualSystem.text(activity,
+                "The PIN unlocks this screen. It is not used to derive the encryption key. Keep your device credentials private.",
+                11, ToxiVisualSystem.TEXT_SECONDARY, false);
+        securityNote.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), 0);
+        activity.vault.addView(securityNote);
+    }
+
+    private View metric(String value, String label) {
+        LinearLayout block = new LinearLayout(activity);
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.addView(ToxiVisualSystem.text(activity, value, 19, 0xFFFFFFFF, true));
+        TextView caption = ToxiVisualSystem.text(activity, label, 8, 0xDFFFFFFF, true);
+        caption.setLetterSpacing(0.12f);
+        caption.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
+        block.addView(caption);
+        return block;
+    }
+
+    private void sectionLabel(String value) {
+        TextView label = ToxiVisualSystem.text(activity, value, 9, ToxiVisualSystem.TEXT_SECONDARY, true);
+        label.setLetterSpacing(0.16f);
+        activity.vault.addView(label, params(4, 0, 4, 10));
+    }
+
+    private LinearLayout.LayoutParams params(int left, int top, int right, int bottom) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(ToxiVisualSystem.dp(left), ToxiVisualSystem.dp(top), ToxiVisualSystem.dp(right), ToxiVisualSystem.dp(bottom));
+        return params;
     }
 
     void showItemMenu(final Vault.Item item) {
