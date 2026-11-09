@@ -246,7 +246,7 @@ public class MainActivity extends ComponentActivity {
         homeScroll.setPadding(0, 0, 0, 0);
         if (homeScrollFooter != null) {
             ViewGroup.LayoutParams footerParams = homeScrollFooter.getLayoutParams();
-            footerParams.height = ToxiVisualSystem.dp(160) + ToxiVisualSystem.BOTTOM_INSET;
+            footerParams.height = ToxiVisualSystem.dp(220) + ToxiVisualSystem.BOTTOM_INSET;
             homeScrollFooter.setLayoutParams(footerParams);
         }
         // Reserve enough scrollable space for the bottom navigation and system gesture area.
