@@ -58,9 +58,9 @@ final class SettingsScreenController {
         LinearLayout settingsTitleBlock = new LinearLayout(activity);
         settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
         settingsTitleBlock.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
-        TextView t = ToxiVisualSystem.text(activity, "Control center", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView t = ToxiVisualSystem.text(activity, "Prism console", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
         settingsTitleBlock.addView(t);
-        TextView settingsEyebrow = ToxiVisualSystem.text(activity, "PERSONALIZE YOUR WORKSPACE", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView settingsEyebrow = ToxiVisualSystem.text(activity, "PRISM / SYSTEM CONFIGURATION", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         settingsEyebrow.setLetterSpacing(0.11f);
         LinearLayout.LayoutParams eyebrowLp = new LinearLayout.LayoutParams(-2, -2);
         eyebrowLp.topMargin = ToxiVisualSystem.dp(4);
@@ -78,10 +78,10 @@ final class SettingsScreenController {
                 if (taps >= 4) ToxiVisualSystem.toast(activity, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = ToxiVisualSystem.text(activity, "Shape the way your files are organized.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        TextView intro = ToxiVisualSystem.text(activity, "Tune the materials, behavior and privacy of your filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
         intro.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
         activity.settings.addView(intro);
-        TextView hint = ToxiVisualSystem.text(activity, "Select a category to reveal its controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
+        TextView hint = ToxiVisualSystem.text(activity, "Each module opens its own live controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
         hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
         activity.settings.addView(hint);
         activity.settings.addView(activity.section("Appearance"));

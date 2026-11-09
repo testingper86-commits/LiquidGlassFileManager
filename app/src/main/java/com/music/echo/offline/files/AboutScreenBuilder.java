@@ -76,12 +76,12 @@ final class AboutScreenBuilder {
         back.setContentDescription("Back");
         back.setOnClickListener(v -> onBack.run());
         header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        TextView title = aboutText("About ToxiFiles", 21, ABOUT_TEXT, true);
+        TextView title = aboutText("Creator / ToxiFiles", 21, ABOUT_TEXT, true);
         header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
         about.addView(header, lpm(-1, -2, 8, 4, 8, 4));
         about.addView(aboutDivider(), lpm(-1, ToxiVisualSystem.dp(1), 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("Profile"), lpm(-1, -2, 18, 12, 18, 10));
+        about.addView(aboutSectionHeading("01  /  CREATOR SIGNAL"), lpm(-1, -2, 18, 12, 18, 10));
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -111,11 +111,11 @@ final class AboutScreenBuilder {
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("About Me"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("02  /  ORIGIN"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutParagraphCard("A 9-to-5 corporate guy with a coding mind and a creative soul. Passionate about technology, programming, and building things."), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutQuoteCard("“Corporate by schedule, coder by mindset.”"), lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("My Journey"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("03  /  TIMELINE"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutJourneyItem("2021", "The Beginning", false), lpm(-1, -2, 16, 0, 16, 5));
         about.addView(aboutJourneyItem("2022", "First Creation", false), lpm(-1, -2, 16, 0, 16, 5));
         about.addView(aboutJourneyItem("2024", "Growing Skills", false), lpm(-1, -2, 16, 0, 16, 5));
@@ -126,7 +126,7 @@ final class AboutScreenBuilder {
                 "JavaScript", "C / C++", "Android", "Software Architecture"
         });
 
-        about.addView(aboutSectionHeading("My Projects"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("04  /  BUILT & IMAGINED"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutProjectRow("ToxiFiles", "Modern Android file management experience.", 0), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutProjectRow("NovaBoard", "Productivity and organization concept.", 1), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutProjectRow("CodeNest", "Mobile coding workspace concept.", 2), lpm(-1, -2, 16, 0, 16, 8));
@@ -142,7 +142,7 @@ final class AboutScreenBuilder {
                 "JavaScript", "C / C++", "Android", "Software Design"
         });
 
-        about.addView(aboutSectionHeading("Connect With Me"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("05  /  CONNECTIONS"), lpm(-1, -2, 18, 14, 18, 8));
         addAboutContactRow(
                 aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"),
                 aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"));
