@@ -8,7 +8,7 @@ import java.io.File;
 /** Coordinates tab transitions, overlay-aware Back handling and the persistent navigation surface. */
 final class MainNavigationController {
     private final MainActivity activity;
-    private MainNavigationBar navigationBar;
+    private PrismNavigationDock navigationBar;
 
     MainNavigationController(MainActivity activity) {
         if (activity == null) throw new IllegalArgumentException("activity must not be null");
@@ -17,7 +17,7 @@ final class MainNavigationController {
 
     void build() {
         if (navigationBar != null) return;
-        navigationBar = new MainNavigationBar(activity, activity.root, this::selectTab);
+        navigationBar = new PrismNavigationDock(activity, activity.root, this::selectTab);
         navigationBar.build();
     }
 
