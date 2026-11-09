@@ -85,16 +85,33 @@ final class AboutScreenBuilder {
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
-        profile.setBackground(aboutSurface(26, true));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
+        profile.setBackground(ToxiVisualSystem.surface(28, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
+        FrameLayout avatarFrame = new FrameLayout(activity);
+        GradientDrawable avatarHalo = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX],
+                        Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT))});
+        avatarHalo.setShape(GradientDrawable.OVAL);
+        avatarHalo.setStroke(ToxiVisualSystem.dp(1), Color.argb(210, 255, 255, 255));
+        avatarFrame.setBackground(avatarHalo);
+        avatarFrame.setElevation(ToxiVisualSystem.dp(9));
+        avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
         ImageView avatar = new ImageView(activity);
         avatar.setImageResource(R.drawable.chandu_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        avatar.setBackground(aboutSurface(18, true));
-        avatar.setClipToOutline(true);
+        avatar.setBackgroundColor(Color.TRANSPARENT);
         avatar.setContentDescription("Chandu profile photo");
-        profile.addView(avatar, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(112), ToxiVisualSystem.dp(200)));
+        avatar.setClipToOutline(true);
+        avatar.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        });
+        FrameLayout.LayoutParams avatarParams = new FrameLayout.LayoutParams(
+                ToxiVisualSystem.dp(124), ToxiVisualSystem.dp(124), Gravity.CENTER);
+        avatarFrame.addView(avatar, avatarParams);
+        profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(136), ToxiVisualSystem.dp(136)));
         TextView name = aboutText("CHANDU", 29, ABOUT_TEXT, true);
         name.setLetterSpacing(0.09f);
         name.setGravity(Gravity.CENTER);

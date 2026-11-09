@@ -77,6 +77,13 @@ final class PrismNavigationDock {
             item.setFocusable(true);
             item.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
+                if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
+                    v.animate().cancel();
+                    v.setScaleX(0.94f);
+                    v.setScaleY(0.94f);
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(190)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(1.25f)).start();
+                }
                 onTabSelected.accept(index);
             });
             ToxiVisualSystem.interactive(item);
