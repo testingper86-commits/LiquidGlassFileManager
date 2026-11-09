@@ -28,7 +28,7 @@ final class ThemeScreenController {
         activity.themeScroll.removeAllViews();
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(112));
+        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(26), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(132));
 
         TextView title = ToxiVisualSystem.text(activity, "Appearance Lab", 28, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setPadding(ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(2));
@@ -65,8 +65,9 @@ final class ThemeScreenController {
             boolean selected = index == ToxiVisualSystem.THEME_INDEX;
             LinearLayout tile = new LinearLayout(activity);
             tile.setGravity(Gravity.CENTER_VERTICAL);
-            tile.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12));
-            tile.setBackground(selected ? ToxiVisualSystem.accentSurface(20) : ToxiVisualSystem.surface(20, true));
+            tile.setPadding(ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(14));
+            tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
+            tile.setElevation(ToxiVisualSystem.dp(selected ? 3 : 1));
 
             FrameLayout swatch = new FrameLayout(activity);
             android.graphics.drawable.GradientDrawable swatchBg = new android.graphics.drawable.GradientDrawable();

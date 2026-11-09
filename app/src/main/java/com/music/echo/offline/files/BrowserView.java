@@ -103,10 +103,11 @@ final class BrowserView extends FrameLayout {
         header.addView(title, tl);
         header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        header.setBackground(ToxiVisualSystem.surface(22, false));
+        header.setBackground(ToxiVisualSystem.surface(24, true));
+        header.setElevation(ToxiVisualSystem.dp(2));
         header.setMinimumHeight(ToxiVisualSystem.dp(60));
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.setMargins(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(8));
+        headerLp.setMargins(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
         col.addView(header, headerLp);
 
         pathTv = ToxiVisualSystem.text(a, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
@@ -115,7 +116,7 @@ final class BrowserView extends FrameLayout {
         pathTv.setBackground(ToxiVisualSystem.surface(16, false));
         pathTv.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9));
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
-        pl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
+        pl.setMargins(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
         col.addView(pathTv, pl);
 
         search = new EditText(a);
