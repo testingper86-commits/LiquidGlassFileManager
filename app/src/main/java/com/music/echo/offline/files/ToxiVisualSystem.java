@@ -89,17 +89,39 @@ final class ToxiVisualSystem {
     static boolean booleanPreference(String key, boolean fallback) { return PREFERENCES != null && PREFERENCES.getBoolean(key, fallback); }
     static void setBooleanPreference(String key, boolean value) { if (PREFERENCES != null) PREFERENCES.edit().putBoolean(key, value).apply(); }
 
-    /** Prism liquid material: tinted depth, a restrained specular edge and theme-aware contrast. */
+    /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
-        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 5 : 13)),
-                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 5 : 13)),
-                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 7 : 18)));
-        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{top, fill, CANVAS});
-        panel.setCornerRadius(dp(radiusDp));
-        panel.setStroke(Math.max(1, dp(0.9f)), EDGE_STROKE);
-        return panel;
+        int tintAlpha = LIGHT_MODE ? 10 : (raised ? 28 : 19);
+        int accentTint = Color.argb(tintAlpha, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int lowerTint = Color.argb(LIGHT_MODE ? 5 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 7 : 17)),
+                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 8 : 20)),
+                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
+        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
+        base.setCornerRadius(dp(radiusDp));
+        base.setStroke(Math.max(1, dp(0.85f)), EDGE_STROKE);
+
+        int crownAlpha = LIGHT_MODE ? 34 : (raised ? 42 : 30);
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(crownAlpha, 255, 255, 255),
+                        Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
+        glass.setCornerRadius(dp(radiusDp));
+        glass.setStroke(Math.max(1, dp(0.55f)), Color.argb(LIGHT_MODE ? 28 : 48, 255, 255, 255));
+        android.graphics.drawable.LayerDrawable layered =
+                new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
+        int inset = Math.max(1, dp(1));
+        layered.setLayerInset(1, inset, inset, inset, inset);
+        return layered;
+    }
+
+    private static int blend(int color, int overlay) {
+        float alpha = Color.alpha(overlay) / 255f;
+        return Color.rgb(
+                Math.round(Color.red(color) * (1f - alpha) + Color.red(overlay) * alpha),
+                Math.round(Color.green(color) * (1f - alpha) + Color.green(overlay) * alpha),
+                Math.round(Color.blue(color) * (1f - alpha) + Color.blue(overlay) * alpha));
     }
 
     static Drawable accentSurface(float radiusDp) {
