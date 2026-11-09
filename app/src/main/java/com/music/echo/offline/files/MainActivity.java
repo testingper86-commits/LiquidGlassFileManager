@@ -100,7 +100,7 @@ public class MainActivity extends ComponentActivity {
     final Handler ui = new Handler(Looper.getMainLooper());
     @Override protected void onCreate(Bundle b) {
         boolean lightPref = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
-        setTheme(R.style.AppTheme);
+        setTheme(lightPref ? R.style.AppTheme_Light : R.style.AppTheme);
         super.onCreate(b);
         navigationController = new MainNavigationController(this);
         crashReports = new CrashReportController(this);
@@ -215,6 +215,7 @@ public class MainActivity extends ComponentActivity {
         root.addView(busyTv, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
         setContentView(root);
+        applySystemBarAppearance();
         dynamicIsland = new DynamicIslandView(this);
         root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -448,8 +449,18 @@ public class MainActivity extends ComponentActivity {
 
     void moveHighlight(int i) { navigationController.moveHighlight(i); }
 
+    void applySystemBarAppearance() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        View decor = getWindow().getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        decor.setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
+    }
+
     void recolor() {
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        applySystemBarAppearance();
         bg.invalidate();
         navigationController.recolor(tab);
         filesView.recolor();
@@ -749,16 +760,16 @@ public class MainActivity extends ComponentActivity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBackground(ToxiVisualSystem.surface(15, false));
-        row.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(11));
-        row.setMinimumHeight(ToxiVisualSystem.dp(sub == null ? 62 : 76));
+        row.setBackground(ToxiVisualSystem.surface(18, false));
+        row.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12));
+        row.setMinimumHeight(ToxiVisualSystem.dp(sub == null ? 64 : 78));
         FrameLayout symbolPlate = new FrameLayout(this);
-        symbolPlate.setBackground(ToxiVisualSystem.surface(11, true));
+        symbolPlate.setBackground(ToxiVisualSystem.surface(13, true));
         ImageView symbol = new ImageView(this);
         symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT));
         symbol.setContentDescription(ToxiIcons.accessibilityLabel(glyph));
         symbolPlate.addView(symbol, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), Gravity.CENTER));
-        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(36), ToxiVisualSystem.dp(36)));
+        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(1), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(1));
@@ -793,8 +804,8 @@ public class MainActivity extends ComponentActivity {
     Switch sw(final String key, boolean def, final Runnable onChange) {
         Switch s = new Switch(this);
         s.setChecked(ToxiVisualSystem.booleanPreference(key, def));
-        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.ACCENT, Color.rgb(200, 205, 215)}));
-        s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)), Color.argb(90, 255, 255, 255)}));
+        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE}));
+        s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)), ToxiVisualSystem.LIGHT_MODE ? Color.argb(180, Color.red(ToxiVisualSystem.EDGE_STROKE), Color.green(ToxiVisualSystem.EDGE_STROKE), Color.blue(ToxiVisualSystem.EDGE_STROKE)) : Color.argb(90, 255, 255, 255)}));
         ToxiMotion.attach(s);
         ToxiMotion.setActive(s, false);
         s.setOnCheckedChangeListener((b, on) -> {

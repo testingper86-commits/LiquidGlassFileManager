@@ -19,12 +19,21 @@ import android.widget.TextView;
 
 /** Builds the About/profile screen without coupling its content to MainActivity. */
 final class AboutScreenBuilder {
-    static final int BACKGROUND = Color.rgb(10, 16, 23);
-    static final int ABOUT_SURFACE = Color.rgb(18, 27, 36);
-    static final int ABOUT_SURFACE_ALT = Color.rgb(15, 23, 32);
-    static final int ABOUT_TEXT = Color.rgb(237, 245, 249);
-    static final int ABOUT_MUTED = Color.rgb(157, 175, 187);
-    static final int ABOUT_CYAN = Color.rgb(0, 229, 255);
+    static int BACKGROUND = ToxiVisualSystem.CANVAS;
+    static int ABOUT_SURFACE = ToxiVisualSystem.SURFACE_COLOR;
+    static int ABOUT_SURFACE_ALT = ToxiVisualSystem.RAISED_SURFACE;
+    static int ABOUT_TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+    static int ABOUT_MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+    static int ABOUT_CYAN = ToxiVisualSystem.ACCENT;
+
+    private static void syncPalette() {
+        BACKGROUND = ToxiVisualSystem.CANVAS;
+        ABOUT_SURFACE = ToxiVisualSystem.SURFACE_COLOR;
+        ABOUT_SURFACE_ALT = ToxiVisualSystem.RAISED_SURFACE;
+        ABOUT_TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+        ABOUT_MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+        ABOUT_CYAN = ToxiVisualSystem.ACCENT;
+    }
 
     private final Activity activity;
     private final LinearLayout about;
@@ -40,6 +49,7 @@ final class AboutScreenBuilder {
     }
 
     static void populate(Activity activity, LinearLayout about, Runnable onBack, String fallbackVersionName) {
+        syncPalette();
         new AboutScreenBuilder(activity, about, onBack, fallbackVersionName).build();
     }
 
@@ -167,30 +177,30 @@ final class AboutScreenBuilder {
     }
 
     android.graphics.drawable.Drawable aboutSurface(int radius, boolean featured) {
-        int top = featured ? Color.rgb(21, 36, 47) : ABOUT_SURFACE;
-        int bottom = featured ? Color.rgb(15, 25, 35) : ABOUT_SURFACE_ALT;
+        int top = featured ? ABOUT_SURFACE_ALT : ABOUT_SURFACE;
+        int bottom = ABOUT_SURFACE;
         android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
         surface.setCornerRadius(ToxiVisualSystem.dp(radius));
         surface.setStroke(ToxiVisualSystem.dp(1), featured
-                ? Color.argb(105, 0, 229, 255)
-                : Color.argb(48, 142, 190, 210));
+                ? Color.argb(125, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN))
+                : ToxiVisualSystem.EDGE_STROKE);
         return surface;
     }
 
     android.graphics.drawable.Drawable aboutAvatarSurface() {
         android.graphics.drawable.GradientDrawable avatar = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.rgb(18, 69, 83), Color.rgb(35, 35, 76)});
+                new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX]});
         avatar.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        avatar.setStroke(ToxiVisualSystem.dp(2), Color.argb(180, 0, 229, 255));
+        avatar.setStroke(ToxiVisualSystem.dp(2), Color.argb(180, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN)));
         return avatar;
     }
 
     View aboutDivider() {
         View divider = new View(activity);
-        divider.setBackgroundColor(Color.argb(48, 140, 190, 208));
+        divider.setBackgroundColor(ToxiVisualSystem.EDGE_STROKE);
         return divider;
     }
 

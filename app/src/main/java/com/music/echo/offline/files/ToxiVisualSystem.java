@@ -31,6 +31,8 @@ final class ToxiVisualSystem {
     static int TEXT_PRIMARY = 0xFFF1F5F8;
     static int TEXT_SECONDARY = ToxiThemeSystem.MUTED[0];
     static int CANVAS = ToxiThemeSystem.CANVAS[0];
+    static int SURFACE_COLOR = ToxiThemeSystem.SURFACES[0];
+    static int RAISED_SURFACE = ToxiThemeSystem.RAISED[0];
     static int BLOOM_PRIMARY = 0x263C4A59, BLOOM_SECONDARY = 0x183C4A59, BLOOM_TERTIARY = 0x0C3C4A59;
     static int TOP_INSET = 0, BOTTOM_INSET = 0;
     static int SURFACE_RED = 20, SURFACE_GREEN = 27, SURFACE_BLUE = 36;
@@ -68,10 +70,19 @@ final class ToxiVisualSystem {
 
     static void applyTheme(int index, boolean save) {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
+        LIGHT_MODE = PREFERENCES != null && PREFERENCES.getBoolean("light", false);
         ACCENT = ToxiThemeSystem.ACCENTS[THEME_INDEX];
-        CANVAS = ToxiThemeSystem.CANVAS[THEME_INDEX];
-        TEXT_SECONDARY = HIGH_CONTRAST ? 0xFFE8EEF5 : ToxiThemeSystem.MUTED[THEME_INDEX];
-        EDGE_STROKE = ToxiThemeSystem.EDGES[THEME_INDEX];
+        CANVAS = LIGHT_MODE ? ToxiThemeSystem.LIGHT_CANVAS[THEME_INDEX] : ToxiThemeSystem.CANVAS[THEME_INDEX];
+        SURFACE_COLOR = LIGHT_MODE ? ToxiThemeSystem.LIGHT_SURFACES[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
+        RAISED_SURFACE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_RAISED[THEME_INDEX] : ToxiThemeSystem.RAISED[THEME_INDEX];
+        TEXT_PRIMARY = LIGHT_MODE ? 0xFF182331 : 0xFFF1F5F8;
+        TEXT_SECONDARY = HIGH_CONTRAST
+                ? (LIGHT_MODE ? 0xFF263548 : 0xFFE8EEF5)
+                : (LIGHT_MODE ? ToxiThemeSystem.LIGHT_MUTED[THEME_INDEX] : ToxiThemeSystem.MUTED[THEME_INDEX]);
+        EDGE_STROKE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_EDGES[THEME_INDEX] : ToxiThemeSystem.EDGES[THEME_INDEX];
+        BLOOM_PRIMARY = Color.argb(LIGHT_MODE ? 20 : 38, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        BLOOM_SECONDARY = Color.argb(LIGHT_MODE ? 12 : 24, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        BLOOM_TERTIARY = Color.argb(LIGHT_MODE ? 7 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         if (save && PREFERENCES != null) PREFERENCES.edit().putInt("theme", THEME_INDEX).apply();
     }
 
@@ -81,7 +92,7 @@ final class ToxiVisualSystem {
 
     /** Matte, precision-cut panel with a theme-owned edge and restrained top reflection. */
     static Drawable surface(float radiusDp, boolean raised) {
-        int fill = raised ? ToxiThemeSystem.RAISED[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
+        int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
         GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.rgb(Math.min(255, Color.red(fill) + 8), Math.min(255, Color.green(fill) + 8), Math.min(255, Color.blue(fill) + 8)), fill});
         panel.setCornerRadius(dp(radiusDp));
@@ -93,7 +104,7 @@ final class ToxiVisualSystem {
         GradientDrawable accent = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
         accent.setCornerRadius(dp(radiusDp));
-        accent.setStroke(Math.max(1, dp(0.8f)), Color.argb(145, 255, 255, 255));
+        accent.setStroke(Math.max(1, dp(0.8f)), LIGHT_MODE ? Color.argb(110, 255, 255, 255) : Color.argb(145, 255, 255, 255));
         return accent;
     }
 

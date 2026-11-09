@@ -86,6 +86,11 @@ final class SettingsScreenController {
         activity.settings.addView(hint);
         activity.settings.addView(activity.section("Appearance"));
         activity.settings.addView(activity.row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> activity.openThemeScreen()), activity.lpm(-1, -2, 16, 0, 16, 8));
+        activity.settings.addView(activity.switchRow(ToxiIcons.PALETTE, "Light appearance", "Use a bright, high-clarity surface palette", "light", false, () -> {
+            ToxiVisualSystem.applyTheme(ToxiVisualSystem.THEME_INDEX, false);
+            activity.setTheme(ToxiVisualSystem.LIGHT_MODE ? R.style.AppTheme_Light : R.style.AppTheme);
+            activity.recolor();
+        }), activity.lpm(-1, -2, 16, 0, 16, 8));
         activity.settings.addView(activity.row(ToxiIcons.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[ToxiVisualSystem.PREFERENCES.getInt("font_family", 0)], null, v -> activity.fontDialog()), activity.lpm(-1, -2, 16, 0, 16, 8));
 
         activity.settings.addView(activity.section("Dynamic Island"));
@@ -167,7 +172,7 @@ final class SettingsScreenController {
             activity.settings.addView(backupHeading);
             activity.settings.addView(activity.row(ToxiIcons.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> activity.exportSettings()), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.row(ToxiIcons.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> activity.importSettingsPick()), activity.lpm(-1, -2, 16, 0, 16, 8));
-            activity.settings.addView(activity.switchRow(ToxiIcons.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", true, null), activity.lpm(-1, -2, 16, 0, 16, 8));
+            activity.settings.addView(activity.switchRow(ToxiIcons.VIBRATE, "Reduce motion", "Disable decorative transition animations", "reduce_motion", false, null), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.switchRow(ToxiIcons.INFO, "Show debug toasts", "Show extra status feedback for developer troubleshooting", "dev_debug_toasts", false, null), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.switchRow(ToxiIcons.REFRESH, "Enable diagnostic logging", "Keep additional troubleshooting events locally", "dev_logging", false, null), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.row(ToxiIcons.ARCHIVE, "Built-in tools", "Inspect the file manager's integrated viewers, players, editor and extractor", null, v -> activity.showBuiltInTools()), activity.lpm(-1, -2, 16, 0, 16, 8));

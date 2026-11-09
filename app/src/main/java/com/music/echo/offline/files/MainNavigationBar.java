@@ -55,8 +55,8 @@ final class MainNavigationBar {
             item.addView(icons[i], new LinearLayout.LayoutParams(NebulaHomeView.dp(activity, 21), NebulaHomeView.dp(activity, 21)));
             labels[i] = new TextView(activity);
             labels[i].setText(tabLabels[i]);
-            labels[i].setTextSize(10);
-            labels[i].setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            labels[i].setTextSize(10.5f);
+            labels[i].setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
             labels[i].setTextColor(NebulaHomeView.MUTED);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
             labelParams.topMargin = NebulaHomeView.dp(activity, 3);
@@ -93,7 +93,7 @@ final class MainNavigationBar {
     void moveHighlight(int index) {
         selectedTab = Math.max(0, Math.min(3, index));
         int itemWidth = highlight.getLayoutParams().width;
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) {
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
             highlight.setTranslationX(selectedTab * itemWidth);
         } else {
             highlight.animate().translationX(selectedTab * itemWidth).setDuration(220).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();

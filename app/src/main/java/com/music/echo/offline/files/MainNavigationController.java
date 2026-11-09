@@ -35,7 +35,7 @@ final class MainNavigationController {
             screen.setTranslationY(0f);
         }
         View selected = screens[index];
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) {
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
             selected.setAlpha(1f);
             selected.setTranslationY(0f);
         } else {

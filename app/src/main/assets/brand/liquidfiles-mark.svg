@@ -1,15 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#152B49"/><stop offset="1" stop-color="#050811"/></linearGradient>
-    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B7FAFF"/><stop offset=".48" stop-color="#3DE7FF"/><stop offset="1" stop-color="#FF4CCB"/></linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="15"/></filter>
-  </defs>
-  <rect width="512" height="512" rx="132" fill="url(#bg)"/>
-  <circle cx="382" cy="128" r="104" fill="#3DE7FF" opacity=".12"/>
-  <path d="M92 184a38 38 0 0 1 38-38h96l48 42h108a38 38 0 0 1 38 38v126a38 38 0 0 1-38 38H130a38 38 0 0 1-38-38z" fill="#0B1728" stroke="#3DE7FF" stroke-width="10"/>
-  <path d="M100 250h312v102a34 34 0 0 1-34 34H134a34 34 0 0 1-34-34z" fill="#172B45" stroke="#83F4FF" stroke-opacity=".75" stroke-width="5"/>
-  <path d="M288 112 174 286h72l-24 126 132-190h-80l38-110z" fill="#3DE7FF" opacity=".55" filter="url(#glow)"/>
-  <path d="m288 112-96 164h70l-18 112 108-158h-72l30-118z" fill="url(#bolt)"/>
-  <path d="m286 158-62 108h47l-10 66 72-105h-48l19-69z" fill="#fff" opacity=".92"/>
-  <path d="M104 438h304" stroke="#FF4CCB" stroke-width="9" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="ToxiFiles">
+<path fill="#0B1420" d="M12 2.5h24c6 0 9.5 3.5 9.5 9.5v24c0 6-3.5 9.5-9.5 9.5H12c-6 0-9.5-3.5-9.5-9.5V12c0-6 3.5-9.5 9.5-9.5Z"/>
+<path fill="#142435" stroke="#43586C" d="M15 8.5h13.5L36 16v22H15Z"/>
+<path d="M28.5 9v7h7M19.5 25.5H23l2.2-4 2.9 8.5 2.4-4.5h2" fill="none" stroke="#9FE7C4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill="#6DD8F0" d="M19.5 33.5h12v1.7h-12z"/>
 </svg>

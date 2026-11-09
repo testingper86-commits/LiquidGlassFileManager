@@ -37,7 +37,7 @@ final class MainOverlayController {
             activity.screens[activity.tab].setVisibility(View.INVISIBLE);
         }
         overlay.setVisibility(View.VISIBLE);
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", true)) {
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
             overlay.setAlpha(1f);
             overlay.setTranslationY(0f);
         } else {

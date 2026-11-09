@@ -27,20 +27,35 @@ import java.io.File;
 
 /** Independent NEBULA OS home and tools presentation. All actions delegate to existing app modules. */
 final class NebulaHomeView {
-    static final int BACKGROUND = Color.rgb(15, 20, 26);
-    static final int PANEL = Color.rgb(25, 33, 42);
-    static final int PANEL_ALT = Color.rgb(30, 40, 50);
-    static final int BORDER = Color.rgb(48, 61, 73);
-    static final int LIME = Color.rgb(201, 243, 106);
-    static final int ICE = Color.rgb(112, 215, 243);
-    static final int VIOLET = Color.rgb(169, 139, 255);
-    static final int TEXT = Color.rgb(242, 246, 249);
-    static final int MUTED = Color.rgb(145, 159, 171);
-    private static final int[] ACCENTS = {LIME, ICE, VIOLET, LIME, ICE, VIOLET, LIME};
+    static int BACKGROUND = ToxiVisualSystem.CANVAS;
+    static int PANEL = ToxiVisualSystem.SURFACE_COLOR;
+    static int PANEL_ALT = ToxiVisualSystem.RAISED_SURFACE;
+    static int BORDER = ToxiVisualSystem.EDGE_STROKE;
+    static int LIME = ToxiVisualSystem.ACCENT;
+    static int ICE = ToxiThemeSystem.ACCENT_ENDS[0];
+    static int VIOLET = ToxiIcons.mix(ToxiVisualSystem.ACCENT, ToxiVisualSystem.TEXT_PRIMARY, 0.28f);
+    static int TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+    static int MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+    private static final int[] ACCENTS = new int[7];
+
+    private static void syncPalette() {
+        BACKGROUND = ToxiVisualSystem.CANVAS;
+        PANEL = ToxiVisualSystem.SURFACE_COLOR;
+        PANEL_ALT = ToxiVisualSystem.RAISED_SURFACE;
+        BORDER = ToxiVisualSystem.EDGE_STROKE;
+        LIME = ToxiVisualSystem.ACCENT;
+        ICE = ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX];
+        VIOLET = ToxiIcons.mix(ToxiVisualSystem.ACCENT, ToxiVisualSystem.TEXT_PRIMARY, 0.28f);
+        TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+        MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+        int[] accents = {LIME, ICE, VIOLET, LIME, ICE, VIOLET, LIME};
+        System.arraycopy(accents, 0, ACCENTS, 0, ACCENTS.length);
+    }
 
     private NebulaHomeView() { }
 
     static void buildHome(MainActivity a, LinearLayout host) {
+        syncPalette();
         host.removeAllViews();
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
@@ -123,6 +138,7 @@ final class NebulaHomeView {
     }
 
     static void buildTools(MainActivity a, LinearLayout host) {
+        syncPalette();
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
@@ -269,7 +285,7 @@ final class NebulaHomeView {
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
-        view.setTypeface(Typeface.create(medium ? "sans-serif-medium" : "sans-serif", Typeface.NORMAL));
+        view.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), medium ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         return view;
     }
@@ -278,11 +294,11 @@ final class NebulaHomeView {
         return text(a, value, 12, color, true);
     }
 
-    static GradientDrawable navigationSurface() { return background(PANEL_ALT, BORDER, 22); }
+    static GradientDrawable navigationSurface() { syncPalette(); return background(PANEL_ALT, BORDER, 22); }
 
-    static GradientDrawable navigationHighlight() { return background(Color.argb(34, 201, 243, 106), Color.argb(88, 201, 243, 106), 16); }
+    static GradientDrawable navigationHighlight() { syncPalette(); return background(Color.argb(34, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), Color.argb(100, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), 16); }
 
-    static Drawable navigationItemSurface() { return new RippleDrawable(ColorStateList.valueOf(Color.argb(28, 255, 255, 255)), null, null); }
+    static Drawable navigationItemSurface() { syncPalette(); return new RippleDrawable(ColorStateList.valueOf(Color.argb(32, Color.red(TEXT), Color.green(TEXT), Color.blue(TEXT))), null, null); }
 
     private static GradientDrawable background(int color, int stroke, int radius) {
         GradientDrawable d = new GradientDrawable();
