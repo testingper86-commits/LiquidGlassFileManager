@@ -172,6 +172,7 @@ final class ToxiVisualSystem {
             mask.setCornerRadius(dp(14));
             view.setForeground(new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask));
         }
+        ToxiPowerTouchEngine.attach(view, THEME_INDEX);
     }
 
     static void clipRound(View view, final float radiusDp) {
