@@ -123,36 +123,56 @@ final class NebulaHomeView {
         String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
         int[] accents = {LIME, ICE, VIOLET, ICE, LIME};
-        for (int index = 0; index < names.length; index++) {
-            LinearLayout item = new LinearLayout(a);
-            item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(dp(a, 14), dp(a, 12), dp(a, 13), dp(a, 12));
-            item.setBackground(ToxiVisualSystem.surface(18, index == 0));
-            Glyph icon = new Glyph(a, glyphs[index], accents[index]);
-            FrameLayout iconWell = new FrameLayout(a);
-            iconWell.setBackground(background(PANEL_ALT, BORDER, 13));
-            iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 25), dp(a, 25), Gravity.CENTER));
-            item.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
-            LinearLayout labels = new LinearLayout(a);
-            labels.setOrientation(LinearLayout.VERTICAL);
-            labels.setPadding(dp(a, 13), 0, dp(a, 8), 0);
-            labels.addView(text(a, names[index], 14, TEXT, true));
-            labels.addView(text(a, details[index], 10, MUTED, false), margins(a, -1, -2, 0, 4, 0, 0));
-            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView arrow = text(a, "↗", 17, accents[index], true);
-            item.addView(arrow);
-            final int target = index;
-            item.setOnClickListener(v -> {
-                ToxiVisualSystem.feedback(v);
-                if (target == 0) a.openCategory(0);
-                else if (target == 1) a.openCategory(1);
-                else if (target == 2) a.openCategory(2);
-                else if (target == 3) a.openCategory(3);
-                else a.openDownloads();
-            });
-            item.setContentDescription(names[index] + ". " + details[index]);
-            ToxiVisualSystem.interactive(item);
-            host.addView(item, margins(a, -1, -2, 0, 0, 0, 8));
+        for (int row = 0; row < 3; row++) {
+            LinearLayout gridRow = new LinearLayout(a);
+            gridRow.setOrientation(LinearLayout.HORIZONTAL);
+            for (int col = 0; col < 2; col++) {
+                final int index = row * 2 + col;
+                if (index >= names.length) {
+                    gridRow.addView(new View(a), new LinearLayout.LayoutParams(0, dp(a, 126), 1f));
+                    continue;
+                }
+                LinearLayout item = new LinearLayout(a);
+                item.setOrientation(LinearLayout.VERTICAL);
+                item.setGravity(Gravity.CENTER_VERTICAL);
+                item.setPadding(dp(a, 15), dp(a, 14), dp(a, 13), dp(a, 13));
+                item.setBackground(ToxiVisualSystem.surface(20, index == 0));
+                LinearLayout iconLine = new LinearLayout(a);
+                iconLine.setGravity(Gravity.CENTER_VERTICAL);
+                FrameLayout iconWell = new FrameLayout(a);
+                iconWell.setBackground(background(PANEL_ALT, BORDER, 14));
+                Glyph icon = new Glyph(a, glyphs[index], accents[index]);
+                iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 27), dp(a, 27), Gravity.CENTER));
+                iconLine.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
+                TextView arrow = text(a, "↗", 17, accents[index], true);
+                LinearLayout.LayoutParams arrowLp = new LinearLayout.LayoutParams(-2, -2);
+                arrowLp.gravity = Gravity.CENTER_VERTICAL;
+                arrowLp.leftMargin = dp(a, 7);
+                iconLine.addView(arrow, arrowLp);
+                item.addView(iconLine, new LinearLayout.LayoutParams(-1, -2));
+                item.addView(text(a, names[index], 14, TEXT, true), margins(a, -1, -2, 0, 13, 0, 0));
+                TextView detail = text(a, details[index], 10, MUTED, false);
+                detail.setMaxLines(2);
+                item.addView(detail, margins(a, -1, -2, 0, 5, 0, 0));
+                item.setContentDescription(names[index] + ". " + details[index]);
+                item.setFocusable(true);
+                item.setOnClickListener(v -> {
+                    ToxiVisualSystem.feedback(v);
+                    if (index == 0) a.openCategory(0);
+                    else if (index == 1) a.openCategory(1);
+                    else if (index == 2) a.openCategory(2);
+                    else if (index == 3) a.openCategory(3);
+                    else a.openDownloads();
+                });
+                ToxiVisualSystem.interactive(item);
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, dp(a, 126), 1f);
+                if (col == 0) cardLp.rightMargin = dp(a, 6);
+                else cardLp.leftMargin = dp(a, 6);
+                gridRow.addView(item, cardLp);
+            }
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 126));
+            rowLp.bottomMargin = dp(a, 11);
+            host.addView(gridRow, rowLp);
         }
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
