@@ -189,9 +189,13 @@ final class NebulaHomeView {
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setGravity(Gravity.CENTER_HORIZONTAL);
                 card.setPadding(dp(a, 8), dp(a, 15), dp(a, 8), dp(a, 11));
-                card.setBackground(background(PANEL, BORDER, 16));
+                card.setBackground(toolCardSurface(ACCENTS[index]));
+                card.setElevation(dp(a, 2));
+                FrameLayout iconWell = new FrameLayout(a);
+                iconWell.setBackground(background(Color.argb(28, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), Color.argb(90, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), 14));
                 Glyph icon = new Glyph(a, glyphs[index], ACCENTS[index]);
-                card.addView(icon, new LinearLayout.LayoutParams(dp(a, 32), dp(a, 32)));
+                iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 29), dp(a, 29), Gravity.CENTER));
+                card.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 48), dp(a, 48)));
                 TextView name = text(a, names[index], 12, TEXT, true);
                 name.setGravity(Gravity.CENTER);
                 name.setMaxLines(2);
@@ -292,6 +296,23 @@ final class NebulaHomeView {
         right.setLetterSpacing(0.1f);
         row.addView(right);
         host.addView(row, margins(a, -1, -2, 0, 0, 0, 11));
+    }
+
+    private static GradientDrawable toolCardSurface(int accent) {
+        GradientDrawable surface = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        ToxiIcons.mix(PANEL, accent, 0.075f),
+                        PANEL,
+                        ToxiIcons.mix(PANEL, Color.BLACK, 0.035f)
+                });
+        surface.setCornerRadius(dpRadius(18));
+        surface.setStroke(Math.max(1, dpRadius(1)), BORDER);
+        return surface;
+    }
+
+    private static int dpRadius(int value) {
+        return Math.max(1, Math.round(value * Resources.getSystem().getDisplayMetrics().density));
     }
 
     private static LinearLayout panel(MainActivity a, int radius) {
