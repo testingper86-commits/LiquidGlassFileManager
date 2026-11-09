@@ -76,9 +76,8 @@ final class ToxiVisualSystem {
         SURFACE_COLOR = LIGHT_MODE ? ToxiThemeSystem.LIGHT_SURFACES[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
         RAISED_SURFACE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_RAISED[THEME_INDEX] : ToxiThemeSystem.RAISED[THEME_INDEX];
         TEXT_PRIMARY = LIGHT_MODE ? 0xFF182331 : 0xFFF1F5F8;
-        TEXT_SECONDARY = HIGH_CONTRAST
-                ? (LIGHT_MODE ? 0xFF263548 : 0xFFE8EEF5)
-                : (LIGHT_MODE ? ToxiThemeSystem.LIGHT_MUTED[THEME_INDEX] : ToxiThemeSystem.MUTED[THEME_INDEX]);
+        TEXT_SECONDARY = HIGH_CONTRAST ? 0xFFE8EEF5 : ToxiThemeSystem.MUTED[THEME_INDEX];
+        if (LIGHT_MODE) TEXT_SECONDARY = HIGH_CONTRAST ? 0xFF263548 : ToxiThemeSystem.LIGHT_MUTED[THEME_INDEX];
         EDGE_STROKE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_EDGES[THEME_INDEX] : ToxiThemeSystem.EDGES[THEME_INDEX];
         BLOOM_PRIMARY = Color.argb(LIGHT_MODE ? 20 : 38, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         BLOOM_SECONDARY = Color.argb(LIGHT_MODE ? 12 : 24, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));

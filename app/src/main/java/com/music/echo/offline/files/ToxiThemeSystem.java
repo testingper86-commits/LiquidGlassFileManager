@@ -2,7 +2,7 @@ package com.music.echo.offline.files;
 
 /** Eight original, independent ToxiFiles visual identities. */
 final class ToxiThemeSystem {
-    static final String[] NAMES = {"Obsidian Signal", "Mint Circuit", "Solar Ember", "Violet Arc", "Verdant Grid", "Arctic Pulse", "Nocturne Bloom", "Spectral Signal"};
+    static final String[] NAMES = {"Obsidian Alloy", "Mint Circuit", "Solar Ember", "Violet Arc", "Verdant Grid", "Arctic Pulse", "Nocturne Bloom", "Spectral Signal"};
     static final String[] DESCRIPTIONS = {
         "Midnight graphite · mineral mint · precision depth",
         "Deep evergreen · mineral mint · quiet clarity",
