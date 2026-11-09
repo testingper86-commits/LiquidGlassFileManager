@@ -46,6 +46,9 @@ final class MainNavigationController {
         }
         if (index == 0) {
             activity.buildHome();
+            // Rebuilt home content must always start at its top edge; otherwise
+            // the storage panel/header can reopen partially clipped after tab changes.
+            activity.homeScroll.post(() -> activity.homeScroll.scrollTo(0, 0));
         } else if (index == 1) {
             if (activity.filesView.cur == null) {
                 String configured = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
