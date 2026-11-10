@@ -14,7 +14,7 @@ public class ToxiToolCoreTest {
     @Test public void hashesUseStrongDigestsAndExposeCrc32Separately() throws Exception {
         Map<String,String> h=ToxiToolCore.hashes(new ByteArrayInputStream("abc".getBytes(StandardCharsets.US_ASCII)));
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",h.get("SHA-256"));
-        assertEquals(128,h.get("SHA-512").length());
+        assertEquals("ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",h.get("SHA-512"));
         assertEquals("352441c2",h.get("CRC32"));
         assertFalse(h.containsKey("MD5"));
         assertFalse(h.containsKey("MD5 (legacy)"));

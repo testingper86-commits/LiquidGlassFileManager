@@ -112,6 +112,8 @@ public class ViewerActivity extends ComponentActivity {
     Runnable lyricTicker;
 
     @Override protected void onCreate(Bundle b) {
+        boolean lightAppearance = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
+        setTheme(lightAppearance ? R.style.AppTheme_Light : R.style.AppTheme);
         super.onCreate(b);
         ToxiBackNavigation.bind(this, this::handleBackNavigation);
         ToxiVisualSystem.initialize(this);
@@ -131,6 +133,7 @@ public class ViewerActivity extends ComponentActivity {
         bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(ToxiVisualSystem.surface(26, true));
+        ToxiVisualSystem.revealChildren(bar);
         bar.setPadding(ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(4), 0);
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(v -> finish());
@@ -163,6 +166,12 @@ public class ViewerActivity extends ComponentActivity {
         nextBtn = edge(ToxiIcons.NEXT, Gravity.END | Gravity.CENTER_VERTICAL, 1);
 
         setContentView(root);
+        if (Build.VERSION.SDK_INT >= 23) {
+            int flags = getWindow().getDecorView().getSystemUiVisibility();
+            int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
+        }
         dynamicIsland = new DynamicIslandView(this);
         root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -1458,7 +1467,7 @@ public class ViewerActivity extends ComponentActivity {
     void showText(final File f) {
         final ScrollView sv = new ScrollView(this);
         final TextView t = new TextView(this);
-        t.setTextColor(0xFFE6EAF5);
+        t.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
         t.setTextSize(13);
         t.setTypeface(Typeface.MONOSPACE);
         t.setTextIsSelectable(true);
@@ -1714,7 +1723,7 @@ public class ViewerActivity extends ComponentActivity {
             float y = bottom - level * (bottom - top);
             paint.setColor(ToxiVisualSystem.ACCENT); canvas.drawLine(cx, y, cx, bottom, paint);
             paint.setColor(Color.WHITE); canvas.drawCircle(cx, y, ToxiVisualSystem.dp(7), paint);
-            paint.setColor(0xFF18202D); canvas.drawCircle(cx, y, ToxiVisualSystem.dp(3), paint);
+            paint.setColor(ToxiVisualSystem.CANVAS); canvas.drawCircle(cx, y, ToxiVisualSystem.dp(3), paint);
         }
         @Override public boolean onTouchEvent(MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE || event.getAction() == MotionEvent.ACTION_UP) {

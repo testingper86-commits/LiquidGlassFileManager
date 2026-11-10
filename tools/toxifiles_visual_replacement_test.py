@@ -54,8 +54,12 @@ for filename, tokens in checks.items():
 
 theme = (JAVA / "ToxiThemeSystem.java").read_text(encoding="utf-8")
 match = re.search(r'static final String\[\] NAMES = \{(.*?)\};', theme, re.S)
-if not match or len(re.findall(r'"[^"]+"', match.group(1))) != 8:
-    raise SystemExit("The new visual system must define exactly eight themes")
+if not match or len(re.findall(r'"[^"]+"', match.group(1))) != 10:
+    raise SystemExit("The new visual system must define exactly ten themes")
+touch_engine = JAVA / "ToxiPowerTouchEngine.java"
+if not touch_engine.is_file() or "ToxiPowerTouchEngine.attach(view, THEME_INDEX)" not in (JAVA / "ToxiVisualSystem.java").read_text(encoding="utf-8"):
+    raise SystemExit("Theme-aware touch engine is not integrated into shared interactive controls")
+
 for token in ["ACCENTS", "ACCENT_ENDS", "CANVAS", "SURFACES", "RAISED", "EDGES", "MUTED", "SOFT_ACCENTS"]:
     if token not in theme:
         raise SystemExit(f"Missing independent theme token group: {token}")

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.*;
 
 public class FileOperationEngineTest {
@@ -58,6 +59,29 @@ public class FileOperationEngineTest {
         File[] leftovers=root.listFiles((dir,name)->name.startsWith(".toxifiles-copy-"));assertNotNull(leftovers);assertEquals(0,leftovers.length);
     }
 
+    @Test public void copyBoundsDeepDirectoryTraversalAndCleansStagingTree() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-copy-depth-").toFile();
+        File source = new File(root, "source");
+        assertTrue(source.mkdir());
+        java.nio.file.Path nested = source.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1, 2, 3});
+        File target = new File(root, "target");
+        try {
+            FileOperationEngine.copy(source, target);
+            fail("Copy accepted a directory tree beyond the supported depth");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("nesting"));
+        }
+        assertFalse(target.exists());
+        File[] leftovers = root.listFiles((dir, name) -> name.startsWith(".toxifiles-copy-"));
+        assertNotNull(leftovers);
+        assertEquals(0, leftovers.length);
+    }
+
     @Test public void refusesSymlinkSourcesAndDoesNotFollowLinksDuringCopy() throws Exception {
         File root=Files.createTempDirectory("toxifiles-copy-link-").toFile(),target=new File(root,"target.txt"),outside=Files.createTempFile("toxifiles-outside-",".txt").toFile();
         Files.write(outside.toPath(),new byte[]{7,8,9});File link=new File(root,"link.txt");Files.createSymbolicLink(link.toPath(),outside.toPath());
@@ -76,11 +100,57 @@ public class FileOperationEngineTest {
         File root=Files.createTempDirectory("toxifiles-size-").toFile(),nested=new File(root,"nested");assertTrue(nested.mkdir());
         File data=new File(nested,"data.bin");Files.write(data.toPath(),new byte[]{1,2,3,4,5});File outside=Files.createTempFile("toxifiles-size-outside-",".bin").toFile();
         Files.write(outside.toPath(),new byte[]{1,2,3,4,5,6,7});Files.createSymbolicLink(new File(root,"link.bin").toPath(),outside.toPath());
-        long[] totals=new long[2];FileOperationEngine.treeSize(root,totals);assertEquals(5L,totals[0]);assertEquals(1L,totals[1]);
+        long[] totals=new long[2];assertTrue(FileOperationEngine.treeSize(root,totals));assertEquals(5L,totals[0]);assertEquals(1L,totals[1]);
+    }
+
+    @Test public void treeSizeBoundsDeepDirectoryTraversalWithoutRecursion() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-size-depth-").toFile();
+        java.nio.file.Path nested = root.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1, 2, 3});
+        long[] totals = new long[2];
+        assertFalse(FileOperationEngine.treeSize(root, totals));
+        assertEquals(0L, totals[0]);
+        assertEquals(0L, totals[1]);
+    }
+
+    @Test public void treeSizeStopsWhenItsCallerNoLongerNeedsTheResult() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-size-cancel-").toFile();
+        for (int i = 0; i < 100; i++) Files.write(new File(root, "file-" + i + ".bin").toPath(), new byte[]{1, 2, 3});
+        long[] totals = new long[2];
+        AtomicInteger checks = new AtomicInteger();
+        assertFalse(FileOperationEngine.treeSize(root, totals, () -> checks.incrementAndGet() > 12));
+        assertTrue("Cancelled traversal must stop before measuring every file", totals[1] < 100L);
+    }
+
+    @Test public void deleteTreeHandlesDeepDirectoryTraversalWithoutRecursion() throws Exception {
+        File root = Files.createTempDirectory("toxifiles-delete-depth-").toFile();
+        java.nio.file.Path nested = root.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1});
+        assertTrue(FileOperationEngine.deleteTree(root));
+        assertFalse("Deep directory tree should be fully removed", root.exists());
     }
 
     @Test public void deleteTreeRemovesNestedRegularFiles() throws Exception {
         File root=Files.createTempDirectory("toxifiles-delete-tree-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
         Files.write(new File(nested,"file.bin").toPath(),new byte[]{1});assertTrue(FileOperationEngine.deleteTree(root));assertFalse(root.exists());
+    }
+
+    @Test public void cancelledRecursiveDeleteStopsBeforeRemovingTheTree() throws Exception {
+        File root=Files.createTempDirectory("toxifiles-delete-cancel-").toFile(),nested=new File(root,"a/b");assertTrue(nested.mkdirs());
+        File data=new File(nested,"file.bin");Files.write(data.toPath(),new byte[]{1,2,3});
+        OperationCancellation cancellation=new OperationCancellation();OperationCancellation.Token token=cancellation.begin();
+        try {
+            cancellation.cancelActive();
+            assertFalse(FileOperationEngine.deleteTree(root));
+            assertTrue(root.isDirectory());assertTrue(data.isFile());
+        } finally { cancellation.finish(token); }
     }
 }

@@ -28,6 +28,26 @@ public class ArchiveOperationsTest {
         }
     }
 
+    @Test public void createZipBoundsDeepDirectoryTraversalAndCleansPartialArchive() throws Exception {
+        File source = temporary.newFolder("deep-source");
+        java.nio.file.Path nested = source.toPath();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 8; i++) {
+            nested = nested.resolve("d");
+            Files.createDirectory(nested);
+        }
+        Files.write(nested.resolve("deep.bin"), new byte[]{1});
+        File archives = temporary.newFolder("deep-archives");
+        try {
+            ArchiveOperations.createZip(Arrays.asList(source), archives);
+            fail("ZIP creation accepted a directory tree beyond the supported depth");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("nesting"));
+        }
+        File[] leftovers = archives.listFiles();
+        assertNotNull(leftovers);
+        assertEquals(0, leftovers.length);
+    }
+
     @Test public void skipsSymbolicLinksWhenCreatingZip() throws Exception {
         File source=temporary.newFolder("source"),outside=temporary.newFile("outside.txt");Files.write(outside.toPath(),new byte[]{1,2,3});
         Files.createSymbolicLink(new File(source,"link.txt").toPath(),outside.toPath());
@@ -54,6 +74,26 @@ public class ArchiveOperationsTest {
         try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(archive.toPath()))){zip.putNextEntry(new ZipEntry("../escaped.txt"));zip.write(1);zip.closeEntry();}
         try{ArchiveOperations.extractZip(archive,parent,null);fail("Zip-slip entry was accepted");}catch(IOException expected){assertEquals("Unsafe archive entry path rejected",expected.getMessage());}
         assertFalse(new File(parent.getParentFile(),"escaped.txt").exists());assertFalse(new File(parent,"malicious").exists());
+    }
+
+    @Test public void rejectsOverlyDeepEntryPathsAndCleansExtractionDirectory() throws Exception {
+        File parent = temporary.newFolder("deep-entry-zip");
+        File archive = new File(parent, "deep.zip");
+        StringBuilder path = new StringBuilder();
+        for (int i = 0; i < TreeTraversalBudget.DEFAULT_MAX_DEPTH + 1; i++) path.append("d/");
+        path.append("payload.bin");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive.toPath()))) {
+            zip.putNextEntry(new ZipEntry(path.toString()));
+            zip.write(1);
+            zip.closeEntry();
+        }
+        try {
+            ArchiveOperations.extractZip(archive, parent, null);
+            fail("Extraction accepted an entry path beyond the supported nesting depth");
+        } catch (IOException expected) {
+            assertTrue(expected.getMessage().contains("nesting"));
+        }
+        assertFalse(new File(parent, "deep").exists());
     }
 
     @Test public void rejectsDuplicateNormalizedPaths() throws Exception {

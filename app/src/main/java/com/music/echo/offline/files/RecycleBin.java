@@ -8,6 +8,8 @@ import android.util.Base64;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Soft-delete store. Deleted items are moved (not erased) into an app-private folder
@@ -18,6 +20,8 @@ import java.util.List;
  * separate database — the filesystem itself is the index.
  */
 final class RecycleBin {
+    private static final Set<String> EXPIRY_CLEANUP_PENDING = ConcurrentHashMap.newKeySet();
+
     /** Days before auto-purge; user-configurable in Settings (default 30). */
     static long maxAgeMs() { return ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) * 24L * 60 * 60 * 1000; }
 
@@ -48,7 +52,7 @@ final class RecycleBin {
     /** Moves each file/folder into the bin. Falls back to copy+delete if renameTo fails (e.g. cross-volume). */
     static void moveToBin(final MainActivity a, final List<File> src, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             int ok = 0, fail = 0;
@@ -58,7 +62,7 @@ final class RecycleBin {
                 idx++;
                 final int fi = idx, ft = total;
                 final String nm = s.getName();
-                a.runOnUiThread(() -> a.progress("Moving to Recycle Bin " + fi + " of " + ft + ": " + nm));
+                a.runUiIfAlive(() -> a.progress("Moving to Recycle Bin " + fi + " of " + ft + ": " + nm));
                 try {
                     File parent = s.getParentFile();
                     if (parent == null) { fail++; continue; }
@@ -86,18 +90,49 @@ final class RecycleBin {
             final String msg = ffail == 0
                     ? "Moved " + fok + " item" + (fok == 1 ? "" : "s") + " to Recycle Bin"
                     : "Moved " + fok + ", failed " + ffail;
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
     }
 
+    static int count(Context c) {
+        File[] wraps = root(c).listFiles();
+        if (wraps == null) return 0;
+        long now = System.currentTimeMillis();
+        long retention = maxAgeMs();
+        int count = 0;
+        List<File> expired = new ArrayList<>();
+        for (File wrapper : wraps) {
+            if (!wrapper.isDirectory()) continue;
+            String name = wrapper.getName();
+            int separator = name.lastIndexOf('~');
+            long deletedAt = 0;
+            if (separator > 0) {
+                String suffix = name.substring(separator + 1);
+                try { deletedAt = Long.parseLong(suffix); }
+                catch (NumberFormatException legacyOrUuid) { deletedAt = wrapper.lastModified(); }
+            }
+            if (deletedAt > 0 && now - deletedAt > retention) {
+                String path = wrapper.getAbsolutePath();
+                if (EXPIRY_CLEANUP_PENDING.add(path)) expired.add(wrapper);
+            } else {
+                File[] children = wrapper.listFiles();
+                if (children != null && children.length == 1) count++;
+            }
+        }
+        scheduleExpiryCleanup(expired);
+        return count;
+    }
+
     /** Lists current bin contents, newest-deleted first. Silently purges anything past MAX_AGE_MS. */
     static List<Item> list(Context c) {
         List<Item> out = new ArrayList<>();
+        List<File> expired = new ArrayList<>();
         File[] wraps = root(c).listFiles();
         if (wraps == null) return out;
         long now = System.currentTimeMillis();
+        long retention = maxAgeMs();
         for (File w : wraps) {
             if (!w.isDirectory()) continue;
             String nm = w.getName();
@@ -111,19 +146,39 @@ final class RecycleBin {
                     try { deletedAt = Long.parseLong(suffix); } catch (NumberFormatException legacyOrUuid) { deletedAt = w.lastModified(); }
                 }
             } catch (Exception ignored) { }
-            if (deletedAt > 0 && now - deletedAt > maxAgeMs()) { FileOps.deleteTree(w); continue; }
+            if (deletedAt > 0 && now - deletedAt > retention) {
+                String path = w.getAbsolutePath();
+                if (EXPIRY_CLEANUP_PENDING.add(path)) expired.add(w);
+                continue;
+            }
             File[] kids = w.listFiles();
             if (kids == null) continue;
             if (kids.length != 1) continue; // Preserve malformed wrappers instead of discarding unrecognized payloads.
             out.add(new Item(kids[0], w, new File(origPath), deletedAt));
         }
+        scheduleExpiryCleanup(expired);
         out.sort((x, y) -> Long.compare(y.deletedAt, x.deletedAt));
         return out;
     }
 
+    private static void scheduleExpiryCleanup(List<File> expired) {
+        if (expired.isEmpty()) return;
+        try {
+            TaskCoordinator.execute(TaskCoordinator.Lane.IO, () -> {
+                try {
+                    for (File wrapper : expired) FileOps.deleteTree(wrapper);
+                } finally {
+                    for (File wrapper : expired) EXPIRY_CLEANUP_PENDING.remove(wrapper.getAbsolutePath());
+                }
+            });
+        } catch (RuntimeException rejected) {
+            for (File wrapper : expired) EXPIRY_CLEANUP_PENDING.remove(wrapper.getAbsolutePath());
+        }
+    }
+
     static void restore(final MainActivity a, final Item it, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             String msg;
@@ -145,7 +200,7 @@ final class RecycleBin {
                 msg = fellBack ? "Restored to Downloads (original folder is gone)" : "Restored " + target.getName();
             } catch (Exception ex) { msg = "Restore failed: " + ex.getMessage(); }
             final String m = msg;
-            a.runOnUiThread(() -> { a.busy(false); d.run(m); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(m); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -153,13 +208,13 @@ final class RecycleBin {
 
     static void permanentDelete(final MainActivity a, final List<Item> items, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             int ok = 0;
             for (Item it : items) { if (OperationCancellation.isCancelled()) break; if (FileOps.deleteTree(it.wrapper)) ok++; }
             final int fok = ok;
-            a.runOnUiThread(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run("Permanently deleted " + fok + " item" + (fok == 1 ? "" : "s")); });
         
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -167,7 +222,7 @@ final class RecycleBin {
 
     static void empty(final MainActivity a, final FileOps.Done d) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
             File[] ws = root(a).listFiles();
@@ -181,7 +236,7 @@ final class RecycleBin {
             final boolean fcancelled = cancelled;
             final String msg = "Recycle Bin: removed " + fdeleted + " item" + (fdeleted == 1 ? "" : "s")
                     + (ffailed > 0 ? "; failed " + ffailed : "") + (fcancelled ? "; cancelled" : "");
-            a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+            a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
         
             } finally { a.cancellation.finish(operationToken); }
         });

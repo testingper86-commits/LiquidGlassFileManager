@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.Handler;
@@ -91,7 +92,7 @@ public final class DeveloperStudioActivity extends ComponentActivity {
     private File databaseCopy;
     private volatile CancellationSignal activeSqlSignal;
 
-    @Override public void onCreate(Bundle state){super.onCreate(state);ToxiBackNavigation.bind(this, this::handleBackNavigation);ToxiVisualSystem.initialize(this);getWindow().setStatusBarColor(ToxiVisualSystem.CANVAS);getWindow().setNavigationBarColor(ToxiVisualSystem.CANVAS);if(!developerUnlocked()){finish();return;}showHome();}
+    @Override public void onCreate(Bundle state){boolean lightAppearance=getSharedPreferences("lg_settings",MODE_PRIVATE).getBoolean("light",false);setTheme(lightAppearance?com.music.echo.offline.R.style.AppTheme_Light:com.music.echo.offline.R.style.AppTheme);super.onCreate(state);ToxiBackNavigation.bind(this, this::handleBackNavigation);ToxiVisualSystem.initialize(this);getWindow().setStatusBarColor(ToxiVisualSystem.CANVAS);getWindow().setNavigationBarColor(ToxiVisualSystem.CANVAS);if(Build.VERSION.SDK_INT>=23){int flags=getWindow().getDecorView().getSystemUiVisibility();int lightFlags=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;if(Build.VERSION.SDK_INT>=26)lightFlags|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE?(flags|lightFlags):(flags&~lightFlags));}if(!developerUnlocked()){finish();return;}showHome();}
     @Override protected void onResume(){super.onResume();if(!developerUnlocked())finish();}
     private boolean developerUnlocked(){return ToxiVisualSystem.PREFERENCES.getBoolean("developer_options_unlocked",false);}
     @Override protected void onDestroy(){cancelWork();if(database!=null)database.close();if(databaseCopy!=null)databaseCopy.delete();taskScope.close(true);super.onDestroy();}

@@ -71,24 +71,41 @@ final class ToxiUriPermissions {
         return context.getContentResolver().query(uri, projection, null, null, null);
     }
 
-    static void takeGranted(ContentResolver resolver, Uri uri, int grantedFlags) {
+    /** Persist only the read/write modes the provider actually granted, then report what stuck. */
+    static int takeGranted(ContentResolver resolver, Uri uri, int grantedFlags) {
         if (resolver == null || uri == null || !ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())
                 || uri.getAuthority() == null || uri.getAuthority().isEmpty()) {
-            return;
+            return 0;
         }
-        if ((grantedFlags & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+        int requested = grantedFlags & (Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        if ((requested & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
             try {
                 resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
             } catch (SecurityException ignored) {
                 // Some document providers grant transient access only.
             }
         }
-        if ((grantedFlags & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
+        if ((requested & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0) {
             try {
                 resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             } catch (SecurityException ignored) {
                 // Read and write persistence are independent provider capabilities.
             }
         }
+        return persistedFlags(resolver, uri);
+    }
+
+    /** Returns only permission modes that Android confirms are currently persisted for this URI. */
+    static int persistedFlags(ContentResolver resolver, Uri uri) {
+        if (resolver == null || uri == null) return 0;
+        int flags = 0;
+        for (android.content.UriPermission permission : resolver.getPersistedUriPermissions()) {
+            if (!uri.equals(permission.getUri())) continue;
+            if (permission.isReadPermission()) flags |= Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            if (permission.isWritePermission()) flags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+            break;
+        }
+        return flags;
     }
 }
