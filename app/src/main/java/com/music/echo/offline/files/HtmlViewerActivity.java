@@ -75,6 +75,7 @@ public final class HtmlViewerActivity extends ComponentActivity {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(ToxiVisualSystem.surface(24, true));
+        ToxiVisualSystem.revealChildren(bar);
         bar.setPadding(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(12), 0);
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back to file manager");

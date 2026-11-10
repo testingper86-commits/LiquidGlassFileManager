@@ -32,12 +32,30 @@ final class FileOps {
 
     static boolean deleteTree(File file) { return FileOperationEngine.deleteTree(file); }
 
-    static void treeSize(File file, long[] totals) { FileOperationEngine.treeSize(file, totals); }
+    static boolean treeSize(File file, long[] totals) { return FileOperationEngine.treeSize(file, totals); }
 
+    static boolean treeSize(File file, long[] totals, java.util.function.BooleanSupplier cancelled) { return FileOperationEngine.treeSize(file, totals, cancelled); }
+
+
+    private static void execute(MainActivity a, Done done, String failureMessage, Runnable operation) {
+        a.busy(true);
+        try {
+            a.ops.execute(() -> {
+                try {
+                    operation.run();
+                } catch (RuntimeException failure) {
+                    String detail = failure.getMessage();
+                    String message = failureMessage + (detail == null || detail.trim().isEmpty() ? "" : ": " + detail);
+                    a.runUiIfAlive(() -> { a.busy(false); done.run(message); });
+                }
+            });
+        } catch (RuntimeException rejected) {
+            a.runUiIfAlive(() -> { a.busy(false); done.run(failureMessage + ": operation could not be queued"); });
+        }
+    }
 
     static void paste(final MainActivity a, final File[] src, final File dst, final boolean move, final boolean skipExisting, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, move ? "Move failed" : "Copy failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 int ok = 0, fail = 0, skipped = 0;
@@ -48,7 +66,7 @@ final class FileOps {
                     idx++;
                     final int fi = idx, ft = total;
                     final String nm = s.getName();
-                    a.runOnUiThread(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
+                    a.runUiIfAlive(() -> a.progress((move ? "Moving " : "Copying ") + fi + " of " + ft + ": " + nm));
                     try {
                         if (move && dst.equals(s.getParentFile())) { ok++; continue; }
                         if (skipExisting && new File(dst, s.getName()).exists()) { skipped++; continue; }
@@ -69,15 +87,14 @@ final class FileOps {
                 }
                 final String msg = fail == 0 ? (move ? "Moved " : "Copied ") + ok + " item" + (ok == 1 ? "" : "s")
                         + (skipped > 0 ? "; skipped " + skipped + " existing item" + (skipped == 1 ? "" : "s") : "") : err;
-                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
 
             } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void delete(final MainActivity a, final List<File> fs, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "Delete failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 int ok = 0, failed = 0, total = fs.size(), idx = 0;
@@ -87,27 +104,28 @@ final class FileOps {
                     idx++;
                     final int fi = idx, ft = total;
                     final String nm = f.getName();
-                    a.runOnUiThread(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
-                    if (deleteTree(f)) ok++; else failed++;
+                    a.runUiIfAlive(() -> a.progress("Deleting " + fi + " of " + ft + ": " + nm));
+                    if (deleteTree(f)) ok++;
+                    else if (OperationCancellation.isCancelled()) { cancelled = true; break; }
+                    else failed++;
                 }
                 final String msg = "Deleted " + ok + " item" + (ok == 1 ? "" : "s")
                         + (failed > 0 ? "; failed " + failed : "") + (cancelled ? "; cancelled" : "");
-                a.runOnUiThread(() -> { a.busy(false); d.run(msg); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(msg); });
 
             } finally { a.cancellation.finish(operationToken); }
         });
     }
 
     static void zip(final MainActivity a, final List<File> fs, final File destDir, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "ZIP creation failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 String message;
                 try { File output = ArchiveOperations.createZip(fs, destDir); message = "Created " + output.getName(); }
                 catch (Exception failure) { message = "Zip failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()); }
                 final String result = message;
-                a.runOnUiThread(() -> { a.busy(false); d.run(result); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(result); });
             } finally { a.cancellation.finish(operationToken); }
         });
     }
@@ -120,17 +138,16 @@ final class FileOps {
     }
 
     static void unzip(final MainActivity a, final File zip, final Done d) {
-        a.busy(true);
-        a.ops.execute(() -> {
+        execute(a, d, "ZIP extraction failed", () -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                 String message;
                 try {
-                    File destination = ArchiveOperations.extractZip(zip, zip.getParentFile(), progress -> a.runOnUiThread(() -> a.progress(progress)));
+                    File destination = ArchiveOperations.extractZip(zip, zip.getParentFile(), progress -> a.runUiIfAlive(() -> a.progress(progress)));
                     message = "Extracted to " + destination.getName();
                 } catch (Exception failure) { message = "Extract failed: " + (failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage()); }
                 final String result = message;
-                a.runOnUiThread(() -> { a.busy(false); d.run(result); });
+                a.runUiIfAlive(() -> { a.busy(false); d.run(result); });
             } finally { a.cancellation.finish(operationToken); }
         });
     }

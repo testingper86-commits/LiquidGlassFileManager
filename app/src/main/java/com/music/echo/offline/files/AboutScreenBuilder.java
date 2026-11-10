@@ -1,5 +1,7 @@
 package com.music.echo.offline.files;
 
+import com.music.echo.offline.R;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
@@ -19,12 +21,21 @@ import android.widget.TextView;
 
 /** Builds the About/profile screen without coupling its content to MainActivity. */
 final class AboutScreenBuilder {
-    static final int BACKGROUND = Color.rgb(10, 16, 23);
-    static final int ABOUT_SURFACE = Color.rgb(18, 27, 36);
-    static final int ABOUT_SURFACE_ALT = Color.rgb(15, 23, 32);
-    static final int ABOUT_TEXT = Color.rgb(237, 245, 249);
-    static final int ABOUT_MUTED = Color.rgb(157, 175, 187);
-    static final int ABOUT_CYAN = Color.rgb(0, 229, 255);
+    static int BACKGROUND = ToxiVisualSystem.CANVAS;
+    static int ABOUT_SURFACE = ToxiVisualSystem.SURFACE_COLOR;
+    static int ABOUT_SURFACE_ALT = ToxiVisualSystem.RAISED_SURFACE;
+    static int ABOUT_TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+    static int ABOUT_MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+    static int ABOUT_CYAN = ToxiVisualSystem.ACCENT;
+
+    private static void syncPalette() {
+        BACKGROUND = ToxiVisualSystem.CANVAS;
+        ABOUT_SURFACE = ToxiVisualSystem.SURFACE_COLOR;
+        ABOUT_SURFACE_ALT = ToxiVisualSystem.RAISED_SURFACE;
+        ABOUT_TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+        ABOUT_MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+        ABOUT_CYAN = ToxiVisualSystem.ACCENT;
+    }
 
     private final Activity activity;
     private final LinearLayout about;
@@ -40,6 +51,7 @@ final class AboutScreenBuilder {
     }
 
     static void populate(Activity activity, LinearLayout about, Runnable onBack, String fallbackVersionName) {
+        syncPalette();
         new AboutScreenBuilder(activity, about, onBack, fallbackVersionName).build();
     }
 
@@ -64,22 +76,50 @@ final class AboutScreenBuilder {
         back.setContentDescription("Back");
         back.setOnClickListener(v -> onBack.run());
         header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        TextView title = aboutText("About ToxiFiles", 21, ABOUT_TEXT, true);
-        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleParams.leftMargin = ToxiVisualSystem.dp(12);
+        titleParams.rightMargin = ToxiVisualSystem.dp(8);
+        TextView title = aboutText("Creator / ToxiFiles", 21, ABOUT_TEXT, true);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        header.addView(title, titleParams);
         about.addView(header, lpm(-1, -2, 8, 4, 8, 4));
         about.addView(aboutDivider(), lpm(-1, ToxiVisualSystem.dp(1), 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("Profile"), lpm(-1, -2, 18, 12, 18, 10));
+        about.addView(aboutSectionHeading("01  /  CREATOR SIGNAL"), lpm(-1, -2, 18, 12, 18, 10));
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
-        profile.setBackground(aboutSurface(26, true));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
+        profile.setBackground(ToxiVisualSystem.surface(28, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
-        TextView avatar = aboutText("CH", 25, ABOUT_CYAN, true);
-        avatar.setGravity(Gravity.CENTER);
-        avatar.setBackground(aboutAvatarSurface());
-        profile.addView(avatar, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(76), ToxiVisualSystem.dp(76)));
+        FrameLayout avatarFrame = new FrameLayout(activity);
+        GradientDrawable avatarHalo = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX],
+                        Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT))});
+        avatarHalo.setShape(GradientDrawable.OVAL);
+        avatarHalo.setStroke(ToxiVisualSystem.dp(1), Color.argb(210, 255, 255, 255));
+        avatarFrame.setBackground(avatarHalo);
+        avatarFrame.setElevation(ToxiVisualSystem.dp(9));
+        avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+        ImageView avatar = new ImageView(activity);
+        // Load the supplied creator portrait directly from the packaged drawable.
+        // Avoid eager BitmapFactory decoding, which can leave only a blank background.
+        avatar.setImageResource(R.drawable.chandu_profile);
+        avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        avatar.setBackgroundColor(Color.TRANSPARENT);
+        avatar.setContentDescription("Chandu profile photo");
+        avatar.setClipToOutline(true);
+        avatar.setAdjustViewBounds(false);
+        avatar.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        });
+        FrameLayout.LayoutParams avatarParams = new FrameLayout.LayoutParams(
+                ToxiVisualSystem.dp(124), ToxiVisualSystem.dp(124), Gravity.CENTER);
+        avatarFrame.addView(avatar, avatarParams);
+        profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(136), ToxiVisualSystem.dp(136)));
         TextView name = aboutText("CHANDU", 29, ABOUT_TEXT, true);
         name.setLetterSpacing(0.09f);
         name.setGravity(Gravity.CENTER);
@@ -96,11 +136,11 @@ final class AboutScreenBuilder {
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("About Me"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("02  /  ORIGIN"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutParagraphCard("A 9-to-5 corporate guy with a coding mind and a creative soul. Passionate about technology, programming, and building things."), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutQuoteCard("“Corporate by schedule, coder by mindset.”"), lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("My Journey"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("03  /  TIMELINE"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutJourneyItem("2021", "The Beginning", false), lpm(-1, -2, 16, 0, 16, 5));
         about.addView(aboutJourneyItem("2022", "First Creation", false), lpm(-1, -2, 16, 0, 16, 5));
         about.addView(aboutJourneyItem("2024", "Growing Skills", false), lpm(-1, -2, 16, 0, 16, 5));
@@ -111,7 +151,7 @@ final class AboutScreenBuilder {
                 "JavaScript", "C / C++", "Android", "Software Architecture"
         });
 
-        about.addView(aboutSectionHeading("My Projects"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("04  /  BUILT & IMAGINED"), lpm(-1, -2, 18, 14, 18, 8));
         about.addView(aboutProjectRow("ToxiFiles", "Modern Android file management experience.", 0), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutProjectRow("NovaBoard", "Productivity and organization concept.", 1), lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutProjectRow("CodeNest", "Mobile coding workspace concept.", 2), lpm(-1, -2, 16, 0, 16, 8));
@@ -122,12 +162,10 @@ final class AboutScreenBuilder {
         });
         about.addView(aboutQuoteCard("“A corporate soul, a gamer's heart, a coder's brain, and a mind that never switches off.”"), lpm(-1, -2, 16, 0, 16, 8));
 
-        addAboutGridSection("Achievements / Technical Highlights", new String[]{
-                "Java", "Python", "SQL", "HTML & CSS",
-                "JavaScript", "C / C++", "Android", "Software Design"
-        });
+        about.addView(aboutSectionHeading("05  /  CREATOR PRINCIPLES"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutParagraphCard("Curiosity, continuous learning, practical problem-solving and building useful experiences."), lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("Connect With Me"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("06  /  CONNECTIONS"), lpm(-1, -2, 18, 14, 18, 8));
         addAboutContactRow(
                 aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"),
                 aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"));
@@ -167,30 +205,30 @@ final class AboutScreenBuilder {
     }
 
     android.graphics.drawable.Drawable aboutSurface(int radius, boolean featured) {
-        int top = featured ? Color.rgb(21, 36, 47) : ABOUT_SURFACE;
-        int bottom = featured ? Color.rgb(15, 25, 35) : ABOUT_SURFACE_ALT;
+        int top = featured ? ABOUT_SURFACE_ALT : ABOUT_SURFACE;
+        int bottom = ABOUT_SURFACE;
         android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
         surface.setCornerRadius(ToxiVisualSystem.dp(radius));
         surface.setStroke(ToxiVisualSystem.dp(1), featured
-                ? Color.argb(105, 0, 229, 255)
-                : Color.argb(48, 142, 190, 210));
+                ? Color.argb(125, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN))
+                : ToxiVisualSystem.EDGE_STROKE);
         return surface;
     }
 
     android.graphics.drawable.Drawable aboutAvatarSurface() {
         android.graphics.drawable.GradientDrawable avatar = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.rgb(18, 69, 83), Color.rgb(35, 35, 76)});
+                new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX]});
         avatar.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        avatar.setStroke(ToxiVisualSystem.dp(2), Color.argb(180, 0, 229, 255));
+        avatar.setStroke(ToxiVisualSystem.dp(2), Color.argb(180, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN)));
         return avatar;
     }
 
     View aboutDivider() {
         View divider = new View(activity);
-        divider.setBackgroundColor(Color.argb(48, 140, 190, 208));
+        divider.setBackgroundColor(ToxiVisualSystem.EDGE_STROKE);
         return divider;
     }
 

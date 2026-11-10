@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 /** Shared local filesystem operations with staging, no-follow traversal and bounded resource use. */
 final class FileOperationEngine {
@@ -90,7 +91,8 @@ final class FileOperationEngine {
         File staging = safeChild(parent, ".toxifiles-copy-" + UUID.randomUUID());
         if (Files.exists(staging.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new IOException("Unable to reserve copy staging path");
         try {
-            copyInto(sourcePath, staging.toPath());
+            TreeTraversalBudget budget = new TreeTraversalBudget();
+            copyInto(sourcePath, staging.toPath(), budget, 0);
             OperationCancellation.checkCurrent();
             File finalTarget = safeChild(parent, target.getName());
             if (Files.exists(finalTarget.toPath(), LinkOption.NOFOLLOW_LINKS)) throw new FileAlreadyExistsException(finalTarget.getName());
@@ -107,8 +109,9 @@ final class FileOperationEngine {
         }
     }
 
-    private static void copyInto(Path source, Path target) throws IOException {
+    private static void copyInto(Path source, Path target, TreeTraversalBudget budget, int depth) throws IOException {
         OperationCancellation.checkCurrent();
+        budget.enter(depth);
         BasicFileAttributes attributes = Files.readAttributes(source, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
         if (attributes.isSymbolicLink()) throw new IOException("Symbolic links are not copied");
         if (attributes.isDirectory()) {
@@ -120,7 +123,7 @@ final class FileOperationEngine {
                     if (leaf == null) throw new IOException("Invalid source child path");
                     Path destination = target.resolve(leaf).normalize();
                     if (!target.equals(destination.getParent())) throw new IOException("Copy child escaped its staging folder");
-                    copyInto(child, destination);
+                    copyInto(child, destination, budget, depth + 1);
                 }
             }
             return;
@@ -148,46 +151,114 @@ final class FileOperationEngine {
     }
 
     private static void cleanupAfterFailure(File staging, Throwable failure) {
-        try { deleteTreeOrThrow(staging.toPath()); }
+        try { deleteTreeOrThrow(staging.toPath(), false); }
         catch (IOException | RuntimeException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
     }
 
     static boolean deleteTree(File file) {
         if (file == null) return false;
-        try { deleteTreeOrThrow(file.toPath()); return true; }
+        try { deleteTreeOrThrow(file.toPath(), true); return true; }
         catch (IOException | RuntimeException failure) { return false; }
     }
 
-    private static void deleteTreeOrThrow(Path path) throws IOException {
-        final BasicFileAttributes attributes;
-        try { attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS); }
-        catch (java.nio.file.NoSuchFileException missing) { return; }
-        if (attributes.isSymbolicLink() || !attributes.isDirectory()) {
-            Files.deleteIfExists(path);
-            return;
-        }
-        try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-            for (Path child : children) deleteTreeOrThrow(child);
-        }
-        Files.deleteIfExists(path);
-    }
-
-    static void treeSize(File file, long[] totals) {
-        if (file == null || totals == null || totals.length < 2) throw new IllegalArgumentException("Tree size output requires two counters");
-        try { treeSize(file.toPath(), totals); }
-        catch (IOException | RuntimeException ignored) { /* Keep the successfully measured partial total. */ }
-    }
-
-    private static void treeSize(Path path, long[] totals) throws IOException {
-        if (Files.isSymbolicLink(path)) return;
-        BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-        if (attributes.isDirectory()) {
-            try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-                for (Path child : children) treeSize(child, totals);
+    static void deleteTreeOrThrow(Path path, boolean cancellable) throws IOException {
+        java.util.ArrayDeque<DeleteNode> pending = new java.util.ArrayDeque<>();
+        TreeTraversalBudget budget = new TreeTraversalBudget(TreeTraversalBudget.DEFAULT_MAX_ENTRIES, Integer.MAX_VALUE);
+        budget.enter(0);
+        pending.push(new DeleteNode(path, 0, false));
+        while (!pending.isEmpty()) {
+            if (cancellable) OperationCancellation.checkCurrent();
+            DeleteNode current = pending.pop();
+            final BasicFileAttributes attributes;
+            try {
+                attributes = Files.readAttributes(current.path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            } catch (java.nio.file.NoSuchFileException missing) {
+                continue;
             }
-        } else if (attributes.isRegularFile()) {
-            totals[0] = saturatedAdd(totals[0], attributes.size());
-            totals[1] = totals[1] == Long.MAX_VALUE ? Long.MAX_VALUE : totals[1] + 1L;
+            if (!current.deleteAfterChildren && attributes.isDirectory() && !attributes.isSymbolicLink()) {
+                pending.push(new DeleteNode(current.path, current.depth, true));
+                try (DirectoryStream<Path> children = Files.newDirectoryStream(current.path)) {
+                    for (Path child : children) {
+                        if (cancellable) OperationCancellation.checkCurrent();
+                        budget.enter(current.depth + 1);
+                        pending.push(new DeleteNode(child, current.depth + 1, false));
+                    }
+                }
+            } else {
+                if (cancellable) OperationCancellation.checkCurrent();
+                Files.deleteIfExists(current.path);
+            }
+        }
+    }
+
+    private static final class DeleteNode {
+        final Path path;
+        final int depth;
+        final boolean deleteAfterChildren;
+
+        DeleteNode(Path path, int depth, boolean deleteAfterChildren) {
+            this.path = path;
+            this.depth = depth;
+            this.deleteAfterChildren = deleteAfterChildren;
+        }
+    }
+
+    static boolean treeSize(File file, long[] totals) {
+        return treeSize(file, totals, () -> false);
+    }
+
+    static boolean treeSize(File file, long[] totals, BooleanSupplier cancelled) {
+        if (file == null || totals == null || totals.length < 2 || cancelled == null)
+            throw new IllegalArgumentException("Tree size output and cancellation predicate are required");
+        try {
+            treeSize(file.toPath(), totals, cancelled);
+            return true;
+        } catch (IOException | RuntimeException incomplete) {
+            return false;
+        }
+    }
+
+    private static void treeSize(Path path, long[] totals, BooleanSupplier cancelled) throws IOException {
+        java.util.ArrayDeque<TraversalNode> pending = new java.util.ArrayDeque<>();
+        TreeTraversalBudget budget = new TreeTraversalBudget();
+        budget.enter(0);
+        pending.push(new TraversalNode(path, 0));
+        while (!pending.isEmpty()) {
+            checkTreeSizeCancellation(cancelled);
+            TraversalNode current = pending.pop();
+            BasicFileAttributes attributes;
+            try {
+                attributes = Files.readAttributes(current.path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            } catch (java.nio.file.NoSuchFileException missing) {
+                continue;
+            }
+            if (attributes.isSymbolicLink()) continue;
+            if (attributes.isDirectory()) {
+                try (DirectoryStream<Path> children = Files.newDirectoryStream(current.path)) {
+                    for (Path child : children) {
+                        checkTreeSizeCancellation(cancelled);
+                        budget.enter(current.depth + 1);
+                        pending.push(new TraversalNode(child, current.depth + 1));
+                    }
+                }
+            } else if (attributes.isRegularFile()) {
+                totals[0] = saturatedAdd(totals[0], attributes.size());
+                totals[1] = totals[1] == Long.MAX_VALUE ? Long.MAX_VALUE : totals[1] + 1L;
+            }
+        }
+    }
+
+    private static void checkTreeSizeCancellation(BooleanSupplier cancelled) throws IOException {
+        if (cancelled.getAsBoolean() || OperationCancellation.isCancelled() || Thread.currentThread().isInterrupted())
+            throw new IOException("Operation cancelled");
+    }
+
+    private static final class TraversalNode {
+        final Path path;
+        final int depth;
+        TraversalNode(Path path, int depth) {
+            this.path = path;
+            this.depth = depth;
         }
     }
 

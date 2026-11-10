@@ -1,5 +1,5 @@
 <resources>
-    <color name="toxifiles_canvas">#090D13</color>
-    <color name="toxifiles_signal">#8FE8C2</color>
+    <color name="toxifiles_canvas">#0B1420</color>
+    <color name="toxifiles_signal">#9FE7C4</color>
     <color name="transparent">#00000000</color>
 </resources>

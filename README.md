@@ -23,8 +23,8 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 
 ## GitHub Actions
 
-- **ToxiFiles Android Build** runs structural checks, JVM unit tests, Android lint, the debug build, and the configured install/launch smoke workflow.
-- **ToxiFiles Release Build** runs the unit tests and lint before assembling a release APK. It signs the artifact only when all four release secrets are configured: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Without them, the workflow uploads an explicitly labelled **unsigned** APK. Do not distribute an unsigned APK as a trusted release.
+- **ToxiFiles Android Build** runs structural checks, JVM unit tests, Android lint, the debug build, and uploads the debug APK and dependency inventory.
+- **ToxiFiles Release Build** runs source validation, unit tests, and Android lint before assembling a release APK. Release signing is mandatory. Configure all four secrets before running a release: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. The workflow verifies the APK signature before uploading the signed artifact. It intentionally fails rather than publishing an unsigned release.
 
 ## Security and privacy notes
 
@@ -37,6 +37,6 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 
 ## Validation status
 
-The latest successful main-branch GitHub Actions run completed structural smoke checks, Android XML validation, JVM unit tests, debug APK assembly, Android lint, and installation/launch on an Android 16 emulator. See [run 40429882984](https://github.com/testingper86-commits/LiquidGlassFileManager/actions/runs/40429882984).
+The latest successful main-branch **ToxiFiles Android Build** run is [run 42480113291](https://github.com/testingper86-commits/LiquidGlassFileManager/actions/runs/42480113291) for commit `23d70697639c1e3a624d155cf4a62a1ffc951aab`. Structural checks, project/security contracts, media lifecycle checks, dependency inventory, Android unit tests, Android lint, debug APK assembly, and both artifact uploads all completed successfully. The run published the `ToxiFiles-debug-APK` artifact.
 
-CI success does not replace real-device acceptance testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. A release build is not distribution-ready until signing, package policy review, and device testing are complete.
+CI success does not replace real-device acceptance testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. A release build is not distribution-ready until signing secrets are configured, the signed APK passes signature verification, package policy is reviewed, and target-device testing is complete.

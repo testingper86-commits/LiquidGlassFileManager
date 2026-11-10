@@ -57,7 +57,7 @@ final class BrowserView extends FrameLayout {
     final LinkedHashSet<Entry> sel = new LinkedHashSet<>();
     boolean selecting;
     String rangeAnchor;
-    long selectionSummaryToken;
+    volatile long selectionSummaryToken;
     long loadGeneration, filterGeneration;
     Future<?> filterTask;
     int columns = 1;
@@ -103,10 +103,11 @@ final class BrowserView extends FrameLayout {
         header.addView(title, tl);
         header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        header.setBackground(ToxiVisualSystem.surface(22, false));
+        header.setBackground(ToxiVisualSystem.surface(24, true));
+        header.setElevation(ToxiVisualSystem.dp(2));
         header.setMinimumHeight(ToxiVisualSystem.dp(60));
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.setMargins(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(8));
+        headerLp.setMargins(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
         col.addView(header, headerLp);
 
         pathTv = ToxiVisualSystem.text(a, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
@@ -115,7 +116,7 @@ final class BrowserView extends FrameLayout {
         pathTv.setBackground(ToxiVisualSystem.surface(16, false));
         pathTv.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9));
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
-        pl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
+        pl.setMargins(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
         col.addView(pathTv, pl);
 
         search = new EditText(a);
@@ -149,6 +150,7 @@ final class BrowserView extends FrameLayout {
         lv.setSelector(new ColorDrawable(Color.TRANSPARENT));
         lv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         col.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1f));
+        ToxiVisualSystem.revealChildren(col);
 
         ad = new BaseAdapter() {
             @Override public int getViewTypeCount() { return 2; }
@@ -339,7 +341,7 @@ final class BrowserView extends FrameLayout {
         loading = true;
         updateEmpty();
         final Comparator<Entry> cmp = comparator();
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> res = new ArrayList<>();
             File[] fs = d.listFiles();
             boolean hid = ToxiVisualSystem.booleanPreference("hidden", false);
@@ -353,13 +355,18 @@ final class BrowserView extends FrameLayout {
                 applyFilter();
                 lv.setSelection(0);
             });
+        }, () -> {
+            if (token == loadGeneration && d == cur && mode == DIR) {
+                loading = false;
+                updateEmpty();
+            }
         });
     }
 
     void refreshFavs() {
         final long token = ++loadGeneration;
         final List<String> ps = new ArrayList<>(a.favs);
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> l = new ArrayList<>();
             for (String p : ps) { File f = new File(p); if (f.exists()) l.add(new Entry(f)); }
             post(() -> { if (token != loadGeneration || mode != LIST || !isFavs) return; loading = false; all = l; reconcileSelection(); applyFilter(); });
@@ -392,7 +399,7 @@ final class BrowserView extends FrameLayout {
     void pruneMissing() {
         final long token = ++loadGeneration;
         final List<Entry> snap = new ArrayList<>(all);
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             final List<Entry> keep = new ArrayList<>();
             for (Entry e : snap) if (e.f.exists()) keep.add(e);
             post(() -> { if (token != loadGeneration) return; all = keep; reconcileSelection(); applyFilter(); });
@@ -547,12 +554,21 @@ final class BrowserView extends FrameLayout {
         final int count = snapshot.size();
         if (count == 0) return;
         title.setText(count + " selected · calculating size…");
-        a.io.execute(() -> {
+        a.executeIo(() -> {
             if (token != selectionSummaryToken) return;
             long[] totals = new long[2];
-            for (File f : snapshot) { if (token != selectionSummaryToken) return; if (f.exists()) FileOps.treeSize(f, totals); }
+            for (File f : snapshot) {
+                if (token != selectionSummaryToken) return;
+                if (f.exists() && !FileOps.treeSize(f, totals, () -> token != selectionSummaryToken)) {
+                    if (token != selectionSummaryToken || Thread.currentThread().isInterrupted()) return;
+                    post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · size unavailable"); });
+                    return;
+                }
+            }
             final long bytes = totals[0];
             post(() -> { if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · " + ToxiVisualSystem.formatSize(bytes)); });
+        }, () -> {
+            if (token == selectionSummaryToken && selecting && sel.size() == count) title.setText(count + " selected · size unavailable");
         });
     }
 
@@ -565,11 +581,25 @@ final class BrowserView extends FrameLayout {
                 .setNegativeButton("Close", null)
                 .setPositiveButton("Select all", (d,w) -> selectAll()).create();
         final List<File> snapshot = files(sel);
+        java.util.concurrent.atomic.AtomicBoolean dismissed = new java.util.concurrent.atomic.AtomicBoolean(false);
+        dialog.setOnDismissListener(d -> dismissed.set(true));
         dialog.setOnShowListener(d -> {
-            a.io.execute(() -> { long[] total = new long[2]; for (File f : snapshot) if (f.exists()) FileOps.treeSize(f,total);
-                final String value = snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files";
-                post(() -> { if (dialog.isShowing()) details.setText(value); });
-            });
+            a.executeIo(() -> {
+                long[] total = new long[2];
+                boolean complete = true;
+                for (File f : snapshot) {
+                    if (dismissed.get()) return;
+                    if (f.exists() && !FileOps.treeSize(f, total, dismissed::get)) {
+                        if (dismissed.get() || Thread.currentThread().isInterrupted()) return;
+                        complete = false;
+                        break;
+                    }
+                }
+                final String value = complete
+                        ? snapshot.size() + " selected items\n" + ToxiVisualSystem.formatSize(total[0]) + " combined file size\n" + total[1] + " files"
+                        : snapshot.size() + " selected items\nCombined size unavailable";
+                post(() -> { if (dialog.isShowing() && !dismissed.get()) details.setText(value); });
+            }, () -> { if (dialog.isShowing() && !dismissed.get()) details.setText(snapshot.size() + " selected items\nCombined size unavailable"); });
         });
         dialog.show();
     }
@@ -598,15 +628,15 @@ final class BrowserView extends FrameLayout {
     }
 
     void updatePaste() {
-        boolean show = mode == DIR && !overlay && a.clip != null && !selecting;
+        boolean show = mode == DIR && !overlay && a.clipboard.hasItems() && !selecting;
         pasteBtn.setVisibility(show ? VISIBLE : GONE);
-        if (show) pasteBtn.setText("Paste " + a.clip.length + " here");
+        if (show) pasteBtn.setText("Paste " + a.clipboard.size() + " here");
     }
 
     void paste() {
-        if (a.clip == null || cur == null) return;
-        final File[] src = a.clip;
-        final boolean cut = a.clipCut;
+        if (!a.clipboard.hasItems() || cur == null) return;
+        final File[] src = a.clipboard.snapshot();
+        final boolean cut = a.clipboard.isCut();
         FileOps.Done done = msg -> {
             if (cut) a.setClip(null, false);
             ToxiVisualSystem.toast(a, msg);
@@ -693,7 +723,7 @@ final class BrowserView extends FrameLayout {
         if (mode == DIR) {
             boolean on = ToxiVisualSystem.booleanPreference("hidden", false);
             add(l, r, on ? "Hide hidden files" : "Show hidden files", () -> { ToxiVisualSystem.setBooleanPreference("hidden", !on); reload(); });
-            if (a.clip != null) add(l, r, "Paste here", this::paste);
+            if (a.clipboard.hasItems()) add(l, r, "Paste here", this::paste);
             add(l, r, "Refresh", this::reload);
         }
         showMenu(a, "Options", l, r);
@@ -784,7 +814,7 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Compress to ZIP", () -> zip(s));
         add(l, r, "Move to…", () -> confirmSelectionMove(s));
         add(l, r, "Send via Wi-Fi…", () -> a.sendViaWifi(files(s)));
-        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> a.copyToSafTree(files(s)));
+        if (a.hasSafTree()) add(l, r, "Copy to SD/USB", () -> a.copyToSafTree(files(s)));
         add(l, r, "Label", () -> labelDialog(s));
         add(l, r, "Move to Vault", () -> vaultMove(s));
         if (s.size() == 1) {
@@ -828,7 +858,7 @@ final class BrowserView extends FrameLayout {
             pendingPreview[0] = () -> {
                 final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
                 final List<File> sources = files(list);
-                a.io.execute(() -> {
+                a.executeIo(() -> {
                     List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                     StringBuilder text = new StringBuilder(); int shownCount = Math.min(12,plan.size());
                     for(int i=0;i<shownCount;i++){ BatchRenameEngine.Item item=plan.get(i); text.append(item.source == null ? "(missing)" : item.source.getName()).append("\n  to ").append(item.target == null ? "(invalid)" : item.target.getName()); if(!item.valid()) text.append("\n  ! ").append(item.problem); text.append("\n\n"); }
@@ -853,7 +883,7 @@ final class BrowserView extends FrameLayout {
             review.setEnabled(false); preview.setText("Validating destination names…");
             final BatchRenameEngine.Options o = renameOptions(prefix,suffix,find,replacement,start,increment,padding,capitalization,numbering,preserve);
             final List<File> sources = files(list);
-            a.io.execute(() -> {
+            a.executeIo(() -> {
                 List<BatchRenameEngine.Item> plan = BatchRenameEngine.plan(sources,o);
                 List<String> problems = new ArrayList<>(); for(BatchRenameEngine.Item item:plan) if(!item.valid()) problems.add((item.source==null?"Missing file":item.source.getName())+": "+item.problem);
                 StringBuilder summary=new StringBuilder(); for(int i=0;i<Math.min(20,plan.size());i++) { BatchRenameEngine.Item item=plan.get(i); summary.append(item.source==null?"(missing)":item.source.getName()).append(" to ").append(item.target==null?"(invalid)":item.target.getName()).append("\n"); }
@@ -889,9 +919,9 @@ final class BrowserView extends FrameLayout {
 
     private void executeBatchRename(final List<BatchRenameEngine.Item> plan) {
         a.busy(true);
-        a.ops.execute(() -> {
+        a.executeOperation(() -> {
             BatchRenameEngine.Result result=BatchRenameEngine.execute(plan);
-            a.runOnUiThread(() -> {
+            a.runUiIfAlive(() -> {
                 a.busy(false);
                 if(!result.completed.isEmpty()) for(BatchRenameEngine.Item item:result.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);}
                 if(result.success()) { endSelect(); a.afterOps(); showRenameResult(result,"Renamed "+result.completed.size()+" items."); }
@@ -907,7 +937,7 @@ final class BrowserView extends FrameLayout {
     }
 
     private void undoBatchRename(BatchRenameEngine.Result prior) {
-        a.busy(true); a.ops.execute(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runOnUiThread(() -> {
+        a.busy(true); a.executeOperation(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runUiIfAlive(() -> {
             a.busy(false); for(BatchRenameEngine.Item item:undone.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);} a.afterOps();
             String msg=undone.errors.isEmpty()?"Restored "+undone.completed.size()+" original names.":joinLines(undone.errors,8);
             new AlertDialog.Builder(a).setTitle(undone.errors.isEmpty()?"Undo complete":"Undo incomplete").setMessage(msg).setPositiveButton("OK",null).show();
@@ -966,7 +996,7 @@ final class BrowserView extends FrameLayout {
         add(l, r, "Cut", () -> { a.setClip(new File[]{e.f}, true); ToxiVisualSystem.toast(a, "Cut — open a folder and tap Paste"); });
         add(l, r, "Move to…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); moveToQuick(one); });
         add(l, r, "Send via Wi-Fi…", () -> { List<Entry> one = new ArrayList<>(); one.add(e); a.sendViaWifi(files(one)); });
-        if (a.safTree != null) add(l, r, "Copy to SD/USB", () -> { List<File> one = new ArrayList<>(); one.add(e.f); a.copyToSafTree(one); });
+        if (a.hasSafTree()) add(l, r, "Copy to SD/USB", () -> { List<File> one = new ArrayList<>(); one.add(e.f); a.copyToSafTree(one); });
         add(l, r, "Compress to ZIP", () -> { List<Entry> one = new ArrayList<>(); one.add(e); zip(one); });
         if (e.ext.equals("zip")) add(l, r, "Extract here", () -> unzip(e.f));
         add(l, r, "Delete", () -> { List<Entry> one = new ArrayList<>(); one.add(e); confirmDelete(one); });
@@ -1078,7 +1108,7 @@ final class BrowserView extends FrameLayout {
                 .setMessage("Creates a separate copy without GPS coordinates and related location tags. The original stays unchanged; camera and date metadata may remain.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
                     a.busy(true);
-                    a.ops.execute(() -> {
+                    a.executeOperation(() -> {
             OperationCancellation.Token operationToken = a.cancellation.begin();
             try {
                         File copy = null; String result;
@@ -1102,7 +1132,7 @@ final class BrowserView extends FrameLayout {
                             result = "GPS metadata removal failed: " + ex.getMessage();
                         }
                         final String message = result;
-                        a.runOnUiThread(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
+                        a.runUiIfAlive(() -> { a.busy(false); ToxiVisualSystem.toast(a, message); a.afterOps(); });
                     
             } finally { a.cancellation.finish(operationToken); }
         });
@@ -1140,13 +1170,17 @@ final class BrowserView extends FrameLayout {
                 if (cm != null) { cm.setPrimaryClip(android.content.ClipData.newPlainText("SHA-256", digest[0])); ToxiVisualSystem.toast(a, "SHA-256 copied"); }
             });
         }
-        if (e.dir) a.io.execute(() -> {
+        if (e.dir) a.executeIo(() -> {
             final long[] t = new long[2];
-            FileOps.treeSize(e.f, t);
-            a.runOnUiThread(() -> dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")));
-        }); else a.io.execute(() -> {
+            if (!FileOps.treeSize(e.f, t)) {
+                if (Thread.currentThread().isInterrupted()) return;
+                a.runUiIfAlive(() -> { if (dlg.isShowing()) dlg.setMessage(propText(e, "Size unavailable", "")); });
+                return;
+            }
+            a.runUiIfAlive(() -> { if (dlg.isShowing()) dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(t[0]) + " • " + t[1] + " files", "")); });
+        }, () -> { if (dlg.isShowing()) dlg.setMessage(propText(e, "Size unavailable", "")); }); else a.executeIo(() -> {
             digest[0] = sha256(e.f);
-            a.runOnUiThread(() -> {
+            a.runUiIfAlive(() -> {
                 if (!dlg.isShowing()) return;
                 dlg.setMessage(propText(e, ToxiVisualSystem.formatSize(e.f.length()), digest[0]));
                 copyHash.setEnabled(!"unavailable".equals(digest[0]));
