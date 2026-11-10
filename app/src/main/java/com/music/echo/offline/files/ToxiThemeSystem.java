@@ -47,4 +47,5 @@ final class ToxiThemeSystem {
             && LIGHT_MUTED.length == n && new java.util.HashSet<>(java.util.Arrays.asList(NAMES)).size() == n
             && unique(ACCENTS) && unique(ACCENT_ENDS) && unique(CANVAS) && unique(SURFACES)
             && unique(RAISED) && unique(EDGES) && unique(MUTED) && unique(SOFT_ACCENTS);
+    }
 }
