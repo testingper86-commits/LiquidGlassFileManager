@@ -76,8 +76,13 @@ final class AboutScreenBuilder {
         back.setContentDescription("Back");
         back.setOnClickListener(v -> onBack.run());
         header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleParams.leftMargin = ToxiVisualSystem.dp(12);
+        titleParams.rightMargin = ToxiVisualSystem.dp(8);
         TextView title = aboutText("Creator / ToxiFiles", 21, ABOUT_TEXT, true);
-        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        header.addView(title, titleParams);
         about.addView(header, lpm(-1, -2, 8, 4, 8, 4));
         about.addView(aboutDivider(), lpm(-1, ToxiVisualSystem.dp(1), 16, 0, 16, 8));
 
@@ -98,11 +103,17 @@ final class AboutScreenBuilder {
         avatarFrame.setElevation(ToxiVisualSystem.dp(9));
         avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
         ImageView avatar = new ImageView(activity);
-        avatar.setImageResource(R.drawable.chandu_profile);
+        android.graphics.Bitmap profileBitmap = android.graphics.BitmapFactory.decodeResource(activity.getResources(), R.drawable.chandu_profile);
+        if (profileBitmap != null) avatar.setImageDrawable(new android.graphics.drawable.BitmapDrawable(activity.getResources(), profileBitmap));
+        else avatar.setImageResource(R.drawable.chandu_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        avatar.setBackgroundColor(Color.TRANSPARENT);
+        GradientDrawable avatarClip = new GradientDrawable();
+        avatarClip.setShape(GradientDrawable.OVAL);
+        avatarClip.setColor(Color.WHITE);
+        avatar.setBackground(avatarClip);
         avatar.setContentDescription("Chandu profile photo");
         avatar.setClipToOutline(true);
+        avatar.setAdjustViewBounds(false);
         avatar.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override public void getOutline(View view, android.graphics.Outline outline) {
                 outline.setOval(0, 0, view.getWidth(), view.getHeight());
@@ -154,12 +165,10 @@ final class AboutScreenBuilder {
         });
         about.addView(aboutQuoteCard("“A corporate soul, a gamer's heart, a coder's brain, and a mind that never switches off.”"), lpm(-1, -2, 16, 0, 16, 8));
 
-        addAboutGridSection("Achievements / Technical Highlights", new String[]{
-                "Java", "Python", "SQL", "HTML & CSS",
-                "JavaScript", "C / C++", "Android", "Software Design"
-        });
+        about.addView(aboutSectionHeading("05  /  CREATOR PRINCIPLES"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutParagraphCard("Curiosity, continuous learning, practical problem-solving and building useful experiences."), lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("05  /  CONNECTIONS"), lpm(-1, -2, 18, 14, 18, 8));
+        about.addView(aboutSectionHeading("06  /  CONNECTIONS"), lpm(-1, -2, 18, 14, 18, 8));
         addAboutContactRow(
                 aboutContactCard("GH", "GitHub", "testingper86-commits", "https://github.com/testingper86-commits"),
                 aboutContactCard("IG", "Instagram", "@_chandu_rp_1", "https://www.instagram.com/_chandu_rp_1/"));

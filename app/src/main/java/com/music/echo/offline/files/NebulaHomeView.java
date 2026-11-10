@@ -15,6 +15,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Environment;
+import android.os.StatFs;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.animation.DecelerateInterpolator;
@@ -171,9 +172,13 @@ final class NebulaHomeView {
                     else a.openDownloads();
                 });
                 ToxiVisualSystem.interactive(item);
-                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(0, dp(a, 134), 1f);
-                if (col == 0) cardLp.rightMargin = dp(a, 6);
-                else cardLp.leftMargin = dp(a, 6);
+                LinearLayout.LayoutParams cardLp = index == 4
+                        ? new LinearLayout.LayoutParams(-1, dp(a, 134))
+                        : new LinearLayout.LayoutParams(0, dp(a, 134), 1f);
+                if (index != 4) {
+                    if (col == 0) cardLp.rightMargin = dp(a, 6);
+                    else cardLp.leftMargin = dp(a, 6);
+                }
                 gridRow.addView(item, cardLp);
                 animateHomeCard(a, item, index);
             }
@@ -275,8 +280,18 @@ final class NebulaHomeView {
 
     private static void addStorage(MainActivity a, LinearLayout host) {
         File root = Environment.getExternalStorageDirectory();
-        long total = root != null ? Math.max(0L, root.getTotalSpace()) : 0L;
-        long available = root != null ? Math.max(0L, root.getUsableSpace()) : 0L;
+        long total = 0L;
+        long available = 0L;
+        if (root != null) {
+            try {
+                StatFs storage = new StatFs(root.getPath());
+                total = Math.max(0L, storage.getTotalBytes());
+                available = Math.max(0L, Math.min(total, storage.getAvailableBytes()));
+            } catch (IllegalArgumentException | SecurityException ignored) {
+                total = 0L;
+                available = 0L;
+            }
+        }
         long used = total > 0 ? Math.max(0L, total - available) : 0L;
         int percent = total > 0 ? (int) Math.max(0L, Math.min(100L, Math.round((double) used * 100.0d / (double) total))) : 0;
 
@@ -286,7 +301,7 @@ final class NebulaHomeView {
         LinearLayout copy = new LinearLayout(a);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(a, "STORAGE OVERVIEW", 9, ICE, true));
-        copy.addView(text(a, "Device storage", 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
+        copy.addView(text(a, "Primary shared storage", 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
         top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView pct = text(a, total > 0 ? percent + "%" : "--", 22, LIME, true);
         top.addView(pct);
@@ -308,7 +323,7 @@ final class NebulaHomeView {
         values.addView(storageValue(a, "USED", total > 0 ? formatSize(used) : "Unavailable", LIME), new LinearLayout.LayoutParams(0, -2, 1f));
         values.addView(storageValue(a, "AVAILABLE", total > 0 ? formatSize(available) : "Unavailable", ICE), new LinearLayout.LayoutParams(0, -2, 1f));
         card.addView(values);
-        card.setContentDescription(total > 0 ? "Device storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
+        card.setContentDescription(total > 0 ? "Primary shared storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
         card.setFocusable(true);
         card.setOnClickListener(v -> a.openStorageAnalyzer());
         host.addView(card, margins(a, -1, -2, 0, 0, 0, 20));

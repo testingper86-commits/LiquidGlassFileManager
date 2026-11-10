@@ -196,8 +196,9 @@ final class SettingsScreenController {
                 child.setVisibility(View.VISIBLE);
                 if (child instanceof TextView) {
                     TextView heading = (TextView) child;
-                    String label = heading.getText().toString().replace("+  ", "").replace("-  ", "");
-                    heading.setText((appearanceSection ? "-  " : "+  ") + label);
+                    String label = heading.getText().toString();
+                    heading.setText(label);
+                    activity.setLeadingIcon(heading, appearanceSection ? ToxiIcons.DOWN : ToxiIcons.NEXT);
                     heading.setContentDescription(label + (appearanceSection ? ", expanded settings section. Double tap to collapse." : ", collapsed settings section. Double tap to expand."));
                 }
             } else if (inSection) {
