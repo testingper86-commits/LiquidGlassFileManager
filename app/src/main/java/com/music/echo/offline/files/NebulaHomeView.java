@@ -127,15 +127,14 @@ final class NebulaHomeView {
         String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
         int[] accents = {LIME, ICE, VIOLET, ICE, LIME};
-        for (int row = 0; row < 3; row++) {
+        int columns = gridColumns(a);
+        int rowCount = (names.length + columns - 1) / columns;
+        for (int row = 0; row < rowCount; row++) {
             LinearLayout gridRow = new LinearLayout(a);
             gridRow.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 2; col++) {
-                final int index = row * 2 + col;
-                if (index >= names.length) {
-                    gridRow.addView(new View(a), new LinearLayout.LayoutParams(0, -1, 1f));
-                    continue;
-                }
+            int rowItems = Math.min(columns, names.length - row * columns);
+            for (int col = 0; col < rowItems; col++) {
+                final int index = row * columns + col;
                 LinearLayout item = new LinearLayout(a);
                 item.setOrientation(LinearLayout.VERTICAL);
                 item.setGravity(Gravity.TOP);
@@ -172,12 +171,15 @@ final class NebulaHomeView {
                     else a.openDownloads();
                 });
                 ToxiVisualSystem.interactive(item);
-                LinearLayout.LayoutParams cardLp = index == 4
-                        ? new LinearLayout.LayoutParams(-1, dp(a, 134))
-                        : new LinearLayout.LayoutParams(0, dp(a, 134), 1f);
-                if (index != 4) {
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                        rowItems == 1 ? -1 : 0, dp(a, 134), rowItems == 1 ? 0f : 1f);
+                if (rowItems > 1) {
                     if (col == 0) cardLp.rightMargin = dp(a, 6);
-                    else cardLp.leftMargin = dp(a, 6);
+                    else if (col == rowItems - 1) cardLp.leftMargin = dp(a, 6);
+                    else {
+                        cardLp.leftMargin = dp(a, 6);
+                        cardLp.rightMargin = dp(a, 6);
+                    }
                 }
                 gridRow.addView(item, cardLp);
                 animateHomeCard(a, item, index);
@@ -189,6 +191,13 @@ final class NebulaHomeView {
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 112) + ToxiVisualSystem.BOTTOM_INSET));
+    }
+
+    private static int gridColumns(MainActivity a) {
+        int widthDp = a.getResources().getConfiguration().screenWidthDp;
+        if (widthDp >= 900) return 4;
+        if (widthDp >= 600) return 3;
+        return 2;
     }
 
     private static void animateHomeCard(MainActivity a, View card, int index) {
@@ -233,16 +242,14 @@ final class NebulaHomeView {
         String[] names = {"Dual-Pane Explorer", "Hex Editor", "Folder Comparator", "Encoding Converter", "ZIP Editor", "Integrity Studio", "Text Editor"};
         String[] glyphs = {"columns-2", "binary", "compare", "languages", "archive", "shield-check", "code"};
         String[] details = {"Two folders side by side", "Inspect and edit bytes", "Compare folder contents", "Convert text encodings", "Manage ZIP contents", "Verify file checksums", "Edit and search text"};
-        for (int row = 0; row < 4; row++) {
+        int columns = gridColumns(a);
+        int rowCount = (names.length + columns - 1) / columns;
+        for (int row = 0; row < rowCount; row++) {
             LinearLayout line = new LinearLayout(a);
             line.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 2; col++) {
-                final int index = row * 2 + col;
-                if (index >= names.length) {
-                    View spacer = new View(a);
-                    line.addView(spacer, new LinearLayout.LayoutParams(0, dp(a, 122), 1f));
-                    continue;
-                }
+            int rowItems = Math.min(columns, names.length - row * columns);
+            for (int col = 0; col < rowItems; col++) {
+                final int index = row * columns + col;
                 LinearLayout card = new LinearLayout(a);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -265,9 +272,16 @@ final class NebulaHomeView {
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
                 card.setOnClickListener(v -> a.launchNebulaTool(index));
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(a, 122), 1f);
-                if (col == 0) lp.rightMargin = dp(a, 6);
-                else lp.leftMargin = dp(a, 6);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        rowItems == 1 ? -1 : 0, dp(a, 122), rowItems == 1 ? 0f : 1f);
+                if (rowItems > 1) {
+                    if (col == 0) lp.rightMargin = dp(a, 6);
+                    else if (col == rowItems - 1) lp.leftMargin = dp(a, 6);
+                    else {
+                        lp.leftMargin = dp(a, 6);
+                        lp.rightMargin = dp(a, 6);
+                    }
+                }
                 line.addView(card, lp);
             }
             LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 122));
