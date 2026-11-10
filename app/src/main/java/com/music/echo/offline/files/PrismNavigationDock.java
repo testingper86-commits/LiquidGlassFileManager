@@ -121,6 +121,8 @@ final class PrismNavigationDock {
             tabGroup.addView(item, lp);
         }
         surface.addView(tabGroup, new FrameLayout.LayoutParams(-1, -1));
+        tabGroup.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection());
+        for (View item : items) { if (item != null) item.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection()); }
         FrameLayout.LayoutParams params;
         if (rail) {
             params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, 82),
@@ -134,6 +136,8 @@ final class PrismNavigationDock {
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
         layoutSelection();
+        surface.post(this::layoutSelection);
+        tabGroup.post(this::layoutSelection);
         applySelectionColors();
     }
 
