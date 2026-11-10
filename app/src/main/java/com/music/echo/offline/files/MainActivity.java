@@ -1032,6 +1032,82 @@ public class MainActivity extends ComponentActivity {
             }
         }
 
+        private void drawThemePattern(Canvas canvas, int width, int height, float step) {
+            int theme = ToxiVisualSystem.THEME_INDEX;
+            switch (theme) {
+                case 1: // Ember-breath diagonal flow
+                    for (float offset = -height; offset < width; offset += step * 1.6f)
+                        canvas.drawLine(offset, 0, offset + height, height, gridPaint);
+                    break;
+                case 2: // Infinity-domain concentric geometry
+                    for (float radius = step; radius < Math.max(width, height); radius += step * 1.8f)
+                        canvas.drawCircle(width * .5f, height * .42f, radius, gridPaint);
+                    break;
+                case 3: // Titan frontier structural bands
+                    for (float y = step * .5f; y < height; y += step * 1.5f) {
+                        canvas.drawLine(0, y, width, y, gridPaint);
+                        canvas.drawLine(0, y + step * .12f, width, y + step * .12f, gridPaint);
+                    }
+                    for (float x = step; x < width; x += step * 2.5f)
+                        canvas.drawLine(x, 0, x, height, gridPaint);
+                    break;
+                case 4: // Shinobi chakra nodes
+                    gridPaint.setStyle(Paint.Style.FILL);
+                    for (float y = step * .5f; y < height; y += step)
+                        for (float x = step * .5f; x < width; x += step)
+                            canvas.drawCircle(x, y, ToxiVisualSystem.dp(1.35f), gridPaint);
+                    gridPaint.setStyle(Paint.Style.STROKE);
+                    break;
+                case 5: // Grand-voyage wave contours
+                    android.graphics.Path wave = new android.graphics.Path();
+                    for (float base = step; base < height + step; base += step * 1.35f) {
+                        wave.reset();
+                        wave.moveTo(0, base);
+                        for (float x = 0; x <= width; x += step * .5f)
+                            wave.lineTo(x, base + (float) Math.sin((x / step) + (base / step)) * step * .18f);
+                        canvas.drawPath(wave, gridPaint);
+                    }
+                    break;
+                case 6: // Ultra-instinct radial field
+                    for (float radius = step * .7f; radius < Math.max(width, height); radius += step * 1.5f)
+                        canvas.drawCircle(width * .5f, height * .5f, radius, gridPaint);
+                    for (float angle = 0; angle < 360; angle += 30) {
+                        double radians = Math.toRadians(angle);
+                        canvas.drawLine(width * .5f, height * .5f,
+                                width * .5f + (float) Math.cos(radians) * width,
+                                height * .5f + (float) Math.sin(radians) * height, gridPaint);
+                    }
+                    break;
+                case 7: // Soul-reaper vertical veil
+                    for (float x = step * .5f; x < width; x += step * .72f)
+                        canvas.drawLine(x, 0, x + (float) Math.sin(x / step) * step * .22f, height, gridPaint);
+                    break;
+                case 8: // EVA containment lattice
+                    for (float x = step * .5f; x < width; x += step * 1.5f)
+                        canvas.drawLine(x, 0, x, height, gridPaint);
+                    for (float y = step * .5f; y < height; y += step * 1.5f)
+                        canvas.drawLine(0, y, width, y, gridPaint);
+                    for (float x = 0; x < width; x += step * 3f)
+                        canvas.drawLine(x, 0, Math.min(width, x + height * .28f), height, gridPaint);
+                    break;
+                case 9: // Lunar orbit paths and stars
+                    for (float radius = step; radius < Math.max(width, height); radius += step * 2.1f)
+                        canvas.drawCircle(width * .72f, height * .22f, radius, gridPaint);
+                    gridPaint.setStyle(Paint.Style.FILL);
+                    for (int i = 0; i < 24; i++) {
+                        float x = (i * 97f + step * .37f) % Math.max(1, width);
+                        float y = (i * 151f + step * .61f) % Math.max(1, height);
+                        canvas.drawCircle(x, y, ToxiVisualSystem.dp(i % 4 == 0 ? 1.7f : .8f), gridPaint);
+                    }
+                    gridPaint.setStyle(Paint.Style.STROKE);
+                    break;
+                default: // Shadow-monarch orthogonal grid
+                    for (float x = step * .5f; x < width; x += step) canvas.drawLine(x, 0, x, height, gridPaint);
+                    for (float y = step * .5f; y < height; y += step) canvas.drawLine(0, y, width, y, gridPaint);
+                    break;
+            }
+        }
+
         @Override protected void onDraw(Canvas canvas) {
             int width = getWidth(), height = getHeight();
             canvas.drawColor(ToxiVisualSystem.CANVAS);
@@ -1039,8 +1115,7 @@ public class MainActivity extends ComponentActivity {
             gridPaint.setColor(Color.argb(10, Color.red(accent), Color.green(accent), Color.blue(accent)));
             gridPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(0.65f)));
             float step = ToxiVisualSystem.dp(48);
-            for (float x = step * 0.5f; x < width; x += step) canvas.drawLine(x, 0, x, height, gridPaint);
-            for (float y = step * 0.5f; y < height; y += step) canvas.drawLine(0, y, width, y, gridPaint);
+            drawThemePattern(canvas, width, height, step);
             markerPaint.setColor(Color.argb(34, Color.red(accent), Color.green(accent), Color.blue(accent)));
             markerPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(1.1f)));
             float inset = ToxiVisualSystem.dp(20), mark = ToxiVisualSystem.dp(38);
