@@ -54,6 +54,15 @@ final class StorageIndexEngine {
     }
 
     static Result scan(File root, int maxDepth, int maxEntries, EntryConsumer consumer) throws IOException {
+        return scan(root, maxDepth, maxEntries, false, false, consumer);
+    }
+
+    /**
+     * Scan with explicit visibility rules. The file index excludes hidden entries and the root
+     * Android directory; storage analysis opts in so its totals cover all accessible shared storage.
+     */
+    static Result scan(File root, int maxDepth, int maxEntries, boolean includeHiddenEntries,
+                       boolean includeRootAndroidDirectory, EntryConsumer consumer) throws IOException {
         if (root == null || consumer == null) throw new IOException("Storage root and entry consumer are required");
         if (maxDepth < 0 || maxEntries < 1) throw new IllegalArgumentException("Storage scan limits are invalid");
         OperationCancellation.checkCurrent();
@@ -68,7 +77,7 @@ final class StorageIndexEngine {
             state.incomplete = true;
             return result(state);
         }
-        scanDirectory(rootPath, 0, true, state);
+        scanDirectory(rootPath, 0, true, includeHiddenEntries, includeRootAndroidDirectory, state);
         return result(state);
     }
 
@@ -76,8 +85,9 @@ final class StorageIndexEngine {
         return new Result(state.entriesVisited, state.truncated, state.incomplete || state.truncated);
     }
 
-    private static void scanDirectory(Path directory, int depth, boolean rootDirectory, State state)
-            throws IOException {
+    private static void scanDirectory(Path directory, int depth, boolean rootDirectory,
+                                      boolean includeHiddenEntries, boolean includeRootAndroidDirectory,
+                                      State state) throws IOException {
         OperationCancellation.checkCurrent();
         if (depth > state.maxDepth) { state.incomplete = true; return; }
         if (state.entriesVisited >= state.maxEntries) { state.truncated = true; state.incomplete = true; return; }
@@ -95,7 +105,7 @@ final class StorageIndexEngine {
                 Path leaf = child.getFileName();
                 if (leaf == null) { state.incomplete = true; continue; }
                 String name = leaf.toString();
-                if (name.startsWith(".")) continue;
+                if (!includeHiddenEntries && name.startsWith(".")) continue;
 
                 final BasicFileAttributes attributes;
                 try {
@@ -107,11 +117,11 @@ final class StorageIndexEngine {
                 if (attributes.isSymbolicLink()) continue;
 
                 if (attributes.isDirectory()) {
-                    if (rootDirectory && "Android".equals(name)) continue;
+                    if (rootDirectory && !includeRootAndroidDirectory && "Android".equals(name)) continue;
                     state.consumer.accept(new Snapshot(child.toFile(), true,
                             attributes.lastModifiedTime().toMillis(), 0L));
                     state.entriesVisited++;
-                    scanDirectory(child, depth + 1, false, state);
+                    scanDirectory(child, depth + 1, false, includeHiddenEntries, includeRootAndroidDirectory, state);
                     if (state.truncated) return;
                 } else if (attributes.isRegularFile()) {
                     state.consumer.accept(new Snapshot(child.toFile(), false,

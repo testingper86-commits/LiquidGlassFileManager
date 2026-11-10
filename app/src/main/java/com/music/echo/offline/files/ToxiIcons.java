@@ -47,7 +47,7 @@ final class ToxiIcons {
 
     private static final class SymbolDrawable extends Drawable {
         final int id; final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        SymbolDrawable(int id,int color) { this.id=id; p.setColor(color); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.75f); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND); }
+        SymbolDrawable(int id,int color) { this.id=id; p.setColor(color); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.9f); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND); }
         void line(Canvas c,float x1,float y1,float x2,float y2){c.drawLine(x1,y1,x2,y2,p);}
         void circle(Canvas c,float x,float y,float r){c.drawCircle(x,y,r,p);}
         void rect(Canvas c,float l,float t,float r,float b,float rad){c.drawRoundRect(new RectF(l,t,r,b),rad,rad,p);}

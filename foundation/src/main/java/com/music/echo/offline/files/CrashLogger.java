@@ -34,7 +34,7 @@ public final class CrashLogger {
         });
     }
 
-    private static void writeCrash(Context context, Thread thread, Throwable error) throws Exception {
+    private static synchronized void writeCrash(Context context, Thread thread, Throwable error) throws Exception {
         File dir = new File(context.getFilesDir(), DIR);
         if (!dir.exists() && !dir.mkdirs()) return;
         long now = System.currentTimeMillis();
@@ -81,6 +81,22 @@ public final class CrashLogger {
             java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
             for (int i = 5; i < files.length; i++) try { files[i].delete(); } catch (Throwable ignored) { }
         }
+    }
+
+    /** Deletes the latest report and every retained archive, including AtomicFile recovery state. */
+    public static synchronized boolean deleteReports(Context context) {
+        if (context == null) return false;
+        File dir = new File(context.getFilesDir(), DIR);
+        AtomicFile latest = new AtomicFile(new File(dir, LATEST));
+        latest.delete();
+        boolean deleted = !new File(dir, LATEST).exists();
+        File[] archives = dir.listFiles((d, name) -> name.startsWith("crash-") && name.endsWith(".txt"));
+        if (archives != null) {
+            for (File archive : archives) {
+                if (!archive.delete() && archive.exists()) deleted = false;
+            }
+        }
+        return deleted;
     }
 
     private static String appVersion(Context context) {

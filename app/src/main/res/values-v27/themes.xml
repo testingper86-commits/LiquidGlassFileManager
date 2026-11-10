@@ -19,13 +19,13 @@
     </style>
     <style name="AppTheme_Light" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans-serif</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:statusBarColor">@color/toxifiles_canvas</item>
-        <item name="android:navigationBarColor">@color/toxifiles_canvas</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#F3F6FA</item>
+        <item name="android:navigationBarColor">#F3F6FA</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">@color/toxifiles_signal</item>
-        <item name="android:windowBackground">@drawable/toxifiles_splash</item>
-        <item name="android:alertDialogTheme">@style/ToxiDialogTheme</item>
+        <item name="android:colorAccent">#347B67</item>
+        <item name="android:windowBackground">#F3F6FA</item>
+        <item name="android:alertDialogTheme">@style/ToxiDialogTheme_Light</item>
     </style>
 </resources>

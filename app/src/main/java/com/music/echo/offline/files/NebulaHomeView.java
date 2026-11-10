@@ -2,6 +2,7 @@ package com.music.echo.offline.files;
 
 import com.music.echo.offline.R;
 
+import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Canvas;
@@ -14,7 +15,10 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Environment;
+import android.os.StatFs;
+import android.os.Build;
 import android.view.Gravity;
+import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -27,102 +31,203 @@ import java.io.File;
 
 /** Independent NEBULA OS home and tools presentation. All actions delegate to existing app modules. */
 final class NebulaHomeView {
-    static final int BACKGROUND = Color.rgb(15, 20, 26);
-    static final int PANEL = Color.rgb(25, 33, 42);
-    static final int PANEL_ALT = Color.rgb(30, 40, 50);
-    static final int BORDER = Color.rgb(48, 61, 73);
-    static final int LIME = Color.rgb(201, 243, 106);
-    static final int ICE = Color.rgb(112, 215, 243);
-    static final int VIOLET = Color.rgb(169, 139, 255);
-    static final int TEXT = Color.rgb(242, 246, 249);
-    static final int MUTED = Color.rgb(145, 159, 171);
-    private static final int[] ACCENTS = {LIME, ICE, VIOLET, LIME, ICE, VIOLET, LIME};
+    static int BACKGROUND = ToxiVisualSystem.CANVAS;
+    static int PANEL = ToxiVisualSystem.SURFACE_COLOR;
+    static int PANEL_ALT = ToxiVisualSystem.RAISED_SURFACE;
+    static int BORDER = ToxiVisualSystem.EDGE_STROKE;
+    static int LIME = ToxiVisualSystem.ACCENT;
+    static int ICE = ToxiThemeSystem.ACCENT_ENDS[0];
+    static int VIOLET = ToxiIcons.mix(ToxiVisualSystem.ACCENT, ToxiVisualSystem.TEXT_PRIMARY, 0.28f);
+    static int TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+    static int MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+    private static final int[] ACCENTS = new int[7];
+
+    private static void syncPalette() {
+        BACKGROUND = ToxiVisualSystem.CANVAS;
+        PANEL = ToxiVisualSystem.SURFACE_COLOR;
+        PANEL_ALT = ToxiVisualSystem.RAISED_SURFACE;
+        BORDER = ToxiVisualSystem.EDGE_STROKE;
+        LIME = ToxiVisualSystem.ACCENT;
+        ICE = ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX];
+        VIOLET = ToxiIcons.mix(ToxiVisualSystem.ACCENT, ToxiVisualSystem.TEXT_PRIMARY, 0.28f);
+        TEXT = ToxiVisualSystem.TEXT_PRIMARY;
+        MUTED = ToxiVisualSystem.TEXT_SECONDARY;
+        int[] accents = {LIME, ICE, VIOLET, LIME, ICE, VIOLET, LIME};
+        System.arraycopy(accents, 0, ACCENTS, 0, ACCENTS.length);
+    }
 
     private NebulaHomeView() { }
 
     static void buildHome(MainActivity a, LinearLayout host) {
+        syncPalette();
         host.removeAllViews();
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
-        host.setPadding(dp(a, 18), dp(a, 10), dp(a, 18), 0);
+        host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
         host.setBackgroundColor(BACKGROUND);
 
-        LinearLayout brand = new LinearLayout(a);
-        brand.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout mast = new LinearLayout(a);
+        mast.setGravity(Gravity.CENTER_VERTICAL);
         ImageView mark = new ImageView(a);
         mark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
-        mark.setContentDescription("ToxiFiles logo");
+        mark.setContentDescription("ToxiFiles Prism mark");
         mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        brand.addView(mark, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
-        LinearLayout wordmarkBlock = new LinearLayout(a);
-        wordmarkBlock.setOrientation(LinearLayout.VERTICAL);
-        wordmarkBlock.setPadding(dp(a, 11), 0, 0, 0);
-        TextView wordmark = text(a, "TOXIFILES", 22, TEXT, true);
-        wordmark.setLetterSpacing(0.12f);
-        wordmarkBlock.addView(wordmark);
-        TextView brandLine = text(a, "FILE MANAGEMENT, REFINED", 8, MUTED, true);
-        brandLine.setLetterSpacing(0.13f);
-        LinearLayout.LayoutParams brandLineLp = new LinearLayout.LayoutParams(-2, -2);
-        brandLineLp.topMargin = dp(a, 4);
-        wordmarkBlock.addView(brandLine, brandLineLp);
-        brand.addView(wordmarkBlock, new LinearLayout.LayoutParams(0, -2, 1f));
-        host.addView(brand, margins(a, -1, -2, 0, 5, 0, 18));
+        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
+        LinearLayout identity = new LinearLayout(a);
+        identity.setOrientation(LinearLayout.VERTICAL);
+        identity.setPadding(dp(a, 12), 0, 0, 0);
+        TextView word = text(a, "TOXIFILES", 19, TEXT, true);
+        word.setLetterSpacing(0.16f);
+        identity.addView(word);
+        TextView edition = text(a, "PRISM  /  PERSONAL FILESPACE", 8.5f, MUTED, true);
+        edition.setLetterSpacing(0.13f);
+        identity.addView(edition, margins(a, -2, -2, 0, 4, 0, 0));
+        mast.addView(identity, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView live = text(a, "●  LOCAL", 9, LIME, true);
+        live.setLetterSpacing(0.08f);
+        live.setBackground(background(PANEL_ALT, BORDER, 18));
+        live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
+        mast.addView(live);
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 19));
 
-        TextView subtitle = text(a, "YOUR DIGITAL SPACE", 10, MUTED, true);
-        subtitle.setLetterSpacing(0.19f);
-        host.addView(subtitle, margins(a, -1, -2, 0, 4, 0, 18));
+        TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
+        overline.setLetterSpacing(0.2f);
+        host.addView(overline);
+        TextView headline = text(a, "Everything\nin its element.", 31, TEXT, true);
+        headline.setLineSpacing(dp(a, 1), 0.98f);
+        host.addView(headline, margins(a, -1, -2, 0, 8, 0, 7));
+        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 12, MUTED, false);
+        host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
         if (!a.hasAccess()) {
-            LinearLayout access = panel(a, 18);
-            access.addView(text(a, "Storage access required", 17, TEXT, true));
-            access.addView(text(a, "Allow file access to show your device storage and browse your content.", 12, MUTED, false), margins(a, -1, -2, 0, 7, 0, 14));
-            TextView grant = actionText(a, "GRANT ACCESS", LIME);
+            LinearLayout access = panel(a, 22);
+            access.addView(text(a, "Connect your device storage", 17, TEXT, true));
+            access.addView(text(a, "Grant access to reveal your files, folders and storage intelligence.", 12, MUTED, false), margins(a, -1, -2, 0, 8, 0, 15));
+            TextView grant = actionText(a, "AUTHORIZE STORAGE  ↗", LIME);
             grant.setGravity(Gravity.CENTER);
-            grant.setBackground(background(PANEL_ALT, BORDER, 12));
-            grant.setPadding(0, dp(a, 13), 0, dp(a, 13));
+            grant.setBackground(background(PANEL_ALT, BORDER, 15));
+            grant.setPadding(0, dp(a, 14), 0, dp(a, 14));
             grant.setOnClickListener(v -> a.showStorageAccess());
+            ToxiVisualSystem.interactive(grant);
             access.addView(grant, new LinearLayout.LayoutParams(-1, -2));
-            host.addView(access, margins(a, -1, -2, 0, 0, 0, 16));
+            host.addView(access);
             return;
         }
 
         addStorage(a, host);
-        addSectionTitle(a, host, "BROWSE BY TYPE", "5 CATEGORIES");
+        LinearLayout section = new LinearLayout(a);
+        section.setGravity(Gravity.CENTER_VERTICAL);
+        TextView sectionTitle = text(a, "EXPLORE YOUR CONTENT", 10, TEXT, true);
+        sectionTitle.setLetterSpacing(0.14f);
+        section.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        section.addView(text(a, "05 CHANNELS", 8.5f, MUTED, true));
+        host.addView(section, margins(a, -1, -2, 0, 3, 0, 13));
+
         String[] names = {"Images", "Videos", "Audio", "Documents", "Downloads"};
-        String[] details = {"Photo library", "Video collection", "Music & sounds", "PDF & documents", "Recent downloads"};
+        String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
-        for (int row = 0; row < 2; row++) {
-            LinearLayout line = new LinearLayout(a);
-            line.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 2; col++) {
-                final int index = row * 2 + col;
-                View card = exploreCard(a, names[index], details[index], glyphs[index], ACCENTS[index]);
-                card.setOnClickListener(v -> {
-                    switch (index) {
-                        case 0: a.openCategory(0); break;
-                        case 1: a.openCategory(1); break;
-                        case 2: a.openCategory(2); break;
-                        case 3: a.openCategory(3); break;
-                    }
+        int[] accents = {LIME, ICE, VIOLET, ICE, LIME};
+        int columns = gridColumns(a);
+        int rowCount = (names.length + columns - 1) / columns;
+        for (int row = 0; row < rowCount; row++) {
+            LinearLayout gridRow = new LinearLayout(a);
+            gridRow.setOrientation(LinearLayout.HORIZONTAL);
+            int rowItems = Math.min(columns, names.length - row * columns);
+            for (int col = 0; col < rowItems; col++) {
+                final int index = row * columns + col;
+                LinearLayout item = new LinearLayout(a);
+                item.setOrientation(LinearLayout.VERTICAL);
+                item.setGravity(Gravity.TOP);
+                item.setPadding(dp(a, 13), dp(a, 13), dp(a, 13), dp(a, 13));
+                item.setBackground(ToxiVisualSystem.surface(20, index == 0));
+                LinearLayout iconLine = new LinearLayout(a);
+                iconLine.setGravity(Gravity.CENTER_VERTICAL);
+                FrameLayout iconWell = new FrameLayout(a);
+                iconWell.setBackground(background(PANEL_ALT, BORDER, 14));
+                Glyph icon = new Glyph(a, glyphs[index], accents[index]);
+                iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 27), dp(a, 27), Gravity.CENTER));
+                iconLine.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
+                TextView arrow = text(a, "↗", 17, accents[index], true);
+                LinearLayout.LayoutParams arrowLp = new LinearLayout.LayoutParams(0, -2, 1f);
+                arrow.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+                iconLine.addView(arrow, arrowLp);
+                item.addView(iconLine, new LinearLayout.LayoutParams(-1, -2));
+                TextView categoryName = text(a, names[index], 14, TEXT, true);
+                categoryName.setSingleLine(true);
+                categoryName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                item.addView(categoryName, margins(a, -1, -2, 0, 12, 0, 0));
+                TextView detail = text(a, details[index], 10, MUTED, false);
+                detail.setMaxLines(2);
+                detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                item.addView(detail, margins(a, -1, -2, 0, 5, 0, 0));
+                item.setContentDescription(names[index] + ". " + details[index]);
+                item.setFocusable(true);
+                item.setOnClickListener(v -> {
+                    ToxiVisualSystem.feedback(v);
+                    if (index == 0) a.openCategory(0);
+                    else if (index == 1) a.openCategory(1);
+                    else if (index == 2) a.openCategory(2);
+                    else if (index == 3) a.openCategory(3);
+                    else a.openDownloads();
                 });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1f);
-                if (col == 0) lp.rightMargin = dp(a, 7);
-                else lp.leftMargin = dp(a, 7);
-                line.addView(card, lp);
+                ToxiVisualSystem.interactive(item);
+                LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                        rowItems == 1 ? -1 : 0, dp(a, 134), rowItems == 1 ? 0f : 1f);
+                if (rowItems > 1) {
+                    if (col == 0) cardLp.rightMargin = dp(a, 6);
+                    else if (col == rowItems - 1) cardLp.leftMargin = dp(a, 6);
+                    else {
+                        cardLp.leftMargin = dp(a, 6);
+                        cardLp.rightMargin = dp(a, 6);
+                    }
+                }
+                gridRow.addView(item, cardLp);
+                animateHomeCard(a, item, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 116));
-            rowLp.bottomMargin = dp(a, 12);
-            host.addView(line, rowLp);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 134));
+            rowLp.bottomMargin = dp(a, 10);
+            host.addView(gridRow, rowLp);
         }
-        View downloadsCard = exploreCard(a, names[4], details[4], glyphs[4], ACCENTS[4]);
-        downloadsCard.setOnClickListener(v -> a.openDownloads());
-        host.addView(downloadsCard, margins(a, -1, dp(a, 92), 0, 0, 0, 12));
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 116) + ToxiVisualSystem.BOTTOM_INSET));
+        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 112) + ToxiVisualSystem.BOTTOM_INSET));
+    }
+
+    private static int gridColumns(MainActivity a) {
+        int widthDp = a.getResources().getConfiguration().screenWidthDp;
+        if (widthDp >= 900) return 4;
+        if (widthDp >= 600) return 3;
+        return 2;
+    }
+
+    private static void animateHomeCard(MainActivity a, View card, int index) {
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)
+                || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) {
+            card.setAlpha(1f);
+            card.setTranslationY(0f);
+            return;
+        }
+        card.setAlpha(0f);
+        card.setTranslationY(dp(a, 10));
+        card.post(() -> {
+            if (!card.isAttachedToWindow()) {
+                card.setAlpha(1f);
+                card.setTranslationY(0f);
+                return;
+            }
+            card.animate().cancel();
+            card.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(index * 35L)
+                    .setDuration(220L)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+        });
     }
 
     static void buildTools(MainActivity a, LinearLayout host) {
+        syncPalette();
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
@@ -137,23 +242,25 @@ final class NebulaHomeView {
         String[] names = {"Dual-Pane Explorer", "Hex Editor", "Folder Comparator", "Encoding Converter", "ZIP Editor", "Integrity Studio", "Text Editor"};
         String[] glyphs = {"columns-2", "binary", "compare", "languages", "archive", "shield-check", "code"};
         String[] details = {"Two folders side by side", "Inspect and edit bytes", "Compare folder contents", "Convert text encodings", "Manage ZIP contents", "Verify file checksums", "Edit and search text"};
-        for (int row = 0; row < 4; row++) {
+        int columns = gridColumns(a);
+        int rowCount = (names.length + columns - 1) / columns;
+        for (int row = 0; row < rowCount; row++) {
             LinearLayout line = new LinearLayout(a);
             line.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < 2; col++) {
-                final int index = row * 2 + col;
-                if (index >= names.length) {
-                    View spacer = new View(a);
-                    line.addView(spacer, new LinearLayout.LayoutParams(0, dp(a, 122), 1f));
-                    continue;
-                }
+            int rowItems = Math.min(columns, names.length - row * columns);
+            for (int col = 0; col < rowItems; col++) {
+                final int index = row * columns + col;
                 LinearLayout card = new LinearLayout(a);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setGravity(Gravity.CENTER_HORIZONTAL);
                 card.setPadding(dp(a, 8), dp(a, 15), dp(a, 8), dp(a, 11));
-                card.setBackground(background(PANEL, BORDER, 16));
+                card.setBackground(toolCardSurface(ACCENTS[index]));
+                card.setElevation(dp(a, 2));
+                FrameLayout iconWell = new FrameLayout(a);
+                iconWell.setBackground(background(Color.argb(28, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), Color.argb(90, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), 14));
                 Glyph icon = new Glyph(a, glyphs[index], ACCENTS[index]);
-                card.addView(icon, new LinearLayout.LayoutParams(dp(a, 32), dp(a, 32)));
+                iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 29), dp(a, 29), Gravity.CENTER));
+                card.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 48), dp(a, 48)));
                 TextView name = text(a, names[index], 12, TEXT, true);
                 name.setGravity(Gravity.CENTER);
                 name.setMaxLines(2);
@@ -165,9 +272,16 @@ final class NebulaHomeView {
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
                 card.setOnClickListener(v -> a.launchNebulaTool(index));
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(a, 122), 1f);
-                if (col == 0) lp.rightMargin = dp(a, 6);
-                else lp.leftMargin = dp(a, 6);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        rowItems == 1 ? -1 : 0, dp(a, 122), rowItems == 1 ? 0f : 1f);
+                if (rowItems > 1) {
+                    if (col == 0) lp.rightMargin = dp(a, 6);
+                    else if (col == rowItems - 1) lp.leftMargin = dp(a, 6);
+                    else {
+                        lp.leftMargin = dp(a, 6);
+                        lp.rightMargin = dp(a, 6);
+                    }
+                }
                 line.addView(card, lp);
             }
             LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 122));
@@ -180,8 +294,18 @@ final class NebulaHomeView {
 
     private static void addStorage(MainActivity a, LinearLayout host) {
         File root = Environment.getExternalStorageDirectory();
-        long total = root != null ? Math.max(0L, root.getTotalSpace()) : 0L;
-        long available = root != null ? Math.max(0L, root.getUsableSpace()) : 0L;
+        long total = 0L;
+        long available = 0L;
+        if (root != null) {
+            try {
+                StatFs storage = new StatFs(root.getPath());
+                total = Math.max(0L, storage.getTotalBytes());
+                available = Math.max(0L, Math.min(total, storage.getAvailableBytes()));
+            } catch (IllegalArgumentException | SecurityException ignored) {
+                total = 0L;
+                available = 0L;
+            }
+        }
         long used = total > 0 ? Math.max(0L, total - available) : 0L;
         int percent = total > 0 ? (int) Math.max(0L, Math.min(100L, Math.round((double) used * 100.0d / (double) total))) : 0;
 
@@ -191,7 +315,7 @@ final class NebulaHomeView {
         LinearLayout copy = new LinearLayout(a);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(a, "STORAGE OVERVIEW", 9, ICE, true));
-        copy.addView(text(a, "Device storage", 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
+        copy.addView(text(a, "Primary shared storage", 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
         top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView pct = text(a, total > 0 ? percent + "%" : "--", 22, LIME, true);
         top.addView(pct);
@@ -213,7 +337,7 @@ final class NebulaHomeView {
         values.addView(storageValue(a, "USED", total > 0 ? formatSize(used) : "Unavailable", LIME), new LinearLayout.LayoutParams(0, -2, 1f));
         values.addView(storageValue(a, "AVAILABLE", total > 0 ? formatSize(available) : "Unavailable", ICE), new LinearLayout.LayoutParams(0, -2, 1f));
         card.addView(values);
-        card.setContentDescription(total > 0 ? "Device storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
+        card.setContentDescription(total > 0 ? "Primary shared storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
         card.setFocusable(true);
         card.setOnClickListener(v -> a.openStorageAnalyzer());
         host.addView(card, margins(a, -1, -2, 0, 0, 0, 20));
@@ -256,6 +380,23 @@ final class NebulaHomeView {
         host.addView(row, margins(a, -1, -2, 0, 0, 0, 11));
     }
 
+    private static GradientDrawable toolCardSurface(int accent) {
+        GradientDrawable surface = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        ToxiIcons.mix(PANEL, accent, 0.075f),
+                        PANEL,
+                        ToxiIcons.mix(PANEL, Color.BLACK, 0.035f)
+                });
+        surface.setCornerRadius(dpRadius(18));
+        surface.setStroke(Math.max(1, dpRadius(1)), BORDER);
+        return surface;
+    }
+
+    private static int dpRadius(int value) {
+        return Math.max(1, Math.round(value * Resources.getSystem().getDisplayMetrics().density));
+    }
+
     private static LinearLayout panel(MainActivity a, int radius) {
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -269,7 +410,7 @@ final class NebulaHomeView {
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
-        view.setTypeface(Typeface.create(medium ? "sans-serif-medium" : "sans-serif", Typeface.NORMAL));
+        view.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), medium ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         return view;
     }
@@ -278,11 +419,11 @@ final class NebulaHomeView {
         return text(a, value, 12, color, true);
     }
 
-    static GradientDrawable navigationSurface() { return background(PANEL_ALT, BORDER, 22); }
+    static GradientDrawable navigationSurface() { syncPalette(); return background(PANEL_ALT, BORDER, 22); }
 
-    static GradientDrawable navigationHighlight() { return background(Color.argb(34, 201, 243, 106), Color.argb(88, 201, 243, 106), 16); }
+    static GradientDrawable navigationHighlight() { syncPalette(); return background(Color.argb(34, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), Color.argb(100, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), 16); }
 
-    static Drawable navigationItemSurface() { return new RippleDrawable(ColorStateList.valueOf(Color.argb(28, 255, 255, 255)), null, null); }
+    static Drawable navigationItemSurface() { syncPalette(); return new RippleDrawable(ColorStateList.valueOf(Color.argb(32, Color.red(TEXT), Color.green(TEXT), Color.blue(TEXT))), null, null); }
 
     private static GradientDrawable background(int color, int stroke, int radius) {
         GradientDrawable d = new GradientDrawable();

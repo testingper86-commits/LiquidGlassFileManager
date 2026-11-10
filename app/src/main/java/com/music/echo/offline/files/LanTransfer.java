@@ -84,16 +84,23 @@ final class LanTransfer {
         return null;
     }
 
-    private static String sha256(File f) {
+    private static String sha256(File f) throws IOException {
+        final MessageDigest md;
+        try { md = MessageDigest.getInstance("SHA-256"); }
+        catch (java.security.NoSuchAlgorithmException unavailable) { throw new IOException("SHA-256 is unavailable", unavailable); }
         try (InputStream in = new FileInputStream(f)) {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] buf = new byte[65536];
             int n;
-            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : md.digest()) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) { return ""; }
+            while ((n = in.read(buf)) != -1) {
+                OperationCancellation.checkCurrent();
+                if (n > 0) md.update(buf, 0, n);
+            }
+            OperationCancellation.checkCurrent();
+        } catch (IOException failure) {
+            if ("Operation cancelled".equals(failure.getMessage())) throw failure;
+            throw new IOException("Unable to hash " + f.getName(), failure);
+        }
+        return hex(md);
     }
 
     private static String hex(MessageDigest md) {
@@ -238,6 +245,7 @@ final class LanTransfer {
                 List<String> incomingNames = new java.util.ArrayList<>();
                 long declaredBytes = 0L;
                 for (int i = 0; i < count; i++) {
+                    OperationCancellation.checkCurrent();
                     String name = validateFileName(in.readUTF());
                     long len = in.readLong();
                     String expectHash = in.readUTF();
@@ -269,6 +277,7 @@ final class LanTransfer {
                 if (!accepted[0]) { l.onError("Declined"); return; }
 
                 for (int i = 0; i < incomingFiles.size(); i++) {
+                    OperationCancellation.checkCurrent();
                     IncomingFile header = incomingFiles.get(i);
                     String name = header.name;
                     long len = header.length;
@@ -286,7 +295,9 @@ final class LanTransfer {
                     try (OutputStream fout = new FileOutputStream(pending)) {
                         byte[] buf = new byte[65536]; long encryptedRemaining = len + 16L;
                         while (encryptedRemaining > 0) {
+                            OperationCancellation.checkCurrent();
                             int n = in.read(buf, 0, (int) Math.min(buf.length, encryptedRemaining));
+                            OperationCancellation.checkCurrent();
                             if (n < 0) throw new EOFException("Connection closed during encrypted file data");
                             byte[] plain = cipher.update(buf, 0, n);
                             if (plain != null && plain.length > 0) { fout.write(plain); md.update(plain); }
@@ -367,6 +378,7 @@ final class LanTransfer {
                 long[] lengths = new long[files.size()];
                 String[] hashes = new String[files.size()];
                 for (int i = 0; i < files.size(); i++) {
+                    OperationCancellation.checkCurrent();
                     File f = files.get(i);
                     if (!f.isFile() || java.nio.file.Files.isSymbolicLink(f.toPath())) throw new IOException("Only regular files can be sent");
                     validateFileName(f.getName());
@@ -374,7 +386,6 @@ final class LanTransfer {
                     if (lengths[i] > 8L * 1024 * 1024 * 1024 - total) throw new IOException("Transfer exceeds the 8 GB session limit");
                     total += lengths[i];
                     hashes[i] = sha256(f);
-                    if (hashes[i].isEmpty()) throw new IOException("Unable to hash " + f.getName());
                 }
                 out.writeInt(files.size());
                 out.writeLong(total);
@@ -388,6 +399,7 @@ final class LanTransfer {
                 if (!in.readBoolean()) { l.onError("The other device declined the transfer"); return; }
 
                 for (int idx = 0; idx < files.size(); idx++) {
+                    OperationCancellation.checkCurrent();
                     File f = files.get(idx);
                     l.onFileStart(idx + 1, files.size(), f.getName());
                     long fileLength = lengths[idx];
@@ -397,7 +409,9 @@ final class LanTransfer {
                     try (InputStream fin = new FileInputStream(f)) {
                         byte[] buf = new byte[65536]; int n; long left = fileLength;
                         while (left > 0) {
+                            OperationCancellation.checkCurrent();
                             n = fin.read(buf, 0, (int) Math.min(buf.length, left));
+                            OperationCancellation.checkCurrent();
                             if (n < 0) throw new EOFException("File changed while sending: " + f.getName());
                             byte[] encrypted = cipher.update(buf, 0, n); if (encrypted != null && encrypted.length > 0) out.write(encrypted);
                             left -= n;

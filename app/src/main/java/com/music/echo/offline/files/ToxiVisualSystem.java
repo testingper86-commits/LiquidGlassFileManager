@@ -15,6 +15,7 @@ import android.util.TypedValue;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewOutlineProvider;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,6 +32,8 @@ final class ToxiVisualSystem {
     static int TEXT_PRIMARY = 0xFFF1F5F8;
     static int TEXT_SECONDARY = ToxiThemeSystem.MUTED[0];
     static int CANVAS = ToxiThemeSystem.CANVAS[0];
+    static int SURFACE_COLOR = ToxiThemeSystem.SURFACES[0];
+    static int RAISED_SURFACE = ToxiThemeSystem.RAISED[0];
     static int BLOOM_PRIMARY = 0x263C4A59, BLOOM_SECONDARY = 0x183C4A59, BLOOM_TERTIARY = 0x0C3C4A59;
     static int TOP_INSET = 0, BOTTOM_INSET = 0;
     static int SURFACE_RED = 20, SURFACE_GREEN = 27, SURFACE_BLUE = 36;
@@ -68,10 +71,18 @@ final class ToxiVisualSystem {
 
     static void applyTheme(int index, boolean save) {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
+        LIGHT_MODE = PREFERENCES != null && PREFERENCES.getBoolean("light", false);
         ACCENT = ToxiThemeSystem.ACCENTS[THEME_INDEX];
-        CANVAS = ToxiThemeSystem.CANVAS[THEME_INDEX];
+        CANVAS = LIGHT_MODE ? ToxiThemeSystem.LIGHT_CANVAS[THEME_INDEX] : ToxiThemeSystem.CANVAS[THEME_INDEX];
+        SURFACE_COLOR = LIGHT_MODE ? ToxiThemeSystem.LIGHT_SURFACES[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
+        RAISED_SURFACE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_RAISED[THEME_INDEX] : ToxiThemeSystem.RAISED[THEME_INDEX];
+        TEXT_PRIMARY = LIGHT_MODE ? 0xFF182331 : 0xFFF1F5F8;
         TEXT_SECONDARY = HIGH_CONTRAST ? 0xFFE8EEF5 : ToxiThemeSystem.MUTED[THEME_INDEX];
-        EDGE_STROKE = ToxiThemeSystem.EDGES[THEME_INDEX];
+        if (LIGHT_MODE) TEXT_SECONDARY = HIGH_CONTRAST ? 0xFF263548 : ToxiThemeSystem.LIGHT_MUTED[THEME_INDEX];
+        EDGE_STROKE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_EDGES[THEME_INDEX] : ToxiThemeSystem.EDGES[THEME_INDEX];
+        BLOOM_PRIMARY = Color.argb(LIGHT_MODE ? 20 : 38, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        BLOOM_SECONDARY = Color.argb(LIGHT_MODE ? 12 : 24, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        BLOOM_TERTIARY = Color.argb(LIGHT_MODE ? 7 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         if (save && PREFERENCES != null) PREFERENCES.edit().putInt("theme", THEME_INDEX).apply();
     }
 
@@ -79,21 +90,46 @@ final class ToxiVisualSystem {
     static boolean booleanPreference(String key, boolean fallback) { return PREFERENCES != null && PREFERENCES.getBoolean(key, fallback); }
     static void setBooleanPreference(String key, boolean value) { if (PREFERENCES != null) PREFERENCES.edit().putBoolean(key, value).apply(); }
 
-    /** Matte, precision-cut panel with a theme-owned edge and restrained top reflection. */
+    /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
     static Drawable surface(float radiusDp, boolean raised) {
-        int fill = raised ? ToxiThemeSystem.RAISED[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
-        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.rgb(Math.min(255, Color.red(fill) + 8), Math.min(255, Color.green(fill) + 8), Math.min(255, Color.blue(fill) + 8)), fill});
-        panel.setCornerRadius(dp(radiusDp));
-        panel.setStroke(Math.max(1, dp(0.8f)), EDGE_STROKE);
-        return panel;
+        int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
+        int tintAlpha = LIGHT_MODE ? 10 : (raised ? 28 : 19);
+        int accentTint = Color.argb(tintAlpha, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int lowerTint = Color.argb(LIGHT_MODE ? 5 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 7 : 17)),
+                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 8 : 20)),
+                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
+        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
+        base.setCornerRadius(dp(radiusDp));
+        base.setStroke(Math.max(1, dp(0.85f)), EDGE_STROKE);
+
+        int crownAlpha = LIGHT_MODE ? 34 : (raised ? 42 : 30);
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(crownAlpha, 255, 255, 255),
+                        Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
+        glass.setCornerRadius(dp(radiusDp));
+        glass.setStroke(Math.max(1, dp(0.55f)), Color.argb(LIGHT_MODE ? 28 : 48, 255, 255, 255));
+        android.graphics.drawable.LayerDrawable layered =
+                new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
+        int inset = Math.max(1, dp(1));
+        layered.setLayerInset(1, inset, inset, inset, inset);
+        return layered;
+    }
+
+    private static int blend(int color, int overlay) {
+        float alpha = Color.alpha(overlay) / 255f;
+        return Color.rgb(
+                Math.round(Color.red(color) * (1f - alpha) + Color.red(overlay) * alpha),
+                Math.round(Color.green(color) * (1f - alpha) + Color.green(overlay) * alpha),
+                Math.round(Color.blue(color) * (1f - alpha) + Color.blue(overlay) * alpha));
     }
 
     static Drawable accentSurface(float radiusDp) {
         GradientDrawable accent = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
         accent.setCornerRadius(dp(radiusDp));
-        accent.setStroke(Math.max(1, dp(0.8f)), Color.argb(145, 255, 255, 255));
+        accent.setStroke(Math.max(1, dp(0.8f)), LIGHT_MODE ? Color.argb(110, 255, 255, 255) : Color.argb(145, 255, 255, 255));
         return accent;
     }
 
@@ -136,6 +172,7 @@ final class ToxiVisualSystem {
             mask.setCornerRadius(dp(14));
             view.setForeground(new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask));
         }
+        ToxiPowerTouchEngine.attach(view, THEME_INDEX);
     }
 
     static void clipRound(View view, final float radiusDp) {
@@ -145,6 +182,38 @@ final class ToxiVisualSystem {
             }
         });
         view.setClipToOutline(true);
+    }
+
+
+    /** Staggered entrance for screen-level panels; disabled when the user requests reduced motion. */
+    static void revealChildren(ViewGroup group) {
+        if (group == null || booleanPreference("reduce_motion", false)) return;
+        group.post(() -> {
+            if (!group.isAttachedToWindow()) return;
+            int visibleIndex = 0;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                final View child = group.getChildAt(i);
+                if (child.getVisibility() != View.VISIBLE) continue;
+                final long delay = Math.min(visibleIndex++, 8) * 28L;
+                child.animate().cancel();
+                child.setAlpha(0f);
+                child.setTranslationY(dp(9));
+                child.animate().alpha(1f).translationY(0f).setStartDelay(delay)
+                        .setDuration(210L)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                        .start();
+            }
+        });
+    }
+
+    /** Restrained spring response for touch targets, with no animation under reduced motion. */
+    static void touchSpring(View view) {
+        if (view == null || booleanPreference("reduce_motion", false)) return;
+        view.animate().cancel();
+        view.setScaleX(0.975f);
+        view.setScaleY(0.975f);
+        view.animate().scaleX(1f).scaleY(1f).setDuration(180L)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.15f)).start();
     }
 
     static void feedback(View view) {

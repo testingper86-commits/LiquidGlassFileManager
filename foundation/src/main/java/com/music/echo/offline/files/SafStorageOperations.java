@@ -9,15 +9,299 @@ import androidx.documentfile.provider.DocumentFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 /** Provider-aware operations for user-granted Storage Access Framework document trees. */
 final class SafStorageOperations {
     private SafStorageOperations() { }
+
+    static final class DirectoryEntry {
+        final String documentId;
+        final String name;
+        final boolean directory;
+
+        DirectoryEntry(String documentId, String name, boolean directory) {
+            this.documentId = documentId;
+            this.name = name;
+            this.directory = directory;
+        }
+    }
+
+    /** Lists immediate children through the selected tree, with bounded provider traversal. */
+    static ArrayList<DirectoryEntry> listChildren(ContentResolver resolver, Uri tree, Uri parent)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || parent == null) {
+            throw new IOException("Storage tree and parent document are required");
+        }
+        Uri children;
+        try {
+            children = DocumentsContract.buildChildDocumentsUriUsingTree(
+                    tree, DocumentsContract.getDocumentId(parent));
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid storage folder URI", invalidUri);
+        }
+        ArrayList<DirectoryEntry> entries = new ArrayList<>();
+        try (Cursor cursor = resolver.query(children, new String[]{
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+            if (cursor == null) throw new IOException("Storage provider could not list this folder");
+            while (cursor.moveToNext()) {
+                OperationCancellation.checkCurrent();
+                if (entries.size() >= TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Storage folder contains too many entries to browse safely");
+                }
+                String id = cursor.getString(0);
+                String name = cursor.getString(1);
+                if (id == null || name == null) {
+                    throw new IOException("Storage provider returned an incomplete document entry");
+                }
+                entries.add(new DirectoryEntry(id, name,
+                        DocumentsContract.Document.MIME_TYPE_DIR.equals(cursor.getString(2))));
+            }
+        } catch (SecurityException denied) {
+            throw new IOException("Storage provider denied access to this folder", denied);
+        } catch (RuntimeException providerFailure) {
+            throw new IOException("Storage provider failed while listing this folder", providerFailure);
+        }
+        return entries;
+    }
+
+    /** Returns true when target is the directory itself or appears anywhere below it. */
+    static boolean containsDocument(ContentResolver resolver, Uri tree, Uri directory, Uri target)
+            throws IOException {
+        return containsDocument(resolver, tree, directory, target, new TreeTraversalBudget());
+    }
+
+    private static boolean containsDocument(ContentResolver resolver, Uri tree, Uri directory, Uri target,
+                                            TreeTraversalBudget budget) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (resolver == null || tree == null || directory == null || target == null) {
+            throw new IOException("Storage tree and document URIs are required");
+        }
+        final String targetId;
+        try {
+            targetId = DocumentsContract.getDocumentId(target);
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid target document URI", invalidUri);
+        }
+        ArrayList<Uri> pending = new ArrayList<>();
+        HashSet<String> visited = new HashSet<>();
+        pending.add(directory);
+        int cursor = 0;
+        int scanned = 0;
+        while (cursor < pending.size()) {
+            OperationCancellation.checkCurrent();
+            if (++scanned > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
+                    || pending.size() > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                throw new IOException("Destination subtree is too large to validate safely");
+            }
+            Uri current = pending.get(cursor++);
+            String currentId;
+            try { currentId = DocumentsContract.getDocumentId(current); }
+            catch (IllegalArgumentException invalidUri) {
+                throw new IOException("Storage provider returned an invalid folder URI", invalidUri);
+            }
+            if (targetId.equals(currentId)) return true;
+            if (!visited.add(currentId)) continue;
+            for (DirectoryEntry entry : listChildren(resolver, tree, current)) {
+                OperationCancellation.checkCurrent();
+                budget.enter(0);
+                Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
+                if (targetId.equals(entry.documentId)) return true;
+                if (entry.directory && !visited.contains(entry.documentId)) pending.add(child);
+            }
+        }
+        return false;
+    }
+
+    /** Resolves the moving document and returns only safe child-folder destinations. */
+    static ArrayList<DirectoryEntry> listMoveDestinations(Context context, ContentResolver resolver,
+                                                           Uri tree, Uri currentFolder,
+                                                           Uri sourceDocument) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || resolver == null || tree == null || currentFolder == null
+                || sourceDocument == null) {
+            throw new IOException("Storage tree and move document URIs are required");
+        }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        if (source == null || !source.exists()) {
+            throw new IOException("The document being moved is no longer available");
+        }
+        boolean sourceIsDirectory = source.isDirectory();
+        TreeTraversalBudget budget = new TreeTraversalBudget();
+        ArrayList<DirectoryEntry> destinations = new ArrayList<>();
+        for (DirectoryEntry entry : listChildren(resolver, tree, currentFolder)) {
+            OperationCancellation.checkCurrent();
+            budget.enter(0);
+            if (!entry.directory) continue;
+            Uri child = DocumentsContract.buildDocumentUriUsingTree(tree, entry.documentId);
+            if (sameDocument(child, sourceDocument)) continue;
+            if (sourceIsDirectory && containsDocument(resolver, tree, child, sourceDocument, budget)) continue;
+            destinations.add(entry);
+        }
+        return destinations;
+    }
+
+    static Uri treeRootDocumentUri(Uri tree) {
+        if (tree == null) throw new IllegalArgumentException("Storage tree URI is required");
+        String rootId = DocumentsContract.getTreeDocumentId(tree);
+        if (rootId == null || rootId.isEmpty()) {
+            throw new IllegalArgumentException("Storage tree has no root document");
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(tree, rootId);
+    }
+
+    static Uri documentUriInTree(Uri tree, String documentId) {
+        if (tree == null || documentId == null || documentId.isEmpty()) {
+            throw new IllegalArgumentException("Storage tree and document ID are required");
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(tree, documentId);
+    }
+
+    static String documentId(Uri document) {
+        if (document == null) throw new IllegalArgumentException("Document URI is required");
+        return DocumentsContract.getDocumentId(document);
+    }
+
+    static boolean sameDocument(Uri first, Uri second) {
+        if (first == null || second == null) return false;
+        try {
+            return DocumentsContract.getDocumentId(first).equals(DocumentsContract.getDocumentId(second));
+        } catch (IllegalArgumentException invalidUri) {
+            return first.equals(second);
+        }
+    }
+
+    /** Imports one provider document into local storage using a private staging file. */
+    static File importDocument(Context context, Uri document, File destinationDirectory,
+                               String requestedName) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || document == null || destinationDirectory == null
+                || requestedName == null || requestedName.trim().isEmpty()) {
+            throw new IOException("Document, destination folder and filename are required");
+        }
+        if (!destinationDirectory.isDirectory() && !destinationDirectory.mkdirs()) {
+            throw new IOException("Download folder is unavailable");
+        }
+        if (!destinationDirectory.isDirectory() || !destinationDirectory.canWrite()) {
+            throw new IOException("Download folder is not writable");
+        }
+        final File destination;
+        try { destination = FileOperationEngine.unique(destinationDirectory, requestedName); }
+        catch (IllegalArgumentException invalidName) {
+            throw new IOException("Invalid imported filename", invalidName);
+        }
+        File pending = new File(destinationDirectory, ".toxifiles-import-" + UUID.randomUUID() + ".part");
+        boolean reserved = false;
+        try {
+            reserved = pending.createNewFile();
+            if (!reserved) throw new IOException("Unable to reserve an import staging file");
+            try (InputStream input = ToxiUriPermissions.openInputStream(context, document);
+                 FileOutputStream output = new FileOutputStream(pending, false)) {
+                byte[] buffer = new byte[65536];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    OperationCancellation.checkCurrent();
+                    if (count > 0) output.write(buffer, 0, count);
+                }
+                output.flush();
+                output.getFD().sync();
+            } catch (SecurityException denied) {
+                throw new IOException("Storage provider denied access to this document", denied);
+            }
+            OperationCancellation.checkCurrent();
+            try {
+                Files.move(pending.toPath(), destination.toPath());
+            } catch (IOException moveFailure) {
+                FileOperationEngine.copy(pending, destination);
+                try { Files.deleteIfExists(pending.toPath()); }
+                catch (IOException cleanupFailure) { /* The published import is complete; leave cleanup for later. */ }
+            }
+            return destination;
+        } catch (IOException | RuntimeException failure) {
+            if (reserved) {
+                try { Files.deleteIfExists(pending.toPath()); }
+                catch (IOException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+            }
+            throw failure;
+        }
+    }
+
+    interface CopyProgressListener {
+        void onProgress(int current, int total, File source);
+    }
+
+    static final class BatchCopyResult {
+        final int copied;
+        final int failed;
+        final String error;
+
+        BatchCopyResult(int copied, int failed, String error) {
+            this.copied = copied;
+            this.failed = failed;
+            this.error = error;
+        }
+    }
+
+    /** Resolves and validates a granted tree root before copying a local batch into it. */
+    static BatchCopyResult copyLocalFilesToTree(Context context, ContentResolver resolver,
+                                                List<File> sources, Uri tree,
+                                                CopyProgressListener progress) {
+        if (context == null || tree == null) {
+            return new BatchCopyResult(0, 1, "Storage context and destination tree are required");
+        }
+        DocumentFile parent;
+        try {
+            parent = DocumentFile.fromTreeUri(context, tree);
+        } catch (RuntimeException failure) {
+            String detail = failure.getMessage() == null
+                    ? failure.getClass().getSimpleName() : failure.getMessage();
+            return new BatchCopyResult(0, 1, "Cannot access destination storage: " + detail);
+        }
+        if (parent == null || !parent.exists() || !parent.isDirectory() || !parent.canWrite()) {
+            return new BatchCopyResult(0, 1, "Destination storage folder is not writable");
+        }
+        return copyLocalFiles(resolver, sources, parent, progress);
+    }
+
+    /** Copies a batch to one SAF folder, stopping at the first failure or cancellation. */
+    static BatchCopyResult copyLocalFiles(ContentResolver resolver, List<File> sources,
+                                          DocumentFile parent, CopyProgressListener progress) {
+        if (resolver == null || sources == null || parent == null) {
+            return new BatchCopyResult(0, 1, "Source files and destination folder are required");
+        }
+        if (!parent.exists() || !parent.isDirectory() || !parent.canWrite()) {
+            return new BatchCopyResult(0, 1, "Destination storage folder is not writable");
+        }
+        int copied = 0;
+        int failed = 0;
+        String error = "";
+        for (int index = 0; index < sources.size(); index++) {
+            File source = sources.get(index);
+            try {
+                OperationCancellation.checkCurrent();
+                if (source == null) throw new IOException("Source file is unavailable");
+                if (progress != null) progress.onProgress(index + 1, sources.size(), source);
+                copyLocalTree(resolver, source, parent);
+                copied++;
+            } catch (Exception failure) {
+                failed = 1;
+                error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
+                break;
+            }
+        }
+        return new BatchCopyResult(copied, failed, error);
+    }
 
     static DocumentFile copyLocalTree(ContentResolver resolver, File source, DocumentFile parent)
             throws IOException {
@@ -71,6 +355,31 @@ final class SafStorageOperations {
             catch (IOException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
             if (failure instanceof IOException) throw (IOException) failure;
             throw new IOException("Copy to external storage failed: " + failure.getMessage(), failure);
+        }
+    }
+
+    /** Duplicates a document or directory after resolving both locations inside its SAF tree. */
+    static void duplicateDocumentInTree(Context context, ContentResolver resolver, Uri tree,
+                                        Uri sourceDocument, Uri destinationParent, String displayName,
+                                        boolean directory) throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || resolver == null || tree == null || sourceDocument == null
+                || destinationParent == null || displayName == null || displayName.trim().isEmpty()) {
+            throw new IOException("Storage tree, source, destination and name are required");
+        }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        DocumentFile destination = findDocumentInTree(context, tree, destinationParent);
+        if (!destination.isDirectory()) throw new IOException("The duplicate destination is not a folder");
+        if (directory) {
+            if (!source.isDirectory()) throw new IOException("The selected source is not a folder");
+            if (sameDocument(sourceDocument, destinationParent)
+                    || containsDocument(resolver, tree, sourceDocument, destinationParent)) {
+                throw new IOException("A folder cannot be duplicated inside itself or one of its subfolders");
+            }
+            copyDocumentTree(resolver, source, destination);
+        } else {
+            if (source.isDirectory()) throw new IOException("The selected source is a folder");
+            copyDocumentFile(resolver, tree, sourceDocument, destinationParent, displayName);
         }
     }
 
@@ -217,6 +526,7 @@ final class SafStorageOperations {
         pending.add(root);
         int cursor = 0;
         int scannedDirectories = 0;
+        int scannedEntries = 0;
         while (cursor < pending.size()) {
             OperationCancellation.checkCurrent();
             if (++scannedDirectories > TreeTraversalBudget.DEFAULT_MAX_ENTRIES
@@ -240,6 +550,10 @@ final class SafStorageOperations {
             }
             if (children == null) continue;
             for (DocumentFile child : children) {
+                OperationCancellation.checkCurrent();
+                if (++scannedEntries > TreeTraversalBudget.DEFAULT_MAX_ENTRIES) {
+                    throw new IOException("Storage tree contains too many entries to resolve this document safely");
+                }
                 if (child == null) continue;
                 String childId;
                 try {
@@ -267,6 +581,50 @@ final class SafStorageOperations {
         } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
             throw new IOException("Storage provider does not support native moves", unsupported);
         }
+    }
+
+    /** Resolves and validates a move entirely inside the selected SAF tree. */
+    static DocumentFile moveDocumentInTree(Context context, ContentResolver resolver, Uri tree,
+                                           Uri sourceDocument, Uri sourceParent, Uri targetParent)
+            throws IOException {
+        OperationCancellation.checkCurrent();
+        if (context == null || resolver == null || tree == null || sourceDocument == null
+                || sourceParent == null || targetParent == null) {
+            throw new IOException("Storage tree, source and parent document URIs are required");
+        }
+        String sourceId;
+        try {
+            sourceId = DocumentsContract.getDocumentId(sourceDocument);
+        } catch (IllegalArgumentException invalidUri) {
+            throw new IOException("Invalid source document URI", invalidUri);
+        }
+        boolean sourceIsChild = false;
+        for (DirectoryEntry entry : listChildren(resolver, tree, sourceParent)) {
+            OperationCancellation.checkCurrent();
+            if (sourceId.equals(entry.documentId)) {
+                sourceIsChild = true;
+                break;
+            }
+        }
+        if (!sourceIsChild) {
+            throw new IOException("The selected source is no longer inside its expected parent folder");
+        }
+        if (sameDocument(sourceDocument, targetParent)) {
+            throw new IOException("A document cannot be moved into itself");
+        }
+        DocumentFile source = findDocumentInTree(context, tree, sourceDocument);
+        if (source.isDirectory() && containsDocument(resolver, tree, sourceDocument, targetParent)) {
+            throw new IOException("A folder cannot be moved into itself or one of its subfolders");
+        }
+        if (sameDocument(sourceParent, targetParent)) {
+            throw new IOException("The selected item is already in this destination folder");
+        }
+        DocumentFile from = findDocumentInTree(context, tree, sourceParent);
+        DocumentFile destination = findDocumentInTree(context, tree, targetParent);
+        if (!from.isDirectory() || !destination.isDirectory()) {
+            throw new IOException("Source and destination parents must be folders");
+        }
+        return moveDocumentWithFallback(context, resolver, source, from, destination);
     }
 
     /**
@@ -334,26 +692,53 @@ final class SafStorageOperations {
     }
 
     static void deleteTree(DocumentFile target) throws IOException {
-        deleteTree(target, new TreeTraversalBudget(), new HashSet<>(), 0);
-    }
-
-    private static void deleteTree(DocumentFile target, TreeTraversalBudget budget,
-                                   HashSet<String> visitedDirectories, int depth) throws IOException {
-        if (target == null || !target.exists()) return;
-        budget.enter(depth);
-        if (target.isDirectory()) {
-            if (!visitedDirectories.add(documentIdentity(target.getUri()))) {
-                throw new IOException("Storage provider returned a repeated or cyclic directory during cleanup");
+        try {
+            if (target == null || !target.exists()) return;
+            TreeTraversalBudget budget = new TreeTraversalBudget(
+                    TreeTraversalBudget.DEFAULT_MAX_ENTRIES, Integer.MAX_VALUE);
+            HashSet<String> visitedDirectories = new HashSet<>();
+            java.util.ArrayDeque<DocumentDeleteNode> pending = new java.util.ArrayDeque<>();
+            budget.enter(0);
+            pending.push(new DocumentDeleteNode(target, 0, false));
+            while (!pending.isEmpty()) {
+                DocumentDeleteNode current = pending.pop();
+                DocumentFile document = current.document;
+                if (current.deleteAfterChildren) {
+                    if (document.exists() && !document.delete()) {
+                        throw new IOException("Provider refused to remove partial output: " + document.getName());
+                    }
+                    continue;
+                }
+                if (!document.exists()) continue;
+                if (document.isDirectory()) {
+                    if (!visitedDirectories.add(documentIdentity(document.getUri()))) {
+                        throw new IOException("Storage provider returned a repeated or cyclic directory during cleanup");
+                    }
+                    DocumentFile[] children = document.listFiles();
+                    if (children == null) throw new IOException("Provider could not enumerate partial output for cleanup");
+                    pending.push(new DocumentDeleteNode(document, current.depth, true));
+                    for (DocumentFile child : children) {
+                        if (child == null) throw new IOException("Provider returned an invalid child during cleanup");
+                        budget.enter(current.depth + 1);
+                        pending.push(new DocumentDeleteNode(child, current.depth + 1, false));
+                    }
+                } else if (!document.delete()) {
+                    throw new IOException("Provider refused to remove partial output: " + document.getName());
+                }
             }
-            DocumentFile[] children = target.listFiles();
-            if (children == null) throw new IOException("Provider could not enumerate partial output for cleanup");
-            for (DocumentFile child : children) {
-                if (child == null) throw new IOException("Provider returned an invalid child during cleanup");
-                deleteTree(child, budget, visitedDirectories, depth + 1);
-            }
+        } catch (RuntimeException providerFailure) {
+            throw new IOException("Storage provider failed during partial-output cleanup", providerFailure);
         }
-        if (target.exists() && !target.delete()) {
-            throw new IOException("Provider refused to remove partial output: " + target.getName());
+    }
+    private static final class DocumentDeleteNode {
+        final DocumentFile document;
+        final int depth;
+        final boolean deleteAfterChildren;
+
+        DocumentDeleteNode(DocumentFile document, int depth, boolean deleteAfterChildren) {
+            this.document = document;
+            this.depth = depth;
+            this.deleteAfterChildren = deleteAfterChildren;
         }
     }
 

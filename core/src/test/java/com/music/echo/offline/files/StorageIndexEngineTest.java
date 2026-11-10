@@ -22,6 +22,22 @@ public class StorageIndexEngineTest {
         return collected;
     }
 
+    private Collected scan(File root, int depth, int limit, boolean includeHiddenEntries,
+                           boolean includeRootAndroidDirectory) throws IOException {
+        Collected collected = new Collected();
+        collected.result = StorageIndexEngine.scan(root, depth, limit, includeHiddenEntries,
+                includeRootAndroidDirectory, collected.entries::add);
+        return collected;
+    }
+
+    private boolean contains(Collected collected, File expected) throws IOException {
+        File canonical = expected.getCanonicalFile();
+        for (StorageIndexEngine.Snapshot entry : collected.entries) {
+            if (entry.file.getCanonicalFile().equals(canonical)) return true;
+        }
+        return false;
+    }
+
     @Test public void streamsNestedDirectoriesAndFileMetadata() throws Exception {
         File root = temporary.newFolder("root"), nested = new File(root, "docs");
         assertTrue(nested.mkdir()); File document = new File(nested, "readme.txt"); Files.write(document.toPath(), new byte[]{1, 2, 3});
@@ -44,6 +60,25 @@ public class StorageIndexEngineTest {
         Collected collected = scan(root, 9, 100);
         assertEquals(1, collected.entries.size());
         assertEquals(visible.getCanonicalFile(), collected.entries.get(0).file.getCanonicalFile());
+    }
+
+    @Test public void includesHiddenEntriesAndRootAndroidDirectoryWhenRequested() throws Exception {
+        File root = temporary.newFolder("root"), hidden = new File(root, ".cache"), android = new File(root, "Android");
+        assertTrue(hidden.mkdir()); assertTrue(android.mkdir());
+        File hiddenFile = new File(hidden, "hidden.txt"), androidFile = new File(android, "private.txt");
+        File visible = new File(root, "visible.txt");
+        Files.write(hiddenFile.toPath(), new byte[]{1});
+        Files.write(androidFile.toPath(), new byte[]{2});
+        Files.write(visible.toPath(), new byte[]{3});
+
+        Collected collected = scan(root, 9, 100, true, true);
+        assertEquals(5, collected.entries.size());
+        assertTrue(contains(collected, hidden));
+        assertTrue(contains(collected, hiddenFile));
+        assertTrue(contains(collected, android));
+        assertTrue(contains(collected, androidFile));
+        assertTrue(contains(collected, visible));
+        assertFalse(collected.result.incomplete);
     }
 
     @Test public void skipsSymbolicLinksWithoutFollowingTheirTargets() throws Exception {

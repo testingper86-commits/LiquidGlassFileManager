@@ -26,18 +26,20 @@ final class ToxiFileRow {
     static View create(Context context) {
         Holder h=new Holder();
         h.root=new FrameLayout(context);
-        h.root.setPadding(ToxiVisualSystem.dp(14),ToxiVisualSystem.dp(4),ToxiVisualSystem.dp(14),ToxiVisualSystem.dp(4));
+        h.root.setPadding(ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(5),ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(5));
         h.row=new LinearLayout(context); h.row.setGravity(Gravity.CENTER_VERTICAL);
         h.row.setOrientation(LinearLayout.HORIZONTAL);
-        h.row.setPadding(ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(8),ToxiVisualSystem.dp(10));
-        h.bgNormal=ToxiVisualSystem.surface(16,false); h.bgSel=ToxiVisualSystem.accentSurface(16); h.row.setBackground(h.bgNormal);
+        h.row.setPadding(ToxiVisualSystem.dp(13),ToxiVisualSystem.dp(11),ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(11));
+        h.bgNormal=ToxiVisualSystem.surface(20,false); h.bgSel=ToxiVisualSystem.accentSurface(20); h.row.setBackground(h.bgNormal);
+        h.row.setElevation(ToxiVisualSystem.dp(1.5f));
         FrameLayout iconFrame=new FrameLayout(context);
-        h.icon=new ImageView(context); h.icon.setScaleType(ImageView.ScaleType.CENTER_CROP); ToxiVisualSystem.clipRound(h.icon,11);
+        h.icon=new ImageView(context); h.icon.setScaleType(ImageView.ScaleType.CENTER_CROP); ToxiVisualSystem.clipRound(h.icon,12);
+        iconFrame.setBackground(ToxiVisualSystem.surface(15,true)); iconFrame.setPadding(ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3));
         iconFrame.addView(h.icon,new FrameLayout.LayoutParams(-1,-1));
         h.labelDot=new View(context); h.labelDot.setVisibility(View.GONE);
         FrameLayout.LayoutParams dotLp=new FrameLayout.LayoutParams(ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(10),Gravity.BOTTOM|Gravity.END);
         iconFrame.addView(h.labelDot,dotLp);
-        LinearLayout.LayoutParams iconLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(42),ToxiVisualSystem.dp(42)); iconLp.rightMargin=ToxiVisualSystem.dp(13);
+        LinearLayout.LayoutParams iconLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(50),ToxiVisualSystem.dp(50)); iconLp.rightMargin=ToxiVisualSystem.dp(14);
         h.row.addView(iconFrame,iconLp);
         LinearLayout labels=new LinearLayout(context); labels.setOrientation(LinearLayout.VERTICAL);
         h.name=ToxiVisualSystem.text(context,"",15,ToxiVisualSystem.TEXT_PRIMARY,true); h.name.setSingleLine(true); h.name.setEllipsize(TextUtils.TruncateAt.MIDDLE);
@@ -69,9 +71,9 @@ final class ToxiFileRow {
         h.name.setText(entry.name);
         String meta=entry.dir?"Folder":ToxiVisualSystem.formatSize(entry.len);
         h.sub.setText(meta+"  ·  "+ToxiVisualSystem.formatDate(entry.mod)+(extra!=null&&!extra.isEmpty()?"  ·  "+extra:""));
-        Thumbs.bind(h.icon,entry,ToxiVisualSystem.dp(42));
-        h.bgNormal = ToxiVisualSystem.surface(16, false);
-        h.bgSel = ToxiVisualSystem.accentSurface(16);
+        Thumbs.bind(h.icon,entry,ToxiVisualSystem.dp(48));
+        h.bgNormal = ToxiVisualSystem.surface(18, false);
+        h.bgSel = ToxiVisualSystem.accentSurface(18);
         GradientDrawable checked = new GradientDrawable();
         checked.setShape(GradientDrawable.OVAL);
         checked.setColor(ToxiVisualSystem.ACCENT);

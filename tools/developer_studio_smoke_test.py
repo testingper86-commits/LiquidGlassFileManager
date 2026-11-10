@@ -38,8 +38,9 @@ app_node = manifest_root.find("application")
 dev_activity = next((item for item in app_node.findall("activity") if item.attrib.get(android_ns + "name") == ".files.DeveloperStudioActivity"), None)
 require(dev_activity is not None and dev_activity.attrib.get(android_ns + "exported") == "false" and dev_activity.find("intent-filter") is None,
         "Developer Studio activity is private and non-exported")
-require(main.count("new Intent(this, DeveloperStudioActivity.class)") == 1 and "Developer Studio" in main,
-        "single Developer-only entry point exists in Settings")
+settings_controller = (BASE / "SettingsScreenController.java").read_text(encoding="utf-8")
+require(settings_controller.count("new Intent(activity, DeveloperStudioActivity.class)") == 1 and "Developer Studio" in settings_controller and "settingsScreenController.build();" in main,
+        "single Developer-only entry point exists in the extracted Settings screen")
 require("EXTRA_FILE_PATH" not in activity and "tool_index" not in activity,
         "Developer tools are not routed through ordinary file-opening extras")
 require("SQLiteDatabase.OPEN_READONLY" in activity and "rawQuery" in activity,
