@@ -25,6 +25,7 @@ final class PrismNavigationDock {
     private final FrameLayout surface;
     private final View selection;
     private final View[] items = new View[TAB_COUNT];
+    private LinearLayout tabGroup;
     private final NebulaHomeView.Glyph[] glyphs = new NebulaHomeView.Glyph[TAB_COUNT];
     private final TextView[] labels = new TextView[TAB_COUNT];
     private int selectedTab;
@@ -106,9 +107,10 @@ final class PrismNavigationDock {
         surface.removeAllViews();
         surface.setBackground(NebulaHomeView.navigationSurface());
         surface.addView(selection);
-        LinearLayout group = new LinearLayout(activity);
-        group.setOrientation(rail ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
-        group.setGravity(Gravity.CENTER);
+        tabGroup = new LinearLayout(activity);
+        tabGroup.setOrientation(rail ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        tabGroup.setGravity(Gravity.CENTER);
+        tabGroup.setBaselineAligned(false);
         int inset = NebulaHomeView.dp(activity, 7);
         surface.setPadding(inset, inset, inset, inset);
         for (View item : items) {
@@ -116,18 +118,18 @@ final class PrismNavigationDock {
             LinearLayout.LayoutParams lp = rail
                     ? new LinearLayout.LayoutParams(-1, 0, 1f)
                     : new LinearLayout.LayoutParams(0, -1, 1f);
-            group.addView(item, lp);
+            tabGroup.addView(item, lp);
         }
-        surface.addView(group, new FrameLayout.LayoutParams(-1, -1));
+        surface.addView(tabGroup, new FrameLayout.LayoutParams(-1, -1));
         FrameLayout.LayoutParams params;
         if (rail) {
             params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, 82),
                     NebulaHomeView.dp(activity, 340), Gravity.START | Gravity.CENTER_VERTICAL);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
         } else {
-            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 78), Gravity.BOTTOM);
+            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 80), Gravity.BOTTOM);
             params.setMargins(NebulaHomeView.dp(activity, 16), 0,
-                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 18));
+                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 14));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -140,7 +142,8 @@ final class PrismNavigationDock {
         int index = Math.max(0, Math.min(TAB_COUNT - 1, selectedTab));
         View target = items[index];
         if (target == null || target.getWidth() == 0 || target.getHeight() == 0) return;
-        int x = target.getLeft(), y = target.getTop();
+        int x = Math.round(tabGroup.getX() + target.getX());
+        int y = Math.round(tabGroup.getY() + target.getY());
         FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(target.getWidth(), target.getHeight());
         p.leftMargin = x;
         p.topMargin = y;
@@ -155,7 +158,7 @@ final class PrismNavigationDock {
         if (rail) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
         params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
-                + NebulaHomeView.dp(activity, 18);
+                + NebulaHomeView.dp(activity, 14);
         surface.setLayoutParams(params);
     }
 
@@ -168,7 +171,8 @@ final class PrismNavigationDock {
             if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
                 layoutSelection();
             } else {
-                int left = target.getLeft(), top = target.getTop();
+                int left = Math.round(tabGroup.getX() + target.getX());
+                int top = Math.round(tabGroup.getY() + target.getY());
                 selection.animate().x(left).y(top).setDuration(210)
                         .setInterpolator(new DecelerateInterpolator()).start();
             }
