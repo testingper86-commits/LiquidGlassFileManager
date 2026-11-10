@@ -2,6 +2,7 @@ package com.music.echo.offline.files;
 
 /** Ten original anime-inspired identities with independent dark/light surface tokens. */
 final class ToxiThemeSystem {
+    static final String DESIGN_SYSTEM_BASE = "Obsidian Alloy";
     static final String[] NAMES = {
         "Solo Leveling · Shadow Monarch", "Demon Slayer · Breathing Legends",
         "Jujutsu Kaisen · Infinity Domain", "Attack on Titan · Titan Frontier",
@@ -46,5 +47,4 @@ final class ToxiThemeSystem {
             && LIGHT_MUTED.length == n && new java.util.HashSet<>(java.util.Arrays.asList(NAMES)).size() == n
             && unique(ACCENTS) && unique(ACCENT_ENDS) && unique(CANVAS) && unique(SURFACES)
             && unique(RAISED) && unique(EDGES) && unique(MUTED) && unique(SOFT_ACCENTS);
-    }
 }
