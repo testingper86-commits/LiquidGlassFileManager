@@ -187,7 +187,12 @@ final class NebulaHomeView {
     }
 
     private static void animateHomeCard(MainActivity a, View card, int index) {
-        if (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled()) return;
+        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)
+                || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) {
+            card.setAlpha(1f);
+            card.setTranslationY(0f);
+            return;
+        }
         card.setAlpha(0f);
         card.setTranslationY(dp(a, 10));
         card.post(() -> {
