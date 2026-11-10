@@ -47,7 +47,7 @@ final class PrismNavigationDock {
         if (built) return;
         built = true;
         surface.setBackground(NebulaHomeView.navigationSurface());
-        ToxiVisualSystem.clipRound(surface, 30);
+        ToxiVisualSystem.clipRound(surface, 26);
         surface.setForeground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(0x2279F2C0), null, null));
         surface.setElevation(NebulaHomeView.dp(activity, 10));
@@ -62,8 +62,8 @@ final class PrismNavigationDock {
             item.setOrientation(LinearLayout.VERTICAL);
             item.setMinimumWidth(NebulaHomeView.dp(activity, 52));
             item.setMinimumHeight(NebulaHomeView.dp(activity, 52));
-            item.setPadding(NebulaHomeView.dp(activity, 4), NebulaHomeView.dp(activity, 5),
-                    NebulaHomeView.dp(activity, 4), NebulaHomeView.dp(activity, 5));
+            item.setPadding(NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 4),
+                    NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 4));
             glyphs[i] = new NebulaHomeView.Glyph(activity, symbols[i], NebulaHomeView.TEXT);
             glyphs[i].setContentDescription(names[i]);
             item.addView(glyphs[i], new LinearLayout.LayoutParams(
@@ -111,7 +111,7 @@ final class PrismNavigationDock {
         tabGroup.setOrientation(rail ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         tabGroup.setGravity(Gravity.CENTER);
         tabGroup.setBaselineAligned(false);
-        int inset = NebulaHomeView.dp(activity, 7);
+        int inset = NebulaHomeView.dp(activity, 5);
         surface.setPadding(inset, inset, inset, inset);
         for (View item : items) {
             if (item == null) continue;
@@ -127,9 +127,9 @@ final class PrismNavigationDock {
                     NebulaHomeView.dp(activity, 340), Gravity.START | Gravity.CENTER_VERTICAL);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
         } else {
-            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 80), Gravity.BOTTOM);
-            params.setMargins(NebulaHomeView.dp(activity, 16), 0,
-                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 14));
+            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 72), Gravity.BOTTOM);
+            params.setMargins(NebulaHomeView.dp(activity, 22), 0,
+                    NebulaHomeView.dp(activity, 22), NebulaHomeView.dp(activity, 10));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -158,7 +158,7 @@ final class PrismNavigationDock {
         if (rail) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
         params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
-                + NebulaHomeView.dp(activity, 14);
+                + NebulaHomeView.dp(activity, 10);
         surface.setLayoutParams(params);
     }
 

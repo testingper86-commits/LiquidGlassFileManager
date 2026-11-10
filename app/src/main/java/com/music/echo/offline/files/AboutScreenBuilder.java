@@ -103,14 +103,11 @@ final class AboutScreenBuilder {
         avatarFrame.setElevation(ToxiVisualSystem.dp(9));
         avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
         ImageView avatar = new ImageView(activity);
-        android.graphics.Bitmap profileBitmap = android.graphics.BitmapFactory.decodeResource(activity.getResources(), R.drawable.chandu_profile);
-        if (profileBitmap != null) avatar.setImageDrawable(new android.graphics.drawable.BitmapDrawable(activity.getResources(), profileBitmap));
-        else avatar.setImageResource(R.drawable.chandu_profile);
+        // Load the supplied creator portrait directly from the packaged drawable.
+        // Avoid eager BitmapFactory decoding, which can leave only a blank background.
+        avatar.setImageResource(R.drawable.chandu_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        GradientDrawable avatarClip = new GradientDrawable();
-        avatarClip.setShape(GradientDrawable.OVAL);
-        avatarClip.setColor(Color.WHITE);
-        avatar.setBackground(avatarClip);
+        avatar.setBackgroundColor(Color.TRANSPARENT);
         avatar.setContentDescription("Chandu profile photo");
         avatar.setClipToOutline(true);
         avatar.setAdjustViewBounds(false);
