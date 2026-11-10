@@ -57,7 +57,7 @@ final class ThemeScreenController {
         label.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(8));
         panel.addView(label);
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
-            final int index = i;
+            final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
             LinearLayout tile = new LinearLayout(activity);
             tile.setGravity(Gravity.CENTER_VERTICAL);
@@ -89,7 +89,7 @@ final class ThemeScreenController {
             tile.addView(state, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(42)));
             tile.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
-                ToxiVisualSystem.applyTheme(index, true);
+                ToxiVisualSystem.applyTheme(themeIndex, true);
                 activity.recolor();
                 build();
             });
