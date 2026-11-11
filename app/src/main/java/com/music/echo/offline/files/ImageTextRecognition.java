@@ -29,20 +29,11 @@ import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions;
-import com.googlecode.tesseract.android.ResultIterator;
-import com.googlecode.tesseract.android.TessBaseAPI;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /** Offline OCR shared by the existing image viewer and its built-in editor. */
 final class ImageTextRecognition {
@@ -75,211 +66,60 @@ final class ImageTextRecognition {
         }
     }
 
-    private static final long KANNADA_MODEL_BYTES = 3_608_331L;
-    private static final String[] KANNADA_MODEL_PARTS = {
-        "tessdata/kan.traineddata.part00", "tessdata/kan.traineddata.part01",
-        "tessdata/kan.traineddata.part02", "tessdata/kan.traineddata.part03",
-        "tessdata/kan.traineddata.part04", "tessdata/kan.traineddata.part05",
-        "tessdata/kan.traineddata.part06", "tessdata/kan.traineddata.part07",
-        "tessdata/kan.traineddata.part08"
-    };
-    private static final ExecutorService KANNADA_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread thread = new Thread(r, "toxifiles-ocr-kannada");
-        thread.setDaemon(true);
-        return thread;
-    });
-
     private ImageTextRecognition() {}
 
     static void recognize(Context context, Bitmap source, Callback callback) {
         if (callback == null) return;
         if (context == null || source == null || source.isRecycled()) {
-            callback.onComplete(null, new IllegalArgumentException("Image is unavailable"));
-            return;
-        }
+            callback.onComplete(null, new IllegalArgumentException("Image is unavailable")); return; }
         Bitmap enhanced;
-        try {
-            enhanced = enhance(source);
-        } catch (RuntimeException failure) {
-            enhanced = source;
-        }
-        runEngines(context.getApplicationContext(), source, enhanced, callback);
+        try { enhanced = enhance(source); } catch (RuntimeException failure) { enhanced = source; }
+        runEnglishRecognition(source, enhanced, callback);
     }
 
     /** Contrast-normalized second pass; never mutates or recycles the source image. */
     private static Bitmap enhance(Bitmap source) {
-        int width = source.getWidth();
-        int height = source.getHeight();
+        int width = source.getWidth(), height = source.getHeight();
         if (width <= 0 || height <= 0 || (long) width * height > 20_000_000L) return source;
         Bitmap output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(output);
-        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        ColorMatrix matrix = new ColorMatrix(new float[]{
-            1.22f, 0, 0, 0, -24, 0, 1.22f, 0, 0, -24,
-            0, 0, 1.22f, 0, -24, 0, 0, 0, 1, 0
-        });
-        paint.setColorFilter(new ColorMatrixColorFilter(matrix));
-        canvas.drawBitmap(source, 0, 0, paint);
-        return output;
+        Canvas canvas = new Canvas(output); Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        ColorMatrix matrix = new ColorMatrix(new float[]{1.22f,0,0,0,-24,0,1.22f,0,0,-24,0,0,1.22f,0,-24,0,0,0,1,0});
+        paint.setColorFilter(new ColorMatrixColorFilter(matrix)); canvas.drawBitmap(source,0,0,paint); return output;
     }
 
-    private static void runEngines(Context context, Bitmap original, Bitmap enhanced, Callback callback) {
-        final int mlPassCount = enhanced == null || enhanced == original ? 2 : 4;
-        final int totalPasses = mlPassCount + 1;
-        final Object lock = new Object();
-        final ArrayList<Result> candidates = new ArrayList<>();
-        final ArrayList<Exception> errors = new ArrayList<>();
+    /** English-only on-device OCR with a contrast-enhanced fallback pass. */
+    private static void runEnglishRecognition(Bitmap original, Bitmap enhanced, Callback callback) {
+        final Bitmap[] images = enhanced == null || enhanced == original ? new Bitmap[]{original} : new Bitmap[]{original, enhanced};
+        final int totalPasses = images.length; final Object lock = new Object();
+        final ArrayList<Result> candidates = new ArrayList<>(); final ArrayList<Exception> errors = new ArrayList<>();
         final int[] finished = {0};
-        final Bitmap[] images = enhanced == null || enhanced == original
-                ? new Bitmap[]{original, original}
-                : new Bitmap[]{original, enhanced, original, enhanced};
-        final int[] scripts = enhanced == null || enhanced == original
-                ? new int[]{0, 1} : new int[]{0, 0, 1, 1};
-        final String[] engineNames = {"Latin", "Devanagari"};
-
-        for (int i = 0; i < mlPassCount; i++) {
-            final Bitmap image = images[i];
-            final int script = scripts[i];
-            final boolean enhancedPass = enhanced != null && enhanced != original && image == enhanced;
-            TextRecognizer recognizer = null;
+        for (Bitmap image : images) {
+            final boolean enhancedPass = image == enhanced && enhanced != original; TextRecognizer recognizer = null;
             try {
-                recognizer = script == 0
-                        ? TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-                        : TextRecognition.getClient(new DevanagariTextRecognizerOptions.Builder().build());
-                final TextRecognizer activeRecognizer = recognizer;
-                final Result[] candidate = {null};
-                Task<Text> task = activeRecognizer.process(InputImage.fromBitmap(image, 0));
-                task.addOnSuccessListener(text -> {
-                    Result parsed = convert(text, engineNames[script] + (enhancedPass ? "+contrast" : ""));
-                    if (!parsed.text.isEmpty()) candidate[0] = parsed;
-                }).addOnCompleteListener(done -> {
-                    activeRecognizer.close();
-                    finishPass(lock, candidates, errors, finished, totalPasses, callback,
-                            enhanced, original, candidate[0], done.getException());
-                });
+                recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+                final TextRecognizer activeRecognizer = recognizer; final Result[] candidate = {null};
+                Task<Text> task = activeRecognizer.process(InputImage.fromBitmap(image,0));
+                task.addOnSuccessListener(text -> { Result parsed = convert(text,"English (Latin)"+(enhancedPass?"+contrast":"")); if(!parsed.text.isEmpty()) candidate[0]=parsed; })
+                    .addOnCompleteListener(done -> { activeRecognizer.close(); finishEnglishPass(lock,candidates,errors,finished,totalPasses,callback,enhanced,original,candidate[0],done.getException()); });
             } catch (RuntimeException failure) {
                 if (recognizer != null) recognizer.close();
-                finishPass(lock, candidates, errors, finished, totalPasses, callback,
-                        enhanced, original, null, failure);
+                finishEnglishPass(lock,candidates,errors,finished,totalPasses,callback,enhanced,original,null,failure);
             }
-        }
-
-        try {
-            KANNADA_EXECUTOR.execute(() -> {
-                try {
-                    Result kannada = recognizeKannada(context, original);
-                    finishPass(lock, candidates, errors, finished, totalPasses, callback,
-                            enhanced, original, kannada, null);
-                } catch (Exception failure) {
-                    finishPass(lock, candidates, errors, finished, totalPasses, callback,
-                            enhanced, original, null, failure);
-                }
-            });
-        } catch (RuntimeException failure) {
-            finishPass(lock, candidates, errors, finished, totalPasses, callback,
-                    enhanced, original, null, failure);
         }
     }
 
-    private static void finishPass(Object lock, ArrayList<Result> candidates,
-                                   ArrayList<Exception> errors, int[] finished, int totalPasses,
-                                   Callback callback, Bitmap enhanced, Bitmap original,
-                                   Result candidate, Exception error) {
-        synchronized (lock) {
-            if (candidate != null && !candidate.text.trim().isEmpty()) candidates.add(candidate);
-            if (error != null) errors.add(error);
-            finished[0]++;
-            if (finished[0] != totalPasses) return;
-            if (enhanced != null && enhanced != original && !enhanced.isRecycled()) enhanced.recycle();
-            if (candidates.isEmpty()) {
-                callback.onComplete(null, errors.isEmpty()
-                        ? new IllegalStateException("No readable text was detected") : errors.get(0));
-                return;
-            }
-            candidates.sort(Comparator
-                    .comparingDouble((Result result) -> result.confidence).reversed()
-                    .thenComparing(Comparator.comparingInt((Result result) -> result.text.length()).reversed()));
-            callback.onComplete(candidates.get(0), null);
+    private static void finishEnglishPass(Object lock, ArrayList<Result> candidates, ArrayList<Exception> errors,
+            int[] finished, int totalPasses, Callback callback, Bitmap enhanced, Bitmap original, Result candidate, Exception error) {
+        synchronized(lock) {
+            if(candidate!=null&&!candidate.text.trim().isEmpty()) candidates.add(candidate); if(error!=null) errors.add(error);
+            finished[0]++; if(finished[0]!=totalPasses) return;
+            if(enhanced!=null&&enhanced!=original&&!enhanced.isRecycled()) enhanced.recycle();
+            if(candidates.isEmpty()) { callback.onComplete(null,errors.isEmpty()?new IllegalStateException("No readable English text was detected"):errors.get(0)); return; }
+            candidates.sort(Comparator.comparingDouble((Result result)->result.confidence).reversed()
+                .thenComparing(Comparator.comparingInt((Result result)->result.text.length()).reversed()));
+            callback.onComplete(candidates.get(0),null);
         }
     }
-
-    private static Result recognizeKannada(Context context, Bitmap bitmap) throws IOException {
-        File dataRoot = context.getFilesDir();
-        File tessdata = new File(dataRoot, "tessdata");
-        if (!tessdata.isDirectory() && !tessdata.mkdirs()) {
-            throw new IOException("Cannot create private OCR model directory");
-        }
-        File model = new File(tessdata, "kan.traineddata");
-        if (!model.isFile() || model.length() != KANNADA_MODEL_BYTES) {
-            File temporary = new File(tessdata, "kan.traineddata.tmp");
-            if (temporary.exists() && !temporary.delete()) throw new IOException("Cannot replace incomplete OCR model");
-            long copied = 0;
-            try (FileOutputStream output = new FileOutputStream(temporary)) {
-                byte[] buffer = new byte[16 * 1024];
-                for (String part : KANNADA_MODEL_PARTS) {
-                    try (InputStream input = context.getAssets().open(part)) {
-                        int count;
-                        while ((count = input.read(buffer)) != -1) {
-                            output.write(buffer, 0, count);
-                            copied += count;
-                        }
-                    }
-                }
-                output.getFD().sync();
-            } catch (IOException failure) {
-                temporary.delete();
-                throw failure;
-            }
-            if (copied != KANNADA_MODEL_BYTES || temporary.length() != KANNADA_MODEL_BYTES) {
-                temporary.delete();
-                throw new IOException("Bundled Kannada OCR model failed its size check");
-            }
-            if (model.exists() && !model.delete()) {
-                temporary.delete();
-                throw new IOException("Cannot replace stale Kannada OCR model");
-            }
-            if (!temporary.renameTo(model)) {
-                temporary.delete();
-                throw new IOException("Cannot install bundled Kannada OCR model");
-            }
-        }
-
-        TessBaseAPI api = new TessBaseAPI();
-        try {
-            if (!api.init(dataRoot.getAbsolutePath(), "kan")) {
-                throw new IOException("Kannada OCR model could not be initialized");
-            }
-            api.setImage(bitmap);
-            String recognized = api.getUTF8Text();
-            float confidence = safeConfidence(api.meanConfidence() / 100f);
-            ArrayList<Region> regions = new ArrayList<>();
-            ResultIterator iterator = api.getResultIterator();
-            if (iterator != null) {
-                try {
-                    iterator.begin();
-                    do {
-                        String word = iterator.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_WORD);
-                        Rect bounds = iterator.getBoundingRect(TessBaseAPI.PageIteratorLevel.RIL_WORD);
-                        float wordConfidence = safeConfidence(
-                                iterator.confidence(TessBaseAPI.PageIteratorLevel.RIL_WORD) / 100f);
-                        if (word != null && !word.trim().isEmpty() && bounds != null
-                                && bounds.width() > 0 && bounds.height() > 0) {
-                            regions.add(new Region(word.trim(), bounds, wordConfidence, 1));
-                        }
-                    } while (iterator.next(TessBaseAPI.PageIteratorLevel.RIL_WORD));
-                } finally {
-                    iterator.delete();
-                }
-            }
-            if (recognized == null || recognized.trim().isEmpty()) {
-                throw new IOException("No Kannada-script text was detected");
-            }
-            return new Result(recognized, regions, "Kannada script · offline Tesseract", confidence);
-        } finally {
-            api.recycle();
-        }
-    }
-
     private static Result convert(Text text, String engine) {
         StringBuilder all = new StringBuilder();
         ArrayList<Region> regions = new ArrayList<>();

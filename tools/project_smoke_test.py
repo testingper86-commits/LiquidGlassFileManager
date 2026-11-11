@@ -427,11 +427,10 @@ def main():
     require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and ':core:test :app:testDebugUnitTest :app:lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
     ocr_engine = source("app/src/main/java/com/music/echo/offline/files/ImageTextRecognition.java")
     viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
-    require('cz.adaptech.tesseract4android:tesseract4android:4.9.0' in app_gradle and 'com.google.mlkit:text-recognition:16.0.1' in app_gradle and 'text-recognition-devanagari:16.0.1' in app_gradle, "OCR dependencies include bundled offline Latin, Devanagari and Tesseract engines")
-    require('ImageTextRecognition.recognize(this, bitmap' in viewer and 'TessBaseAPI' in ocr_engine and 'recognizeKannada' in ocr_engine and 'RIL_WORD' in ocr_engine and 'KANNADA_MODEL_BYTES = 3_608_331L' in ocr_engine, "Image Viewer and editor share real on-device Kannada-script OCR with word boxes and bundled model integrity checks")
-    require('ACTION_DOWN' in ocr_engine and 'selectIntersectingRegions' in ocr_engine and 'Selection.selectAll' in ocr_engine and 'ClipData.newPlainText' in ocr_engine and 'Intent.ACTION_SEND' in ocr_engine and 'Linkify.WEB_URLS' in ocr_engine, "OCR overlay supports drag selection, Select All, real clipboard, sharing and automatic link detection")
-    for part in range(9):
-        require((ROOT / f"app/src/main/assets/tessdata/kan.traineddata.part{part:02d}").is_file(), f"offline Kannada traineddata chunk {part:02d} is packaged")
+    require('com.google.mlkit:text-recognition:16.0.1' in app_gradle and 'text-recognition-devanagari' not in app_gradle and 'tesseract4android' not in app_gradle, "OCR dependencies are limited to the English/Latin ML Kit recognizer")
+    require('ImageTextRecognition.recognize(this, bitmap' in viewer and 'TextRecognizerOptions.DEFAULT_OPTIONS' in ocr_engine and 'English (Latin)' in ocr_engine and 'recognizeKannada' not in ocr_engine and 'TessBaseAPI' not in ocr_engine, "Image Viewer and editor share English-only on-device OCR with original and contrast-enhanced passes")
+    require('ACTION_DOWN' in ocr_engine and 'selectIntersectingRegions' in ocr_engine and 'Selection.selectAll' in ocr_engine and 'ClipData.newPlainText' in ocr_engine and 'Intent.ACTION_SEND' in ocr_engine and 'Linkify.WEB_URLS' in ocr_engine, "English OCR overlay supports drag selection, Select All, clipboard, sharing and automatic link detection")
+    require(not (ROOT / "app/src/main/assets/tessdata").exists(), "unused non-English OCR model assets are excluded from the APK")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
 
 if __name__ == "__main__":

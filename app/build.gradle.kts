@@ -35,7 +35,5 @@ dependencies {
     add("implementation", "androidx.documentfile:documentfile:1.1.0")
     add("implementation", "androidx.webkit:webkit:1.18.0")
     add("implementation", "com.google.mlkit:text-recognition:16.0.1")
-    add("implementation", "com.google.mlkit:text-recognition-devanagari:16.0.1")
-    add("implementation", "cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     add("testImplementation", "junit:junit:4.13.2")
 }
