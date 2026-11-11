@@ -4,8 +4,6 @@ import com.music.echo.offline.R;
 
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -13,11 +11,8 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
 
-/** Builds Settings sections and Dynamic Island controls using the shared activity UI primitives. */
 final class SettingsScreenController {
     private final MainActivity activity;
 
@@ -25,27 +20,6 @@ final class SettingsScreenController {
         if (activity == null) throw new IllegalArgumentException("activity must not be null");
         this.activity = activity;
     }
-
-    void addDynamicIslandSettings() {
-        final android.content.SharedPreferences p = DynamicIslandView.preferences(activity);
-        Switch enabled = new Switch(activity); enabled.setChecked(p.getBoolean("enabled",true));
-        enabled.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean("enabled",on).apply();if(activity.dynamicIsland!=null)activity.dynamicIsland.setEnabledFromSettings();});
-        activity.settings.addView(activity.row(ToxiIcons.SPARKLE,"Enable Dynamic Island","Show the draggable, theme-linked activity capsule",enabled,v->enabled.toggle()),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(activity.row(ToxiIcons.PALETTE,"Island accent treatment",new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"}[Math.max(0,Math.min(3,p.getInt("palette",0)))],null,v->new AlertDialog.Builder(activity).setTitle("Island accent treatment").setSingleChoiceItems(new String[]{"Primary signal","Secondary signal","Muted signal","Outline signal"},p.getInt("palette",0),(d,w)->{p.edit().putInt("palette",w).apply();d.dismiss();if(activity.dynamicIsland!=null)activity.dynamicIsland.refreshStyle();activity.buildSettings();}).setNegativeButton("Cancel",null).show()),activity.lpm(-1,-2,16,0,16,8));
-        addIslandSlider(p,"Accent edge strength","glow",0,100,65);
-        addIslandSlider(p,"Transparency","transparency",80,255,225);
-        addIslandSlider(p,"Expansion transition speed","speed",90,420,180);
-        activity.settings.addView(activity.row(ToxiIcons.INFO,"Capsule size",p.getInt("size",0)==0?"Compact":"Large",null,v->new AlertDialog.Builder(activity).setTitle("Capsule size").setSingleChoiceItems(new String[]{"Compact","Large"},p.getInt("size",0),(d,w)->{p.edit().putInt("size",w).apply();d.dismiss();if(activity.dynamicIsland!=null)activity.dynamicIsland.refreshStyle();activity.buildSettings();}).setNegativeButton("Cancel",null).show()),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(activity.row(ToxiIcons.TUNE,"Position alignment","Choose an edge or drag anywhere",null,v->new AlertDialog.Builder(activity).setTitle("Island alignment").setItems(new String[]{"Left edge","Center","Right edge"},(d,w)->{if(activity.dynamicIsland!=null)activity.dynamicIsland.align(w);else p.edit().putFloat("x",w==0?0f:w==1?0.5f:1f).apply();}).show()),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(islandSwitch(p,"Show file operations","show_operations",true),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(islandSwitch(p,"Show video playback","show_playback",true),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(islandSwitch(p,"Show storage scanning","show_scan",true),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(islandSwitch(p,"Haptic feedback","haptics",true),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(islandSwitch(p,"Automatic activity expansion","auto_expand",true),activity.lpm(-1,-2,16,0,16,8));
-        activity.settings.addView(activity.row(ToxiIcons.REFRESH,"Reset Dynamic Island preferences","Restore its default appearance and position",null,v->new AlertDialog.Builder(activity).setTitle("Reset Dynamic Island?").setMessage("Only Dynamic Island preferences will be reset.").setNegativeButton("Cancel",null).setPositiveButton("Reset",(d,w)->{p.edit().clear().apply();if(activity.dynamicIsland!=null){activity.dynamicIsland.setEnabledFromSettings();activity.dynamicIsland.refreshStyle();}activity.buildSettings();}).show()),activity.lpm(-1,-2,16,0,16,8));
-    }
-    View islandSwitch(android.content.SharedPreferences p,String title,String key,boolean def){Switch sw=new Switch(activity);sw.setChecked(p.getBoolean(key,def));sw.setOnCheckedChangeListener((b,on)->{p.edit().putBoolean(key,on).apply();if(activity.dynamicIsland!=null)activity.dynamicIsland.refreshStyle();});return activity.row(ToxiIcons.SPARKLE,title,null,sw,v->sw.toggle());}
-    void addIslandSlider(android.content.SharedPreferences p,String title,String key,int min,int max,int def){LinearLayout box=new LinearLayout(activity);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(15),ToxiVisualSystem.dp(10));box.setBackground(ToxiVisualSystem.surface(14,false));TextView label=ToxiVisualSystem.text(activity,title+" Â· "+p.getInt(key,def),13,ToxiVisualSystem.TEXT_PRIMARY,true);box.addView(label);android.widget.SeekBar seek=new android.widget.SeekBar(activity);seek.setProgressTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));seek.setProgressBackgroundTintList(ColorStateList.valueOf(ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]));seek.setMax(max-min);seek.setProgress(Math.max(0,Math.min(max-min,p.getInt(key,def)-min)));seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onStopTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int value,boolean user){if(!user)return;int n=min+value;p.edit().putInt(key,n).apply();label.setText(title+" Â· "+n);if(activity.dynamicIsland!=null)activity.dynamicIsland.refreshStyle();}});box.addView(seek);activity.settings.addView(box,activity.lpm(-1,-2,16,0,16,8));}
 
     void build() {
         activity.settings.removeAllViews();
@@ -93,8 +67,6 @@ final class SettingsScreenController {
         }), activity.lpm(-1, -2, 16, 0, 16, 8));
         activity.settings.addView(activity.row(ToxiIcons.INFO, "Font style", new String[]{"System Sans", "Rounded", "Serif", "Monospace"}[ToxiVisualSystem.PREFERENCES.getInt("font_family", 0)], null, v -> activity.fontDialog()), activity.lpm(-1, -2, 16, 0, 16, 8));
 
-        activity.settings.addView(activity.section("Dynamic Island"));
-        addDynamicIslandSettings();
 
         activity.settings.addView(activity.section("Files & Folders"));
         activity.settings.addView(activity.switchRow(ToxiIcons.EYE, "Show hidden files", "Files and folders starting with a dot", "hidden", false, () -> activity.filesView.reload()), activity.lpm(-1, -2, 16, 0, 16, 8));
