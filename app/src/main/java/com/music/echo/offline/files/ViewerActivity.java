@@ -18,6 +18,10 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.content.Intent;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import android.graphics.pdf.PdfRenderer;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
@@ -346,7 +350,101 @@ public class ViewerActivity extends ComponentActivity {
         TextView brightLabel=ToxiVisualSystem.text(this,"Brightness",12,ToxiVisualSystem.TEXT_PRIMARY,true); panel.addView(brightLabel);
         SeekBar bright=new SeekBar(this); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(36)));
         bright.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int p,boolean u){if(u){brightness[0]=(p-100)/100f;render.run();}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
+        TextView extractText = ToxiVisualSystem.text(this,"Extract English text",13,ToxiVisualSystem.TEXT_PRIMARY,true);
+        extractText.setGravity(Gravity.CENTER);
+        extractText.setBackground(ToxiVisualSystem.surface(14,true));
+        LinearLayout.LayoutParams extractParams = new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(38));
+        extractParams.topMargin = ToxiVisualSystem.dp(4);
+        extractParams.bottomMargin = ToxiVisualSystem.dp(6);
+        panel.addView(extractText,extractParams);
+        extractText.setOnClickListener(v -> extractEnglishText(working[0]));
         new AlertDialog.Builder(this).setTitle("Image editor").setView(panel).setNegativeButton("Cancel",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();}).setNeutralButton("Reset",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();currentImageBitmap=original;show();}).setPositiveButton("Save copy",(d,w)->saveEditedImage(working[0])).show();
+    }
+
+    private void extractEnglishText(Bitmap source) {
+        if (source == null || source.isRecycled()) {
+            ToxiVisualSystem.toast(this, "Image is not available");
+            return;
+        }
+        final Bitmap snapshot;
+        try {
+            int longestEdge = Math.max(source.getWidth(), source.getHeight());
+            if (longestEdge > 2200) {
+                float scale = 2200f / longestEdge;
+                int width = Math.max(1, Math.round(source.getWidth() * scale));
+                int height = Math.max(1, Math.round(source.getHeight() * scale));
+                snapshot = Bitmap.createScaledBitmap(source, width, height, true);
+            } else {
+                snapshot = source.copy(Bitmap.Config.ARGB_8888, false);
+            }
+        } catch (OutOfMemoryError | RuntimeException error) {
+            ToxiVisualSystem.toast(this, "Not enough memory to recognize this image");
+            return;
+        }
+        if (snapshot == null) {
+            ToxiVisualSystem.toast(this, "Unable to prepare image for text recognition");
+            return;
+        }
+
+        final TextRecognizer recognizer;
+        try {
+            recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        } catch (RuntimeException error) {
+            snapshot.recycle();
+            ToxiVisualSystem.toast(this, "English text recognition is unavailable");
+            return;
+        }
+
+        ToxiVisualSystem.toast(this, "Recognizing English text…");
+        try {
+            recognizer.process(InputImage.fromBitmap(snapshot, 0))
+                    .addOnSuccessListener(result -> {
+                        if (destroyed || isFinishing() || isDestroyed()) return;
+                        String recognized = result.getText() == null ? "" : result.getText().trim();
+                        if (recognized.isEmpty()) {
+                            ToxiVisualSystem.toast(this, "No readable English text found");
+                        } else {
+                            showRecognizedText(recognized);
+                        }
+                    })
+                    .addOnFailureListener(error -> {
+                        if (!destroyed && !isFinishing() && !isDestroyed()) {
+                            ToxiVisualSystem.toast(this, "English text recognition failed");
+                        }
+                    })
+                    .addOnCompleteListener(task -> {
+                        try { recognizer.close(); } catch (RuntimeException ignored) { }
+                        if (!snapshot.isRecycled()) snapshot.recycle();
+                    });
+        } catch (RuntimeException error) {
+            try { recognizer.close(); } catch (RuntimeException ignored) { }
+            if (!snapshot.isRecycled()) snapshot.recycle();
+            if (!destroyed && !isFinishing() && !isDestroyed()) {
+                ToxiVisualSystem.toast(this, "Unable to recognize text in this image");
+            }
+        }
+    }
+
+    private void showRecognizedText(String recognized) {
+        TextView output = ToxiVisualSystem.text(this, recognized, 14, ToxiVisualSystem.TEXT_PRIMARY, false);
+        output.setGravity(Gravity.START);
+        output.setTextIsSelectable(true);
+        output.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(output, new FrameLayout.LayoutParams(-1, -2));
+        new AlertDialog.Builder(this)
+                .setTitle("Recognized English text")
+                .setView(scroll)
+                .setPositiveButton("Copy", (dialog, which) -> {
+                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Recognized text", recognized));
+                        ToxiVisualSystem.toast(this, "Text copied");
+                    }
+                })
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     void saveEditedImage(Bitmap bitmap) {
