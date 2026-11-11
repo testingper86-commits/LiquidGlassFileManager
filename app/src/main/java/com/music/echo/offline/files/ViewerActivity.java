@@ -462,7 +462,7 @@ public class ViewerActivity extends ComponentActivity {
         }
     }
 
-    static final class ZoomImage extends ImageView {
+    static final class ZoomImage extends androidx.appcompat.widget.AppCompatImageView {
         final Matrix m = new Matrix();
         final ScaleGestureDetector sg;
         final GestureDetector gd;
@@ -1930,7 +1930,7 @@ public class ViewerActivity extends ComponentActivity {
 
 
     /** Stable, non-pulsing play/pause control; playback does not depend on any animation asset. */
-    private static final class PlayAnimationImageView extends ImageView {
+    private static final class PlayAnimationImageView extends androidx.appcompat.widget.AppCompatImageView {
         private boolean playing = false;
         PlayAnimationImageView(android.content.Context context) {
             super(context);
