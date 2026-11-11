@@ -109,6 +109,18 @@ jobs:
         run: ./gradlew --no-daemon --stacktrace :core:test :app:testDebugUnitTest :app:lintDebug
       - name: Assemble release APK
         run: ./gradlew --no-daemon --stacktrace assembleRelease
+      - name: Enforce 5 MiB per-device APK budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          APKS=(app/build/outputs/apk/release/*.apk)
+          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific release APKs"; exit 1; }
+          for APK in "${APKS[@]}"; do
+            SIZE=$(stat -c '%s' "$APK")
+            echo "$(basename "$APK"): $((SIZE / 1024)) KiB"
+            ((SIZE <= 5 * 1024 * 1024)) || { echo "::error::$(basename "$APK") exceeds the 5 MiB APK budget"; exit 1; }
+          done
       - name: Verify release APK signature
         shell: bash
         env:

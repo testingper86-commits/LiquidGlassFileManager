@@ -1,14 +1,14 @@
 # ToxiFiles — Offline File Manager
 
-ToxiFiles is a native Android file manager with an integrated local media viewer/player. The Android project is committed directly at the repository root; it is not built from a nested project ZIP.
+ToxiFiles is a native Android file manager with an integrated local media viewer/player.
 
-## Product goals
+## Product and runtime
 
-- **File manager first:** browse and manage files, with the existing built-in viewer and audio/video player.
-- **Local-first:** normal browsing and playback do not require a remote service or account.
-- **Liquid Glass UI:** translucent surfaces, real Android 12+ backdrop blur for overlays where supported, accessibility-aware contrast, reduced-motion support, and VantaGlass as the default theme.
-- **Safer operations:** explicit copy/move conflict choices, cancellation for supported long-running operations, atomic temporary-file handling, archive limits, and regression checks.
-- **Privacy features:** encrypted Vault data, App Lock, screenshot protection for protected screens, and non-destructive GPS-metadata removal for supported images.
+- File management, local media playback, document viewing, archives, LAN transfer, Vault, App Lock, and the existing utility tools.
+- Local-first operation; normal browsing and playback do not require an account or remote service.
+- Liquid Glass interface with accessibility-aware contrast and reduced-motion support.
+- English/Latin OCR with numeric recognition. The OCR engine is supplied by Google Play Services and its model is downloaded on demand; it is not bundled into each APK.
+- Release builds are split by CPU architecture. Install only the APK matching the target device ABI.
 
 ## Build locally
 
@@ -16,27 +16,26 @@ Use Android Studio, JDK 17, and Android SDK 36.
 
 ```bash
 python3 tools/project_smoke_test.py
-./gradlew testDebugUnitTest lintDebug assembleDebug
+./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:lintDebug
+./gradlew --no-daemon assembleRelease
 ```
 
-On Windows, use `gradlew.bat` instead of `./gradlew`.
+Release APKs are written to `app/build/outputs/apk/release/`. Each device-specific APK must be no larger than **5 MiB**. The CI workflows enforce this limit and fail if any split exceeds it. The limit is per ABI-specific APK, not a universal APK containing every native architecture.
 
 ## GitHub Actions
 
-- **ToxiFiles Android Build** runs structural checks, JVM unit tests, Android lint, the debug build, and uploads the debug APK and dependency inventory.
-- **ToxiFiles Release Build** runs source validation, unit tests, and Android lint before assembling a release APK. Release signing is mandatory. Configure all four secrets before running a release: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. The workflow verifies the APK signature before uploading the signed artifact. It intentionally fails rather than publishing an unsigned release.
+- **ToxiFiles Android Build** runs source/security checks, JVM tests, Android lint, assembles ABI-specific release APKs, enforces the 5 MiB per-APK budget, and uploads the APKs plus dependency inventory.
+- **ToxiFiles Release Build** runs source validation, tests, lint, release assembly, the same 5 MiB budget check, and signature verification. Release signing is mandatory. Configure `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before creating a release.
 
 ## Security and privacy notes
 
-- LAN transfer requires a one-time pairing code, authenticates the peer, encrypts file payloads with AES-GCM, and checks file hashes. Keep the code private and use a trusted local network.
-- Vault contents are AES-GCM encrypted with a device-bound Android Keystore key. The Vault PIN gates the in-app UI; it is not itself the encryption key. Clearing app data, uninstalling, or losing the device Keystore key may make vaulted data unrecoverable. Restore important items before uninstalling or resetting the device.
-- App Lock and Vault PIN verifiers use salted PBKDF2 with persistent escalating lockout. App Lock is an in-app privacy barrier, not a replacement for the Android device lock.
+- LAN transfer uses one-time pairing, authenticated peers, AES-GCM payload encryption, and file hashes. Use a trusted local network.
+- Vault contents are AES-GCM encrypted with a device-bound Android Keystore key. The Vault PIN gates the in-app UI; it is not the encryption key. Clearing app data, uninstalling, or losing the device Keystore key may make vaulted data unrecoverable.
+- App Lock is an in-app privacy barrier, not a replacement for the Android device lock.
 - Android backup is disabled. File sharing uses non-exported FileProvider URI grants.
-- Full file management uses Android's sensitive all-files-access permission. Review current Google Play policy and explain the core file-management purpose if distributing through Play. APK installation also depends on Android's user-controlled package-install permission.
+- Full file management uses Android's sensitive all-files-access permission. Review current Google Play policy before distribution.
 - See [SECURITY.md](SECURITY.md) for the security model and known boundaries.
 
-## Validation status
+## Acceptance testing
 
-The latest successful main-branch **ToxiFiles Android Build** run is [run 42480113291](https://github.com/testingper86-commits/LiquidGlassFileManager/actions/runs/42480113291) for commit `23d70697639c1e3a624d155cf4a62a1ffc951aab`. Structural checks, project/security contracts, media lifecycle checks, dependency inventory, Android unit tests, Android lint, debug APK assembly, and both artifact uploads all completed successfully. The run published the `ToxiFiles-debug-APK` artifact.
-
-CI success does not replace real-device acceptance testing. Before release, verify LAN send/receive between two devices, SD/USB read and write behavior, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations. A release build is not distribution-ready until signing secrets are configured, the signed APK passes signature verification, package policy is reviewed, and target-device testing is complete.
+CI validates source contracts, unit tests, lint, release assembly, and artifact size. Before distribution, verify LAN transfer, SD/USB storage access, Vault recovery, App Lock lifecycle, media playback, large archives, low-storage failures, landscape/font scaling, and destructive operations on supported devices.

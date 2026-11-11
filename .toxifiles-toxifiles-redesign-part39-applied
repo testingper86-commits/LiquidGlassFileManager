@@ -1,1 +1,0 @@
-Part 39 superseded: API 28+ biometric prompt is already guarded by @TargetApi(android.os.Build.VERSION_CODES.P) in current MainActivity.

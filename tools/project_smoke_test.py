@@ -431,6 +431,7 @@ def main():
     require('ImageTextRecognition.recognize(this, bitmap' in viewer and 'TextRecognizerOptions.DEFAULT_OPTIONS' in ocr_engine and 'English (Latin)' in ocr_engine and 'recognizeKannada' not in ocr_engine and 'TessBaseAPI' not in ocr_engine, "Image Viewer and editor share English-only on-device OCR with original and contrast-enhanced passes")
     require('ACTION_DOWN' in ocr_engine and 'selectIntersectingRegions' in ocr_engine and 'Selection.selectAll' in ocr_engine and 'ClipData.newPlainText' in ocr_engine and 'Intent.ACTION_SEND' in ocr_engine and 'Linkify.WEB_URLS' in ocr_engine, "English OCR overlay supports drag selection, Select All, clipboard, sharing and automatic link detection")
     require(not (ROOT / "app/src/main/assets/tessdata").exists(), "unused non-English OCR model assets are excluded from the APK")
+    require(not (ROOT / "patches").exists() and not list(ROOT.glob(".toxifiles-*")), "temporary patch archives and applied-state marker files are removed from the source repository")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
 
 if __name__ == "__main__":
