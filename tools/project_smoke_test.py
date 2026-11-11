@@ -431,6 +431,11 @@ def main():
     require("void openImageEditor()" in viewer and all(label in viewer for label in ["Rotate 90°", "Flip", "Crop", "B&W", "Save copy"]), "image editing, transforms and save-copy workflow remain available after OCR removal")
     require("splits {" not in app_gradle and "isMinifyEnabled = true" in app_gradle and "isShrinkResources = true" in app_gradle, "single universal APK uses R8 and resource shrinking without redundant ABI split packages")
     require(not (ROOT / "patches").exists() and not list(ROOT.glob(".toxifiles-*")), "temporary patch archives and applied-state marker files are removed from the source repository")
+    main_activity_source = source("app/src/main/java/com/music/echo/offline/files/MainActivity.java")
+    settings_source = source("app/src/main/java/com/music/echo/offline/files/SettingsScreenController.java")
+    require(not (ROOT / "app/src/main/java/com/music/echo/offline/files/DynamicIslandView.java").exists() and "DynamicIslandView" not in main_activity_source and "dynamicIsland" not in main_activity_source and "Dynamic Island" not in settings_source, "Dynamic Island implementation, runtime hooks and settings are permanently removed")
+    theme_source = source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java")
+    require("Five curated anime-inspired identities" in theme_source and "return n == 5 &&" in theme_source, "the theme system exposes exactly five curated identities")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
 
 if __name__ == "__main__":
