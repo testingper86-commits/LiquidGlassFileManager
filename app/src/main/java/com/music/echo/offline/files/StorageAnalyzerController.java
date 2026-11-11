@@ -36,6 +36,7 @@ final class StorageAnalyzerController {
             OperationCancellation.Token operationToken = activity.cancellation.begin();
             final String result;
             try {
+                OperationCancellation.checkCurrent();
                 List<StorageIndexEngine.VolumeSnapshot> volumes = readVolumes();
                 Map<String, StorageIndexEngine.VolumeSnapshot> uniqueVolumes = new LinkedHashMap<>();
                 for (StorageIndexEngine.VolumeSnapshot volume : volumes) uniqueVolumes.put(volume.volumeId, volume);
@@ -43,7 +44,7 @@ final class StorageAnalyzerController {
                 StorageIndexEngine.TotalsBuilder totals = new StorageIndexEngine.TotalsBuilder();
                 List<StorageIndexEngine.Snapshot> largest = new ArrayList<>();
                 File rootDir = Environment.getExternalStorageDirectory();
-                StorageIndexEngine.Result scan = StorageIndexEngine.scan(rootDir, StorageIndexEngine.MAX_DEPTH,
+                StorageIndexEngine.Result scan = StorageIndexEngine.scan(rootDir, 60,
                         StorageIndexEngine.MAX_INDEX_ENTRIES, true, true, snapshot -> {
                             if (snapshot.directory) return;
                             Entry entry = new Entry(snapshot.file, false, snapshot.modifiedAt, snapshot.length);
@@ -81,7 +82,9 @@ final class StorageAnalyzerController {
                     report.append(labels[i]).append(": ").append(categoryTotals.counts[i]).append(" files • ")
                             .append(formatBytes(categoryTotals.bytes[i])).append("\n");
                 }
+                OperationCancellation.checkCurrent();
                 appendMediaStoreReference(report);
+                OperationCancellation.checkCurrent();
                 appendThisAppStorageStats(report);
                 report.append("\nLargest accessible files (up to 15):\n");
                 for (StorageIndexEngine.Snapshot item : largest) {
