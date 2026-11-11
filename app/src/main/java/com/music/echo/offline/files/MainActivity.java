@@ -92,7 +92,6 @@ public class MainActivity extends ComponentActivity {
     View[] screens;
     private MainNavigationController navigationController;
     TextView busyTv;
-    DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     private MainOverlayController overlayController;
     private FileOpenCoordinator fileOpenCoordinator;
@@ -226,8 +225,6 @@ public class MainActivity extends ComponentActivity {
 
         setContentView(root);
         applySystemBarAppearance();
-        dynamicIsland = new DynamicIslandView(this);
-        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -327,7 +324,6 @@ public class MainActivity extends ComponentActivity {
     // ---------------- index ----------------
     void startIndex() {
         if (!hasAccess()) return;
-        if(dynamicIsland!=null)dynamicIsland.update("Scanning storage",-1);
         Indexer.I.start(indexDoneCallback);
     }
 
@@ -370,8 +366,6 @@ public class MainActivity extends ComponentActivity {
         if (isFinishing() || isDestroyed()) return;
         Indexer ix = Indexer.I;
         Indexer.PublishedSnapshot index = ix.snapshot();
-        if (dynamicIsland != null && busyCount == 0)
-            dynamicIsland.update(ix.incomplete ? "Storage index incomplete" : "ToxiFiles ready", -1);
         if (!ix.lastError.isEmpty()) {
             ToxiVisualSystem.toast(this, index.ready
                     ? "Storage refresh failed. Showing the last successful index."
@@ -410,7 +404,6 @@ public class MainActivity extends ComponentActivity {
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
-        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" Â· tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
@@ -420,12 +413,6 @@ public class MainActivity extends ComponentActivity {
         busyTv.setText(text + " Â· tap to cancel");
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, true);
-        if (dynamicIsland != null) {
-            int percent = -1;
-            int[] counts = DeveloperStudioCore.parseProgressCount(text);
-            if (counts != null) percent = Math.max(0, Math.min(100, (int)(100L * counts[0] / counts[1])));
-            dynamicIsland.update(text, percent);
-        }
     }
 
     // ---------------- opening things ----------------
