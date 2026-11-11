@@ -115,16 +115,20 @@ jobs:
           SIGNED: ${{ steps.signing.outputs.signed }}
         run: |
           set -euo pipefail
-          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$APK"
-          if [[ "$SIGNED" == "true" ]]; then
-            SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-            APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
-            test -n "$APKSIGNER" || { echo "::error::apksigner not found"; exit 1; }
-            "$APKSIGNER" verify --verbose --print-certs "$APK"
-          else
-            echo "::notice::Unsigned APK confirmed as non-distributable; configure signing secrets before release."
-          fi
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          test -n "$APKSIGNER" || { echo "::error::apksigner not found"; exit 1; }
+          shopt -s nullglob
+          APKS=(app/build/outputs/apk/release/*.apk)
+          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific APKs"; exit 1; }
+          for APK in "${APKS[@]}"; do
+            if [[ "$SIGNED" == "true" ]]; then
+              "$APKSIGNER" verify --verbose --print-certs "$APK"
+            else
+              echo "::notice::Unsigned APK confirmed as non-distributable; configure signing secrets before release."
+              break
+            fi
+          done
       - name: Package release artifact and status
         shell: bash
         env:
@@ -132,13 +136,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$APK"
-          cp "$APK" dist/ToxiFiles-release.apk
+          shopt -s nullglob
+          APKS=(app/build/outputs/apk/release/*.apk)
+          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific APKs"; exit 1; }
+          for APK in "${APKS[@]}"; do
+            cp "$APK" "dist/$(basename "$APK")"
+          done
           if [[ "$SIGNED" == "true" ]]; then
-            echo "Signed release APK; signature verification passed. Validate on target devices before distribution." > dist/BUILD-NOTES.txt
+            echo "Signed ABI-specific release APKs; signature verification passed. Install the APK matching the target device ABI." > dist/BUILD-NOTES.txt
           else
-            echo "Unsigned release APK. Do not distribute. Configure release signing secrets before publishing." > dist/BUILD-NOTES.txt
+            echo "Unsigned ABI-specific release APKs. Do not distribute. Configure release signing secrets before publishing." > dist/BUILD-NOTES.txt
           fi
       - name: Upload release artifact
         uses: actions/upload-artifact@v7
