@@ -31,6 +31,7 @@ final class PrismNavigationDock {
     private int selectedTab;
     private boolean built;
     private boolean rail;
+    private boolean itemLayoutListenersBound;
 
     PrismNavigationDock(MainActivity activity, FrameLayout root, IntConsumer onTabSelected) {
         if (activity == null || root == null || onTabSelected == null) {
@@ -52,6 +53,7 @@ final class PrismNavigationDock {
                 android.content.res.ColorStateList.valueOf(0x2279F2C0), null, null));
         surface.setElevation(NebulaHomeView.dp(activity, 10));
         selection.setBackground(NebulaHomeView.navigationHighlight());
+        selection.setVisibility(View.INVISIBLE);
         surface.addView(selection);
         String[] symbols = {"house", "folder", "grid", "settings"};
         String[] names = {"Home", "Files", "Tools", "Settings"};
@@ -122,7 +124,12 @@ final class PrismNavigationDock {
         }
         surface.addView(tabGroup, new FrameLayout.LayoutParams(-1, -1));
         tabGroup.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection());
-        for (View item : items) { if (item != null) item.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection()); }
+        if (!itemLayoutListenersBound) {
+            for (View item : items) {
+                if (item != null) item.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutSelection());
+            }
+            itemLayoutListenersBound = true;
+        }
         FrameLayout.LayoutParams params;
         if (rail) {
             params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, 82),
@@ -135,8 +142,10 @@ final class PrismNavigationDock {
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
+        surface.requestLayout();
         layoutSelection();
         surface.post(this::layoutSelection);
+        surface.postOnAnimation(this::layoutSelection);
         tabGroup.post(this::layoutSelection);
         applySelectionColors();
     }
@@ -152,6 +161,7 @@ final class PrismNavigationDock {
         p.leftMargin = x;
         p.topMargin = y;
         selection.setLayoutParams(p);
+        selection.setVisibility(View.VISIBLE);
     }
 
     FrameLayout view() { return surface; }
@@ -159,11 +169,13 @@ final class PrismNavigationDock {
     void setVisible(boolean visible) { surface.setVisibility(visible ? View.VISIBLE : View.GONE); }
 
     void applyBottomInset() {
-        if (rail) return;
+        if (rail || surface.getLayoutParams() == null) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
         params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
                 + NebulaHomeView.dp(activity, 10);
         surface.setLayoutParams(params);
+        surface.requestLayout();
+        surface.postOnAnimation(this::layoutSelection);
     }
 
     void moveHighlight(int index) {
@@ -175,6 +187,10 @@ final class PrismNavigationDock {
             if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
                 layoutSelection();
             } else {
+                if (target.getWidth() == 0 || target.getHeight() == 0) {
+                    surface.postOnAnimation(() -> moveHighlight(selectedTab));
+                    return;
+                }
                 int left = Math.round(tabGroup.getX() + target.getX());
                 int top = Math.round(tabGroup.getY() + target.getY());
                 selection.animate().x(left).y(top).setDuration(210)
