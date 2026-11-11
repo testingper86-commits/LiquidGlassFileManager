@@ -1,9 +1,7 @@
 package com.music.echo.offline.files;
 
-import android.content.res.Configuration;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.graphics.Typeface;
 import android.graphics.Color;
@@ -35,6 +33,7 @@ final class PrismNavigationDock {
     private boolean rail;
     private boolean selectionPositioned;
     private boolean itemLayoutListenersBound;
+    private boolean imeVisible;
 
     PrismNavigationDock(MainActivity activity, FrameLayout root, IntConsumer onTabSelected) {
         if (activity == null || root == null || onTabSelected == null) {
@@ -157,6 +156,7 @@ final class PrismNavigationDock {
         tabGroup.post(this::layoutSelection);
         tabGroup.postOnAnimation(this::layoutSelection);
         applySelectionColors();
+        if (imeVisible) setImeVisible(true);
     }
 
     private void layoutSelection() {
@@ -182,11 +182,20 @@ final class PrismNavigationDock {
 
     void setVisible(boolean visible) { surface.setVisibility(visible ? View.VISIBLE : View.GONE); }
 
+    void setImeVisible(boolean visible) {
+        imeVisible = visible;
+        if (rail) return;
+        surface.animate().cancel();
+        surface.setTranslationY(visible ? surface.getHeight() + NebulaHomeView.dp(activity, 28) : 0f);
+        surface.setAlpha(visible ? 0f : 1f);
+        surface.setImportantForAccessibility(visible ? View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                : View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
+    }
+
     void applyBottomInset() {
         if (rail || surface.getParent() != root || surface.getLayoutParams() == null) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
-        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
-                + NebulaHomeView.dp(activity, 8);
+        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, 0) + NebulaHomeView.dp(activity, 8);
         surface.setLayoutParams(params);
         surface.requestLayout();
         surface.postOnAnimation(this::layoutSelection);

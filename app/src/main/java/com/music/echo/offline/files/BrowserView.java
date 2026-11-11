@@ -76,8 +76,8 @@ final class BrowserView extends FrameLayout {
         a = act;
         this.overlay = overlay;
         this.isFavs = favs;
-        columns = ToxiVisualSystem.booleanPreference("grid", false)
-                ? (act.getResources().getConfiguration().screenWidthDp >= 600 ? 4 : 3) : 1;
+        columns = responsiveColumns(act.getResources().getConfiguration().screenWidthDp,
+                ToxiVisualSystem.booleanPreference("grid", false));
         mode = favs ? LIST : DIR;
         if (favs) listTitle = "Favorites";
 
@@ -238,7 +238,8 @@ final class BrowserView extends FrameLayout {
         selBar.addView(selBtn(ToxiIcons.SHARE, "Share", () -> FileOps.share(a, files(sel))));
         selBar.addView(selBtn(ToxiIcons.MORE, "More", this::selMore));
         FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(68), Gravity.BOTTOM);
-        bl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
+        bl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16),
+                ToxiVisualSystem.dp(12) + ToxiVisualSystem.BOTTOM_INSET);
         addView(selBar, bl);
 
         pasteBtn = ToxiVisualSystem.text(a, "Paste here", 14, ToxiVisualSystem.TEXT_PRIMARY, true);
@@ -248,7 +249,8 @@ final class BrowserView extends FrameLayout {
         ToxiVisualSystem.interactive(pasteBtn);
         pasteBtn.setOnClickListener(v -> paste());
         FrameLayout.LayoutParams pb = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
-        pb.setMargins(0, 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(100));
+        pb.setMargins(0, 0, ToxiVisualSystem.dp(20),
+                ToxiVisualSystem.dp(100) + ToxiVisualSystem.BOTTOM_INSET);
         addView(pasteBtn, pb);
 
         updateHeader();
@@ -274,10 +276,12 @@ final class BrowserView extends FrameLayout {
 
     void applyInsets() {
         lv.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(112) + ToxiVisualSystem.BOTTOM_INSET);
-        ((FrameLayout.LayoutParams) selBar.getLayoutParams()).bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
-        ((FrameLayout.LayoutParams) pasteBtn.getLayoutParams()).bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(100);
-        selBar.requestLayout();
-        pasteBtn.requestLayout();
+        FrameLayout.LayoutParams selectionParams = (FrameLayout.LayoutParams) selBar.getLayoutParams();
+        selectionParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
+        selBar.setLayoutParams(selectionParams);
+        FrameLayout.LayoutParams pasteParams = (FrameLayout.LayoutParams) pasteBtn.getLayoutParams();
+        pasteParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(100);
+        pasteBtn.setLayoutParams(pasteParams);
     }
 
     void recolor() {
@@ -379,8 +383,11 @@ final class BrowserView extends FrameLayout {
         mode = LIST;
         listTitle = t;
         String normalizedTitle = t == null ? "" : t.toLowerCase(Locale.ROOT);
-        if (normalizedTitle.contains("image") || normalizedTitle.contains("photo") || normalizedTitle.contains("video") || normalizedTitle.contains("audio") || normalizedTitle.contains("music")) columns = 3;
-        else columns = ToxiVisualSystem.booleanPreference("grid", false) ? 3 : 1;
+        boolean mediaGrid = normalizedTitle.contains("image") || normalizedTitle.contains("photo")
+                || normalizedTitle.contains("video") || normalizedTitle.contains("audio")
+                || normalizedTitle.contains("music");
+        columns = responsiveColumns(getResources().getConfiguration().screenWidthDp,
+                mediaGrid || ToxiVisualSystem.booleanPreference("grid", false));
         limit = limited;
         selecting = false;
         sel.clear();
@@ -678,7 +685,9 @@ final class BrowserView extends FrameLayout {
             thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
             thumb.setBackground(ToxiVisualSystem.surface(12, true));
             ToxiVisualSystem.clipRound(thumb, 12);
-            FrameLayout.LayoutParams thumbLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(68), ToxiVisualSystem.dp(68), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            FrameLayout.LayoutParams thumbLp = new FrameLayout.LayoutParams(
+                    ToxiVisualSystem.dp(columns <= 2 ? 76 : 68),
+                    ToxiVisualSystem.dp(columns <= 2 ? 76 : 68), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             tile.addView(thumb, thumbLp);
             TextView nameTv = ToxiVisualSystem.text(a, "", 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
             nameTv.setMaxLines(2);
@@ -693,16 +702,42 @@ final class BrowserView extends FrameLayout {
             FrameLayout.LayoutParams checkLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(17), Gravity.TOP | Gravity.END);
             checkLp.setMargins(0, ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), 0);
             tile.addView(check, checkLp);
-            LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(126), 1f);
+            LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0,
+                    ToxiVisualSystem.dp(columns <= 2 ? 138 : 126), 1f);
             tileLp.setMargins(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
             row.addView(tile, tileLp);
         }
         return row;
     }
 
+    private static int responsiveColumns(int widthDp, boolean gridEnabled) {
+        if (!gridEnabled) return 1;
+        if (widthDp >= 900) return 5;
+        if (widthDp >= 700) return 4;
+        if (widthDp >= 460) return 3;
+        return 2;
+    }
+
+    @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight);
+        if (ad == null || width <= 0) return;
+        int widthDp = Math.round(width / Math.max(1f, getResources().getDisplayMetrics().density));
+        boolean mediaGrid = mode == LIST && (listTitle.toLowerCase(Locale.ROOT).contains("image")
+                || listTitle.toLowerCase(Locale.ROOT).contains("photo")
+                || listTitle.toLowerCase(Locale.ROOT).contains("video")
+                || listTitle.toLowerCase(Locale.ROOT).contains("audio")
+                || listTitle.toLowerCase(Locale.ROOT).contains("music"));
+        int nextColumns = responsiveColumns(widthDp, mediaGrid || ToxiVisualSystem.booleanPreference("grid", false));
+        if (nextColumns != columns) {
+            columns = nextColumns;
+            ad.notifyDataSetChanged();
+        }
+    }
+
     void toggleView() {
-        columns = columns > 1 ? 1 : (a.getResources().getConfiguration().screenWidthDp >= 600 ? 4 : 3);
-        ToxiVisualSystem.setBooleanPreference("grid", columns > 1);
+        boolean enabled = columns <= 1;
+        ToxiVisualSystem.setBooleanPreference("grid", enabled);
+        columns = responsiveColumns(a.getResources().getConfiguration().screenWidthDp, enabled);
         ad.notifyDataSetChanged();
     }
 

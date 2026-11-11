@@ -135,7 +135,17 @@ public class MainActivity extends ComponentActivity {
         root = new FrameLayout(this);
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
-        else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        if (Build.VERSION.SDK_INT >= 28) {
+            android.view.WindowManager.LayoutParams windowParams = getWindow().getAttributes();
+            windowParams.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(windowParams);
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            getWindow().setNavigationBarContrastEnforced(false);
+            getWindow().setStatusBarContrastEnforced(false);
+        }
 
         bg = new BgView(this);
         root.addView(bg, new FrameLayout.LayoutParams(-1, -1));
@@ -222,9 +232,16 @@ public class MainActivity extends ComponentActivity {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
                 android.graphics.Insets navigation = insets.getInsets(WindowInsets.Type.navigationBars() | WindowInsets.Type.displayCutout());
+                android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());
                 ToxiVisualSystem.TOP_INSET = in.top;
-                ToxiVisualSystem.BOTTOM_INSET = Math.max(navigation.bottom, ToxiVisualSystem.dp(24));
-            } else { ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop(); ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom(); }
+                ToxiVisualSystem.BOTTOM_INSET = Math.max(navigation.bottom, 0);
+                ToxiVisualSystem.IME_INSET = ime.bottom;
+            } else {
+                ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop();
+                ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom();
+                ToxiVisualSystem.IME_INSET = 0;
+            }
+            navigationController.setImeVisible(Build.VERSION.SDK_INT >= 30 && insets.isVisible(WindowInsets.Type.ime()));
             applyInsets();
             return insets;
         });
@@ -243,6 +260,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     void applyInsets() {
+        // Apply each system inset exactly once: content owns top/cutout; the dock owns bottom bars.
         content.setPadding(0, ToxiVisualSystem.TOP_INSET, 0, 0);
         navigationController.applyBottomInset();
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
@@ -251,16 +269,18 @@ public class MainActivity extends ComponentActivity {
         homeScroll.setPadding(0, 0, 0, 0);
         if (homeScrollFooter != null) {
             ViewGroup.LayoutParams footerParams = homeScrollFooter.getLayoutParams();
-            footerParams.height = ToxiVisualSystem.dp(220) + ToxiVisualSystem.BOTTOM_INSET;
+            footerParams.height = ToxiVisualSystem.dp(110) + ToxiVisualSystem.BOTTOM_INSET;
             homeScrollFooter.setLayoutParams(footerParams);
         }
         // Reserve enough scrollable space for the bottom navigation and system gesture area.
-        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET);
-        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET
+                + ToxiVisualSystem.IME_INSET);
+        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24)
+                + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
         filesView.applyInsets(); favView.applyInsets(); listView.applyInsets();
     }
 
@@ -486,7 +506,8 @@ public class MainActivity extends ComponentActivity {
     }
 
     int dialogListHeight() {
-        int available = getResources().getDisplayMetrics().heightPixels - ToxiVisualSystem.TOP_INSET - ToxiVisualSystem.BOTTOM_INSET - ToxiVisualSystem.dp(260);
+        int available = getResources().getDisplayMetrics().heightPixels - ToxiVisualSystem.TOP_INSET
+                - ToxiVisualSystem.BOTTOM_INSET - ToxiVisualSystem.IME_INSET - ToxiVisualSystem.dp(260);
         return Math.max(ToxiVisualSystem.dp(180), Math.min(ToxiVisualSystem.dp(520), available));
     }
 

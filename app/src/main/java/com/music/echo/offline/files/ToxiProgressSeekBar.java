@@ -24,7 +24,7 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
         setThumb(null);
         setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x00000000));
         setContentDescription("Playback position");
-        setMinimumHeight((int)(32*density));
+        setMinimumHeight((int)(48*density));
     }
     public void setProgressColors(int active, int inactive) { activeColor=active; inactiveColor=inactive; invalidate(); }
     @Override protected synchronized void onDraw(Canvas canvas) {

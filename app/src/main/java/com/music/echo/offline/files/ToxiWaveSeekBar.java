@@ -22,7 +22,11 @@ public final class ToxiWaveSeekBar extends AppCompatSeekBar {
     private void init(Context c) {
         density=c.getResources().getDisplayMetrics().density;
         setSplitTrack(false);
-        setPadding(getPaddingLeft(),Math.max(getPaddingTop(),(int)(8*density)),getPaddingRight(),Math.max(getPaddingBottom(),(int)(8*density)));
+        setPadding(Math.max(getPaddingLeft(), (int)(8*density)),
+                Math.max(getPaddingTop(), (int)(12*density)),
+                Math.max(getPaddingRight(), (int)(8*density)),
+                Math.max(getPaddingBottom(), (int)(12*density)));
+        setMinimumHeight((int)(48*density));
         setProgressDrawable(null); setThumb(null);
         setBackgroundTintList(ColorStateList.valueOf(0x00000000));
         setContentDescription("Squiggly playback progress");

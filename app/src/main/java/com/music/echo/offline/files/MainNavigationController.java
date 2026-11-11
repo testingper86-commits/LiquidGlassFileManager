@@ -9,6 +9,7 @@ import java.io.File;
 final class MainNavigationController {
     private final MainActivity activity;
     private PrismNavigationDock navigationBar;
+    private boolean imeVisible;
 
     MainNavigationController(MainActivity activity) {
         if (activity == null) throw new IllegalArgumentException("activity must not be null");
@@ -86,7 +87,15 @@ final class MainNavigationController {
     }
 
     void applyBottomInset() {
-        if (navigationBar != null) navigationBar.applyBottomInset();
+        if (navigationBar != null) {
+            navigationBar.applyBottomInset();
+            navigationBar.setImeVisible(imeVisible);
+        }
+    }
+
+    void setImeVisible(boolean visible) {
+        imeVisible = visible;
+        if (navigationBar != null) navigationBar.setImeVisible(visible);
     }
 
     void moveHighlight(int index) {

@@ -35,7 +35,7 @@ final class ToxiVisualSystem {
     static int SURFACE_COLOR = ToxiThemeSystem.SURFACES[0];
     static int RAISED_SURFACE = ToxiThemeSystem.RAISED[0];
     static int BLOOM_PRIMARY = 0x263C4A59, BLOOM_SECONDARY = 0x183C4A59, BLOOM_TERTIARY = 0x0C3C4A59;
-    static int TOP_INSET = 0, BOTTOM_INSET = 0;
+    static int TOP_INSET = 0, BOTTOM_INSET = 0, IME_INSET = 0;
     static int SURFACE_RED = 20, SURFACE_GREEN = 27, SURFACE_BLUE = 36;
     static int HIGHLIGHT_TOP = 0x1CFFFFFF, HIGHLIGHT_BOTTOM = 0x00FFFFFF, EDGE_STROKE = ToxiThemeSystem.EDGES[0];
     static boolean LIGHT_MODE = false, HIGH_CONTRAST = false;
