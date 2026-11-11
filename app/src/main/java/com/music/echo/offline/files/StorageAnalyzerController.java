@@ -204,9 +204,15 @@ final class StorageAnalyzerController {
             case 0: return MediaStore.Images.Media.getContentUri(volume);
             case 1: return MediaStore.Video.Media.getContentUri(volume);
             case 2: return MediaStore.Audio.Media.getContentUri(volume);
-            case 3: return MediaStore.Downloads.getContentUri(volume);
+            case 3:
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? downloadsUri(volume) : null;
             default: return null;
         }
+    }
+
+    @android.annotation.RequiresApi(api = Build.VERSION_CODES.Q)
+    private Uri downloadsUri(String volume) {
+        return MediaStore.Downloads.getContentUri(volume);
     }
 
     private List<StorageIndexEngine.VolumeSnapshot> readVolumes() throws IOException {
