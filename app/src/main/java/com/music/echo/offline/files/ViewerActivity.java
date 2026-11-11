@@ -68,7 +68,9 @@ public class ViewerActivity extends ComponentActivity {
     int idx;
     FrameLayout root, stage;
     DynamicIslandView dynamicIsland;
-    TextView titleTv, counterTv, editImageBtn, recognizeTextBtn;\n    ImageTextRecognition.Overlay ocrOverlay;\n    ImageTextRecognition.Result lastOcrResult;
+    TextView titleTv, counterTv, editImageBtn, recognizeTextBtn;
+    ImageTextRecognition.Overlay ocrOverlay;
+    ImageTextRecognition.Result lastOcrResult;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
     LinearLayout bar;
@@ -155,7 +157,13 @@ public class ViewerActivity extends ComponentActivity {
         editImageBtn.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(10), 0);
         editImageBtn.setBackground(ToxiVisualSystem.surface(18, true));
         editImageBtn.setOnClickListener(v -> openImageEditor());
-        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(36)));\n        recognizeTextBtn = ToxiVisualSystem.text(this, "Text", 12, ToxiVisualSystem.TEXT_PRIMARY, true);\n        recognizeTextBtn.setGravity(Gravity.CENTER);\n        recognizeTextBtn.setPadding(ToxiVisualSystem.dp(9), 0, ToxiVisualSystem.dp(9), 0);\n        recognizeTextBtn.setBackground(ToxiVisualSystem.surface(18, true));\n        recognizeTextBtn.setOnClickListener(v -> recognizeImageText(currentImageBitmap, true));\n        bar.addView(recognizeTextBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(36)));
+        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(36)));
+        recognizeTextBtn = ToxiVisualSystem.text(this, "Text", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        recognizeTextBtn.setGravity(Gravity.CENTER);
+        recognizeTextBtn.setPadding(ToxiVisualSystem.dp(9), 0, ToxiVisualSystem.dp(9), 0);
+        recognizeTextBtn.setBackground(ToxiVisualSystem.surface(18, true));
+        recognizeTextBtn.setOnClickListener(v -> recognizeImageText(currentImageBitmap, true));
+        bar.addView(recognizeTextBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(36)));
         bar.addView(open, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         bar.addView(share, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(52), Gravity.TOP);
@@ -251,7 +259,8 @@ public class ViewerActivity extends ComponentActivity {
         boolean multi = paths.size() > 1 && (e.kind == FileKinds.IMAGE || e.kind == FileKinds.VIDEO);
         prevBtn.setVisibility(multi && idx > 0 ? View.VISIBLE : View.GONE);
         nextBtn.setVisibility(multi && idx < paths.size() - 1 ? View.VISIBLE : View.GONE);
-        if (editImageBtn != null) editImageBtn.setVisibility(e.kind == FileKinds.IMAGE ? View.VISIBLE : View.GONE);\n        if (recognizeTextBtn != null) recognizeTextBtn.setVisibility(e.kind == FileKinds.IMAGE ? View.VISIBLE : View.GONE);
+        if (editImageBtn != null) editImageBtn.setVisibility(e.kind == FileKinds.IMAGE ? View.VISIBLE : View.GONE);
+        if (recognizeTextBtn != null) recognizeTextBtn.setVisibility(e.kind == FileKinds.IMAGE ? View.VISIBLE : View.GONE);
         switch (e.kind) {
             case FileKinds.IMAGE: showImage(f); break;
             case FileKinds.VIDEO: showVideo(f); break;
@@ -299,7 +308,13 @@ public class ViewerActivity extends ComponentActivity {
         LinearLayout tools = new LinearLayout(this);
         tools.setGravity(Gravity.CENTER);
         tools.setOrientation(LinearLayout.HORIZONTAL);
-        panel.addView(tools, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(48)));\n        TextView ocrButton = ToxiVisualSystem.text(this, "Recognize text · OCR", 12, ToxiVisualSystem.TEXT_PRIMARY, true);\n        ocrButton.setGravity(Gravity.CENTER);\n        ocrButton.setBackground(ToxiVisualSystem.accentSurface(16));\n        ocrButton.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));\n        panel.addView(ocrButton, new LinearLayout.LayoutParams(-1, -2));\n        ocrButton.setOnClickListener(v -> recognizeImageText(working[0], false));
+        panel.addView(tools, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(48)));
+        TextView ocrButton = ToxiVisualSystem.text(this, "Recognize text · OCR", 12, ToxiVisualSystem.TEXT_PRIMARY, true);
+        ocrButton.setGravity(Gravity.CENTER);
+        ocrButton.setBackground(ToxiVisualSystem.accentSurface(16));
+        ocrButton.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
+        panel.addView(ocrButton, new LinearLayout.LayoutParams(-1, -2));
+        ocrButton.setOnClickListener(v -> recognizeImageText(working[0], false));
         final float[] brightness = {0f};
         final boolean[] gray = {false};
         final int[] crop = {0}; // 0 original, 1 square, 2 4:3, 3 16:9
@@ -349,7 +364,41 @@ public class ViewerActivity extends ComponentActivity {
         new AlertDialog.Builder(this).setTitle("Image editor").setView(panel).setNegativeButton("Cancel",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();}).setNeutralButton("Reset",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();currentImageBitmap=original;show();}).setPositiveButton("Save copy",(d,w)->saveEditedImage(working[0])).show();
     }
 
-    void recognizeImageText(Bitmap bitmap, boolean showOverlay) {\n        if (bitmap == null || bitmap.isRecycled()) { ToxiVisualSystem.toast(this, "Image is not ready"); return; }\n        if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(false);\n        ToxiVisualSystem.toast(this, "Recognizing text on device…");\n        ImageTextRecognition.recognize(bitmap, (result, error) -> h.post(() -> {\n            if (destroyed) return;\n            if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(true);\n            if (error != null || result == null) {\n                String message = error == null ? "No readable text detected" : error.getMessage();\n                ToxiVisualSystem.toast(this, message == null ? "Text recognition failed" : message); return;\n            }\n            lastOcrResult = result;\n            if (showOverlay && stage != null) {\n                if (ocrOverlay != null) stage.removeView(ocrOverlay);\n                android.graphics.Matrix matrix = new android.graphics.Matrix();\n                for (int i = 0; i < stage.getChildCount(); i++) {\n                    View child = stage.getChildAt(i);\n                    if (child instanceof ZoomImage) { matrix.set(((ZoomImage) child).m); break; }\n                }\n                ocrOverlay = new ImageTextRecognition.Overlay(this, result.regions, matrix, selected -> {\n                    TextView selectedText = ToxiVisualSystem.text(this, selected, 16, ToxiVisualSystem.TEXT_PRIMARY, false);\n                    selectedText.setTextIsSelectable(true);\n                    new AlertDialog.Builder(this).setTitle("Selected text").setMessage(selected)\n                        .setNegativeButton("Close", null).setNeutralButton("Copy", (d,w) -> ImageTextRecognition.copy(this, selected))\n                        .setPositiveButton("Share", (d,w) -> ImageTextRecognition.share(this, selected)).show();\n                });\n                stage.addView(ocrOverlay, new FrameLayout.LayoutParams(-1, -1));\n                ocrOverlay.bringToFront();\n                bar.bringToFront();\n                ToxiVisualSystem.toast(this, "Detected " + result.regions.size() + " text regions. Tap a word to select it.");\n            } else ImageTextRecognition.showTextActions(this, result);\n        }));\n    }\n\n    void saveEditedImage(Bitmap bitmap) {
+    void recognizeImageText(Bitmap bitmap, boolean showOverlay) {
+        if (bitmap == null || bitmap.isRecycled()) { ToxiVisualSystem.toast(this, "Image is not ready"); return; }
+        if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(false);
+        ToxiVisualSystem.toast(this, "Recognizing text on device…");
+        ImageTextRecognition.recognize(bitmap, (result, error) -> h.post(() -> {
+            if (destroyed) return;
+            if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(true);
+            if (error != null || result == null) {
+                String message = error == null ? "No readable text detected" : error.getMessage();
+                ToxiVisualSystem.toast(this, message == null ? "Text recognition failed" : message); return;
+            }
+            lastOcrResult = result;
+            if (showOverlay && stage != null) {
+                if (ocrOverlay != null) stage.removeView(ocrOverlay);
+                android.graphics.Matrix matrix = new android.graphics.Matrix();
+                for (int i = 0; i < stage.getChildCount(); i++) {
+                    View child = stage.getChildAt(i);
+                    if (child instanceof ZoomImage) { matrix.set(((ZoomImage) child).m); break; }
+                }
+                ocrOverlay = new ImageTextRecognition.Overlay(this, result.regions, matrix, selected -> {
+                    TextView selectedText = ToxiVisualSystem.text(this, selected, 16, ToxiVisualSystem.TEXT_PRIMARY, false);
+                    selectedText.setTextIsSelectable(true);
+                    new AlertDialog.Builder(this).setTitle("Selected text").setMessage(selected)
+                        .setNegativeButton("Close", null).setNeutralButton("Copy", (d,w) -> ImageTextRecognition.copy(this, selected))
+                        .setPositiveButton("Share", (d,w) -> ImageTextRecognition.share(this, selected)).show();
+                });
+                stage.addView(ocrOverlay, new FrameLayout.LayoutParams(-1, -1));
+                ocrOverlay.bringToFront();
+                bar.bringToFront();
+                ToxiVisualSystem.toast(this, "Detected " + result.regions.size() + " text regions. Tap a word to select it.");
+            } else ImageTextRecognition.showTextActions(this, result);
+        }));
+    }
+
+    void saveEditedImage(Bitmap bitmap) {
         if (bitmap == null || bitmap.isRecycled() || paths == null || idx < 0 || idx >= paths.size()) return;
         final File src = new File(paths.get(idx));
         final File parent = src.getParentFile();
@@ -1402,7 +1451,8 @@ public class ViewerActivity extends ComponentActivity {
             try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new FileInputStream(chosen), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = br.readLine()) != null && plain.length() < 200000) {
-                    plain.append(line).append('\n');
+                    plain.append(line).append('
+');
                     java.util.regex.Matcher matcher = stamp.matcher(line); java.util.ArrayList<Long> rowTimes = new java.util.ArrayList<>();
                     while (matcher.find()) {
                         long min = Long.parseLong(matcher.group(1)), sec = Long.parseLong(matcher.group(2));
@@ -1495,7 +1545,9 @@ public class ViewerActivity extends ComponentActivity {
                     total += n;
                 }
                 s = new String(buf, 0, total, "UTF-8");
-                if (f.length() > total) s += "\n\n… file truncated (showing first 300 KB)";
+                if (f.length() > total) s += "
+
+… file truncated (showing first 300 KB)";
             } catch (Exception ex) { s = "Can't read this file."; }
             final String fs = s;
             h.post(() -> { if (!destroyed && my == idx) t.setText(fs); });
