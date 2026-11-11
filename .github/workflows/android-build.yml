@@ -106,6 +106,15 @@ jobs:
         run: python3 tools/dependency_audit.py
       - name: Run Android unit tests and lint
         run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ToxiFiles-debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Build optimized universal release APK
         run: ./gradlew --no-daemon assembleRelease
       - name: Enforce 5 MiB universal APK budget
@@ -114,7 +123,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           apks=(app/build/outputs/apk/release/*.apk)
-          ((${#apks[@]} == 1)) || { echo "::error::Expected one universal release APK; found ${#apks[@]}"; exit 1; }
+          (("${#apks[@]}" == 1)) || { echo "::error::Expected one universal release APK; found ${#apks[@]}"; exit 1; }
           for apk in "${apks[@]}"; do
             size=$(stat -c '%s' "$apk")
             echo "$(basename "$apk"): $((size / 1024)) KiB"
