@@ -228,6 +228,9 @@ public class MainActivity extends ComponentActivity {
             applyInsets();
             return insets;
         });
+        // Some first frames do not receive dispatched insets until after the initial dock pass.
+        // Apply the conservative gesture-area baseline immediately, then let the callback refine it.
+        applyInsets();
         root.requestApplyInsets();
 
         accessOk = hasAccess();

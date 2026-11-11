@@ -14,6 +14,27 @@ def require(condition, message):
 def source(path):
     return (ROOT / path).read_text(encoding="utf-8")
 
+def jpeg_size(path):
+    data = path.read_bytes()
+    require(data[:2] == b"\xff\xd8", "creator portrait is a valid JPEG")
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        i += 2
+        if marker in (0xD8, 0xD9):
+            continue
+        if i + 2 > len(data):
+            break
+        length = int.from_bytes(data[i:i + 2], "big")
+        if 0xC0 <= marker <= 0xC3 or 0xC5 <= marker <= 0xC7 or 0xC9 <= marker <= 0xCB or 0xCD <= marker <= 0xCF:
+            require(length >= 7 and i + 7 <= len(data), "creator portrait JPEG dimensions are readable")
+            return int.from_bytes(data[i + 5:i + 7], "big"), int.from_bytes(data[i + 3:i + 5], "big")
+        i += max(2, length)
+    raise AssertionError("creator portrait JPEG dimensions were not found")
+
 def main():
     required = [
         "app/src/main/AndroidManifest.xml",
@@ -196,6 +217,14 @@ def main():
     require("DocumentsContract.createDocument" in saf_ops and "buildChildDocumentsUriUsingTree" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF document duplication creates collision-safe provider documents and cleans partial output")
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
+    portrait = ROOT / "app/src/main/res/drawable-nodpi/chandu_profile.jpg"
+    require(portrait.is_file() and portrait.stat().st_size > 0, "supplied creator portrait is packaged")
+    portrait_width, portrait_height = jpeg_size(portrait)
+    require(portrait_width == portrait_height, "creator portrait is a clean square image")
+    about_builder = source("app/src/main/java/com/music/echo/offline/files/AboutScreenBuilder.java")
+    require('R.drawable.chandu_profile' in about_builder and 'ImageView.ScaleType.CENTER_CROP' in about_builder and 'outline.setOval' in about_builder, "About renders the supplied portrait as a circular center-cropped avatar")
+    dock = source("app/src/main/java/com/music/echo/offline/files/PrismNavigationDock.java")
+    require('selection.setVisibility(View.INVISIBLE)' in dock and 'selection.setVisibility(View.VISIBLE)' in dock and 'surface.postOnAnimation(this::layoutSelection)' in dock and 'itemLayoutListenersBound' in dock, "bottom dock defers selection until first layout and avoids duplicate geometry listeners")
     require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")
     require('setMinimumWidth(dp(48))' in visual and 'setMinimumHeight(dp(48))' in visual and 'ToxiIcons.accessibilityLabel(symbol)' in visual, "shared icon controls have accessible labels and 48dp touch targets")
     require('static void interactive(View view)' in visual and 'view.setOnTouchListener' not in visual and 'setOnClickListener' in main, "shared interaction styling does not intercept native click dispatch")
@@ -404,4 +433,3 @@ if __name__ == "__main__":
     except Exception as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)
-
