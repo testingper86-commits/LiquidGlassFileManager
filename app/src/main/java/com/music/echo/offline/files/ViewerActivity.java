@@ -71,7 +71,6 @@ public class ViewerActivity extends ComponentActivity {
     ArrayList<String> paths;
     int idx;
     FrameLayout root, stage;
-    DynamicIslandView dynamicIsland;
     TextView titleTv, counterTv, editImageBtn;
     Bitmap currentImageBitmap;
     ImageView prevBtn, nextBtn;
@@ -176,8 +175,6 @@ public class ViewerActivity extends ComponentActivity {
             if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
             getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
         }
-        dynamicIsland = new DynamicIslandView(this);
-        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -893,10 +890,6 @@ public class ViewerActivity extends ComponentActivity {
                             videoHeight = prepared.getVideoHeight();
                             fitVideoTexture();
                             prepared.start();
-                            if (dynamicIsland != null) {
-                                dynamicIsland.update("Playing video", initial > 0 && duration > 0 ? (int)(100L * initial / duration) : 0);
-                                dynamicIsland.setAction("Pause", ViewerActivity.this::toggleIslandVideo);
-                            }
                             setVideoPlayAnimation(playbackToggle, true);
                             if (videoTicker != null) h.removeCallbacks(videoTicker);
                             videoTicker = new Runnable() {
@@ -912,13 +905,8 @@ public class ViewerActivity extends ComponentActivity {
                                         seekBar.setPlaying(active.isPlaying());
                                         int durationNow = active.getDuration();
                                         int positionNow = active.getCurrentPosition();
-                                        int percentNow = durationNow > 0 ? Math.max(0, Math.min(100, (int)(100L * positionNow / durationNow))) : -1;
                                         boolean playingNow = active.isPlaying();
                                         playbackToggle.setText(playingNow ? "Pause" : "Play");
-                                        if (dynamicIsland != null) {
-                                            dynamicIsland.update(playingNow ? "Playing video" : "Video paused", percentNow);
-                                            dynamicIsland.setAction(playingNow ? "Pause" : "Resume", ViewerActivity.this::toggleIslandVideo);
-                                        }
                                         h.postDelayed(this, 400);
                                     } catch (RuntimeException ex) {
                                         android.util.Log.w("LiquidFiles", "Video progress update stopped", ex);
@@ -942,9 +930,8 @@ public class ViewerActivity extends ComponentActivity {
                         else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) ToxiMotion.setActive(stage, false);
                         return false;
                     });
-                    player.setOnCompletionListener(completed -> { if(dynamicIsland!=null){dynamicIsland.update("Video finished",100);dynamicIsland.setAction(null,null);} if (!videoLoop) advanceToNextVideo(); });
+                    player.setOnCompletionListener(completed -> { if (!videoLoop) advanceToNextVideo(); });
                     player.setOnErrorListener((failed, what, extra) -> {
-                        if(dynamicIsland!=null){dynamicIsland.update("Video playback failed",-1);dynamicIsland.setAction(null,null);}
                         android.util.Log.e("LiquidFiles", "MediaPlayer error what=" + what + " extra=" + extra);
                         ToxiVisualSystem.toast(ViewerActivity.this, "This video can't be played here. Try Open with.");
                         releaseVideoPlayer(failed);
@@ -1007,7 +994,6 @@ public class ViewerActivity extends ComponentActivity {
         if (player == null) return;
         if (videoPlayer == player) {
             videoPrepared = false; videoResumeAfterSurface = false; videoUserWantsPlayback = false; videoPendingPosition = 0;
-            if (dynamicIsland != null) dynamicIsland.setAction(null, null);
         }
         if (videoTicker != null) { h.removeCallbacks(videoTicker); videoTicker = null; }
         if (videoPlayer == player) videoPlayer = null;
@@ -1966,13 +1952,6 @@ public class ViewerActivity extends ComponentActivity {
         cleanup();
         taskScope.close(false);
         super.onDestroy();
-    }
-
-    private void toggleIslandVideo() {
-        MediaPlayer player=videoPlayer;
-        if(player==null||!videoPrepared)return;
-        try { if(player.isPlaying()){player.pause();videoUserWantsPlayback=false;}else{player.start();videoUserWantsPlayback=true;} }
-        catch(IllegalStateException ex){ToxiVisualSystem.toast(this,"Video control is temporarily unavailable");}
     }
 
     private void setVideoPlayAnimation(TextView button, boolean playing) {
