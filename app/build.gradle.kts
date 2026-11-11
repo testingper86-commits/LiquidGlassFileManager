@@ -34,6 +34,6 @@ dependencies {
     add("implementation", "androidx.lifecycle:lifecycle-runtime:2.10.0")
     add("implementation", "androidx.documentfile:documentfile:1.1.0")
     add("implementation", "androidx.webkit:webkit:1.18.0")
-    add("implementation", "com.google.mlkit:text-recognition:16.0.1")
+    add("implementation", "com.google.android.gms:play-services-mlkit-text-recognition:19.0.2")
     add("testImplementation", "junit:junit:4.13.2")
 }

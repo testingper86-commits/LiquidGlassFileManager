@@ -5,7 +5,7 @@ ToxiFiles is a native Android file manager with an integrated local media viewer
 ## Product and runtime
 
 - File management, local media playback, document viewing, archives, LAN transfer, Vault, App Lock, and the existing utility tools.
-- Offline English (Latin-script) text recognition integrated directly into the existing image editor, with selectable results and one-tap copy.
+- English (Latin-script) on-device text recognition integrated directly into the existing image editor, with selectable results and one-tap copy; Google Play Services downloads the OCR model separately, after which recognition works offline.
 - Local-first operation; normal browsing and playback do not require an account or remote service.
 - Liquid Glass interface with accessibility-aware contrast and reduced-motion support.
 - One universal APK supports the project's Android device targets; no architecture-specific native libraries are packaged.
