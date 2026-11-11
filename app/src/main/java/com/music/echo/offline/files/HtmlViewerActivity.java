@@ -24,9 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.InvalidPathException;
 import java.security.MessageDigest;
 import java.util.Locale;
 
@@ -136,8 +136,6 @@ public final class HtmlViewerActivity extends ComponentActivity {
         });
         column.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(root);
-        DynamicIslandView island = new DynamicIslandView(this);
-        root.addView(island, new FrameLayout.LayoutParams(-1,-1));
         webView.loadUrl("https://" + assetHost + "/local/" + Uri.encode(document.getName()));
     }
 
