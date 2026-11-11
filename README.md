@@ -8,7 +8,7 @@ ToxiFiles is a native Android file manager with an integrated local media viewer
 - Local-first operation; normal browsing and playback do not require an account or remote service.
 - Liquid Glass interface with accessibility-aware contrast and reduced-motion support.
 - English/Latin OCR with numeric recognition. The OCR engine is supplied by Google Play Services and its model is downloaded on demand; it is not bundled into each APK.
-- Release builds are split by CPU architecture. Install only the APK matching the target device ABI.
+- One universal APK supports the project's Android device targets; no architecture-specific native libraries are packaged.
 
 ## Build locally
 
@@ -20,12 +20,12 @@ python3 tools/project_smoke_test.py
 ./gradlew --no-daemon assembleRelease
 ```
 
-Release APKs are written to `app/build/outputs/apk/release/`. Each device-specific APK must be no larger than **5 MiB**. The CI workflows enforce this limit and fail if any split exceeds it. The limit is per ABI-specific APK, not a universal APK containing every native architecture.
+Release APKs are written to `app/build/outputs/apk/release/`. The single universal APK must be no larger than **5 MiB**. CI enforces this exact limit and fails if the APK exceeds it.
 
 ## GitHub Actions
 
-- **ToxiFiles Android Build** runs source/security checks, JVM tests, Android lint, assembles ABI-specific release APKs, enforces the 5 MiB per-APK budget, and uploads the APKs plus dependency inventory.
-- **ToxiFiles Release Build** runs source validation, tests, lint, release assembly, the same 5 MiB budget check, and signature verification. Release signing is mandatory. Configure `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before creating a release.
+- **ToxiFiles Android Build** runs source/security checks, JVM tests, Android lint, assembles one universal release APK, enforces the 5 MiB APK budget, and uploads it plus the dependency inventory.
+- **ToxiFiles Release Build** runs source validation, tests, lint, release assembly, the same 5 MiB universal APK budget check, and signature verification. Release signing is mandatory. Configure `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before creating a release.
 
 ## Security and privacy notes
 

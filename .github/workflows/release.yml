@@ -109,13 +109,13 @@ jobs:
         run: ./gradlew --no-daemon --stacktrace :core:test :app:testDebugUnitTest :app:lintDebug
       - name: Assemble release APK
         run: ./gradlew --no-daemon --stacktrace assembleRelease
-      - name: Enforce 5 MiB per-device APK budget
+      - name: Enforce 5 MiB universal APK budget
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
           APKS=(app/build/outputs/apk/release/*.apk)
-          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific release APKs"; exit 1; }
+          (("${#APKS[@]}" == 1)) || { echo "::error::Expected one universal release APK"; exit 1; }
           for APK in "${APKS[@]}"; do
             SIZE=$(stat -c '%s' "$APK")
             echo "$(basename "$APK"): $((SIZE / 1024)) KiB"
@@ -132,7 +132,7 @@ jobs:
           test -n "$APKSIGNER" || { echo "::error::apksigner not found"; exit 1; }
           shopt -s nullglob
           APKS=(app/build/outputs/apk/release/*.apk)
-          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific APKs"; exit 1; }
+          (("${#APKS[@]}" == 1)) || { echo "::error::Expected one universal APK"; exit 1; }
           for APK in "${APKS[@]}"; do
             if [[ "$SIGNED" == "true" ]]; then
               "$APKSIGNER" verify --verbose --print-certs "$APK"
@@ -150,14 +150,14 @@ jobs:
           mkdir -p dist
           shopt -s nullglob
           APKS=(app/build/outputs/apk/release/*.apk)
-          (("${#APKS[@]}" == 4)) || { echo "::error::Expected four ABI-specific APKs"; exit 1; }
+          (("${#APKS[@]}" == 1)) || { echo "::error::Expected one universal APK"; exit 1; }
           for APK in "${APKS[@]}"; do
             cp "$APK" "dist/$(basename "$APK")"
           done
           if [[ "$SIGNED" == "true" ]]; then
-            echo "Signed ABI-specific release APKs; signature verification passed. Install the APK matching the target device ABI." > dist/BUILD-NOTES.txt
+            echo "Signed universal release APK; signature verification passed." > dist/BUILD-NOTES.txt
           else
-            echo "Unsigned ABI-specific release APKs. Do not distribute. Configure release signing secrets before publishing." > dist/BUILD-NOTES.txt
+            echo "Unsigned universal release APK. Do not distribute. Configure release signing secrets before publishing." > dist/BUILD-NOTES.txt
           fi
       - name: Upload release artifact
         uses: actions/upload-artifact@v7

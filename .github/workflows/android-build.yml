@@ -106,21 +106,21 @@ jobs:
         run: python3 tools/dependency_audit.py
       - name: Run Android unit tests and lint
         run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
-      - name: Build optimized ABI-specific release APKs
+      - name: Build optimized universal release APK
         run: ./gradlew --no-daemon assembleRelease
-      - name: Enforce 5 MB per-device APK budget
+      - name: Enforce 5 MiB universal APK budget
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
           apks=(app/build/outputs/apk/release/*.apk)
-          ((${#apks[@]} == 4)) || { echo "::error::Expected four ABI-specific release APKs; found ${#apks[@]}"; exit 1; }
+          ((${#apks[@]} == 1)) || { echo "::error::Expected one universal release APK; found ${#apks[@]}"; exit 1; }
           for apk in "${apks[@]}"; do
             size=$(stat -c '%s' "$apk")
             echo "$(basename "$apk"): $((size / 1024)) KiB"
             ((size <= 5 * 1024 * 1024)) || { echo "::error::$(basename "$apk") exceeds the 5 MiB APK budget"; exit 1; }
           done
-      - name: Upload optimized release APKs
+      - name: Upload optimized universal release APK
         uses: actions/upload-artifact@v7
         with:
           name: ToxiFiles-release-APKs
