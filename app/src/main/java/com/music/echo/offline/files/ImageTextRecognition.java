@@ -186,7 +186,7 @@ final class ImageTextRecognition {
                 .setView(content).setNegativeButton("Close", null)
                 .setNeutralButton("Select all", (d,w) -> {
                     extracted.requestFocus();
-                    android.text.Selection.selectAll(extracted.getText());
+                    android.text.Selection.selectAll(selectable);
                     android.content.ClipboardManager clipboard =
                             (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
                     clipboard.setPrimaryClip(ClipData.newPlainText("Recognized text", result.text));
@@ -245,12 +245,12 @@ final class ImageTextRecognition {
             inverse.mapPoints(point);
             Region best = null; float bestDistance = Float.MAX_VALUE;
             for (Region region : regions) {
-                if (region.level != 1) continue;
+                if (region.level < 0 || region.level > 3) continue;
                 RectF bounds = new RectF(region.bounds);
                 float dx = Math.max(Math.max(bounds.left - point[0], 0f), point[0] - bounds.right);
                 float dy = Math.max(Math.max(bounds.top - point[1], 0f), point[1] - bounds.bottom);
                 float distance = dx * dx + dy * dy;
-                if (distance < bestDistance) { bestDistance = distance; best = region; }
+                if (distance < bestDistance || (distance == bestDistance && best != null && region.level < best.level)) { bestDistance = distance; best = region; }
             }
             if (best != null && bestDistance <= ToxiVisualSystem.dp(28) * ToxiVisualSystem.dp(28))
                 selection.selected(best.text);
