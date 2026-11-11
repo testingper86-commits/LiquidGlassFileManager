@@ -425,6 +425,13 @@ def main():
     require('compileSdk = 36' in app_gradle and 'targetSdk = 36' in app_gradle and 'classpath("com.android.tools.build:gradle:9.5.0")' in root_gradle and wrapper_url is not None and wrapper_url.group(1).startswith(r"https\://services.gradle.org/distributions/") and wrapper_version is not None and tuple(map(int, wrapper_version.groups())) >= (9, 6, 0) and wrapper_checksum is not None, "API 36 release uses compatible Android Gradle and a pinned, checksummed compatible wrapper distribution")
     workflow = source(".github/workflows/release.yml")
     require('python tools/project_smoke_test.py' in workflow and 'python3 tools/developer_studio_smoke_test.py' in workflow and ':core:test :app:testDebugUnitTest :app:lintDebug' in workflow and 'assembleRelease' in workflow, "release workflow runs source gates, unit tests, lint and release assembly")
+    ocr_engine = source("app/src/main/java/com/music/echo/offline/files/ImageTextRecognition.java")
+    viewer = source("app/src/main/java/com/music/echo/offline/files/ViewerActivity.java")
+    require('cz.adaptech.tesseract4android:tesseract4android:4.9.0' in app_gradle and 'com.google.mlkit:text-recognition:16.0.1' in app_gradle and 'text-recognition-devanagari:16.0.1' in app_gradle, "OCR dependencies include bundled offline Latin, Devanagari and Tesseract engines")
+    require('ImageTextRecognition.recognize(this, bitmap' in viewer and 'TessBaseAPI' in ocr_engine and 'recognizeKannada' in ocr_engine and 'RIL_WORD' in ocr_engine and 'KANNADA_MODEL_BYTES = 3_608_331L' in ocr_engine, "Image Viewer and editor share real on-device Kannada-script OCR with word boxes and bundled model integrity checks")
+    require('ACTION_DOWN' in ocr_engine and 'selectIntersectingRegions' in ocr_engine and 'Selection.selectAll' in ocr_engine and 'ClipData.newPlainText' in ocr_engine and 'Intent.ACTION_SEND' in ocr_engine and 'Linkify.WEB_URLS' in ocr_engine, "OCR overlay supports drag selection, Select All, real clipboard, sharing and automatic link detection")
+    for part in range(9):
+        require((ROOT / f"app/src/main/assets/tessdata/kan.traineddata.part{part:02d}").is_file(), f"offline Kannada traineddata chunk {part:02d} is packaged")
     print("\\nAll current-architecture source smoke checks passed. Android compilation and device testing are verified separately.")
 
 if __name__ == "__main__":

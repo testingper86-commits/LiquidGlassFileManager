@@ -368,7 +368,7 @@ public class ViewerActivity extends ComponentActivity {
         if (bitmap == null || bitmap.isRecycled()) { ToxiVisualSystem.toast(this, "Image is not ready"); return; }
         if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(false);
         ToxiVisualSystem.toast(this, "Recognizing text on device…");
-        ImageTextRecognition.recognize(bitmap, (result, error) -> h.post(() -> {
+        ImageTextRecognition.recognize(this, bitmap, (result, error) -> h.post(() -> {
             if (destroyed) return;
             if (recognizeTextBtn != null) recognizeTextBtn.setEnabled(true);
             if (error != null || result == null) {
