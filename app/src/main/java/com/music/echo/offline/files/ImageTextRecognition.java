@@ -140,6 +140,8 @@ final class ImageTextRecognition {
         StringBuilder all = new StringBuilder();
         ArrayList<Region> regions = new ArrayList<>();
         for (Text.TextBlock block : text.getTextBlocks()) {
+            Rect blockBounds = block.getBoundingBox();
+            if (blockBounds != null && block.getText() != null) regions.add(new Region(block.getText(), blockBounds, 0f, 3));
             for (Text.Line line : block.getLines()) {
                 String lineText = line.getText();
                 if (lineText != null && !lineText.trim().isEmpty()) {
@@ -175,6 +177,8 @@ final class ImageTextRecognition {
                 ToxiVisualSystem.TEXT_SECONDARY, false);
         content.addView(quality);
         TextView extracted = ToxiVisualSystem.text(context, result.text, 15, ToxiVisualSystem.TEXT_PRIMARY, false);
+        android.text.SpannableString selectable = new android.text.SpannableString(result.text);
+        extracted.setText(selectable);
         extracted.setTextIsSelectable(true);
         extracted.setAutoLinkMask(Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES | Linkify.PHONE_NUMBERS);
         extracted.setLinksClickable(true);
