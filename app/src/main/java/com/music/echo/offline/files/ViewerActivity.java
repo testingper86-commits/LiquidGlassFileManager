@@ -1451,8 +1451,7 @@ public class ViewerActivity extends ComponentActivity {
             try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new FileInputStream(chosen), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = br.readLine()) != null && plain.length() < 200000) {
-                    plain.append(line).append('
-');
+                    plain.append(line).append('\n');
                     java.util.regex.Matcher matcher = stamp.matcher(line); java.util.ArrayList<Long> rowTimes = new java.util.ArrayList<>();
                     while (matcher.find()) {
                         long min = Long.parseLong(matcher.group(1)), sec = Long.parseLong(matcher.group(2));
@@ -1545,9 +1544,7 @@ public class ViewerActivity extends ComponentActivity {
                     total += n;
                 }
                 s = new String(buf, 0, total, "UTF-8");
-                if (f.length() > total) s += "
-
-… file truncated (showing first 300 KB)";
+                if (f.length() > total) s += "\n\n… file truncated (showing first 300 KB)";
             } catch (Exception ex) { s = "Can't read this file."; }
             final String fs = s;
             h.post(() -> { if (!destroyed && my == idx) t.setText(fs); });
