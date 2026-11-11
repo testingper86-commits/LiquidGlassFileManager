@@ -64,7 +64,7 @@ require("validateRegexPattern" in core and "MAX_DIFF_LINES" in core and "50_000"
         "regex and diff engines enforce conservative pattern and input complexity limits")
 require("isReadOnlySql" in core and "DeveloperStudioCore.isReadOnlySql(sql)" in activity,
         "SQL Studio accepts only bounded read-only statements through a tokenizer")
-require("parseProgressCount" in core and "Pattern.compile" not in main and "Pattern.compile" not in (BASE / "DynamicIslandView.java").read_text(encoding="utf-8"),
+require("parseProgressCount" in core and "Pattern.compile" not in main and "DynamicIslandView" not in main,
         "progress parsing is bounded and does not use regex backtracking")
 require("MAX_RELATION_FILES" in core and "MAX_TEXT_CHARS" in core,
         "source analysis has explicit input bounds")
