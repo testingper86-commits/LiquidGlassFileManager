@@ -18,7 +18,6 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.content.Intent;
-import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
@@ -410,9 +409,10 @@ public class ViewerActivity extends ComponentActivity {
                     })
                     .addOnFailureListener(error -> {
                         if (!destroyed && !isFinishing() && !isDestroyed()) {
-                            if (error instanceof MlKitException
-                                    && ((MlKitException) error).getErrorCode() == MlKitException.MODEL_NOT_DOWNLOADED) {
-                                ToxiVisualSystem.toast(this, "English OCR model is downloading. Connect once, then retry.");
+                            String detail = error == null ? "" : error.getMessage();
+                            detail = detail == null ? "" : detail.toLowerCase(java.util.Locale.ROOT);
+                            if (detail.contains("model")) {
+                                ToxiVisualSystem.toast(this, "English OCR model is not ready. Connect once, then retry.");
                             } else {
                                 ToxiVisualSystem.toast(this, "English text recognition failed");
                             }
