@@ -41,7 +41,6 @@ checks = {
     "BrowserView.java": ["ToxiFileRow", "ToxiIcons", "buildGridRow"],
     "ViewerActivity.java": ["ToxiVisualSystem.initialize", "ToxiIcons", "ToxiProgressSeekBar"],
     "HtmlViewerActivity.java": ["ToxiVisualSystem.initialize", "ToxiIcons.REFRESH"],
-    "DynamicIslandView.java": ["ToxiThemeSystem.ACCENTS", "ToxiVisualSystem.THEME_INDEX"],
     "AppLock.java": ["ToxiVisualSystem.booleanPreference"],
     "BackgroundAudioService.java": ["R.drawable.ic_toxifiles_notification"],
     "FileKinds.java": ["ToxiIcons.PDF", "ToxiIcons.TEXT"],
@@ -52,10 +51,17 @@ for filename, tokens in checks.items():
         if token not in content:
             raise SystemExit(f"{filename} is missing new visual integration: {token}")
 
+if (JAVA / "DynamicIslandView.java").exists():
+    raise SystemExit("Dynamic Island implementation must remain removed")
+for source in JAVA.glob("*.java"):
+    content = source.read_text(encoding="utf-8")
+    if "DynamicIslandView" in content or "dynamicIsland" in content:
+        raise SystemExit(f"Dynamic Island runtime reference remains in {source.relative_to(ROOT)}")
+
 theme = (JAVA / "ToxiThemeSystem.java").read_text(encoding="utf-8")
 match = re.search(r'static final String\[\] NAMES = \{(.*?)\};', theme, re.S)
-if not match or len(re.findall(r'"[^"]+"', match.group(1))) != 10:
-    raise SystemExit("The new visual system must define exactly ten themes")
+if not match or len(re.findall(r'"[^"]+"', match.group(1))) != 5:
+    raise SystemExit("The new visual system must define exactly five curated themes")
 touch_engine = JAVA / "ToxiPowerTouchEngine.java"
 if not touch_engine.is_file() or "ToxiPowerTouchEngine.attach(view, THEME_INDEX)" not in (JAVA / "ToxiVisualSystem.java").read_text(encoding="utf-8"):
     raise SystemExit("Theme-aware touch engine is not integrated into shared interactive controls")
