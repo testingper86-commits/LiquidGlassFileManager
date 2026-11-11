@@ -6,17 +6,17 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public final class ToxiThemeSystemTest {
-    @Test public void exposesTenDistinctThemeIdentities() {
-        assertEquals(10, ToxiThemeSystem.NAMES.length);
-        assertEquals(10, ToxiThemeSystem.DESCRIPTIONS.length);
-        assertEquals(10, ToxiThemeSystem.ACCENTS.length);
-        assertEquals(10, new java.util.HashSet<>(java.util.Arrays.asList(ToxiThemeSystem.NAMES)).size());
+    @Test public void exposesFiveCuratedThemeIdentities() {
+        assertEquals(5, ToxiThemeSystem.NAMES.length);
+        assertEquals(5, ToxiThemeSystem.DESCRIPTIONS.length);
+        assertEquals(5, ToxiThemeSystem.ACCENTS.length);
+        assertEquals(5, new java.util.HashSet<>(java.util.Arrays.asList(ToxiThemeSystem.NAMES)).size());
         assertTrue(ToxiThemeSystem.NAMES[0].startsWith("Solo Leveling"));
-        assertTrue(ToxiThemeSystem.NAMES[9].startsWith("Sailor Moon"));
+        assertTrue(ToxiThemeSystem.NAMES[4].startsWith("Evangelion"));
     }
     @Test public void everyThemeHasIndependentDarkAndLightTokens() {
         assertTrue(ToxiThemeSystem.hasIndependentTokens());
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             assertFalse(ToxiThemeSystem.CANVAS[i] == ToxiThemeSystem.SURFACES[i]);
             assertFalse(ToxiThemeSystem.SURFACES[i] == ToxiThemeSystem.RAISED[i]);
             assertFalse(ToxiThemeSystem.ACCENTS[i] == ToxiThemeSystem.ACCENT_ENDS[i]);
@@ -25,7 +25,7 @@ public final class ToxiThemeSystemTest {
     }
     @Test public void themeIndexIsSafelyBounded() {
         assertEquals(0, ToxiThemeSystem.normalize(-1));
-        assertEquals(9, ToxiThemeSystem.normalize(99));
+        assertEquals(4, ToxiThemeSystem.normalize(99));
         assertEquals(4, ToxiThemeSystem.normalize(4));
     }
 }
