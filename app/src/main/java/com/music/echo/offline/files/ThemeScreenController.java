@@ -31,10 +31,19 @@ final class ThemeScreenController {
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(104));
-        LinearLayout header = new LinearLayout(activity);\n        header.setGravity(Gravity.CENTER_VERTICAL);\n        ImageView back = new ImageView(activity);\n        back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY));\n        back.setContentDescription("Back");\n        back.setOnClickListener(v -> activity.closeOverlay());\n        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));\n        TextView title = ToxiVisualSystem.text(activity, "Theme Studio", 23, ToxiVisualSystem.TEXT_PRIMARY, true);\n        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);\n        titleLp.leftMargin = ToxiVisualSystem.dp(8);\n        header.addView(title, titleLp);\n        panel.addView(header);\n        /*
-        */\n        title.setLetterSpacing(-0.025f);
-        title.setPadding(ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4));
-        panel.addView(title);
+        LinearLayout header = new LinearLayout(activity);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView back = new ImageView(activity);
+        back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY));
+        back.setContentDescription("Back");
+        back.setOnClickListener(v -> activity.closeOverlay());
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
+        TextView title = ToxiVisualSystem.text(activity, "Theme Studio", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
+        titleLp.leftMargin = ToxiVisualSystem.dp(8);
+        header.addView(title, titleLp);
+        panel.addView(header);
+        title.setLetterSpacing(-0.025f);
         TextView subtitle = ToxiVisualSystem.text(activity, "Five crafted identities. One complete, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
         subtitle.setLineSpacing(ToxiVisualSystem.dp(2), 1.04f);
         subtitle.setPadding(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(12));
