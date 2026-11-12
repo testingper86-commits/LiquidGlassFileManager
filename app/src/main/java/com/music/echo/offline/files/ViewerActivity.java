@@ -278,7 +278,11 @@ public class ViewerActivity extends ComponentActivity {
                 if (destroyed || my != idx) { if (bm != null && !bm.isRecycled()) bm.recycle(); return; }
                 ToxiMotion.setActive(stage, false);
                 if (bm == null) ToxiVisualSystem.toast(this, "Can't display this image");
-                else { currentImageBitmap = bm; z.setImageBitmap(bm); }
+                else {
+                    currentImageBitmap = bm;
+                    z.setImageBitmap(bm);
+                    recognizeImageWords(bm, z, my);
+                }
             });
         });
     }
@@ -347,107 +351,7 @@ public class ViewerActivity extends ComponentActivity {
         TextView brightLabel=ToxiVisualSystem.text(this,"Brightness",12,ToxiVisualSystem.TEXT_PRIMARY,true); panel.addView(brightLabel);
         SeekBar bright=new SeekBar(this); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(36)));
         bright.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int p,boolean u){if(u){brightness[0]=(p-100)/100f;render.run();}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
-        TextView extractText = ToxiVisualSystem.text(this,"Extract English text",13,ToxiVisualSystem.TEXT_PRIMARY,true);
-        extractText.setGravity(Gravity.CENTER);
-        extractText.setBackground(ToxiVisualSystem.surface(14,true));
-        LinearLayout.LayoutParams extractParams = new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(38));
-        extractParams.topMargin = ToxiVisualSystem.dp(4);
-        extractParams.bottomMargin = ToxiVisualSystem.dp(6);
-        panel.addView(extractText,extractParams);
-        extractText.setOnClickListener(v -> extractEnglishText(working[0]));
         new AlertDialog.Builder(this).setTitle("Image editor").setView(panel).setNegativeButton("Cancel",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();}).setNeutralButton("Reset",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();currentImageBitmap=original;show();}).setPositiveButton("Save copy",(d,w)->saveEditedImage(working[0])).show();
-    }
-
-    private void extractEnglishText(Bitmap source) {
-        if (source == null || source.isRecycled()) {
-            ToxiVisualSystem.toast(this, "Image is not available");
-            return;
-        }
-        final Bitmap snapshot;
-        try {
-            int longestEdge = Math.max(source.getWidth(), source.getHeight());
-            if (longestEdge > 2200) {
-                float scale = 2200f / longestEdge;
-                int width = Math.max(1, Math.round(source.getWidth() * scale));
-                int height = Math.max(1, Math.round(source.getHeight() * scale));
-                snapshot = Bitmap.createScaledBitmap(source, width, height, true);
-            } else {
-                snapshot = source.copy(Bitmap.Config.ARGB_8888, false);
-            }
-        } catch (OutOfMemoryError | RuntimeException error) {
-            ToxiVisualSystem.toast(this, "Not enough memory to recognize this image");
-            return;
-        }
-        if (snapshot == null) {
-            ToxiVisualSystem.toast(this, "Unable to prepare image for text recognition");
-            return;
-        }
-
-        final TextRecognizer recognizer;
-        try {
-            recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-        } catch (RuntimeException error) {
-            snapshot.recycle();
-            ToxiVisualSystem.toast(this, "English text recognition is unavailable");
-            return;
-        }
-
-        ToxiVisualSystem.toast(this, "Recognizing English text…");
-        try {
-            recognizer.process(InputImage.fromBitmap(snapshot, 0))
-                    .addOnSuccessListener(result -> {
-                        if (destroyed || isFinishing() || isDestroyed()) return;
-                        String recognized = result.getText() == null ? "" : result.getText().trim();
-                        if (recognized.isEmpty()) {
-                            ToxiVisualSystem.toast(this, "No readable English text found");
-                        } else {
-                            showRecognizedText(recognized);
-                        }
-                    })
-                    .addOnFailureListener(error -> {
-                        if (!destroyed && !isFinishing() && !isDestroyed()) {
-                            String detail = error == null ? "" : error.getMessage();
-                            detail = detail == null ? "" : detail.toLowerCase(java.util.Locale.ROOT);
-                            if (detail.contains("model")) {
-                                ToxiVisualSystem.toast(this, "English OCR model is not ready. Connect once, then retry.");
-                            } else {
-                                ToxiVisualSystem.toast(this, "English text recognition failed");
-                            }
-                        }
-                    })
-                    .addOnCompleteListener(task -> {
-                        try { recognizer.close(); } catch (RuntimeException ignored) { }
-                        if (!snapshot.isRecycled()) snapshot.recycle();
-                    });
-        } catch (RuntimeException error) {
-            try { recognizer.close(); } catch (RuntimeException ignored) { }
-            if (!snapshot.isRecycled()) snapshot.recycle();
-            if (!destroyed && !isFinishing() && !isDestroyed()) {
-                ToxiVisualSystem.toast(this, "Unable to recognize text in this image");
-            }
-        }
-    }
-
-    private void showRecognizedText(String recognized) {
-        TextView output = ToxiVisualSystem.text(this, recognized, 14, ToxiVisualSystem.TEXT_PRIMARY, false);
-        output.setGravity(Gravity.START);
-        output.setTextIsSelectable(true);
-        output.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.addView(output, new FrameLayout.LayoutParams(-1, -2));
-        new AlertDialog.Builder(this)
-                .setTitle("Recognized English text")
-                .setView(scroll)
-                .setPositiveButton("Copy", (dialog, which) -> {
-                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    if (clipboard != null) {
-                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Recognized text", recognized));
-                        ToxiVisualSystem.toast(this, "Text copied");
-                    }
-                })
-                .setNegativeButton("Close", null)
-                .show();
     }
 
     void saveEditedImage(Bitmap bitmap) {
@@ -481,6 +385,46 @@ public class ViewerActivity extends ComponentActivity {
             final String result = savedName;
             h.post(() -> { if (!destroyed) ToxiVisualSystem.toast(this, result == null ? "Couldn't save beside original. Check folder write permission." : "Saved copy: " + result); });
         });
+    }
+
+    private void recognizeImageWords(Bitmap bitmap, ZoomImage target, int imageIndex) {
+        if (bitmap == null || bitmap.isRecycled() || destroyed) return;
+        final TextRecognizer recognizer;
+        try { recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS); }
+        catch (RuntimeException unavailable) { return; }
+        try {
+            recognizer.process(InputImage.fromBitmap(bitmap, 0))
+                    .addOnSuccessListener(result -> {
+                        if (destroyed || isFinishing() || isDestroyed() || imageIndex != idx
+                                || currentImageBitmap != bitmap) return;
+                        ArrayList<OcrWord> words = new ArrayList<>();
+                        for (com.google.mlkit.vision.text.Text.TextBlock block : result.getTextBlocks()) {
+                            for (com.google.mlkit.vision.text.Text.Line line : block.getLines()) {
+                                for (com.google.mlkit.vision.text.Text.Element element : line.getElements()) {
+                                    android.graphics.Rect bounds = element.getBoundingBox();
+                                    String value = element.getText();
+                                    if (bounds != null && value != null && !value.trim().isEmpty()) {
+                                        words.add(new OcrWord(value, new RectF(bounds)));
+                                    }
+                                }
+                            }
+                        }
+                        if (!destroyed && imageIndex == idx && currentImageBitmap == bitmap) {
+                            target.setRecognizedWords(words);
+                        }
+                    })
+                    .addOnCompleteListener(task -> {
+                        try { recognizer.close(); } catch (RuntimeException ignored) { }
+                    });
+        } catch (RuntimeException failure) {
+            try { recognizer.close(); } catch (RuntimeException ignored) { }
+        }
+    }
+
+    private static final class OcrWord {
+        final String text;
+        final RectF bounds;
+        OcrWord(String text, RectF bounds) { this.text = text; this.bounds = bounds; }
     }
 
     static Bitmap decode(File f, int max) {
@@ -518,6 +462,9 @@ public class ViewerActivity extends ComponentActivity {
         final Matrix m = new Matrix();
         final ScaleGestureDetector sg;
         final GestureDetector gd;
+        final Paint ocrSelectionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final ArrayList<OcrWord> recognizedWords = new ArrayList<>();
+        RectF selectedWordBounds;
         float minS = 1f;
 
         ZoomImage(android.content.Context c) {
@@ -549,6 +496,10 @@ public class ViewerActivity extends ComponentActivity {
                     m.postScale(f, f, e.getX(), e.getY());
                     fix();
                     setImageMatrix(m);
+                    return true;
+                }
+                @Override public boolean onSingleTapConfirmed(MotionEvent e) {
+                    copyWordAt(e.getX(), e.getY());
                     return true;
                 }
             });
@@ -586,6 +537,50 @@ public class ViewerActivity extends ComponentActivity {
         @Override protected void onSizeChanged(int w, int h, int ow, int oh) { super.onSizeChanged(w, h, ow, oh); fit(); }
 
         @Override public void setImageBitmap(Bitmap b) { super.setImageBitmap(b); fit(); }
+
+        void setRecognizedWords(ArrayList<OcrWord> words) {
+            recognizedWords.clear();
+            if (words != null) recognizedWords.addAll(words);
+            selectedWordBounds = null;
+            invalidate();
+        }
+
+        private void copyWordAt(float screenX, float screenY) {
+            if (recognizedWords.isEmpty()) return;
+            Matrix inverse = new Matrix();
+            if (!m.invert(inverse)) return;
+            float[] point = {screenX, screenY};
+            inverse.mapPoints(point);
+            OcrWord match = null;
+            float matchArea = Float.MAX_VALUE;
+            for (OcrWord word : recognizedWords) {
+                if (word.bounds.contains(point[0], point[1])) {
+                    float area = word.bounds.width() * word.bounds.height();
+                    if (area < matchArea) { match = word; matchArea = area; }
+                }
+            }
+            if (match == null) return;
+            android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                    getContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (clipboard == null) return;
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Image text", match.text));
+            selectedWordBounds = new RectF(match.bounds);
+            invalidate();
+            android.widget.Toast.makeText(getContext(), "Copied: " + match.text, android.widget.Toast.LENGTH_SHORT).show();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (selectedWordBounds != null) {
+                int save = canvas.save();
+                canvas.concat(m);
+                ocrSelectionPaint.setStyle(Paint.Style.STROKE);
+                ocrSelectionPaint.setStrokeWidth(Math.max(2f, 2f / Math.max(0.1f, scale())));
+                ocrSelectionPaint.setColor(0xFF35C9A5);
+                canvas.drawRoundRect(selectedWordBounds, 5f, 5f, ocrSelectionPaint);
+                canvas.restoreToCount(save);
+            }
+        }
 
         @Override public boolean onTouchEvent(MotionEvent e) {
             sg.onTouchEvent(e);
