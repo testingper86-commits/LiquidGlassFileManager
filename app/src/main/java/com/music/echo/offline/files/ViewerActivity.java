@@ -498,7 +498,7 @@ public class ViewerActivity extends ComponentActivity {
                     setImageMatrix(m);
                     return true;
                 }
-                @Override public boolean onSingleTapConfirmed(MotionEvent e) {
+                @Override public boolean onSingleTapUp(MotionEvent e) {
                     copyWordAt(e.getX(), e.getY());
                     return true;
                 }
@@ -547,22 +547,29 @@ public class ViewerActivity extends ComponentActivity {
 
         private void copyWordAt(float screenX, float screenY) {
             if (recognizedWords.isEmpty()) return;
-            Matrix inverse = new Matrix();
-            if (!m.invert(inverse)) return;
-            float[] point = {screenX, screenY};
-            inverse.mapPoints(point);
+            // Use the ImageView's live matrix, not a cached gesture matrix: it is the
+            // authoritative transform used by ImageView to draw the decoded bitmap.
+            Matrix imageMatrix = getImageMatrix();
+            float tolerancePx = 10f * getResources().getDisplayMetrics().density;
             OcrWord match = null;
             float matchArea = Float.MAX_VALUE;
             for (OcrWord word : recognizedWords) {
-                if (word.bounds.contains(point[0], point[1])) {
-                    float area = word.bounds.width() * word.bounds.height();
+                RectF hitBounds = new RectF(word.bounds);
+                imageMatrix.mapRect(hitBounds);
+                hitBounds.offset(getPaddingLeft(), getPaddingTop());
+                hitBounds.inset(-tolerancePx, -tolerancePx);
+                if (hitBounds.contains(screenX, screenY)) {
+                    float area = hitBounds.width() * hitBounds.height();
                     if (area < matchArea) { match = word; matchArea = area; }
                 }
             }
             if (match == null) return;
             android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
                     getContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-            if (clipboard == null) return;
+            if (clipboard == null) {
+                android.widget.Toast.makeText(getContext(), "Clipboard unavailable", android.widget.Toast.LENGTH_SHORT).show();
+                return;
+            }
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Image text", match.text));
             selectedWordBounds = new RectF(match.bounds);
             invalidate();
