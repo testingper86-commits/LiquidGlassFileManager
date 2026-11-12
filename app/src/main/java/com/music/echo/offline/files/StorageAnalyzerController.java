@@ -218,7 +218,7 @@ final class StorageAnalyzerController {
     private List<StorageIndexEngine.VolumeSnapshot> readVolumes() throws IOException {
         Map<String, StorageIndexEngine.VolumeSnapshot> result = new LinkedHashMap<>();
         StorageManager manager = (StorageManager) activity.getSystemService(android.content.Context.STORAGE_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && manager != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && manager != null) {
             for (StorageVolume volume : manager.getStorageVolumes()) {
                 try {
                     File directory = volume.getDirectory();
