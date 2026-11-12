@@ -145,7 +145,8 @@ final class PrismNavigationDock {
         } else {
             params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 80), Gravity.BOTTOM);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0,
-                    NebulaHomeView.dp(activity, 14), NebulaHomeView.dp(activity, 8));
+                    NebulaHomeView.dp(activity, 14), Math.max(ToxiVisualSystem.BOTTOM_INSET,
+                    NebulaHomeView.dp(activity, 24)) + NebulaHomeView.dp(activity, 12));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -167,13 +168,14 @@ final class PrismNavigationDock {
         if (target == null || target.getWidth() == 0 || target.getHeight() == 0) return;
         int x = tabGroup.getLeft() + target.getLeft();
         int y = tabGroup.getTop() + target.getTop();
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(target.getWidth(), target.getHeight());
-        p.leftMargin = 0;
-        p.topMargin = 0;
+        int inset = NebulaHomeView.dp(activity, 5);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(
+                Math.max(0, target.getWidth() - inset * 2),
+                Math.max(0, target.getHeight() - inset * 2));
         selection.animate().cancel();
         selection.setLayoutParams(p);
-        selection.setTranslationX(x);
-        selection.setTranslationY(y);
+        selection.setTranslationX(x + inset);
+        selection.setTranslationY(y + inset);
         selection.setAlpha(1f);
         selection.setVisibility(View.VISIBLE);
         selectionPositioned = true;
@@ -196,7 +198,8 @@ final class PrismNavigationDock {
     void applyBottomInset() {
         if (rail || surface.getParent() != root || surface.getLayoutParams() == null) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
-        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, 0) + NebulaHomeView.dp(activity, 8);
+        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
+                + NebulaHomeView.dp(activity, 12);
         surface.setLayoutParams(params);
         surface.requestLayout();
         surface.postOnAnimation(this::layoutSelection);
@@ -218,8 +221,9 @@ final class PrismNavigationDock {
                 }
                 int left = tabGroup.getLeft() + target.getLeft();
                 int top = tabGroup.getTop() + target.getTop();
-                selection.animate().translationX(left).translationY(top).setDuration(210)
-                        .setInterpolator(new DecelerateInterpolator()).start();
+                int inset = NebulaHomeView.dp(activity, 5);
+                selection.animate().translationX(left + inset).translationY(top + inset).setDuration(145)
+                        .setInterpolator(new DecelerateInterpolator(1.6f)).start();
             }
         }
         applySelectionColors();

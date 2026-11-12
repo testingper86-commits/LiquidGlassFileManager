@@ -108,7 +108,7 @@ final class AboutScreenBuilder {
         avatar.setImageResource(R.drawable.chandu_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
         avatar.setBackgroundColor(Color.TRANSPARENT);
-        avatar.setContentDescription("Chandu profile photo");
+        avatar.setContentDescription("TOXIC Dominators creator portrait");
         avatar.setClipToOutline(true);
         avatar.setAdjustViewBounds(false);
         avatar.setOutlineProvider(new android.view.ViewOutlineProvider() {

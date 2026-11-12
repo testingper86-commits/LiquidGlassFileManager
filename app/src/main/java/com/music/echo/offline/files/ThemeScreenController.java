@@ -1,7 +1,6 @@
 package com.music.echo.offline.files;
 
 import com.music.echo.offline.R;
-import android.graphics.Color;
 import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -17,6 +16,16 @@ final class ThemeScreenController {
         this.activity = activity;
     }
     void open() { build(); activity.showOverlay(activity.themeScroll); }
+
+    private static int themePoster(int index) {
+        switch (ToxiThemeSystem.normalize(index)) {
+            case 0: return R.drawable.theme_poster_solo;
+            case 1: return R.drawable.theme_poster_demon;
+            case 2: return R.drawable.theme_poster_jujutsu;
+            case 3: return R.drawable.theme_poster_onepiece;
+            default: return R.drawable.theme_poster_eva;
+        }
+    }
     void build() {
         activity.themeScroll.removeAllViews();
         LinearLayout panel = new LinearLayout(activity);
@@ -37,7 +46,8 @@ final class ThemeScreenController {
         FrameLayout mark = new FrameLayout(activity);
         mark.setBackground(ToxiVisualSystem.accentSurface(16));
         ImageView glyph = new ImageView(activity);
-        glyph.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        glyph.setImageResource(themePoster(ToxiVisualSystem.THEME_INDEX));
+        glyph.setScaleType(ImageView.ScaleType.CENTER_CROP);
         glyph.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7));
         mark.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
         current.addView(mark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(54), ToxiVisualSystem.dp(54)));
@@ -66,15 +76,14 @@ final class ThemeScreenController {
             tile.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15));
             tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
             tile.setElevation(ToxiVisualSystem.dp(selected ? 4 : 1));
-            tile.setMinimumHeight(ToxiVisualSystem.dp(82));
-            FrameLayout swatch = new FrameLayout(activity);
-            android.graphics.drawable.GradientDrawable gradient = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                new int[]{ToxiThemeSystem.ACCENTS[i], ToxiThemeSystem.ACCENT_ENDS[i]});
-            gradient.setCornerRadius(ToxiVisualSystem.dp(14));
-            gradient.setStroke(ToxiVisualSystem.dp(1), Color.argb(130, 255, 255, 255));
-            swatch.setBackground(gradient);
-            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(52), ToxiVisualSystem.dp(52)));
+            tile.setMinimumHeight(ToxiVisualSystem.dp(112));
+            ImageView poster = new ImageView(activity);
+            poster.setImageResource(themePoster(i));
+            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setBackground(ToxiVisualSystem.surface(14, true));
+            poster.setClipToOutline(true);
+            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " poster artwork");
+            tile.addView(poster, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(66), ToxiVisualSystem.dp(88)));
             LinearLayout text = new LinearLayout(activity);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(ToxiVisualSystem.dp(13), 0, ToxiVisualSystem.dp(8), 0);
@@ -99,12 +108,12 @@ final class ThemeScreenController {
                 ToxiVisualSystem.feedback(v);
                 ToxiVisualSystem.applyTheme(themeIndex, true);
                 activity.recolor();
-                build();
+                activity.themeScroll.post(this::build);
             });
             ToxiVisualSystem.interactive(tile);
             panel.addView(tile, activity.lpm(-1, -2, 0, 0, 0, 8));
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
-        ToxiVisualSystem.revealChildren(panel);
+        panel.setAlpha(1f);
     }
 }
