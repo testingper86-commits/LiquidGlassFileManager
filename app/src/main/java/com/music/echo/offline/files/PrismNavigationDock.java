@@ -52,8 +52,9 @@ final class PrismNavigationDock {
         surface.setBackground(NebulaHomeView.navigationSurface());
         ToxiVisualSystem.clipRound(surface, 18);
         applySurfaceRipple();
-        surface.setElevation(NebulaHomeView.dp(activity, 5));
+        surface.setElevation(0f);
         selection.setBackground(NebulaHomeView.navigationHighlight());
+        selection.setElevation(0f);
         selection.setVisibility(View.INVISIBLE);
         surface.addView(selection);
         String[] symbols = {"house", "folder", "grid", "settings"};
@@ -252,6 +253,7 @@ final class PrismNavigationDock {
         surface.setBackground(NebulaHomeView.navigationSurface());
         applySurfaceRipple();
         selection.setBackground(NebulaHomeView.navigationHighlight());
+        selection.setElevation(0f);
         moveHighlight(selectedIndex);
     }
 }

@@ -92,7 +92,7 @@ final class AboutScreenBuilder {
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
         profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(26));
         profile.setBackground(ToxiVisualSystem.surface(28, true));
-        profile.setElevation(ToxiVisualSystem.dp(5));
+        profile.setElevation(0f);
         FrameLayout avatarFrame = new FrameLayout(activity);
         GradientDrawable avatarHalo = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX],
@@ -100,7 +100,7 @@ final class AboutScreenBuilder {
         avatarHalo.setShape(GradientDrawable.OVAL);
         avatarHalo.setStroke(ToxiVisualSystem.dp(1), Color.argb(210, 255, 255, 255));
         avatarFrame.setBackground(avatarHalo);
-        avatarFrame.setElevation(ToxiVisualSystem.dp(9));
+        avatarFrame.setElevation(0f);
         avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
         ImageView avatar = new ImageView(activity);
         // Load the supplied creator portrait directly from the packaged drawable.

@@ -66,7 +66,7 @@ final class NebulaHomeView {
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
         ImageView mark = new ImageView(a);
-        mark.setImageResource(R.drawable.toxifiles_master_logo);
+        mark.setImageResource(R.drawable.toxifiles_master_art);
         mark.setContentDescription("ToxiFiles master brand artwork");
         mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
         mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
