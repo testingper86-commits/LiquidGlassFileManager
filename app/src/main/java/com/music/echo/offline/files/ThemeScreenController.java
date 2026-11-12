@@ -9,7 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Ten-theme Theme Studio with persistent live application. */
+/** Five-theme Theme Studio with persistent live application. */
 final class ThemeScreenController {
     private final MainActivity activity;
     ThemeScreenController(MainActivity activity) {
@@ -21,12 +21,14 @@ final class ThemeScreenController {
         activity.themeScroll.removeAllViews();
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(26), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(132));
+        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(132));
         TextView title = ToxiVisualSystem.text(activity, "Theme Studio", 28, ToxiVisualSystem.TEXT_PRIMARY, true);
-        title.setPadding(ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(2));
+        title.setLetterSpacing(-0.025f);
+        title.setPadding(ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(4));
         panel.addView(title);
-        TextView subtitle = ToxiVisualSystem.text(activity, "Ten original power identities. One complete, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-        subtitle.setPadding(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(18));
+        TextView subtitle = ToxiVisualSystem.text(activity, "Five crafted identities. One complete, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        subtitle.setLineSpacing(ToxiVisualSystem.dp(2), 1.04f);
+        subtitle.setPadding(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(20));
         panel.addView(subtitle);
         LinearLayout current = new LinearLayout(activity);
         current.setGravity(Gravity.CENTER_VERTICAL);
@@ -52,7 +54,7 @@ final class ThemeScreenController {
         check.setContentDescription("Active theme");
         current.addView(check, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(30), ToxiVisualSystem.dp(42)));
         panel.addView(current, activity.lpm(-1, -2, 0, 0, 0, 20));
-        TextView label = ToxiVisualSystem.text(activity, "ALL TEN IDENTITIES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView label = ToxiVisualSystem.text(activity, "FIVE CURATED IDENTITIES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.12f);
         label.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(8));
         panel.addView(label);
@@ -61,9 +63,10 @@ final class ThemeScreenController {
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
             LinearLayout tile = new LinearLayout(activity);
             tile.setGravity(Gravity.CENTER_VERTICAL);
-            tile.setPadding(ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(14));
+            tile.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15));
             tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
-            tile.setElevation(ToxiVisualSystem.dp(selected ? 3 : 1));
+            tile.setElevation(ToxiVisualSystem.dp(selected ? 4 : 1));
+            tile.setMinimumHeight(ToxiVisualSystem.dp(78));
             FrameLayout swatch = new FrameLayout(activity);
             android.graphics.drawable.GradientDrawable gradient = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
@@ -71,14 +74,19 @@ final class ThemeScreenController {
             gradient.setCornerRadius(ToxiVisualSystem.dp(14));
             gradient.setStroke(ToxiVisualSystem.dp(1), Color.argb(130, 255, 255, 255));
             swatch.setBackground(gradient);
-            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
+            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(50), ToxiVisualSystem.dp(50)));
             LinearLayout text = new LinearLayout(activity);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(ToxiVisualSystem.dp(13), 0, ToxiVisualSystem.dp(8), 0);
-            text.addView(ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 14, ToxiVisualSystem.TEXT_PRIMARY, selected));
+            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 14, ToxiVisualSystem.TEXT_PRIMARY, selected);
+            themeName.setMaxLines(2);
+            themeName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            text.addView(themeName);
             TextView description = ToxiVisualSystem.text(activity,
-                selected ? "ACTIVE · " + ToxiVisualSystem.themeDescription(i) : ToxiVisualSystem.themeDescription(i),
+                selected ? "ACTIVE  /  " + ToxiVisualSystem.themeDescription(i) : ToxiVisualSystem.themeDescription(i),
                 10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
+            description.setMaxLines(2);
+            description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             description.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
             text.addView(description);
             tile.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));

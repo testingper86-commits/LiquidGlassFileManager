@@ -90,7 +90,7 @@ final class AboutScreenBuilder {
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25));
         profile.setBackground(ToxiVisualSystem.surface(28, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
         FrameLayout avatarFrame = new FrameLayout(activity);
@@ -120,7 +120,8 @@ final class AboutScreenBuilder {
                 ToxiVisualSystem.dp(124), ToxiVisualSystem.dp(124), Gravity.CENTER);
         avatarFrame.addView(avatar, avatarParams);
         profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(136), ToxiVisualSystem.dp(136)));
-        TextView name = aboutText("CHANDU", 29, ABOUT_TEXT, true);
+        TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
+        name.setLetterSpacing(0.11f);
         name.setLetterSpacing(0.09f);
         name.setGravity(Gravity.CENTER);
         name.setPadding(0, ToxiVisualSystem.dp(13), 0, 0);
@@ -136,8 +137,30 @@ final class AboutScreenBuilder {
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
 
-        about.addView(aboutSectionHeading("02  /  ORIGIN"), lpm(-1, -2, 18, 14, 18, 8));
-        about.addView(aboutParagraphCard("A 9-to-5 corporate guy with a coding mind and a creative soul. Passionate about technology, programming, and building things."), lpm(-1, -2, 16, 0, 16, 8));
+        about.addView(aboutSectionHeading("02  /  THE PERSON BEHIND THE BUILD"), lpm(-1, -2, 18, 14, 18, 8));
+        LinearLayout origin = new LinearLayout(activity);
+        origin.setOrientation(LinearLayout.VERTICAL);
+        origin.setPadding(dp(15), dp(15), dp(15), dp(14));
+        origin.setBackground(aboutSurface(21, true));
+        TextView originTitle = aboutText("Corporate by schedule. Creator by instinct.", 16, ABOUT_TEXT, true);
+        originTitle.setLineSpacing(dp(2), 1.02f);
+        origin.addView(originTitle);
+        TextView originCopy = aboutText("A practical problem-solver with a creative mindset — turning curiosity, code and technology into useful experiences.", 12.5f, ABOUT_MUTED, false);
+        originCopy.setLineSpacing(dp(3), 1.04f);
+        originCopy.setPadding(0, dp(7), 0, dp(13));
+        origin.addView(originCopy);
+        LinearLayout facts = new LinearLayout(activity);
+        facts.setOrientation(LinearLayout.HORIZONTAL);
+        String[] factNames = {"WORK", "CREATE", "EXPLORE"};
+        String[] factValues = {"Professional", "Developer", "Technology"};
+        for (int i = 0; i < factNames.length; i++) {
+            LinearLayout fact = aboutFactTile(factNames[i], factValues[i]);
+            LinearLayout.LayoutParams factParams = new LinearLayout.LayoutParams(0, -2, 1f);
+            if (i > 0) factParams.leftMargin = dp(6);
+            facts.addView(fact, factParams);
+        }
+        origin.addView(facts);
+        about.addView(origin, lpm(-1, -2, 16, 0, 16, 8));
         about.addView(aboutQuoteCard("“Corporate by schedule, coder by mindset.”"), lpm(-1, -2, 16, 0, 16, 8));
 
         about.addView(aboutSectionHeading("03  /  TIMELINE"), lpm(-1, -2, 18, 14, 18, 8));
@@ -247,6 +270,23 @@ final class AboutScreenBuilder {
         text.setPadding(ToxiVisualSystem.dp(10), 0, 0, 0);
         heading.addView(text, new LinearLayout.LayoutParams(-1, -2));
         return heading;
+    }
+
+
+    private LinearLayout aboutFactTile(String label, String value) {
+        LinearLayout tile = new LinearLayout(activity);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setPadding(dp(9), dp(10), dp(7), dp(10));
+        tile.setBackground(aboutSurface(13, false));
+        TextView eyebrow = aboutText(label, 8.5f, ABOUT_CYAN, true);
+        eyebrow.setLetterSpacing(0.08f);
+        tile.addView(eyebrow);
+        TextView detail = aboutText(value, 10.5f, ABOUT_TEXT, true);
+        detail.setPadding(0, dp(4), 0, 0);
+        detail.setMaxLines(2);
+        detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tile.addView(detail);
+        return tile;
     }
 
     LinearLayout aboutParagraphCard(String value) {
