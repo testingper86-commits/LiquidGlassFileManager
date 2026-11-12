@@ -108,7 +108,7 @@ final class AboutScreenBuilder {
         avatar.setImageResource(R.drawable.chandu_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
         avatar.setBackgroundColor(Color.TRANSPARENT);
-        avatar.setContentDescription("TOXIC Dominators creator portrait");
+        avatar.setContentDescription("Creator portrait");
         avatar.setClipToOutline(true);
         avatar.setAdjustViewBounds(false);
         avatar.setOutlineProvider(new android.view.ViewOutlineProvider() {
@@ -135,6 +135,32 @@ final class AboutScreenBuilder {
         tagline.setPadding(0, ToxiVisualSystem.dp(15), 0, 0);
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
+
+        about.addView(aboutSectionHeading("FEATURED BRAND  /  TOXIC DOMINATORS"), lpm(-1, -2, 18, 14, 18, 8));
+        LinearLayout dominatorsCard = new LinearLayout(activity);
+        dominatorsCard.setOrientation(LinearLayout.VERTICAL);
+        dominatorsCard.setPadding(dp(10), dp(10), dp(10), dp(13));
+        dominatorsCard.setBackground(aboutSurface(22, true));
+        dominatorsCard.setElevation(dp(4));
+        ImageView dominatorsArtwork = new ImageView(activity);
+        dominatorsArtwork.setImageResource(R.drawable.toxidominators_profile);
+        dominatorsArtwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        dominatorsArtwork.setContentDescription("Original yellow and black TOXIC Dominators artwork");
+        dominatorsArtwork.setAdjustViewBounds(false);
+        dominatorsArtwork.setBackground(aboutSurface(16, false));
+        dominatorsArtwork.setClipToOutline(true);
+        dominatorsArtwork.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(16));
+            }
+        });
+        dominatorsCard.addView(dominatorsArtwork, new LinearLayout.LayoutParams(-1, dp(260)));
+        TextView dominatorsCaption = aboutText("THE TOXIC DOMINATORS IDENTITY", 11, ABOUT_CYAN, true);
+        dominatorsCaption.setLetterSpacing(0.12f);
+        dominatorsCaption.setGravity(Gravity.CENTER);
+        dominatorsCaption.setPadding(0, dp(12), 0, 0);
+        dominatorsCard.addView(dominatorsCaption, new LinearLayout.LayoutParams(-1, -2));
+        about.addView(dominatorsCard, lpm(-1, -2, 16, 0, 16, 8));
 
         about.addView(aboutSectionHeading("02  /  THE PERSON BEHIND THE BUILD"), lpm(-1, -2, 18, 14, 18, 8));
         LinearLayout origin = new LinearLayout(activity);
