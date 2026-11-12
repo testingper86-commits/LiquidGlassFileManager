@@ -175,7 +175,7 @@ final class PrismNavigationDock {
         selection.animate().cancel();
         selection.setLayoutParams(p);
         selection.setTranslationX(x + inset);
-        selection.setTranslationY(y + target.getHeight() - NebulaHomeView.dp(activity, 5));
+        selection.setTranslationY(y + inset);
         selection.setAlpha(1f);
         selection.setVisibility(View.VISIBLE);
         selectionPositioned = true;
