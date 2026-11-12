@@ -66,7 +66,7 @@ final class ThemeScreenController {
             tile.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(15));
             tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
             tile.setElevation(ToxiVisualSystem.dp(selected ? 4 : 1));
-            tile.setMinimumHeight(ToxiVisualSystem.dp(78));
+            tile.setMinimumHeight(ToxiVisualSystem.dp(82));
             FrameLayout swatch = new FrameLayout(activity);
             android.graphics.drawable.GradientDrawable gradient = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
@@ -74,7 +74,7 @@ final class ThemeScreenController {
             gradient.setCornerRadius(ToxiVisualSystem.dp(14));
             gradient.setStroke(ToxiVisualSystem.dp(1), Color.argb(130, 255, 255, 255));
             swatch.setBackground(gradient);
-            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(50), ToxiVisualSystem.dp(50)));
+            tile.addView(swatch, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(52), ToxiVisualSystem.dp(52)));
             LinearLayout text = new LinearLayout(activity);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(ToxiVisualSystem.dp(13), 0, ToxiVisualSystem.dp(8), 0);

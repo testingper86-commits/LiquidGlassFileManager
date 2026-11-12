@@ -18,10 +18,6 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.content.Intent;
-import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.text.TextRecognition;
-import com.google.mlkit.vision.text.TextRecognizer;
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import android.graphics.pdf.PdfRenderer;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
@@ -281,7 +277,6 @@ public class ViewerActivity extends ComponentActivity {
                 else {
                     currentImageBitmap = bm;
                     z.setImageBitmap(bm);
-                    recognizeImageWords(bm, z, my);
                 }
             });
         });
@@ -387,46 +382,6 @@ public class ViewerActivity extends ComponentActivity {
         });
     }
 
-    private void recognizeImageWords(Bitmap bitmap, ZoomImage target, int imageIndex) {
-        if (bitmap == null || bitmap.isRecycled() || destroyed) return;
-        final TextRecognizer recognizer;
-        try { recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS); }
-        catch (RuntimeException unavailable) { return; }
-        try {
-            recognizer.process(InputImage.fromBitmap(bitmap, 0))
-                    .addOnSuccessListener(result -> {
-                        if (destroyed || isFinishing() || isDestroyed() || imageIndex != idx
-                                || currentImageBitmap != bitmap) return;
-                        ArrayList<OcrWord> words = new ArrayList<>();
-                        for (com.google.mlkit.vision.text.Text.TextBlock block : result.getTextBlocks()) {
-                            for (com.google.mlkit.vision.text.Text.Line line : block.getLines()) {
-                                for (com.google.mlkit.vision.text.Text.Element element : line.getElements()) {
-                                    android.graphics.Rect bounds = element.getBoundingBox();
-                                    String value = element.getText();
-                                    if (bounds != null && value != null && !value.trim().isEmpty()) {
-                                        words.add(new OcrWord(value, new RectF(bounds)));
-                                    }
-                                }
-                            }
-                        }
-                        if (!destroyed && imageIndex == idx && currentImageBitmap == bitmap) {
-                            target.setRecognizedWords(words);
-                        }
-                    })
-                    .addOnCompleteListener(task -> {
-                        try { recognizer.close(); } catch (RuntimeException ignored) { }
-                    });
-        } catch (RuntimeException failure) {
-            try { recognizer.close(); } catch (RuntimeException ignored) { }
-        }
-    }
-
-    private static final class OcrWord {
-        final String text;
-        final RectF bounds;
-        OcrWord(String text, RectF bounds) { this.text = text; this.bounds = bounds; }
-    }
-
     static Bitmap decode(File f, int max) {
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
@@ -462,9 +417,6 @@ public class ViewerActivity extends ComponentActivity {
         final Matrix m = new Matrix();
         final ScaleGestureDetector sg;
         final GestureDetector gd;
-        final Paint ocrSelectionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        final ArrayList<OcrWord> recognizedWords = new ArrayList<>();
-        RectF selectedWordBounds;
         float minS = 1f;
 
         ZoomImage(android.content.Context c) {
@@ -496,10 +448,6 @@ public class ViewerActivity extends ComponentActivity {
                     m.postScale(f, f, e.getX(), e.getY());
                     fix();
                     setImageMatrix(m);
-                    return true;
-                }
-                @Override public boolean onSingleTapUp(MotionEvent e) {
-                    copyWordAt(e.getX(), e.getY());
                     return true;
                 }
             });
@@ -538,56 +486,7 @@ public class ViewerActivity extends ComponentActivity {
 
         @Override public void setImageBitmap(Bitmap b) { super.setImageBitmap(b); fit(); }
 
-        void setRecognizedWords(ArrayList<OcrWord> words) {
-            recognizedWords.clear();
-            if (words != null) recognizedWords.addAll(words);
-            selectedWordBounds = null;
-            invalidate();
-        }
-
-        private void copyWordAt(float screenX, float screenY) {
-            if (recognizedWords.isEmpty()) return;
-            // Use the ImageView's live matrix, not a cached gesture matrix: it is the
-            // authoritative transform used by ImageView to draw the decoded bitmap.
-            Matrix imageMatrix = getImageMatrix();
-            float tolerancePx = 10f * getResources().getDisplayMetrics().density;
-            OcrWord match = null;
-            float matchArea = Float.MAX_VALUE;
-            for (OcrWord word : recognizedWords) {
-                RectF hitBounds = new RectF(word.bounds);
-                imageMatrix.mapRect(hitBounds);
-                hitBounds.offset(getPaddingLeft(), getPaddingTop());
-                hitBounds.inset(-tolerancePx, -tolerancePx);
-                if (hitBounds.contains(screenX, screenY)) {
-                    float area = hitBounds.width() * hitBounds.height();
-                    if (area < matchArea) { match = word; matchArea = area; }
-                }
-            }
-            if (match == null) return;
-            android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
-                    getContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-            if (clipboard == null) {
-                android.widget.Toast.makeText(getContext(), "Clipboard unavailable", android.widget.Toast.LENGTH_SHORT).show();
-                return;
-            }
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Image text", match.text));
-            selectedWordBounds = new RectF(match.bounds);
-            invalidate();
-            android.widget.Toast.makeText(getContext(), "Copied: " + match.text, android.widget.Toast.LENGTH_SHORT).show();
-        }
-
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            if (selectedWordBounds != null) {
-                int save = canvas.save();
-                canvas.concat(m);
-                ocrSelectionPaint.setStyle(Paint.Style.STROKE);
-                ocrSelectionPaint.setStrokeWidth(Math.max(2f, 2f / Math.max(0.1f, scale())));
-                ocrSelectionPaint.setColor(0xFF35C9A5);
-                canvas.drawRoundRect(selectedWordBounds, 5f, 5f, ocrSelectionPaint);
-                canvas.restoreToCount(save);
-            }
-        }
+        @Override protected void onDraw(Canvas canvas) { super.onDraw(canvas); }
 
         @Override public boolean onTouchEvent(MotionEvent e) {
             sg.onTouchEvent(e);

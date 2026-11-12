@@ -90,7 +90,7 @@ final class AboutScreenBuilder {
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(25));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(26));
         profile.setBackground(ToxiVisualSystem.surface(28, true));
         profile.setElevation(ToxiVisualSystem.dp(5));
         FrameLayout avatarFrame = new FrameLayout(activity);
@@ -121,8 +121,7 @@ final class AboutScreenBuilder {
         avatarFrame.addView(avatar, avatarParams);
         profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(136), ToxiVisualSystem.dp(136)));
         TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
-        name.setLetterSpacing(0.11f);
-        name.setLetterSpacing(0.09f);
+        name.setLetterSpacing(0.10f);
         name.setGravity(Gravity.CENTER);
         name.setPadding(0, ToxiVisualSystem.dp(13), 0, 0);
         profile.addView(name);

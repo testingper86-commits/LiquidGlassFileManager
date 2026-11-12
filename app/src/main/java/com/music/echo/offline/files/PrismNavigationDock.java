@@ -69,15 +69,15 @@ final class PrismNavigationDock {
             glyphs[i] = new NebulaHomeView.Glyph(activity, symbols[i], NebulaHomeView.TEXT);
             glyphs[i].setContentDescription(TAB_NAMES[i]);
             item.addView(glyphs[i], new LinearLayout.LayoutParams(
-                    NebulaHomeView.dp(activity, 23), NebulaHomeView.dp(activity, 23)));
+                    NebulaHomeView.dp(activity, 24), NebulaHomeView.dp(activity, 24)));
             labels[i] = new TextView(activity);
             labels[i].setText(TAB_NAMES[i]);
-            labels[i].setTextSize(10.5f);
+            labels[i].setTextSize(11f);
             labels[i].setIncludeFontPadding(false);
             labels[i].setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
             labels[i].setTextColor(NebulaHomeView.MUTED);
             LinearLayout.LayoutParams label = new LinearLayout.LayoutParams(-2, -2);
-            label.topMargin = NebulaHomeView.dp(activity, 4);
+            label.topMargin = NebulaHomeView.dp(activity, 5);
             item.addView(labels[i], label);
             item.setContentDescription(TAB_NAMES[i]);
             item.setFocusable(true);
@@ -143,9 +143,9 @@ final class PrismNavigationDock {
                     NebulaHomeView.dp(activity, 340), Gravity.START | Gravity.CENTER_VERTICAL);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
         } else {
-            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 76), Gravity.BOTTOM);
-            params.setMargins(NebulaHomeView.dp(activity, 16), 0,
-                    NebulaHomeView.dp(activity, 16), NebulaHomeView.dp(activity, 8));
+            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 80), Gravity.BOTTOM);
+            params.setMargins(NebulaHomeView.dp(activity, 14), 0,
+                    NebulaHomeView.dp(activity, 14), NebulaHomeView.dp(activity, 8));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
