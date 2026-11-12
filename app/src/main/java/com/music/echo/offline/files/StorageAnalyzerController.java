@@ -210,7 +210,7 @@ final class StorageAnalyzerController {
         }
     }
 
-    @android.annotation.RequiresApi(api = Build.VERSION_CODES.Q)
+    @androidx.annotation.RequiresApi(api = Build.VERSION_CODES.Q)
     private Uri downloadsUri(String volume) {
         return MediaStore.Downloads.getContentUri(volume);
     }
