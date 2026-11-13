@@ -1066,7 +1066,7 @@ public class ViewerActivity extends ComponentActivity {
         meta.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
         card.addView(meta, new LinearLayout.LayoutParams(-1, -2));
         final ToxiWaveSeekBar sb = new ToxiWaveSeekBar(this);
-        sb.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
+        sb.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE);
         card.addView(sb, new LinearLayout.LayoutParams(-1, -2));
         final TextView time = ToxiVisualSystem.text(this, "0:00 / 0:00", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         time.setContentDescription("Playback position and duration");
@@ -1213,7 +1213,7 @@ public class ViewerActivity extends ComponentActivity {
         volumeHeaderLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7));
         card.addView(volumeHeader, volumeHeaderLp);
         ToxiProgressSeekBar volume = new ToxiProgressSeekBar(this);
-        volume.setProgressColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
+        volume.setProgressColors(ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE);
         audioVolume = getPreferences(MODE_PRIVATE).getInt("audio_volume", 100) / 100f;
         volume.setMax(100); volume.setProgress(Math.round(audioVolume * 100));
         volValue.setText(Math.round(audioVolume * 100) + "%");
