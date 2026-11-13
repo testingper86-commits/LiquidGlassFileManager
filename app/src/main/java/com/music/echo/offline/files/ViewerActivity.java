@@ -1709,7 +1709,7 @@ public class ViewerActivity extends ComponentActivity {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float cx = getWidth() / 2f, top = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), bottom = getHeight() - ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));
-            paint.setColor(0x553FFFFF); paint.setStrokeWidth(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4))); paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(Color.argb(85, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT))); paint.setStrokeWidth(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4))); paint.setStrokeCap(Paint.Cap.ROUND);
             canvas.drawLine(cx, top, cx, bottom, paint);
             float y = bottom - level * (bottom - top);
             paint.setColor(ToxiVisualSystem.ACCENT); canvas.drawLine(cx, y, cx, bottom, paint);
