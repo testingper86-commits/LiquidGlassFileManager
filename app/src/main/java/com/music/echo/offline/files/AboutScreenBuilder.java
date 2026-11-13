@@ -532,6 +532,7 @@ final class AboutScreenBuilder {
             openExternalUrl(url);
         });
         ToxiVisualSystem.interactive(card);
+        ToxiVisualSystem.interactive(card);
         return card;
     }
 
@@ -593,6 +594,8 @@ final class AboutScreenBuilder {
             };
             card.setOnClickListener(open);
             ext.setOnClickListener(open);
+            ToxiVisualSystem.interactive(card);
+            ToxiVisualSystem.interactive(ext);
         }
         return card;
     }

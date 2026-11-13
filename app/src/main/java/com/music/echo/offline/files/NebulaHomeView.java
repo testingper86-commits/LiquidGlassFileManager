@@ -272,6 +272,7 @@ final class NebulaHomeView {
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
                 card.setOnClickListener(v -> a.launchNebulaTool(index));
+                ToxiVisualSystem.interactive(card);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         rowItems == 1 ? -1 : 0, dp(a, 122), rowItems == 1 ? 0f : 1f);
                 if (rowItems > 1) {
@@ -332,6 +333,7 @@ final class NebulaHomeView {
         card.setContentDescription(total > 0 ? capacity.label + ". " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
         card.setFocusable(true);
         card.setOnClickListener(v -> a.openStorageAnalyzer());
+        ToxiVisualSystem.interactive(card);
         host.addView(card, margins(a, -1, -2, 0, 0, 0, 20));
     }
 
