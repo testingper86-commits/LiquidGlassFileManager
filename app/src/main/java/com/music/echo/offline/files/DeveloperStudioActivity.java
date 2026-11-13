@@ -107,7 +107,7 @@ public final class DeveloperStudioActivity extends ComponentActivity {
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         LinearLayout header=new LinearLayout(this);header.setOrientation(LinearLayout.HORIZONTAL);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(8),dp(6),dp(16),dp(6));header.setMinimumHeight(dp(60));
         ImageView back=ToxiVisualSystem.iconButton(this,ToxiIcons.BACK,ToxiVisualSystem.TEXT_PRIMARY);back.setContentDescription(current>=0?"Back to Developer Studio":"Back to ToxiFiles");back.setFocusable(true);back.setOnClickListener(v->handleBackNavigation());
-        header.addView(back,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        header.addView(back,new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)),ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         TextView heading=text(title,19,true);heading.setSingleLine(true);heading.setEllipsize(android.text.TextUtils.TruncateAt.END);LinearLayout.LayoutParams headingLp=new LinearLayout.LayoutParams(0,-2,1f);headingLp.leftMargin=dp(8);header.addView(heading,headingLp);root.addView(header);
         TextView desc=muted(description);desc.setPadding(dp(18),0,dp(18),dp(10));root.addView(desc);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);LinearLayout content=vertical();scroll.addView(content);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);page=content;

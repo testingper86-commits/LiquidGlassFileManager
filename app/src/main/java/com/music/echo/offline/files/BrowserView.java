@@ -97,12 +97,12 @@ final class BrowserView extends FrameLayout {
         searchBtn.setOnClickListener(v -> toggleSearch());
         moreBtn = ToxiVisualSystem.iconButton(a, ToxiIcons.MORE, ToxiVisualSystem.TEXT_PRIMARY);
         moreBtn.setOnClickListener(v -> headerMenu());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
         tl.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
         header.addView(title, tl);
-        header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
-        header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
+        header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         header.setBackground(ToxiVisualSystem.surface(24, true));
         header.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
         header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(60)));
@@ -993,7 +993,7 @@ final class BrowserView extends FrameLayout {
     private void addRenameField(LinearLayout panel,String label,View field) {
         TextView title=ToxiVisualSystem.text(a,label,12,ToxiVisualSystem.TEXT_SECONDARY,true); title.setPadding(0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)),0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3))); panel.addView(title);
         if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); edit.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY); edit.setBackground(ToxiVisualSystem.surface(12,true)); edit.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9))); }
-        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)) : -2));
+        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)) : -2));
     }
 
     private BatchRenameEngine.Options renameOptions(EditText prefix,EditText suffix,EditText find,EditText replacement,EditText start,EditText increment,EditText padding,Spinner capitalization,CheckBox numbering,CheckBox preserve) {

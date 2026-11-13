@@ -557,7 +557,7 @@ public class MainActivity extends ComponentActivity {
         v.setLetterSpacing(0.08f);
         v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setGravity(Gravity.CENTER_VERTICAL);
-        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)));
+        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         v.setBackground(ToxiVisualSystem.surface(16, false));
         v.setFocusable(false);
