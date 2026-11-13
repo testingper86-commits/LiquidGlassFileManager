@@ -76,11 +76,11 @@ public final class HtmlViewerActivity extends ComponentActivity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(ToxiVisualSystem.surface(24, true));
         ToxiVisualSystem.revealChildren(bar);
-        bar.setPadding(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(12), 0);
+        bar.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back to file manager");
         back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46))));
         TextView title = ToxiVisualSystem.text(this, document.getName(), 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
@@ -88,10 +88,10 @@ public final class HtmlViewerActivity extends ComponentActivity {
         ImageView reload = ToxiVisualSystem.iconButton(this, ToxiIcons.REFRESH, ToxiVisualSystem.TEXT_PRIMARY);
         reload.setContentDescription("Reload HTML document");
         reload.setOnClickListener(v -> webView.reload());
-        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(44), ToxiVisualSystem.dp(44));
-        reloadLp.leftMargin = ToxiVisualSystem.dp(6);
+        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)));
+        reloadLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6));
         bar.addView(reload, reloadLp);
-        column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(56)));
+        column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56))));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
