@@ -56,7 +56,7 @@ final class AboutScreenBuilder {
     }
 
     private int dp(float value) {
-        return ToxiVisualSystem.dp(value);
+        return ToxiVisualSystem.dp(ToxiThemeEngine.spacing(value));
     }
 
     private LinearLayout.LayoutParams lpm(int width, int height, int left, int top, int right, int bottom) {
