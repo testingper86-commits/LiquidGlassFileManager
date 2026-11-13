@@ -144,7 +144,7 @@ public class ViewerActivity extends ComponentActivity {
         open.setOnClickListener(v -> FileOps.external(this, new File(paths.get(idx)), true));
         ImageView share = ToxiVisualSystem.iconButton(this, ToxiIcons.SHARE, ToxiVisualSystem.TEXT_PRIMARY);
         share.setOnClickListener(v -> { ArrayList<File> l = new ArrayList<>(); l.add(new File(paths.get(idx))); FileOps.share(this, l); });
-        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         bar.addView(titleTv, new LinearLayout.LayoutParams(0, -2, 1f));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(-2, -2);
         cl.rightMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6));
@@ -154,9 +154,10 @@ public class ViewerActivity extends ComponentActivity {
         editImageBtn.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0);
         editImageBtn.setBackground(ToxiVisualSystem.surface(18, true));
         editImageBtn.setOnClickListener(v -> openImageEditor());
-        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(36))));
-        bar.addView(open, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
-        bar.addView(share, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        ToxiVisualSystem.interactive(editImageBtn);
+        bar.addView(editImageBtn, new LinearLayout.LayoutParams(-2, ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(36))));
+        bar.addView(open, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
+        bar.addView(share, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(52)), Gravity.TOP);
         bp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
         root.addView(bar, bp);
@@ -191,7 +192,7 @@ public class ViewerActivity extends ComponentActivity {
         v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         v.setOnClickListener(x -> go(delta));
         ToxiVisualSystem.interactive(v);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46)), gravity);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(46)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(46)), gravity);
         p.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0);
         root.addView(v, p);
         return v;
@@ -299,7 +300,7 @@ public class ViewerActivity extends ComponentActivity {
         LinearLayout tools = new LinearLayout(this);
         tools.setGravity(Gravity.CENTER);
         tools.setOrientation(LinearLayout.HORIZONTAL);
-        panel.addView(tools, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        panel.addView(tools, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         final float[] brightness = {0f};
         final boolean[] gray = {false};
         final int[] crop = {0}; // 0 original, 1 square, 2 4:3, 3 16:9
