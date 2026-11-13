@@ -170,14 +170,16 @@ final class PrismNavigationDock {
         if (target == null || target.getWidth() == 0 || target.getHeight() == 0) return;
         int x = tabGroup.getLeft() + target.getLeft();
         int y = tabGroup.getTop() + target.getTop();
-        int inset = NebulaHomeView.dp(activity, 4);
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(
-                Math.max(0, target.getWidth() - inset * 2),
-                Math.max(0, target.getHeight() - inset * 2));
+        int indicatorWidth = NebulaHomeView.dp(activity, rail ? 3 : 24);
+        int indicatorHeight = NebulaHomeView.dp(activity, rail ? 24 : 3);
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(indicatorWidth, indicatorHeight);
         selection.animate().cancel();
+        selection.setBackground(NebulaHomeView.navigationHighlight());
         selection.setLayoutParams(p);
-        selection.setTranslationX(x + inset);
-        selection.setTranslationY(y + inset);
+        selection.setTranslationX(rail ? x + NebulaHomeView.dp(activity, 2)
+                : x + (target.getWidth() - indicatorWidth) / 2f);
+        selection.setTranslationY(rail ? y + (target.getHeight() - indicatorHeight) / 2f
+                : y + target.getHeight() - indicatorHeight - NebulaHomeView.dp(activity, 1));
         selection.setAlpha(1f);
         selection.setVisibility(View.VISIBLE);
         selectionPositioned = true;
@@ -223,8 +225,13 @@ final class PrismNavigationDock {
                 }
                 int left = tabGroup.getLeft() + target.getLeft();
                 int top = tabGroup.getTop() + target.getTop();
-                int inset = NebulaHomeView.dp(activity, 4);
-                selection.animate().translationX(left + inset).translationY(top + inset).setDuration(145)
+                int width = NebulaHomeView.dp(activity, rail ? 3 : 24);
+                int height = NebulaHomeView.dp(activity, rail ? 24 : 3);
+                float tx = rail ? left + NebulaHomeView.dp(activity, 2)
+                        : left + (target.getWidth() - width) / 2f;
+                float ty = rail ? top + (target.getHeight() - height) / 2f
+                        : top + target.getHeight() - height - NebulaHomeView.dp(activity, 1);
+                selection.animate().translationX(tx).translationY(ty).setDuration(180)
                         .setInterpolator(new DecelerateInterpolator(1.6f)).start();
             }
         }
