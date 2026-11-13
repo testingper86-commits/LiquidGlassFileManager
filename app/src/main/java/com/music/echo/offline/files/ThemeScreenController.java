@@ -129,61 +129,49 @@ final class ThemeScreenController {
         panel.setAlpha(1f);
     }
 
-    /** A real Android component sample rendered with the currently active design tokens. */
+    /** Preview the actual file-row component and theme-owned action treatment. */
     private void addLivePreview(LinearLayout panel) {
         TextView label = ToxiVisualSystem.text(activity, "LIVE COMPONENT PREVIEW",
                 10, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.13f);
-        label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
+        label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
         panel.addView(label);
 
         LinearLayout preview = new LinearLayout(activity);
         preview.setOrientation(LinearLayout.VERTICAL);
-        preview.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)),
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)));
+        preview.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         preview.setBackground(ToxiVisualSystem.surface(22, true));
 
-        LinearLayout heading = new LinearLayout(activity);
-        heading.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView folder = new ImageView(activity);
-        folder.setImageDrawable(ToxiIcons.symbol(ToxiIcons.FOLDER, ToxiVisualSystem.ACCENT));
-        folder.setBackground(ToxiVisualSystem.surface(13, false));
-        folder.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)),
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)));
-        heading.addView(folder, new LinearLayout.LayoutParams(
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42))));
-
-        LinearLayout fileDetails = new LinearLayout(activity);
-        fileDetails.setOrientation(LinearLayout.VERTICAL);
-        fileDetails.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), 0, 0, 0);
-        fileDetails.addView(ToxiVisualSystem.text(activity, "Project files", 14,
-                ToxiVisualSystem.TEXT_PRIMARY, true));
-        TextView detail = ToxiVisualSystem.text(activity, "12 items  ·  Updated just now",
-                10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-        detail.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, 0);
-        fileDetails.addView(detail);
-        heading.addView(fileDetails, new LinearLayout.LayoutParams(0, -2, 1f));
-
-        ImageView more = ToxiVisualSystem.iconButton(activity, ToxiIcons.MORE,
-                ToxiVisualSystem.TEXT_SECONDARY);
-        more.setContentDescription("Preview more actions");
-        heading.addView(more, new LinearLayout.LayoutParams(
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42))));
-        preview.addView(heading);
+        View sampleRow = ToxiFileRow.create(activity);
+        ToxiFileRow.Holder holder = ToxiFileRow.holder(sampleRow);
+        if (holder != null) {
+            holder.icon.setImageDrawable(ToxiIcons.symbol(ToxiIcons.FOLDER, ToxiVisualSystem.ACCENT));
+            holder.name.setText("Project files");
+            holder.sub.setText("12 items  ·  Updated just now");
+            holder.more.setOnClickListener(view -> ToxiVisualSystem.feedback(view));
+            sampleRow.setContentDescription("Preview file row: Project files, 12 items");
+            preview.addView(sampleRow);
+        }
 
         LinearLayout actions = new LinearLayout(activity);
         actions.setGravity(Gravity.CENTER_VERTICAL);
-        actions.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0);
-        TextView status = ToxiVisualSystem.text(activity,
+        actions.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0, 0);
+        TextView identity = ToxiVisualSystem.text(activity,
                 ToxiThemeEngine.profile().identity.toUpperCase(java.util.Locale.ROOT),
                 9, ToxiVisualSystem.ACCENT, true);
-        status.setLetterSpacing(0.09f);
-        actions.addView(status, new LinearLayout.LayoutParams(0, -2, 1f));
+        identity.setLetterSpacing(0.09f);
+        actions.addView(identity, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView action = ToxiVisualSystem.text(activity, "OPEN FOLDER", 10,
                 Color.WHITE, true);
         action.setGravity(Gravity.CENTER);
-        action.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
+        action.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         action.setBackground(ToxiVisualSystem.accentSurface(12));
         action.setOnClickListener(view -> ToxiVisualSystem.feedback(view));
         ToxiVisualSystem.interactive(action);
@@ -191,4 +179,5 @@ final class ThemeScreenController {
         preview.addView(actions);
         panel.addView(preview, activity.lpm(-1, -2, 0, 0, 0, 12));
     }
+
 }
