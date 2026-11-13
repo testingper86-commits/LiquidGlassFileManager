@@ -232,7 +232,7 @@ final class AboutScreenBuilder {
         android.graphics.drawable.GradientDrawable surface = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
-        surface.setCornerRadius(ToxiVisualSystem.dp(radius));
+        surface.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
         surface.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)), featured
                 ? Color.argb(125, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN))
                 : ToxiVisualSystem.EDGE_STROKE);
