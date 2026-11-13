@@ -179,6 +179,17 @@ final class ToxiVisualSystem {
     static boolean booleanPreference(String key, boolean fallback) { return PREFERENCES != null && PREFERENCES.getBoolean(key, fallback); }
     static void setBooleanPreference(String key, boolean value) { if (PREFERENCES != null) PREFERENCES.edit().putBoolean(key, value).apply(); }
 
+    private static GradientDrawable.Orientation materialOrientation() {
+        switch (ToxiThemeEngine.profile().material) {
+            case CHAKRA_FORGED: return GradientDrawable.Orientation.LEFT_RIGHT;
+            case BREATHING_STEEL: return GradientDrawable.Orientation.BL_TR;
+            case AURA_ALLOY: return GradientDrawable.Orientation.TOP_BOTTOM;
+            case MILITARY_TITANIUM: return GradientDrawable.Orientation.RIGHT_LEFT;
+            case OCEAN_TITANIUM:
+            default: return GradientDrawable.Orientation.TL_BR;
+        }
+    }
+
     /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
@@ -188,7 +199,7 @@ final class ToxiVisualSystem {
         int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 7 : 17)),
                 Math.min(255, Color.green(fill) + (LIGHT_MODE ? 8 : 20)),
                 Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
-        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+        GradientDrawable base = new GradientDrawable(materialOrientation(),
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
         base.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
         ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
@@ -228,7 +239,7 @@ final class ToxiVisualSystem {
     }
 
     static Drawable accentSurface(float radiusDp) {
-        GradientDrawable accent = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+        GradientDrawable accent = new GradientDrawable(materialOrientation(),
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
         accent.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
         accent.setStroke(Math.max(1, dp(0.9f)), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 140 : 175),
