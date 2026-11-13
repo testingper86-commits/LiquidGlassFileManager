@@ -28,6 +28,39 @@ public final class ToxiThemeSystemTest {
         }
     }
 
+
+    @Test public void eachThemeProfileDrivesDistinctGeometryMaterialAndMotion() {
+        java.util.HashSet<ToxiThemeEngine.Geometry> geometries = new java.util.HashSet<>();
+        java.util.HashSet<ToxiThemeEngine.Material> materials = new java.util.HashSet<>();
+        java.util.HashSet<String> typefaces = new java.util.HashSet<>();
+        for (int i = 0; i < 5; i++) {
+            ToxiThemeEngine.activate(i);
+            ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
+            assertEquals(i, profile.index);
+            geometries.add(profile.geometry);
+            materials.add(profile.material);
+            typefaces.add(profile.typeface);
+            assertTrue(ToxiThemeEngine.radius(16) >= 4);
+            assertTrue(ToxiThemeEngine.iconStroke() > 0f);
+            assertTrue(ToxiThemeEngine.edgeAlpha(180) >= 0);
+            assertTrue(ToxiThemeEngine.edgeAlpha(180) <= 255);
+            assertTrue(ToxiThemeEngine.highlightAlpha(120) >= 0);
+            assertTrue(ToxiThemeEngine.highlightAlpha(120) <= 255);
+            assertTrue(ToxiThemeEngine.motionDuration(200) >= 90);
+            assertTrue(ToxiThemeEngine.motionDistance(10) > 0f);
+        }
+        assertEquals(5, geometries.size());
+        assertEquals(5, materials.size());
+        assertTrue(typefaces.size() >= 3);
+    }
+
+    @Test public void themeEngineNormalizesInvalidSavedIndexes() {
+        ToxiThemeEngine.activate(-10);
+        assertEquals(0, ToxiThemeEngine.profile().index);
+        ToxiThemeEngine.activate(100);
+        assertEquals(4, ToxiThemeEngine.profile().index);
+    }
+
     @Test public void themeIndexIsSafelyBoundedForSavedPreferenceMigration() {
         assertEquals(0, ToxiThemeSystem.normalize(-1));
         assertEquals(0, ToxiThemeSystem.normalize(0));

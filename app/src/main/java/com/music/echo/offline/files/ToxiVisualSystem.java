@@ -114,7 +114,7 @@ final class ToxiVisualSystem {
 
         @Override public AlertDialog create() {
             AlertDialog dialog = super.create();
-            dialog.setOnShowListener(ignored -> applyDialogStyle(dialog));
+            dialog.setOnShowListener(ignored -> styleDialog(dialog));
             return dialog;
         }
     }
