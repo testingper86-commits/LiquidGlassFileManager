@@ -407,7 +407,7 @@ final class NebulaHomeView {
     }
 
     private static int dpRadius(int value) {
-        return Math.max(1, Math.round(value * Resources.getSystem().getDisplayMetrics().density));
+        return Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.radius(value)));
     }
 
     private static LinearLayout panel(MainActivity a, int radius) {
@@ -434,14 +434,13 @@ final class NebulaHomeView {
 
     static GradientDrawable navigationSurface() {
         syncPalette();
-        float density = Resources.getSystem().getDisplayMetrics().density;
         int top = Color.argb(246, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
         int bottom = Color.argb(238, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL));
         int edge = Color.argb(185, Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
         glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(25)));
-        glass.setStroke(Math.max(1, Math.round(density)), edge);
+        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(1)), edge);
         return glass;
     }
 
@@ -451,7 +450,7 @@ final class NebulaHomeView {
                 new int[]{Color.argb(48, Color.red(LIME), Color.green(LIME), Color.blue(LIME)),
                         Color.argb(22, Color.red(ICE), Color.green(ICE), Color.blue(ICE))});
         active.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(18)));
-        active.setStroke(Math.max(1, Math.round(Resources.getSystem().getDisplayMetrics().density)),
+        active.setStroke(Math.max(1, ToxiVisualSystem.dp(1)),
                 Color.argb(190, Color.red(LIME), Color.green(LIME), Color.blue(LIME)));
         return active;
     }
@@ -461,7 +460,6 @@ final class NebulaHomeView {
     private static GradientDrawable background(int color, int stroke, int radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
-        float density = aDensity();
         d.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
         d.setStroke(Math.max(1, ToxiVisualSystem.dp(1)), stroke);
         return d;
@@ -472,8 +470,6 @@ final class NebulaHomeView {
         lp.setMargins(dp(a, left), dp(a, top), dp(a, right), dp(a, bottom));
         return lp;
     }
-
-    private static float aDensity() { return ToxiVisualSystem.D; }
 
     static int dp(MainActivity a, float value) {
         return Math.round(ToxiThemeEngine.spacing(value) * a.getResources().getDisplayMetrics().density);
