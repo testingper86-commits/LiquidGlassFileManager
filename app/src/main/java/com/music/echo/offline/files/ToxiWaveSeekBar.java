@@ -26,8 +26,8 @@ public final class ToxiWaveSeekBar extends AppCompatSeekBar {
         setSplitTrack(false);
         setPadding(Math.max(getPaddingLeft(), (int)(ToxiThemeEngine.spacing(8f)*density)),
                 Math.max(getPaddingTop(), (int)(ToxiThemeEngine.spacing(12f)*density)),
-                Math.max(getPaddingRight(), (int)(8*density)),
-                Math.max(getPaddingBottom(), (int)(12*density)));
+                Math.max(getPaddingRight(), (int)(ToxiThemeEngine.spacing(8f)*density)),
+                Math.max(getPaddingBottom(), (int)(ToxiThemeEngine.spacing(12f)*density)));
         setMinimumHeight((int)(ToxiThemeEngine.spacing(48f)*density));
         setProgressDrawable(null); setThumb(null);
         setBackgroundTintList(ColorStateList.valueOf(0x00000000));
