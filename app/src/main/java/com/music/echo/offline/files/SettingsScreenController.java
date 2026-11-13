@@ -101,7 +101,7 @@ final class SettingsScreenController {
         String defFolder = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
         activity.settings.addView(activity.row(ToxiIcons.FOLDER, "Starting folder", defFolder != null ? defFolder : "Internal storage root (choose a folder in Files to set another)", null, v -> {
             if (defFolder == null) { ToxiVisualSystem.toast(activity, "Open a folder in Files, then choose Set as default start folder from its action menu"); return; }
-            new AlertDialog.Builder(activity).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
+            ToxiVisualSystem.dialogBuilder(activity).setTitle("Reset default folder?").setMessage("Will start from Internal storage root again.")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Reset", (d, w) -> { ToxiVisualSystem.PREFERENCES.edit().remove("default_folder").apply(); activity.buildSettings(); }).show();
         }), activity.lpm(-1, -2, 16, 0, 16, 8));

@@ -20,7 +20,7 @@ final class VaultScreenController {
 
     void showSetPinDialog() {
         final android.widget.EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle(Vault.hasPin(activity) ? "Change Vault PIN" : "Set Vault PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(Vault.hasPin(activity) ? "Change Vault PIN" : "Set Vault PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String pin = input.getText().toString().trim();
@@ -40,7 +40,7 @@ final class VaultScreenController {
             return;
         }
         final android.widget.EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle("Enter Vault PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Enter Vault PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Unlock", (dialog, which) -> {
                     if (Vault.checkPin(activity, input.getText().toString().trim())) {
@@ -156,7 +156,7 @@ final class VaultScreenController {
 
     void showItemMenu(final Vault.Item item) {
         String[] options = {"Move out of Vault", "Delete forever"};
-        new AlertDialog.Builder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
             if (which == 0) {
                 Vault.restoreOut(activity, item, message -> {
                     ToxiVisualSystem.toast(activity, message);
@@ -164,7 +164,7 @@ final class VaultScreenController {
                     build();
                 });
             } else {
-                new AlertDialog.Builder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
                         .setNegativeButton("Cancel", null)
                         .setPositiveButton("Delete", (confirmDialog, confirmWhich) ->
                                 Vault.deleteForever(activity, item, message -> {

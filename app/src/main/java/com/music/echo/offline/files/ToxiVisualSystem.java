@@ -1,6 +1,15 @@
 package com.music.echo.offline.files;
 
 import android.content.Context;
+import android.app.AlertDialog;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Outline;
@@ -87,6 +96,87 @@ final class ToxiVisualSystem {
         BLOOM_SECONDARY = Color.argb(LIGHT_MODE ? 12 : 24, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         BLOOM_TERTIARY = Color.argb(LIGHT_MODE ? 7 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         if (save && PREFERENCES != null) PREFERENCES.edit().putInt("theme", THEME_INDEX).apply();
+    }
+
+    /** All native prompts use the active theme material and typography. */
+    static AlertDialog.Builder dialogBuilder(Context context) {
+        return new ThemedDialogBuilder(context);
+    }
+
+    private static final class ThemedDialogBuilder extends AlertDialog.Builder {
+        ThemedDialogBuilder(Context context) { super(context); }
+
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            applyDialogStyle(dialog);
+            return dialog;
+        }
+
+        @Override public AlertDialog create() {
+            AlertDialog dialog = super.create();
+            dialog.setOnShowListener(ignored -> applyDialogStyle(dialog));
+            return dialog;
+        }
+    }
+
+    private static void applyDialogStyle(AlertDialog dialog) {
+        if (dialog == null) return;
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(surface(24, true));
+            dialog.getWindow().setDimAmount(LIGHT_MODE ? 0.28f : 0.58f);
+        }
+        TextView title = dialog.findViewById(android.R.id.alertTitle);
+        if (title != null) {
+            title.setTextColor(TEXT_PRIMARY);
+            title.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
+        }
+        TextView message = dialog.findViewById(android.R.id.message);
+        if (message != null) {
+            message.setTextColor(TEXT_SECONDARY);
+            message.setTypeface(Typeface.create(fontFamily(), Typeface.NORMAL));
+            message.setLineSpacing(dp(3), 1f);
+        }
+        int[] buttonIds = {android.R.id.button1, android.R.id.button2, android.R.id.button3};
+        for (int id : buttonIds) {
+            Button button = dialog.findViewById(id);
+            if (button == null) continue;
+            button.setTextColor(ACCENT);
+            button.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
+            button.setAllCaps(false);
+            button.setMinHeight(dp(44));
+        }
+        ListView list = dialog.getListView();
+        if (list != null) {
+            list.setBackgroundColor(Color.TRANSPARENT);
+            list.setDivider(new android.graphics.drawable.ColorDrawable(EDGE_STROKE));
+            list.setDividerHeight(Math.max(1, dp(1)));
+            GradientDrawable selector = new GradientDrawable();
+            selector.setColor(Color.argb(32, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT)));
+            selector.setCornerRadius(dp(10));
+            list.setSelector(selector);
+            for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i));
+        }
+        View content = dialog.findViewById(android.R.id.content);
+        if (content != null) styleDialogTree(content);
+    }
+
+    private static void styleDialogTree(View view) {
+        if (view instanceof TextView) {
+            TextView text = (TextView) view;
+            text.setTextColor(view.getId() == android.R.id.message ? TEXT_SECONDARY : TEXT_PRIMARY);
+            text.setTypeface(Typeface.create(fontFamily(), text.getTypeface() != null
+                    && text.getTypeface().isBold() ? Typeface.BOLD : Typeface.NORMAL));
+        }
+        if (view instanceof EditText) {
+            EditText input = (EditText) view;
+            input.setTextColor(TEXT_PRIMARY);
+            input.setHintTextColor(TEXT_SECONDARY);
+            if (Build.VERSION.SDK_INT >= 21) input.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) styleDialogTree(group.getChildAt(i));
+        }
     }
 
     static String themeDescription(int index) { return ToxiThemeSystem.description(index); }

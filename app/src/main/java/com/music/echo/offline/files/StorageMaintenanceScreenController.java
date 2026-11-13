@@ -83,7 +83,7 @@ final class StorageMaintenanceScreenController {
         bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
         bulk.setGravity(Gravity.CENTER);
         ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Move duplicates to Recycle Bin?")
+        bulk.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Move duplicates to Recycle Bin?")
                 .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin — they can still be restored from there.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (dialog, which) -> {
@@ -111,7 +111,7 @@ final class StorageMaintenanceScreenController {
                 View row = ToxiFileRow.create(activity);
                 ToxiFileRow.Holder holder = (ToxiFileRow.Holder) row.getTag();
                 ToxiFileRow.bind(holder, entry, false, false, file.getParentFile() == null ? "" : file.getParentFile().getAbsolutePath());
-                View.OnClickListener action = view -> new AlertDialog.Builder(activity).setTitle("Move to Recycle Bin?")
+                View.OnClickListener action = view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Move to Recycle Bin?")
                         .setMessage(file.getAbsolutePath()).setNegativeButton("Cancel", null)
                         .setPositiveButton("Move", (dialog, which) -> RecycleBin.moveToBin(activity,
                                 java.util.Collections.singletonList(file), message -> {
@@ -186,7 +186,7 @@ final class StorageMaintenanceScreenController {
         bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
         bulk.setGravity(Gravity.CENTER);
         ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Delete " + emptyFolders.size() + " empty folders?")
+        bulk.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete " + emptyFolders.size() + " empty folders?")
                 .setMessage("They contain nothing, so this goes straight to Recycle Bin, same as any other delete.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Delete", (dialog, which) -> RecycleBin.moveToBin(activity, emptyFolders, message -> {

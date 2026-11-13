@@ -17,7 +17,7 @@ final class LanTransferScreenController {
     }
 
     void receive() {
-        final AlertDialog waitDialog = new AlertDialog.Builder(activity).setTitle("Waiting for sender…")
+        final AlertDialog waitDialog = ToxiVisualSystem.dialogBuilder(activity).setTitle("Waiting for sender…")
                 .setMessage("Starting…")
                 .setNegativeButton("Cancel", (dialog, which) -> LanTransfer.cancel())
                 .setCancelable(false).show();
@@ -36,7 +36,7 @@ final class LanTransferScreenController {
                     int shown = Math.min(8, names.size());
                     for (int i = 0; i < shown; i++) preview.append("\n• ").append(names.get(i));
                     if (names.size() > shown) preview.append("\n…and ").append(names.size() - shown).append(" more");
-                    new AlertDialog.Builder(activity).setTitle("Incoming transfer")
+                    ToxiVisualSystem.dialogBuilder(activity).setTitle("Incoming transfer")
                             .setMessage("From " + fromIp + "\n" + count + " file" + (count == 1 ? "" : "s")
                                     + ", " + ToxiVisualSystem.formatSize(totalBytes) + "\n\nFiles:" + preview)
                             .setCancelable(false)
@@ -85,7 +85,7 @@ final class LanTransferScreenController {
         fields.setOrientation(LinearLayout.VERTICAL);
         fields.addView(activity.wrapField(address));
         fields.addView(activity.wrapField(pairingCode));
-        new AlertDialog.Builder(activity).setTitle("Send via Wi-Fi")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Send via Wi-Fi")
                 .setMessage("Enter the receiver address and one-time pairing code shown on the receiving device. Both devices must be on the same trusted Wi-Fi network.")
                 .setView(fields).setNegativeButton("Cancel", null)
                 .setPositiveButton("Send", (dialog, which) -> {

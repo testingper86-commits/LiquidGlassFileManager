@@ -670,7 +670,7 @@ public class MainActivity extends ComponentActivity {
         outer.addView(title);
         outer.addView(subtitle);
         outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).create();
+        AlertDialog dialog = ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).create();
         for (int i = 0; i < actions.size(); i++) {
             final int choice = i;
             actions.get(i).setOnClickListener(v -> {
@@ -741,7 +741,7 @@ public class MainActivity extends ComponentActivity {
         TextView heading = ToxiVisualSystem.text(this, system ? "System Apps" : "Downloaded Apps", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
         heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(8));
         LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showBuiltInTools() {
@@ -760,7 +760,7 @@ public class MainActivity extends ComponentActivity {
         ScrollView scroll = new ScrollView(this); scroll.addView(list); LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL);
         TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
         outer.addView(heading); outer.addView(ToxiVisualSystem.text(this, "Seven offline utilities integrated into the existing file manager.", 12, ToxiVisualSystem.TEXT_SECONDARY, false)); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showCrashLogOptions() { crashReports.showCrashLogOptions(); }
@@ -773,7 +773,7 @@ public class MainActivity extends ComponentActivity {
                 "Storage access: " + (hasAccess() ? "Granted" : "Not granted") + "\n" +
                 "Crash report: " + (CrashLogger.hasReport(this) ? "Available on this device" : "None saved") + "\n\n" +
                 "No usage data is uploaded by this screen. Diagnostics remain on this device unless you explicitly share a report.";
-        new AlertDialog.Builder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> crashReports.showCrashLogOptions()).setNegativeButton("Close", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> crashReports.showCrashLogOptions()).setNegativeButton("Close", null).show();
     }
 
     // ---------------- SETTINGS ----------------
@@ -857,7 +857,7 @@ public class MainActivity extends ComponentActivity {
                 + "\u2022 App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
                 + "\u2022 Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
                 + "This is an in-app permission/feature summary, not an independent network-traffic audit. To verify network behavior, inspect the source and test traffic on the device.";
-        new AlertDialog.Builder(this).setTitle("Privacy & network information")
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Privacy & network information")
                 .setMessage(report).setPositiveButton("OK", null).show();
     }
 
@@ -1006,7 +1006,7 @@ public class MainActivity extends ComponentActivity {
 
     void fontDialog() {
         String[] fonts = {"System Sans", "Rounded", "Serif", "Monospace"};
-        new AlertDialog.Builder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
             ToxiVisualSystem.PREFERENCES.edit().putInt("font_family", which).apply();
             d.dismiss();
             recreate();

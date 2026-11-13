@@ -51,7 +51,7 @@ final class RecycleBinScreenController {
         TextView emptyButton = ToxiVisualSystem.text(activity, "Empty", 12, ToxiVisualSystem.ACCENT, true);
         emptyButton.setBackground(ToxiVisualSystem.surface(14, true));
         emptyButton.setPadding(ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(11));
-        emptyButton.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Empty Recycle Bin?")
+        emptyButton.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Empty Recycle Bin?")
                 .setMessage("Every item will be permanently deleted. This can't be undone.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Empty", (dialog, which) -> RecycleBin.empty(activity, message -> {
@@ -150,7 +150,7 @@ final class RecycleBinScreenController {
 
     void showItemMenu(final RecycleBin.Item item) {
         String[] options = {"Restore", "Delete forever"};
-        new AlertDialog.Builder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
             if (which == 0) {
                 RecycleBin.restore(activity, item, message -> {
                     ToxiVisualSystem.toast(activity, message);
@@ -158,7 +158,7 @@ final class RecycleBinScreenController {
                     reload();
                 });
             } else {
-                new AlertDialog.Builder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
                         .setNegativeButton("Cancel", null)
                         .setPositiveButton("Delete", (confirmDialog, confirmWhich) ->
                                 RecycleBin.permanentDelete(activity, java.util.Collections.singletonList(item), message -> {
@@ -173,7 +173,7 @@ final class RecycleBinScreenController {
         final int[] days = {7, 14, 30, 60, 90};
         String[] labels = new String[days.length];
         for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(activity).setTitle("Recycle Bin retention")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Recycle Bin retention")
                 .setItems(labels, (dialog, which) -> {
                     ToxiVisualSystem.PREFERENCES.edit().putInt("recyclebin_days", days[which]).apply();
                     activity.buildSettings();

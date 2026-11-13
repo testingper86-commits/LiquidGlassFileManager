@@ -583,7 +583,7 @@ final class BrowserView extends FrameLayout {
         if (sel.isEmpty()) return;
         final TextView details = ToxiVisualSystem.text(a, sel.size() + " selected items\nLong-press another item to select a range.\nCalculating combined size…", 15, ToxiVisualSystem.TEXT_PRIMARY, true);
         details.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
-        AlertDialog dialog = new AlertDialog.Builder(a).setTitle("Selection Studio").setView(details)
+        AlertDialog dialog = ToxiVisualSystem.dialogBuilder(a).setTitle("Selection Studio").setView(details)
                 .setNeutralButton("Deselect all", (d,w) -> deselectAll())
                 .setNegativeButton("Close", null)
                 .setPositiveButton("Select all", (d,w) -> selectAll()).create();
@@ -649,7 +649,7 @@ final class BrowserView extends FrameLayout {
             ToxiVisualSystem.toast(a, msg);
             a.afterOps();
         };
-        if (cut) new AlertDialog.Builder(a).setTitle("Move " + src.length + " items?")
+        if (cut) ToxiVisualSystem.dialogBuilder(a).setTitle("Move " + src.length + " items?")
                 .setMessage("The selected items will be moved out of their current folder. Continue?")
                 .setNegativeButton("Cancel", null).setPositiveButton("Continue", (d,w) -> pasteWithConflictPrompt(src,cur,true,done)).show();
         else pasteWithConflictPrompt(src, cur, false, done);
@@ -659,7 +659,7 @@ final class BrowserView extends FrameLayout {
         int conflicts = 0;
         for (File file : src) if (!(move && destination.equals(file.getParentFile())) && new File(destination, file.getName()).exists()) conflicts++;
         if (conflicts == 0) { FileOps.paste(a, src, destination, move, false, done); return; }
-        new AlertDialog.Builder(a).setTitle("Name conflicts")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Name conflicts")
                 .setMessage(conflicts + " item" + (conflicts == 1 ? " already exists" : "s already exist") + " in the destination. Choose how to continue.")
                 .setNegativeButton("Cancel", null)
                 .setNeutralButton("Skip existing", (dialog, which) -> FileOps.paste(a, src, destination, move, true, done))
@@ -671,7 +671,7 @@ final class BrowserView extends FrameLayout {
     static void add(List<String> l, List<Runnable> r, String s, Runnable x) { l.add(s); r.add(x); }
 
     static void showMenu(Context c, String title, List<String> l, final List<Runnable> r) {
-        new AlertDialog.Builder(c).setTitle(title).setItems(l.toArray(new String[0]), (d, w) -> r.get(w).run()).show();
+        ToxiVisualSystem.dialogBuilder(c).setTitle(title).setItems(l.toArray(new String[0]), (d, w) -> r.get(w).run()).show();
     }
 
     LinearLayout buildGridRow() {
@@ -784,7 +784,7 @@ final class BrowserView extends FrameLayout {
         Spinner sizeSpinner = filterSpinner(sizes, searchSizeFilter); panel.addView(sizeSpinner);
         panel.addView(ToxiVisualSystem.text(a, "Modified date", 12, ToxiVisualSystem.TEXT_SECONDARY, true));
         Spinner dateSpinner = filterSpinner(dates, searchDateFilter); panel.addView(dateSpinner);
-        new AlertDialog.Builder(a).setTitle("Advanced search")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Advanced search")
                 .setMessage("Filters apply to the indexed search results. Open a folder directly to browse files outside the global index limit.")
                 .setView(panel).setNegativeButton("Cancel", null)
                 .setNeutralButton("Reset", (d, w) -> { searchTypeFilter = searchSizeFilter = searchDateFilter = 0; applyFilter(); updateHeader(); })
@@ -821,7 +821,7 @@ final class BrowserView extends FrameLayout {
 
     void sortDialog() {
         final String[] names = {"Name A to Z", "Name Z to A", "Newest first", "Oldest first", "Largest first", "Smallest first", "Type"};
-        new AlertDialog.Builder(a).setTitle("Sort by").setItems(names, (d, w) -> {
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Sort by").setItems(names, (d, w) -> {
             int k; boolean asc;
             switch (w) {
                 case 0: k = 0; asc = true; break;
@@ -910,7 +910,7 @@ final class BrowserView extends FrameLayout {
         for(EditText edit : new EditText[]{prefix,suffix,find,replacement,start,increment,padding}) edit.addTextChangedListener(watcher);
         capitalization.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){ public void onNothingSelected(AdapterView<?> p){} public void onItemSelected(AdapterView<?> p,View v,int pos,long id){refresh.run();} });
         numbering.setOnCheckedChangeListener((b,c)->refresh.run()); preserve.setOnCheckedChangeListener((b,c)->refresh.run()); refresh.run();
-        AlertDialog editor = new AlertDialog.Builder(a).setTitle("Batch Rename Studio · " + list.size() + " items").setView(scroll).setNegativeButton("Cancel",null).setPositiveButton("Review rename",null).create();
+        AlertDialog editor = ToxiVisualSystem.dialogBuilder(a).setTitle("Batch Rename Studio · " + list.size() + " items").setView(scroll).setNegativeButton("Cancel",null).setPositiveButton("Review rename",null).create();
         editor.setOnShowListener(d -> editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             final long token = ++previewGeneration[0];
             if (pendingPreview[0] != null) preview.removeCallbacks(pendingPreview[0]);
@@ -928,9 +928,9 @@ final class BrowserView extends FrameLayout {
                     if (!editor.isShowing()) return;
                     review.setEnabled(true);
                     if (token != previewGeneration[0]) return;
-                    if(!problems.isEmpty()) { refresh.run(); new AlertDialog.Builder(a).setTitle("Resolve rename conflicts").setMessage(joinLines(problems,10)).setPositiveButton("Back to editor",null).show(); return; }
+                    if(!problems.isEmpty()) { refresh.run(); ToxiVisualSystem.dialogBuilder(a).setTitle("Resolve rename conflicts").setMessage(joinLines(problems,10)).setPositiveButton("Back to editor",null).show(); return; }
                     preview.setText(reviewText + "\n" + plan.size() + " destinations validated · no overwrites");
-                    new AlertDialog.Builder(a).setTitle("Confirm batch rename").setMessage("Rename "+plan.size()+" items? Existing files will never be overwritten.\n\n"+reviewText)
+                    ToxiVisualSystem.dialogBuilder(a).setTitle("Confirm batch rename").setMessage("Rename "+plan.size()+" items? Existing files will never be overwritten.\n\n"+reviewText)
                             .setNegativeButton("Cancel",null).setPositiveButton("Rename",(dd,ww)->{editor.dismiss();executeBatchRename(plan);}).show();
                 });
             });
@@ -966,7 +966,7 @@ final class BrowserView extends FrameLayout {
     }
 
     private void showRenameResult(BatchRenameEngine.Result result,String message) {
-        AlertDialog.Builder b=new AlertDialog.Builder(a).setTitle(result.success()?"Batch rename complete":"Batch rename result").setMessage(message).setPositiveButton("Done",null);
+        AlertDialog.Builder b=ToxiVisualSystem.dialogBuilder(a).setTitle(result.success()?"Batch rename complete":"Batch rename result").setMessage(message).setPositiveButton("Done",null);
         if(!result.completed.isEmpty()) b.setNeutralButton("Undo",(d,w)->undoBatchRename(result));
         b.show();
     }
@@ -975,7 +975,7 @@ final class BrowserView extends FrameLayout {
         a.busy(true); a.executeOperation(() -> { BatchRenameEngine.Result undone=BatchRenameEngine.undo(prior); a.runUiIfAlive(() -> {
             a.busy(false); for(BatchRenameEngine.Item item:undone.completed){Labels.moved(a,item.source,item.target);a.renameFav(item.source,item.target);} a.afterOps();
             String msg=undone.errors.isEmpty()?"Restored "+undone.completed.size()+" original names.":joinLines(undone.errors,8);
-            new AlertDialog.Builder(a).setTitle(undone.errors.isEmpty()?"Undo complete":"Undo incomplete").setMessage(msg).setPositiveButton("OK",null).show();
+            ToxiVisualSystem.dialogBuilder(a).setTitle(undone.errors.isEmpty()?"Undo complete":"Undo incomplete").setMessage(msg).setPositiveButton("OK",null).show();
         }); });
     }
 
@@ -983,7 +983,7 @@ final class BrowserView extends FrameLayout {
         String[] names = new String[Labels.NAMES.length + 1];
         names[0] = "Remove label";
         System.arraycopy(Labels.NAMES, 0, names, 1, Labels.NAMES.length);
-        new AlertDialog.Builder(a).setTitle("Label").setItems(names, (d, w) -> {
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Label").setItems(names, (d, w) -> {
             int idx = w - 1; // -1 means "remove"
             for (Entry e : list) Labels.set(a, e.f, idx);
             endSelect(); a.afterOps();
@@ -993,7 +993,7 @@ final class BrowserView extends FrameLayout {
     /** One-tap move to a common folder; no need to cut, navigate, then paste. */
     void confirmSelectionMove(final List<Entry> list) {
         if (list == null || list.isEmpty()) return;
-        new AlertDialog.Builder(a).setTitle("Move " + list.size() + " selected items?")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Move " + list.size() + " selected items?")
                 .setMessage("The selected items will leave their current location. Choose a destination only after confirming.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Continue", (d,w) -> moveToQuick(list)).show();
     }
@@ -1004,7 +1004,7 @@ final class BrowserView extends FrameLayout {
         final File[] dirs = new File[names.length];
         for (int i = 0; i < names.length - 1; i++) dirs[i] = new File(root, names[i]);
         dirs[dirs.length - 1] = root;
-        new AlertDialog.Builder(a).setTitle("Move to").setItems(names, (d, w) -> {
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Move to").setItems(names, (d, w) -> {
             File dest = dirs[w];
             if (!dest.isDirectory()) { ToxiVisualSystem.toast(a, "That folder doesn't exist on this device"); return; }
             pasteWithConflictPrompt(files(list).toArray(new File[0]), dest, true, msg -> { endSelect(); ToxiVisualSystem.toast(a, msg); a.afterOps(); });
@@ -1013,7 +1013,7 @@ final class BrowserView extends FrameLayout {
 
     void vaultMove(final List<Entry> list) {
         if (!Vault.hasPin(a)) { ToxiVisualSystem.toast(a, "Set a Vault PIN first in Settings, under Vault"); return; }
-        new AlertDialog.Builder(a).setTitle("Move " + list.size() + " item" + (list.size() > 1 ? "s" : "") + " to Vault?")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Move " + list.size() + " item" + (list.size() > 1 ? "s" : "") + " to Vault?")
                 .setMessage("Encrypted at rest with AES-GCM using Android Keystore. Keep your Vault PIN private; loss of device Keystore keys can make vault data unrecoverable.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (d, w) -> Vault.moveIn(a, files(list), msg -> {
@@ -1047,7 +1047,7 @@ final class BrowserView extends FrameLayout {
     // ---------- operations ----------
     void newFolder() {
         final EditText in = input("");
-        new AlertDialog.Builder(a).setTitle("New folder").setView(wrap(in)).setNegativeButton("Cancel", null)
+        ToxiVisualSystem.dialogBuilder(a).setTitle("New folder").setView(wrap(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Create", (d, w) -> {
                     String n = in.getText().toString().trim();
                     if (BatchRenameEngine.validateName(n) != null) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
@@ -1064,7 +1064,7 @@ final class BrowserView extends FrameLayout {
 
     void rename(final Entry e) {
         final EditText in = input(e.name);
-        new AlertDialog.Builder(a).setTitle("Rename").setView(wrap(in)).setNegativeButton("Cancel", null)
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Rename").setView(wrap(in)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Rename", (d, w) -> {
                     String n = in.getText().toString().trim();
                     if (BatchRenameEngine.validateName(n) != null || n.equals(e.name)) { ToxiVisualSystem.toast(a, "Invalid name"); return; }
@@ -1112,7 +1112,7 @@ final class BrowserView extends FrameLayout {
         if (list.isEmpty()) return;
         final boolean useBin = ToxiVisualSystem.booleanPreference("recyclebin", true);
         if (!ToxiVisualSystem.booleanPreference("confirm", true)) { deleteEntries(list,useBin); return; }
-        new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " item" + (list.size() > 1 ? "s" : "") + "?")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Delete " + list.size() + " item" + (list.size() > 1 ? "s" : "") + "?")
                 .setMessage(useBin ? "Moved to Recycle Bin — you can restore it later." : "This can't be undone.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
     }
@@ -1120,7 +1120,7 @@ final class BrowserView extends FrameLayout {
     void confirmSelectionDelete(final List<Entry> list) {
         if (list == null || list.isEmpty()) return;
         final boolean useBin = ToxiVisualSystem.booleanPreference("recyclebin", true);
-        new AlertDialog.Builder(a).setTitle("Delete " + list.size() + " selected item" + (list.size() > 1 ? "s" : "") + "?")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Delete " + list.size() + " selected item" + (list.size() > 1 ? "s" : "") + "?")
                 .setMessage(useBin ? "The selected items will be moved to Recycle Bin and can be restored." : "This permanently deletes the selected items and cannot be undone.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Delete", (d,w) -> deleteEntries(list,useBin)).show();
     }
@@ -1139,7 +1139,7 @@ final class BrowserView extends FrameLayout {
     }
 
     void stripGpsMetadata(final File source) {
-        new AlertDialog.Builder(a).setTitle("Remove GPS metadata?")
+        ToxiVisualSystem.dialogBuilder(a).setTitle("Remove GPS metadata?")
                 .setMessage("Creates a separate copy without GPS coordinates and related location tags. The original stays unchanged; camera and date metadata may remain.")
                 .setNegativeButton("Cancel", null).setPositiveButton("Save copy", (dialog, which) -> {
                     a.busy(true);
@@ -1193,7 +1193,7 @@ final class BrowserView extends FrameLayout {
 
     void properties(final Entry e) {
         final String[] digest = {null};
-        final AlertDialog dlg = new AlertDialog.Builder(a).setTitle(e.name)
+        final AlertDialog dlg = ToxiVisualSystem.dialogBuilder(a).setTitle(e.name)
                 .setMessage(propText(e, e.dir ? "calculating…" : ToxiVisualSystem.formatSize(e.len), e.dir ? "" : "calculating…"))
                 .setNeutralButton(e.dir ? "" : "Copy SHA-256", null).setPositiveButton("Close", null).show();
         final android.widget.Button copyHash = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);

@@ -21,7 +21,7 @@ final class AppLockScreenController {
 
     void showSetPinDialog() {
         final EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle(AppLock.hasPin(activity) ? "Change App Lock PIN" : "Set App Lock PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(AppLock.hasPin(activity) ? "Change App Lock PIN" : "Set App Lock PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String pin = input.getText().toString().trim();

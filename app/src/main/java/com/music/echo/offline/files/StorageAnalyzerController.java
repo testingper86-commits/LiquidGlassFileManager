@@ -111,7 +111,7 @@ final class StorageAnalyzerController {
             }
             activity.runUiIfAlive(() -> {
                 if (activity.isFinishing() || activity.isDestroyed()) return;
-                new AlertDialog.Builder(activity).setTitle("Storage analysis")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Storage analysis")
                         .setMessage(result).setPositiveButton("Done", null)
                         .setNeutralButton("Share report", (dialog, which) -> {
                             try {
