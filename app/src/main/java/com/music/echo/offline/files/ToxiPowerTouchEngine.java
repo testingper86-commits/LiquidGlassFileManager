@@ -20,7 +20,7 @@ final class ToxiPowerTouchEngine {
     private static final float SWIPE_DISTANCE_DP = 18f;
     private ToxiPowerTouchEngine() { }
 
-    static void attach(View target) {
+    static void attach(View target, int themeIndex) {
         if (target == null) return;
         float threshold = ToxiThemeEngine.spacing(SWIPE_DISTANCE_DP) * ToxiThemeEngine.profile().motionScale
                 * target.getResources().getDisplayMetrics().density;
