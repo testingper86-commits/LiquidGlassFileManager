@@ -41,7 +41,7 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
     }
     @Override protected synchronized void onDraw(Canvas canvas) {
         if (!customColors) {
-            activeColor = ToxiVisualSystem.ACCENT;
+            activeColor = ToxiVisualSystem.signalTextColor();
             inactiveColor = ToxiVisualSystem.EDGE_STROKE;
         }
         float left=getPaddingLeft(), right=getWidth()-getPaddingRight();
