@@ -120,7 +120,7 @@ final class ToxiVisualSystem {
             dialog.getWindow().setBackgroundDrawable(surface(24, true));
             dialog.getWindow().setDimAmount(LIGHT_MODE ? 0.28f : 0.58f);
         }
-        TextView title = dialog.findViewById(android.R.id.alertTitle);
+        TextView title = dialog.findViewById(android.R.id.title);
         if (title != null) {
             title.setTextColor(TEXT_PRIMARY);
             title.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
