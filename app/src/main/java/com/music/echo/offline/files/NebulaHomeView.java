@@ -422,7 +422,7 @@ final class NebulaHomeView {
         TextView view = new TextView(a);
         view.setText(value);
         view.setTextSize(size);
-        view.setTextColor(color);
+        view.setTextColor(color == LIME ? ToxiVisualSystem.signalTextColor() : color);
         view.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), medium ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         return view;

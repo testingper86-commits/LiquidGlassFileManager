@@ -135,7 +135,7 @@ final class ToxiVisualSystem {
         for (int id : buttonIds) {
             Button button = dialog.findViewById(id);
             if (button == null) continue;
-            button.setTextColor(ACCENT);
+            button.setTextColor(signalTextColor());
             button.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
             button.setAllCaps(false);
             button.setMinHeight(dp(ToxiThemeEngine.spacing(44)));
@@ -175,6 +175,11 @@ final class ToxiVisualSystem {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) styleDialogTree(group.getChildAt(i));
         }
+    }
+
+    /** Accent-colored text uses a darker identity tint in light mode for readable contrast. */
+    static int signalTextColor() {
+        return LIGHT_MODE ? ToxiThemeSystem.LIGHT_MUTED[THEME_INDEX] : ACCENT;
     }
 
     /** High-contrast foreground for controls rendered on the active accent material. */
@@ -267,7 +272,7 @@ final class ToxiVisualSystem {
         TextView view = new TextView(context);
         view.setText(value);
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-        view.setTextColor(color);
+        view.setTextColor(color == ACCENT ? signalTextColor() : color);
         view.setTypeface(Typeface.create(fontFamily(), strong ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         view.setLineSpacing(dp(ToxiThemeEngine.spacing(3)), 1f);

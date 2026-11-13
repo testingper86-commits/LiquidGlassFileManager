@@ -240,7 +240,7 @@ final class PrismNavigationDock {
     private void applySelectionColors() {
         for (int i = 0; i < TAB_COUNT; i++) {
             if (labels[i] == null || glyphs[i] == null) continue;
-            int color = i == selectedTab ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_SECONDARY;
+            int color = i == selectedTab ? ToxiVisualSystem.signalTextColor() : ToxiVisualSystem.TEXT_SECONDARY;
             labels[i].setTextColor(color);
             glyphs[i].setTint(color);
             items[i].setSelected(i == selectedTab);

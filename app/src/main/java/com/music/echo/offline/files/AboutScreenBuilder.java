@@ -222,7 +222,7 @@ final class AboutScreenBuilder {
     TextView aboutText(String value, float size, int color, boolean bold) {
         TextView text = ToxiVisualSystem.text(activity, value, size, color, bold);
         text.setIncludeFontPadding(false);
-        text.setTextColor(color);
+        text.setTextColor(color == ABOUT_CYAN ? ToxiVisualSystem.signalTextColor() : color);
         return text;
     }
 
