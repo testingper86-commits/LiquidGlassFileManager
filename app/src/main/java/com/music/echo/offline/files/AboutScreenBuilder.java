@@ -105,7 +105,7 @@ final class AboutScreenBuilder {
         ImageView avatar = new ImageView(activity);
         // Load the supplied creator portrait directly from the packaged drawable.
         // Avoid eager BitmapFactory decoding, which can leave only a blank background.
-        avatar.setImageResource(R.drawable.chandu_profile);
+        avatar.setImageResource(R.drawable.dominators_profile);
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
         avatar.setBackgroundColor(Color.TRANSPARENT);
         avatar.setContentDescription("Creator portrait");
