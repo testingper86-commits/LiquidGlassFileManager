@@ -87,7 +87,7 @@ final class BrowserView extends FrameLayout {
 
         header = new LinearLayout(a);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4));
+        header.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)));
         back = ToxiVisualSystem.iconButton(a, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(v -> { if (selecting) endSelect(); else if (!handleBack()) a.closeOverlay(); });
         title = ToxiVisualSystem.text(a, "", 24, ToxiVisualSystem.TEXT_PRIMARY, true);
@@ -97,26 +97,26 @@ final class BrowserView extends FrameLayout {
         searchBtn.setOnClickListener(v -> toggleSearch());
         moreBtn = ToxiVisualSystem.iconButton(a, ToxiIcons.MORE, ToxiVisualSystem.TEXT_PRIMARY);
         moreBtn.setOnClickListener(v -> headerMenu());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
-        tl.leftMargin = ToxiVisualSystem.dp(4);
+        tl.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
         header.addView(title, tl);
-        header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
-        header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(searchBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(moreBtn, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
         header.setBackground(ToxiVisualSystem.surface(24, true));
-        header.setElevation(ToxiVisualSystem.dp(2));
-        header.setMinimumHeight(ToxiVisualSystem.dp(60));
+        header.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
+        header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(60)));
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
-        headerLp.setMargins(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
+        headerLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         col.addView(header, headerLp);
 
         pathTv = ToxiVisualSystem.text(a, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         pathTv.setSingleLine(true);
         pathTv.setEllipsize(TextUtils.TruncateAt.START);
         pathTv.setBackground(ToxiVisualSystem.surface(16, false));
-        pathTv.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(9));
+        pathTv.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)));
         LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-1, -2);
-        pl.setMargins(ToxiVisualSystem.dp(18), 0, ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
+        pl.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         col.addView(pathTv, pl);
 
         search = new EditText(a);
@@ -127,7 +127,7 @@ final class BrowserView extends FrameLayout {
         search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, ToxiVisualSystem.textSizePx(a, 15));
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         search.setBackground(ToxiVisualSystem.surface(18, true));
-        search.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10));
+        search.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         search.setVisibility(GONE);
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int af) { }
@@ -138,14 +138,14 @@ final class BrowserView extends FrameLayout {
             }
         });
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-1, -2);
-        sl.setMargins(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
+        sl.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         col.addView(search, sl);
 
         lv = new ListView(a);
         lv.setDivider(null);
         lv.setDividerHeight(0);
         lv.setClipToPadding(false);
-        lv.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(120));
+        lv.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(120)));
         lv.setVerticalScrollBarEnabled(false);
         lv.setSelector(new ColorDrawable(Color.TRANSPARENT));
         lv.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -195,7 +195,7 @@ final class BrowserView extends FrameLayout {
                     if (idx >= shown.size()) { tile.setVisibility(View.INVISIBLE); tile.setOnClickListener(null); tile.setOnLongClickListener(null); continue; }
                     tile.setVisibility(View.VISIBLE);
                     final Entry e = shown.get(idx);
-                    Thumbs.bind(thumb, e, ToxiVisualSystem.dp(96));
+                    Thumbs.bind(thumb, e, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(96)));
                     nameTv.setText(e.name);
                     check.setVisibility(selecting && sel.contains(e) ? View.VISIBLE : View.GONE);
                     tile.setOnClickListener(v -> { if (selecting) toggle(e); else open(e); });
@@ -225,7 +225,7 @@ final class BrowserView extends FrameLayout {
         prog.setIndeterminate(true);
         prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
         prog.setVisibility(GONE);
-        addView(prog, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40), Gravity.CENTER));
+        addView(prog, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), Gravity.CENTER));
 
         selBar = new LinearLayout(a);
         selBar.setOrientation(LinearLayout.HORIZONTAL);
@@ -237,20 +237,20 @@ final class BrowserView extends FrameLayout {
         selBar.addView(selBtn(ToxiIcons.TRASH, "Delete", () -> confirmSelectionDelete(new ArrayList<>(sel))));
         selBar.addView(selBtn(ToxiIcons.SHARE, "Share", () -> FileOps.share(a, files(sel))));
         selBar.addView(selBtn(ToxiIcons.MORE, "More", this::selMore));
-        FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(68), Gravity.BOTTOM);
-        bl.setMargins(ToxiVisualSystem.dp(16), 0, ToxiVisualSystem.dp(16),
-                ToxiVisualSystem.dp(12) + ToxiVisualSystem.BOTTOM_INSET);
+        FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(68)), Gravity.BOTTOM);
+        bl.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)) + ToxiVisualSystem.BOTTOM_INSET);
         addView(selBar, bl);
 
         pasteBtn = ToxiVisualSystem.text(a, "Paste here", 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         pasteBtn.setBackground(ToxiVisualSystem.accentSurface(24));
-        pasteBtn.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(13));
+        pasteBtn.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)));
         pasteBtn.setVisibility(GONE);
         ToxiVisualSystem.interactive(pasteBtn);
         pasteBtn.setOnClickListener(v -> paste());
         FrameLayout.LayoutParams pb = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
-        pb.setMargins(0, 0, ToxiVisualSystem.dp(20),
-                ToxiVisualSystem.dp(100) + ToxiVisualSystem.BOTTOM_INSET);
+        pb.setMargins(0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(100)) + ToxiVisualSystem.BOTTOM_INSET);
         addView(pasteBtn, pb);
 
         updateHeader();
@@ -260,13 +260,13 @@ final class BrowserView extends FrameLayout {
         LinearLayout button = new LinearLayout(a);
         button.setOrientation(LinearLayout.HORIZONTAL);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(ToxiVisualSystem.dp(6), 0, ToxiVisualSystem.dp(6), 0);
+        button.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), 0);
         ImageView symbol = new ImageView(a);
         symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.TEXT_PRIMARY));
-        button.addView(symbol, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(19), ToxiVisualSystem.dp(19)));
+        button.addView(symbol, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19))));
         TextView caption = ToxiVisualSystem.text(a, label, 10.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         LinearLayout.LayoutParams captionLp = new LinearLayout.LayoutParams(-2, -2);
-        captionLp.leftMargin = ToxiVisualSystem.dp(5);
+        captionLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
         button.addView(caption, captionLp);
         button.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); action.run(); });
         ToxiVisualSystem.interactive(button);
@@ -275,12 +275,12 @@ final class BrowserView extends FrameLayout {
     }
 
     void applyInsets() {
-        lv.setPadding(0, ToxiVisualSystem.dp(4), 0, ToxiVisualSystem.dp(112) + ToxiVisualSystem.BOTTOM_INSET);
+        lv.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112)) + ToxiVisualSystem.BOTTOM_INSET);
         FrameLayout.LayoutParams selectionParams = (FrameLayout.LayoutParams) selBar.getLayoutParams();
-        selectionParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(12);
+        selectionParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12));
         selBar.setLayoutParams(selectionParams);
         FrameLayout.LayoutParams pasteParams = (FrameLayout.LayoutParams) pasteBtn.getLayoutParams();
-        pasteParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(100);
+        pasteParams.bottomMargin = ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(100));
         pasteBtn.setLayoutParams(pasteParams);
     }
 
@@ -483,7 +483,7 @@ final class BrowserView extends FrameLayout {
             back.setVisibility(overlay ? VISIBLE : GONE);
             pathTv.setVisibility(GONE);
         }
-        title.setPadding(back.getVisibility() == VISIBLE ? 0 : ToxiVisualSystem.dp(10), 0, 0, 0);
+        title.setPadding(back.getVisibility() == VISIBLE ? 0 : ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, 0, 0);
     }
 
     // ---------- search ----------
@@ -582,7 +582,7 @@ final class BrowserView extends FrameLayout {
     void selectionStudio() {
         if (sel.isEmpty()) return;
         final TextView details = ToxiVisualSystem.text(a, sel.size() + " selected items\nLong-press another item to select a range.\nCalculating combined size…", 15, ToxiVisualSystem.TEXT_PRIMARY, true);
-        details.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
+        details.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)));
         AlertDialog dialog = ToxiVisualSystem.dialogBuilder(a).setTitle("Selection Studio").setView(details)
                 .setNeutralButton("Deselect all", (d,w) -> deselectAll())
                 .setNegativeButton("Close", null)
@@ -681,7 +681,7 @@ final class BrowserView extends FrameLayout {
         for (int i = 0; i < columns; i++) {
             FrameLayout tile = new FrameLayout(a);
             tile.setBackground(ToxiVisualSystem.surface(15, false));
-            tile.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
+            tile.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
             ImageView thumb = new ImageView(a);
             thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
             thumb.setBackground(ToxiVisualSystem.surface(12, true));
@@ -695,17 +695,17 @@ final class BrowserView extends FrameLayout {
             nameTv.setEllipsize(TextUtils.TruncateAt.END);
             nameTv.setGravity(Gravity.CENTER);
             FrameLayout.LayoutParams nameLp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
-            nameLp.setMargins(ToxiVisualSystem.dp(2), 0, ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(2));
+            nameLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
             tile.addView(nameTv, nameLp);
             View check = new View(a);
             check.setBackground(ToxiVisualSystem.accentSurface(9));
             check.setVisibility(GONE);
-            FrameLayout.LayoutParams checkLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(17), Gravity.TOP | Gravity.END);
-            checkLp.setMargins(0, ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), 0);
+            FrameLayout.LayoutParams checkLp = new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(17)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(17)), Gravity.TOP | Gravity.END);
+            checkLp.setMargins(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), 0);
             tile.addView(check, checkLp);
             LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0,
                     ToxiVisualSystem.dp(columns <= 2 ? 138 : 126), 1f);
-            tileLp.setMargins(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+            tileLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
             row.addView(tile, tileLp);
         }
         return row;
@@ -775,7 +775,7 @@ final class BrowserView extends FrameLayout {
 
     void advancedSearchDialog() {
         LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
+        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         String[] types = {"Any type", "Images", "Videos", "Audio", "Documents", "Archives", "APK packages", "Folders", "Other files"};
         String[] sizes = {"Any size", "At least 1 MB", "At least 10 MB", "At least 100 MB"};
         String[] dates = {"Any date", "Modified in last 7 days", "Modified in last 30 days", "Modified in last 365 days"};
@@ -879,12 +879,12 @@ final class BrowserView extends FrameLayout {
         ArrayAdapter<String> cases = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"});
         cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);
         final TextView preview = ToxiVisualSystem.text(a, "Enter rename rules to preview the result.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        preview.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(10));
-        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(ToxiVisualSystem.dp(16),ToxiVisualSystem.dp(8),ToxiVisualSystem.dp(16),ToxiVisualSystem.dp(12));
+        preview.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
+        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         addRenameField(panel,"Prefix",prefix); addRenameField(panel,"Suffix",suffix); addRenameField(panel,"Find text (blank = none)",find); addRenameField(panel,"Replace with (blank removes matches)",replacement);
         addRenameField(panel,"First number",start); addRenameField(panel,"Number increment",increment); addRenameField(panel,"Number padding (digits)",padding);
         addRenameField(panel,"Capitalization",capitalization); panel.addView(numbering); panel.addView(preserve);
-        TextView previewTitle = ToxiVisualSystem.text(a,"LIVE BEFORE / AFTER PREVIEW",11,ToxiVisualSystem.ACCENT,true); previewTitle.setPadding(0,ToxiVisualSystem.dp(12),0,ToxiVisualSystem.dp(4)); panel.addView(previewTitle); panel.addView(preview);
+        TextView previewTitle = ToxiVisualSystem.text(a,"LIVE BEFORE / AFTER PREVIEW",11,ToxiVisualSystem.ACCENT,true); previewTitle.setPadding(0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4))); panel.addView(previewTitle); panel.addView(preview);
         ScrollView scroll = new ScrollView(a); scroll.setFillViewport(false); scroll.addView(panel);
         final long[] previewGeneration = {0};
         final Runnable[] pendingPreview = {null};
@@ -943,9 +943,9 @@ final class BrowserView extends FrameLayout {
     }
 
     private void addRenameField(LinearLayout panel,String label,View field) {
-        TextView title=ToxiVisualSystem.text(a,label,12,ToxiVisualSystem.TEXT_SECONDARY,true); title.setPadding(0,ToxiVisualSystem.dp(7),0,ToxiVisualSystem.dp(3)); panel.addView(title);
-        if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); edit.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY); edit.setBackground(ToxiVisualSystem.surface(12,true)); edit.setPadding(ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(9),ToxiVisualSystem.dp(12),ToxiVisualSystem.dp(9)); }
-        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? ToxiVisualSystem.dp(48) : -2));
+        TextView title=ToxiVisualSystem.text(a,label,12,ToxiVisualSystem.TEXT_SECONDARY,true); title.setPadding(0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)),0,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3))); panel.addView(title);
+        if(field instanceof EditText){ EditText edit=(EditText)field; edit.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); edit.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY); edit.setBackground(ToxiVisualSystem.surface(12,true)); edit.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9))); }
+        panel.addView(field,new LinearLayout.LayoutParams(-1,field instanceof Spinner ? ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)) : -2));
     }
 
     private BatchRenameEngine.Options renameOptions(EditText prefix,EditText suffix,EditText find,EditText replacement,EditText start,EditText increment,EditText padding,Spinner capitalization,CheckBox numbering,CheckBox preserve) {
@@ -1101,7 +1101,7 @@ final class BrowserView extends FrameLayout {
 
     View wrap(View v) {
         FrameLayout f = new FrameLayout(a);
-        f.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(22), 0);
+        f.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0);
         f.addView(v, new FrameLayout.LayoutParams(-1, -2));
         return f;
     }

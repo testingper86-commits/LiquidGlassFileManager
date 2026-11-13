@@ -25,19 +25,19 @@ final class SettingsScreenController {
         activity.settings.removeAllViews();
         LinearLayout settingsMasthead = new LinearLayout(activity);
         settingsMasthead.setGravity(Gravity.CENTER_VERTICAL);
-        settingsMasthead.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
+        settingsMasthead.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         ImageView settingsMark = new ImageView(activity);
         settingsMark.setImageResource(R.drawable.toxifiles_master_art);
-        settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
+        settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(38)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(38))));
         LinearLayout settingsTitleBlock = new LinearLayout(activity);
         settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
-        settingsTitleBlock.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
+        settingsTitleBlock.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), 0, 0, 0);
         TextView t = ToxiVisualSystem.text(activity, "Prism console", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
         settingsTitleBlock.addView(t);
         TextView settingsEyebrow = ToxiVisualSystem.text(activity, "PRISM / SYSTEM CONFIGURATION", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         settingsEyebrow.setLetterSpacing(0.11f);
         LinearLayout.LayoutParams eyebrowLp = new LinearLayout.LayoutParams(-2, -2);
-        eyebrowLp.topMargin = ToxiVisualSystem.dp(4);
+        eyebrowLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
         settingsTitleBlock.addView(settingsEyebrow, eyebrowLp);
         settingsMasthead.addView(settingsTitleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         activity.settings.addView(settingsMasthead);
@@ -53,10 +53,10 @@ final class SettingsScreenController {
             }
         });
         TextView intro = ToxiVisualSystem.text(activity, "Tune the materials, behavior and privacy of your filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-        intro.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10));
+        intro.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         activity.settings.addView(intro);
         TextView hint = ToxiVisualSystem.text(activity, "Each module opens its own live controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
-        hint.setPadding(ToxiVisualSystem.dp(22), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
+        hint.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
         activity.settings.addView(hint);
         activity.settings.addView(activity.section("Appearance"));
         activity.settings.addView(activity.row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> activity.openThemeScreen()), activity.lpm(-1, -2, 16, 0, 16, 8));
@@ -140,7 +140,7 @@ final class SettingsScreenController {
             activity.settings.addView(activity.switchRow(ToxiIcons.ANALYTICS, "Verbose diagnostics", "Keep additional local diagnostic details for troubleshooting", "dev_verbose", false, null), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.switchRow(ToxiIcons.VIBRATE, "Haptic feedback", "Gentle vibration on selection", "haptic", true, null), activity.lpm(-1, -2, 16, 0, 16, 8));
             TextView backupHeading = ToxiVisualSystem.text(activity, "Backup & Restore", 14, ToxiVisualSystem.ACCENT, true);
-            backupHeading.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(12), 0, ToxiVisualSystem.dp(2));
+            backupHeading.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
             activity.settings.addView(backupHeading);
             activity.settings.addView(activity.row(ToxiIcons.DOWNLOAD, "Export settings", "Save theme and preferences to a file you can share or keep", null, v -> activity.exportSettings()), activity.lpm(-1, -2, 16, 0, 16, 8));
             activity.settings.addView(activity.row(ToxiIcons.CLOUD, "Import settings", "Restore from a previously exported file", null, v -> activity.importSettingsPick()), activity.lpm(-1, -2, 16, 0, 16, 8));

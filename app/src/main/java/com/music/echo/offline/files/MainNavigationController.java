@@ -37,7 +37,7 @@ final class MainNavigationController {
         }
         View selected = screens[index];
         if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-            selected.setAlpha(0f); selected.setTranslationY(ToxiVisualSystem.dp(8));
+            selected.setAlpha(0f); selected.setTranslationY(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
             selected.animate().alpha(1f).translationY(0f).setDuration(180)
                     .setInterpolator(new DecelerateInterpolator()).start();
         }

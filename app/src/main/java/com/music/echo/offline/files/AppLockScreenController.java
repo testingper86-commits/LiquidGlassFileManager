@@ -45,7 +45,7 @@ final class AppLockScreenController {
         LinearLayout column = new LinearLayout(activity);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setGravity(Gravity.CENTER);
-        column.setPadding(ToxiVisualSystem.dp(32), 0, ToxiVisualSystem.dp(32), 0);
+        column.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32)), 0);
         column.addView(ToxiVisualSystem.text(activity, "ToxiFiles is locked", 18, ToxiVisualSystem.TEXT_PRIMARY, true),
                 activity.lpm(-2, -2, 0, 0, 0, 16));
         final EditText input = activity.pinField();
@@ -53,7 +53,7 @@ final class AppLockScreenController {
         TextView unlockButton = ToxiVisualSystem.text(activity, "Unlock", 16, ToxiVisualSystem.ACCENT, true);
         unlockButton.setGravity(Gravity.CENTER);
         unlockButton.setBackground(ToxiVisualSystem.surface(18, false));
-        unlockButton.setPadding(0, ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14));
+        unlockButton.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
         ToxiVisualSystem.interactive(unlockButton);
         unlockButton.setOnClickListener(view -> {
             if (AppLock.checkPin(activity, input.getText().toString().trim())) {
