@@ -82,6 +82,7 @@ final class StorageMaintenanceScreenController {
         bulk.setBackground(ToxiVisualSystem.surface(18, false));
         bulk.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         bulk.setGravity(Gravity.CENTER);
+        bulk.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         ToxiVisualSystem.interactive(bulk);
         bulk.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Move duplicates to Recycle Bin?")
                 .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin — they can still be restored from there.")

@@ -53,6 +53,7 @@ final class AppLockScreenController {
         TextView unlockButton = ToxiVisualSystem.text(activity, "Unlock", 16, ToxiVisualSystem.ACCENT, true);
         unlockButton.setGravity(Gravity.CENTER);
         unlockButton.setBackground(ToxiVisualSystem.surface(18, false));
+        unlockButton.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         unlockButton.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
         ToxiVisualSystem.interactive(unlockButton);
         unlockButton.setOnClickListener(view -> {

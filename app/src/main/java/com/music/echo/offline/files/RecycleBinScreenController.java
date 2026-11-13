@@ -50,6 +50,7 @@ final class RecycleBinScreenController {
 
         TextView emptyButton = ToxiVisualSystem.text(activity, "Empty", 12, ToxiVisualSystem.ACCENT, true);
         emptyButton.setBackground(ToxiVisualSystem.surface(14, true));
+        emptyButton.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         emptyButton.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         emptyButton.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Empty Recycle Bin?")
                 .setMessage("Every item will be permanently deleted. This can't be undone.")
@@ -98,7 +99,9 @@ final class RecycleBinScreenController {
                     loading ? "Your recovery index is being read." : "Check storage access and retry.");
             if (!loading) {
                 TextView retry = ToxiVisualSystem.text(activity, "RETRY", 10, ToxiVisualSystem.ACCENT, true);
-                retry.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0);
+                retry.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+                retry.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+                ToxiVisualSystem.interactive(retry);
                 retry.setOnClickListener(view -> reload());
                 status.addView(retry);
             }
