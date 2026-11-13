@@ -462,7 +462,7 @@ final class AboutScreenBuilder {
                 canvas.drawRoundRect(new RectF(left, size * (.32f + (i % 2) * .08f), left + size * .15f, size * .65f), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), paint);
             }
         } else {
-            paint.setColor(Color.rgb(0, 229, 255));
+            paint.setColor(accent);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
             paint.setStrokeCap(Paint.Cap.ROUND);
