@@ -29,6 +29,7 @@ final class ToxiVisualSystem {
     static SharedPreferences PREFERENCES;
     static int THEME_INDEX = 0;
     static int ACCENT = ToxiThemeSystem.ACCENTS[0];
+    static int CHROME = ToxiThemeSystem.CHROME[0];
     static int TEXT_PRIMARY = 0xFFF1F5F8;
     static int TEXT_SECONDARY = ToxiThemeSystem.MUTED[0];
     static int CANVAS = ToxiThemeSystem.CANVAS[0];
@@ -73,6 +74,7 @@ final class ToxiVisualSystem {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
         LIGHT_MODE = PREFERENCES != null && PREFERENCES.getBoolean("light", false);
         ACCENT = ToxiThemeSystem.ACCENTS[THEME_INDEX];
+        CHROME = ToxiThemeSystem.CHROME[THEME_INDEX];
         CANVAS = LIGHT_MODE ? ToxiThemeSystem.LIGHT_CANVAS[THEME_INDEX] : ToxiThemeSystem.CANVAS[THEME_INDEX];
         SURFACE_COLOR = LIGHT_MODE ? ToxiThemeSystem.LIGHT_SURFACES[THEME_INDEX] : ToxiThemeSystem.SURFACES[THEME_INDEX];
         RAISED_SURFACE = LIGHT_MODE ? ToxiThemeSystem.LIGHT_RAISED[THEME_INDEX] : ToxiThemeSystem.RAISED[THEME_INDEX];
@@ -102,14 +104,16 @@ final class ToxiVisualSystem {
         GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
         base.setCornerRadius(dp(radiusDp));
-        base.setStroke(Math.max(1, dp(0.85f)), EDGE_STROKE);
+        int titaniumEdge = blend(EDGE_STROKE, CHROME, LIGHT_MODE ? 0.22f : 0.48f);
+        base.setStroke(Math.max(1, dp(0.9f)), titaniumEdge);
 
         int crownAlpha = LIGHT_MODE ? 34 : (raised ? 42 : 30);
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
         glass.setCornerRadius(dp(radiusDp));
-        glass.setStroke(Math.max(1, dp(0.55f)), Color.argb(LIGHT_MODE ? 28 : 48, 255, 255, 255));
+        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(LIGHT_MODE ? 52 : 76,
+                Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
                 new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
         int inset = Math.max(1, dp(1));
@@ -125,11 +129,20 @@ final class ToxiVisualSystem {
                 Math.round(Color.blue(color) * (1f - alpha) + Color.blue(overlay) * alpha));
     }
 
+    private static int blend(int color, int overlay, float amount) {
+        float alpha = Math.max(0f, Math.min(1f, amount));
+        return Color.rgb(
+                Math.round(Color.red(color) * (1f - alpha) + Color.red(overlay) * alpha),
+                Math.round(Color.green(color) * (1f - alpha) + Color.green(overlay) * alpha),
+                Math.round(Color.blue(color) * (1f - alpha) + Color.blue(overlay) * alpha));
+    }
+
     static Drawable accentSurface(float radiusDp) {
         GradientDrawable accent = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
         accent.setCornerRadius(dp(radiusDp));
-        accent.setStroke(Math.max(1, dp(0.8f)), LIGHT_MODE ? Color.argb(110, 255, 255, 255) : Color.argb(145, 255, 255, 255));
+        accent.setStroke(Math.max(1, dp(0.9f)), Color.argb(LIGHT_MODE ? 140 : 175,
+                Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         return accent;
     }
 

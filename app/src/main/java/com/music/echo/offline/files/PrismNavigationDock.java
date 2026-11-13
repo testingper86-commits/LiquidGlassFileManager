@@ -90,8 +90,7 @@ final class PrismNavigationDock {
         private int active = 0;
         private int pressed = -1;
         private float activePulse = 1f;
-        private float activeFrom = 0f;
-        private float activeTo = 0f;
+        private int previousActive = 0;
         private float touchScale = 1f;
         private ValueAnimator animator;
         private final float[] centers = new float[COUNT];
@@ -111,19 +110,24 @@ final class PrismNavigationDock {
         void setSelectedOrb(int index, boolean animate) {
             if (index < 0 || index >= COUNT) return;
             if (animator != null) animator.cancel();
-            float old = active;
+            int old = active;
+            if (old == index) { activePulse = 1f; invalidate(); return; }
+            previousActive = old;
             active = index;
-            activeFrom = old;
-            activeTo = index;
-            if (animate && old != index) {
+            if (animate) {
+                activePulse = 0f;
                 animator = ValueAnimator.ofFloat(0f, 1f);
-                animator.setDuration(260L);
+                animator.setDuration(245L);
                 animator.setInterpolator(new DecelerateInterpolator(1.45f));
                 animator.addUpdateListener(a -> { activePulse = (float) a.getAnimatedValue(); invalidate(); });
+                animator.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator animation) {
+                        activePulse = 1f; previousActive = active; invalidate();
+                    }
+                });
                 animator.start();
             } else {
-                activePulse = 1f;
-                invalidate();
+                activePulse = 1f; previousActive = active; invalidate();
             }
         }
         private float lerp(float a, float b, float t) { return a + (b - a) * t; }
@@ -142,8 +146,10 @@ final class PrismNavigationDock {
             for (int i = 0; i < COUNT; i++) {
                 float cx = pad + orbRadius + i * (orbRadius * 2f + gap);
                 centers[i] = cx;
-                float radius = orbRadius * (i == active ? 1.055f : 1f);
-                drawOrb(c, cx, cy, radius, i == active, accent, accentEnd, i == pressed ? .94f : 1f);
+                float selectedStrength = i == active ? activePulse
+                        : (i == previousActive ? 1f - activePulse : 0f);
+                float radius = orbRadius * (1f + .055f * selectedStrength);
+                drawOrb(c, cx, cy, radius, selectedStrength, accent, accentEnd, i == pressed ? .94f : 1f);
                 drawGlyph(c, cx, cy, radius * .48f, i, i == active ? Color.WHITE :
                         (ToxiVisualSystem.LIGHT_MODE ? 0xFF344052 : 0xFFE4E8F3));
                 if (i == active) {
@@ -156,7 +162,9 @@ final class PrismNavigationDock {
                 }
             }
         }
-        private void drawOrb(Canvas c, float x, float y, float r, boolean selected, int accent, int accentEnd, float scale) {
+        private void drawOrb(Canvas c, float x, float y, float r, float selectedStrength, int accent, int accentEnd, float scale) {
+            boolean selected = selectedStrength > 0.015f;
+            int chrome = ToxiThemeSystem.CHROME[ToxiThemeSystem.normalize(ToxiVisualSystem.THEME_INDEX)];
             c.save(); c.scale(scale, scale, x, y);
             p.setShader(null); p.setStyle(Paint.Style.FILL);
             p.setColor(Color.argb(ToxiVisualSystem.LIGHT_MODE ? 26 : 92, 0, 0, 0));
@@ -170,7 +178,9 @@ final class PrismNavigationDock {
                             selected ? blend(accentEnd, 0xBFFFFFFF, .20f) : glassMid, glassBottom}, null, Shader.TileMode.CLAMP));
             c.drawCircle(x, y, r, p); p.setShader(null);
             p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(selected ? 1.45f : 1f));
-            p.setColor(selected ? 0xDFFFFFFF : (ToxiVisualSystem.LIGHT_MODE ? 0xBFFFFFFF : 0x80FFFFFF));
+            int rimAlpha = selected ? Math.round(105 + 120 * selectedStrength)
+                    : (ToxiVisualSystem.LIGHT_MODE ? 180 : 145);
+            p.setColor(Color.argb(rimAlpha, Color.red(chrome), Color.green(chrome), Color.blue(chrome)));
             c.drawCircle(x, y, r - dp(.6f), p);
             p.setStyle(Paint.Style.FILL);
             p.setShader(new RadialGradient(x - r * .34f, y - r * .48f, r * 1.05f,
@@ -181,10 +191,12 @@ final class PrismNavigationDock {
             c.drawArc(x - r * .72f, y - r * .72f, x + r * .72f, y + r * .72f, 205, 105, false, p);
             p.setStrokeCap(Paint.Cap.BUTT);
             if (selected) {
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(2.2f)); p.setColor(Color.argb(150, Color.red(accent), Color.green(accent), Color.blue(accent)));
+                int glowAlpha = Math.round(125 * selectedStrength);
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(dp(2.2f));
+                p.setColor(Color.argb(glowAlpha, Color.red(accent), Color.green(accent), Color.blue(accent)));
                 c.drawCircle(x, y, r + dp(2.3f), p); p.setStyle(Paint.Style.FILL);
                 p.setShader(new RadialGradient(x, y, r * 1.75f,
-                        new int[]{Color.argb(48, Color.red(accent), Color.green(accent), Color.blue(accent)), 0x00000000}, null, Shader.TileMode.CLAMP));
+                        new int[]{Color.argb(Math.round(54 * selectedStrength), Color.red(accent), Color.green(accent), Color.blue(accent)), 0x00000000}, null, Shader.TileMode.CLAMP));
                 c.drawCircle(x, y, r * 1.75f, p); p.setShader(null);
             }
             c.restore();

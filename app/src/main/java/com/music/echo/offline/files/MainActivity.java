@@ -1044,77 +1044,55 @@ public class MainActivity extends ComponentActivity {
         }
 
         private void drawThemePattern(Canvas canvas, int width, int height, float step) {
-            int theme = ToxiVisualSystem.THEME_INDEX;
-            switch (theme) {
-                case 1: // Ember-breath diagonal flow
-                    for (float offset = -height; offset < width; offset += step * 1.6f)
-                        canvas.drawLine(offset, 0, offset + height, height, gridPaint);
-                    break;
-                case 2: // Infinity-domain concentric geometry
-                    for (float radius = step; radius < Math.max(width, height); radius += step * 1.8f)
-                        canvas.drawCircle(width * .5f, height * .42f, radius, gridPaint);
-                    break;
-                case 3: // Titan frontier structural bands
-                    for (float y = step * .5f; y < height; y += step * 1.5f) {
-                        canvas.drawLine(0, y, width, y, gridPaint);
-                        canvas.drawLine(0, y + step * .12f, width, y + step * .12f, gridPaint);
-                    }
-                    for (float x = step; x < width; x += step * 2.5f)
-                        canvas.drawLine(x, 0, x, height, gridPaint);
-                    break;
-                case 4: // Shinobi chakra nodes
-                    gridPaint.setStyle(Paint.Style.FILL);
-                    for (float y = step * .5f; y < height; y += step)
-                        for (float x = step * .5f; x < width; x += step)
-                            canvas.drawCircle(x, y, ToxiVisualSystem.dp(1.35f), gridPaint);
-                    gridPaint.setStyle(Paint.Style.STROKE);
-                    break;
-                case 5: // Grand-voyage wave contours
-                    android.graphics.Path wave = new android.graphics.Path();
-                    for (float base = step; base < height + step; base += step * 1.35f) {
-                        wave.reset();
-                        wave.moveTo(0, base);
-                        for (float x = 0; x <= width; x += step * .5f)
-                            wave.lineTo(x, base + (float) Math.sin((x / step) + (base / step)) * step * .18f);
-                        canvas.drawPath(wave, gridPaint);
+            switch (ToxiVisualSystem.THEME_INDEX) {
+                case 0: // Grand Voyage: layered rolling ocean contours and distant horizon.
+                    android.graphics.Path ocean = new android.graphics.Path();
+                    float horizon = height * .43f;
+                    canvas.drawLine(0, horizon, width, horizon, gridPaint);
+                    for (int row = 0; row < 7; row++) {
+                        float base = horizon + step * (.35f + row * .52f);
+                        ocean.reset();
+                        ocean.moveTo(0, base);
+                        for (float x = 0; x <= width; x += step * .4f)
+                            ocean.lineTo(x, base + (float) Math.sin(x / step * .85f + row * .72f) * step * .17f);
+                        canvas.drawPath(ocean, gridPaint);
                     }
                     break;
-                case 6: // Ultra-instinct radial field
-                    for (float radius = step * .7f; radius < Math.max(width, height); radius += step * 1.5f)
-                        canvas.drawCircle(width * .5f, height * .5f, radius, gridPaint);
-                    for (float angle = 0; angle < 360; angle += 30) {
+                case 1: // Shinobi Spirit: chakra-ring arcs and controlled diagonal wind paths.
+                    for (float radius = step * .65f; radius < Math.max(width, height); radius += step * 1.65f)
+                        canvas.drawCircle(width * .72f, height * .28f, radius, gridPaint);
+                    for (float offset = -height; offset < width; offset += step * 2.5f)
+                        canvas.drawLine(offset, 0, offset + height * .58f, height, gridPaint);
+                    break;
+                case 2: // Breathing Legends: flowing blade arcs and flame-like angled lines.
+                    for (float offset = -height; offset < width; offset += step * 1.8f) {
+                        android.graphics.Path slash = new android.graphics.Path();
+                        slash.moveTo(offset, height);
+                        slash.cubicTo(offset + step, height * .68f, offset + height * .25f, height * .22f,
+                                offset + height * .48f, 0);
+                        canvas.drawPath(slash, gridPaint);
+                    }
+                    break;
+                case 3: // Ultra Instinct: radial energy field with concentric kinetic rings.
+                    for (float radius = step * .7f; radius < Math.max(width, height); radius += step * 1.55f)
+                        canvas.drawCircle(width * .5f, height * .47f, radius, gridPaint);
+                    for (float angle = 0; angle < 360; angle += 24) {
                         double radians = Math.toRadians(angle);
-                        canvas.drawLine(width * .5f, height * .5f,
+                        canvas.drawLine(width * .5f, height * .47f,
                                 width * .5f + (float) Math.cos(radians) * width,
-                                height * .5f + (float) Math.sin(radians) * height, gridPaint);
+                                height * .47f + (float) Math.sin(radians) * height, gridPaint);
                     }
                     break;
-                case 7: // Soul-reaper vertical veil
-                    for (float x = step * .5f; x < width; x += step * .72f)
-                        canvas.drawLine(x, 0, x + (float) Math.sin(x / step) * step * .22f, height, gridPaint);
-                    break;
-                case 8: // EVA containment lattice
-                    for (float x = step * .5f; x < width; x += step * 1.5f)
-                        canvas.drawLine(x, 0, x, height, gridPaint);
-                    for (float y = step * .5f; y < height; y += step * 1.5f)
+                default: // Titan Frontier: fortress wall bands, vertical battlements and horizon.
+                    float wall = height * .62f;
+                    canvas.drawLine(0, wall, width, wall, gridPaint);
+                    canvas.drawLine(0, wall + step * .10f, width, wall + step * .10f, gridPaint);
+                    for (float x = step * .35f; x < width; x += step * 1.65f) {
+                        canvas.drawLine(x, wall - step * .48f, x, height, gridPaint);
+                        canvas.drawLine(x - step * .18f, wall - step * .48f, x + step * .18f, wall - step * .48f, gridPaint);
+                    }
+                    for (float y = wall + step * .65f; y < height; y += step * 1.2f)
                         canvas.drawLine(0, y, width, y, gridPaint);
-                    for (float x = 0; x < width; x += step * 3f)
-                        canvas.drawLine(x, 0, Math.min(width, x + height * .28f), height, gridPaint);
-                    break;
-                case 9: // Lunar orbit paths and stars
-                    for (float radius = step; radius < Math.max(width, height); radius += step * 2.1f)
-                        canvas.drawCircle(width * .72f, height * .22f, radius, gridPaint);
-                    gridPaint.setStyle(Paint.Style.FILL);
-                    for (int i = 0; i < 24; i++) {
-                        float x = (i * 97f + step * .37f) % Math.max(1, width);
-                        float y = (i * 151f + step * .61f) % Math.max(1, height);
-                        canvas.drawCircle(x, y, ToxiVisualSystem.dp(i % 4 == 0 ? 1.7f : .8f), gridPaint);
-                    }
-                    gridPaint.setStyle(Paint.Style.STROKE);
-                    break;
-                default: // Shadow-monarch orthogonal grid
-                    for (float x = step * .5f; x < width; x += step) canvas.drawLine(x, 0, x, height, gridPaint);
-                    for (float y = step * .5f; y < height; y += step) canvas.drawLine(0, y, width, y, gridPaint);
                     break;
             }
         }

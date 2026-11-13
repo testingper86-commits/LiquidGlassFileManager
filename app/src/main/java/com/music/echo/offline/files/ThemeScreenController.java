@@ -20,11 +20,11 @@ final class ThemeScreenController {
 
     private static int themePoster(int index) {
         switch (ToxiThemeSystem.normalize(index)) {
-            case 0: return R.drawable.theme_poster_solo;
-            case 1: return R.drawable.theme_poster_demon;
-            case 2: return R.drawable.theme_poster_jujutsu;
-            case 3: return R.drawable.theme_poster_onepiece;
-            default: return R.drawable.theme_poster_eva;
+            case 0: return R.drawable.theme_poster_onepiece;
+            case 1: return R.drawable.theme_poster_naruto;
+            case 2: return R.drawable.theme_poster_demon;
+            case 3: return R.drawable.theme_poster_dragonball;
+            default: return R.drawable.theme_poster_aot;
         }
     }
     void build() {
@@ -45,7 +45,7 @@ final class ThemeScreenController {
         header.addView(title, titleLp);
         panel.addView(header);
         title.setLetterSpacing(-0.025f);
-        TextView subtitle = ToxiVisualSystem.text(activity, "Five crafted identities. One complete, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        TextView subtitle = ToxiVisualSystem.text(activity, "Five anime worlds. One unified, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
         subtitle.setLineSpacing(ToxiVisualSystem.dp(2), 1.04f);
         subtitle.setPadding(ToxiVisualSystem.dp(3), 0, ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(12));
         panel.addView(subtitle);
@@ -74,7 +74,7 @@ final class ThemeScreenController {
         check.setContentDescription("Active theme");
         current.addView(check, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(30), ToxiVisualSystem.dp(42)));
         panel.addView(current, activity.lpm(-1, -2, 0, 0, 0, 12));
-        TextView label = ToxiVisualSystem.text(activity, "FIVE CURATED IDENTITIES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView label = ToxiVisualSystem.text(activity, "FIVE COMPLETE THEME IDENTITIES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.12f);
         label.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(8));
         panel.addView(label);
@@ -84,8 +84,9 @@ final class ThemeScreenController {
             LinearLayout tile = new LinearLayout(activity);
             tile.setGravity(Gravity.CENTER_VERTICAL);
             tile.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9));
-            tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
-            tile.setElevation(ToxiVisualSystem.dp(selected ? 4 : 1));
+            tile.setBackground(ToxiVisualSystem.surface(22, true));
+            tile.setElevation(0f);
+            tile.setAlpha(selected ? 1f : 0.94f);
             tile.setMinimumHeight(ToxiVisualSystem.dp(122));
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
@@ -97,13 +98,13 @@ final class ThemeScreenController {
             LinearLayout text = new LinearLayout(activity);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(6), 0);
-            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 14, selected ? Color.rgb(20, 18, 38) : ToxiVisualSystem.TEXT_PRIMARY, selected);
+            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 14, selected ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_PRIMARY, selected);
             themeName.setMaxLines(2);
             themeName.setEllipsize(android.text.TextUtils.TruncateAt.END);
             text.addView(themeName);
             TextView description = ToxiVisualSystem.text(activity,
                 selected ? "ACTIVE  /  " + ToxiVisualSystem.themeDescription(i) : ToxiVisualSystem.themeDescription(i),
-                10.5f, selected ? Color.rgb(48, 43, 78) : ToxiVisualSystem.TEXT_SECONDARY, false);
+                10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
             description.setMaxLines(2);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             description.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
@@ -111,7 +112,7 @@ final class ThemeScreenController {
             tile.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
             ImageView state = new ImageView(activity);
             state.setImageDrawable(ToxiIcons.symbol(selected ? ToxiIcons.CHECK : ToxiIcons.NEXT,
-                selected ? Color.rgb(20, 18, 38) : ToxiVisualSystem.TEXT_SECONDARY));
+                selected ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_SECONDARY));
             state.setContentDescription(selected ? "Selected theme" : "Apply theme");
             tile.addView(state, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(42)));
             tile.setOnClickListener(v -> {

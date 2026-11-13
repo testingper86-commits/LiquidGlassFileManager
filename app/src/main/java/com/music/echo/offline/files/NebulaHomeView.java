@@ -69,11 +69,13 @@ final class NebulaHomeView {
         mark.setImageResource(R.drawable.toxifiles_master_art);
         mark.setContentDescription("ToxiFiles master brand artwork");
         mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
+        mark.setBackground(background(PANEL_ALT, BORDER, 11));
+        mark.setPadding(dp(a, 3), dp(a, 3), dp(a, 3), dp(a, 3));
+        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
         LinearLayout identity = new LinearLayout(a);
         identity.setOrientation(LinearLayout.VERTICAL);
         identity.setPadding(dp(a, 12), 0, 0, 0);
-        TextView word = text(a, "TOXIFILES", 19, TEXT, true);
+        TextView word = text(a, "TOXIFILES", 19, LIME, true);
         word.setLetterSpacing(0.16f);
         identity.addView(word);
         TextView edition = text(a, "PRISM  /  PERSONAL FILESPACE", 8.5f, MUTED, true);
