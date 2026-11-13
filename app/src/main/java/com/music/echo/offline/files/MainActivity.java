@@ -496,7 +496,7 @@ public class MainActivity extends ComponentActivity {
     // ---------------- HOME ----------------
     LinearLayout.LayoutParams lpm(int w, int h, int l, int t, int r, int b) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h);
-        p.setMargins(ToxiVisualSystem.dp(l), ToxiVisualSystem.dp(t), ToxiVisualSystem.dp(r), ToxiVisualSystem.dp(b));
+        p.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(l)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(t)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(r)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(b)));
         return p;
     }
 

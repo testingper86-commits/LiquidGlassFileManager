@@ -52,7 +52,7 @@ final class PrismNavigationDock {
         surface.setBackground(NebulaHomeView.navigationSurface());
         ToxiVisualSystem.clipRound(surface, 18);
         applySurfaceRipple();
-        surface.setElevation(ToxiVisualSystem.dp(5));
+        surface.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
         selection.setBackground(NebulaHomeView.navigationHighlight());
         selection.setVisibility(View.INVISIBLE);
         surface.addView(selection);
@@ -62,10 +62,10 @@ final class PrismNavigationDock {
             LinearLayout item = new LinearLayout(activity);
             item.setGravity(Gravity.CENTER);
             item.setOrientation(LinearLayout.VERTICAL);
-            item.setMinimumWidth(NebulaHomeView.dp(activity, 48));
-            item.setMinimumHeight(NebulaHomeView.dp(activity, 48));
-            item.setPadding(NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 3),
-                    NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 3));
+            item.setMinimumWidth(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(48)));
+            item.setMinimumHeight(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(48)));
+            item.setPadding(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)),
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)));
             glyphs[i] = new NebulaHomeView.Glyph(activity, symbols[i], NebulaHomeView.TEXT);
             glyphs[i].setContentDescription(TAB_NAMES[i]);
             item.addView(glyphs[i], new LinearLayout.LayoutParams(
@@ -77,7 +77,7 @@ final class PrismNavigationDock {
             labels[i].setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
             labels[i].setTextColor(ToxiVisualSystem.TEXT_SECONDARY);
             LinearLayout.LayoutParams label = new LinearLayout.LayoutParams(-2, -2);
-            label.topMargin = NebulaHomeView.dp(activity, 2);
+            label.topMargin = NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(2));
             item.addView(labels[i], label);
             item.setContentDescription(TAB_NAMES[i]);
             item.setFocusable(true);
@@ -142,12 +142,12 @@ final class PrismNavigationDock {
         if (rail) {
             params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(82)),
                     NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(340)), Gravity.START | Gravity.CENTER_VERTICAL);
-            params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
+            params.setMargins(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(14)), 0, 0, 0);
         } else {
             params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(64)), Gravity.BOTTOM);
-            params.setMargins(NebulaHomeView.dp(activity, 14), 0,
-                    NebulaHomeView.dp(activity, 14), Math.max(ToxiVisualSystem.BOTTOM_INSET,
-                    NebulaHomeView.dp(activity, 24)) + NebulaHomeView.dp(activity, 12));
+            params.setMargins(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(14)), 0,
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(14)), Math.max(ToxiVisualSystem.BOTTOM_INSET,
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(24))) + NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(12)));
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -190,7 +190,7 @@ final class PrismNavigationDock {
         imeVisible = visible;
         if (rail) return;
         surface.animate().cancel();
-        surface.setTranslationY(visible ? surface.getHeight() + NebulaHomeView.dp(activity, 28) : 0f);
+        surface.setTranslationY(visible ? surface.getHeight() + NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(28)) : 0f);
         surface.setAlpha(visible ? 0f : 1f);
         surface.setImportantForAccessibility(visible ? View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
                 : View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
@@ -199,8 +199,8 @@ final class PrismNavigationDock {
     void applyBottomInset() {
         if (rail || surface.getParent() != root || surface.getLayoutParams() == null) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
-        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
-                + NebulaHomeView.dp(activity, 12);
+        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(24)))
+                + NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(12));
         surface.setLayoutParams(params);
         surface.requestLayout();
         surface.postOnAnimation(this::layoutSelection);
