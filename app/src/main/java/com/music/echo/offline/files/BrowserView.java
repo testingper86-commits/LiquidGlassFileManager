@@ -774,7 +774,27 @@ final class BrowserView extends FrameLayout {
 
     private Spinner filterSpinner(String[] options, int selected) {
         Spinner spinner = new Spinner(a);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, options);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(a, android.R.layout.simple_spinner_item, options) {
+            private TextView styleRow(View row, String value) {
+                TextView text = (TextView) row;
+                text.setText(value);
+                text.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
+                text.setTypeface(android.graphics.Typeface.create(ToxiVisualSystem.fontFamily(), android.graphics.Typeface.NORMAL));
+                text.setTextSize(13);
+                text.setSingleLine(true);
+                text.setEllipsize(TextUtils.TruncateAt.END);
+                text.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                        ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
+                return text;
+            }
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                return styleRow(super.getView(position, convertView, parent), getItem(position));
+            }
+            @Override public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return styleRow(super.getDropDownView(position, convertView, parent), getItem(position));
+            }
+        };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter); spinner.setSelection(selected);
         return spinner;
@@ -802,6 +822,19 @@ final class BrowserView extends FrameLayout {
                     searchDateFilter = dateSpinner.getSelectedItemPosition();
                     applyFilter(); updateHeader();
                 }).show();
+    }
+
+    private TextView styleSpinnerRow(View row, String value) {
+        TextView text = (TextView) row;
+        text.setText(value);
+        text.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
+        text.setTypeface(android.graphics.Typeface.create(ToxiVisualSystem.fontFamily(), android.graphics.Typeface.NORMAL));
+        text.setTextSize(13);
+        text.setSingleLine(true);
+        text.setEllipsize(TextUtils.TruncateAt.END);
+        text.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
+        return text;
     }
 
     private static boolean matchesAdvancedFilter(Entry e, int typeFilter, int sizeFilter, int dateFilter, long now) {
@@ -883,7 +916,16 @@ final class BrowserView extends FrameLayout {
         final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); numbering.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
         final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT)); preserve.setChecked(true);
         final Spinner capitalization = new Spinner(a);
-        ArrayAdapter<String> cases = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"});
+        ArrayAdapter<String> cases = new ArrayAdapter<String>(a, android.R.layout.simple_spinner_item,
+                new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"}) {
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                return styleSpinnerRow(super.getView(position, convertView, parent), getItem(position));
+            }
+            @Override public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return styleSpinnerRow(super.getDropDownView(position, convertView, parent), getItem(position));
+            }
+        };
+        cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);
         final TextView preview = ToxiVisualSystem.text(a, "Enter rename rules to preview the result.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         preview.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
