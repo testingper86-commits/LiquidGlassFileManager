@@ -223,7 +223,7 @@ final class BrowserView extends FrameLayout {
 
         prog = new ProgressBar(a);
         prog.setIndeterminate(true);
-        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
+        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.signalTextColor()));
         prog.setVisibility(GONE);
         addView(prog, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), Gravity.CENTER));
 

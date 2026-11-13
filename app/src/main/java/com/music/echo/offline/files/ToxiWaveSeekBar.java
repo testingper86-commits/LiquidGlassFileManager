@@ -47,7 +47,7 @@ public final class ToxiWaveSeekBar extends AppCompatSeekBar {
     }
     private void updateThemeColors() {
         if (customColors) return;
-        played=ToxiVisualSystem.ACCENT;
+        played=ToxiVisualSystem.signalTextColor();
         unplayed=ToxiVisualSystem.EDGE_STROKE;
     }
     @Override protected synchronized void onDraw(Canvas canvas) {

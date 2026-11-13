@@ -302,8 +302,8 @@ final class ToxiVisualSystem {
 
     static void styleSeekBar(android.widget.SeekBar seekBar) {
         if (seekBar == null || Build.VERSION.SDK_INT < 21) return;
-        seekBar.setProgressTintList(ColorStateList.valueOf(ACCENT));
-        seekBar.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        seekBar.setProgressTintList(ColorStateList.valueOf(signalTextColor()));
+        seekBar.setThumbTintList(ColorStateList.valueOf(signalTextColor()));
         seekBar.setProgressBackgroundTintList(ColorStateList.valueOf(EDGE_STROKE));
         seekBar.setSplitTrack(false);
     }

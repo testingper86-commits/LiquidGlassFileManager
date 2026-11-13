@@ -556,7 +556,7 @@ public class ViewerActivity extends ComponentActivity {
         durationTv.setGravity(Gravity.CENTER);
         durationTv.setMinWidth(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(36)));
         ToxiWaveSeekBar seekBar = new ToxiWaveSeekBar(this);
-        seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE);
+        seekBar.setSquiggleColors(ToxiVisualSystem.signalTextColor(), ToxiVisualSystem.EDGE_STROKE);
         seekBar.setMax(1);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(34)), 1f);
         seekParams.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
@@ -1213,7 +1213,7 @@ public class ViewerActivity extends ComponentActivity {
         volumeHeaderLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7));
         card.addView(volumeHeader, volumeHeaderLp);
         ToxiProgressSeekBar volume = new ToxiProgressSeekBar(this);
-        volume.setProgressColors(ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE);
+        volume.setProgressColors(ToxiVisualSystem.signalTextColor(), ToxiVisualSystem.EDGE_STROKE);
         audioVolume = getPreferences(MODE_PRIVATE).getInt("audio_volume", 100) / 100f;
         volume.setMax(100); volume.setProgress(Math.round(audioVolume * 100));
         volValue.setText(Math.round(audioVolume * 100) + "%");

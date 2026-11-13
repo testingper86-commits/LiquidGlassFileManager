@@ -18,7 +18,7 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
     private void initialize(Context context) {
         density = context.getResources().getDisplayMetrics().density;
         if (!customColors) {
-            activeColor = ToxiVisualSystem.ACCENT;
+            activeColor = ToxiVisualSystem.signalTextColor();
             inactiveColor = ToxiVisualSystem.EDGE_STROKE;
         }
         setSplitTrack(false);
