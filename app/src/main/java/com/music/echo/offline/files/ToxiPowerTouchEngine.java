@@ -57,7 +57,7 @@ final class ToxiPowerTouchEngine {
                     downY = lastY = event.getY(0);
                     moved = charged = false;
                     valid = true;
-                    target.postDelayed(charge, CHARGE_DELAY_MS);
+                    target.postDelayed(charge, ToxiThemeEngine.motionDuration(CHARGE_DELAY_MS));
                     break;
                 case MotionEvent.ACTION_POINTER_DOWN:
                     invalidateGesture();
