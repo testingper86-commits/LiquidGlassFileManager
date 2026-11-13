@@ -41,7 +41,7 @@ jobs:
           test -s settings.gradle || test -s settings.gradle.kts
           chmod +x gradlew
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Set up JDK 17
