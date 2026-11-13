@@ -150,18 +150,19 @@ final class ToxiVisualSystem {
             selector.setCornerRadius(dp(ToxiThemeEngine.radius(10)));
             list.setSelector(selector);
             list.post(() -> {
-                for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i));
+                for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i), true);
             });
         }
         View content = dialog.findViewById(android.R.id.content);
-        if (content != null) styleDialogTree(content);
+        if (content != null) styleDialogTree(content, false);
     }
 
-    private static void styleDialogTree(View view) {
+    private static void styleDialogTree(View view, boolean styleListText) {
         if (view instanceof TextView) {
             TextView text = (TextView) view;
-            text.setTextColor(view instanceof Button ? signalTextColor()
-                    : (view.getId() == android.R.id.message ? TEXT_SECONDARY : TEXT_PRIMARY));
+            if (view instanceof Button) text.setTextColor(signalTextColor());
+            else if (view.getId() == android.R.id.message) text.setTextColor(TEXT_SECONDARY);
+            else if (view.getId() == android.R.id.alertTitle || styleListText) text.setTextColor(TEXT_PRIMARY);
             text.setTypeface(Typeface.create(fontFamily(), text.getTypeface() != null
                     && text.getTypeface().isBold() ? Typeface.BOLD : Typeface.NORMAL));
         }
@@ -173,7 +174,9 @@ final class ToxiVisualSystem {
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) styleDialogTree(group.getChildAt(i));
+            for (int i = 0; i < group.getChildCount(); i++) {
+                styleDialogTree(group.getChildAt(i), styleListText);
+            }
         }
     }
 
