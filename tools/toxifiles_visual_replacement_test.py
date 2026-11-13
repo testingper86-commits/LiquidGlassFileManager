@@ -25,12 +25,13 @@ required = [
     RES / "drawable/ic_toxifiles_notification.xml",
     RES / "drawable/toxifiles_splash.xml",
     RES / "drawable/toxifiles_splash_transparent.xml",
+    RES / "drawable-nodpi/toxifiles_master_art.webp",
     RES / "values/themes.xml",
     RES / "values-v31/themes.xml",
 ]
 for path in required:
     if not path.is_file() or path.stat().st_size == 0:
-        raise SystemExit(f"Missing new brand resource: {path.relative_to(ROOT)}")
+        raise SystemExit(f"Missing current visual resource: {path.relative_to(ROOT)}")
 
 manifest_root = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
 android_ns = "{http://schemas.android.com/apk/res/android}"
@@ -38,8 +39,9 @@ application = manifest_root.find("application")
 if application is None:
     raise SystemExit("Android manifest has no application element")
 icon = application.get(android_ns + "icon")
-if icon and icon not in ("@mipmap/ic_launcher", "@drawable/toxifiles_splash_transparent"):
-    raise SystemExit(f"Unexpected launcher icon resource: {icon}")
+round_icon = application.get(android_ns + "roundIcon")
+if icon != "@drawable/toxifiles_master_art" or round_icon != "@drawable/toxifiles_master_art":
+    raise SystemExit("Launcher manifest must use the current ToxiFiles master artwork")
 
 checks = {
     "MainActivity.java": ["ToxiVisualSystem.surface", "ToxiFileRow"],
@@ -91,4 +93,4 @@ for index, resource in poster_map.items():
     data = poster.read_bytes()
     if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
         raise SystemExit(f"Theme poster is not a real WebP image: {poster.relative_to(ROOT)}")
-print("ToxiFiles visual replacement audit passed: 5 real WebP theme posters, current splash/notification resources and primary screens integrated.")
+print("ToxiFiles visual replacement audit passed: 5 real WebP theme posters, current splash/launcher/notification resources and primary screens integrated.")
