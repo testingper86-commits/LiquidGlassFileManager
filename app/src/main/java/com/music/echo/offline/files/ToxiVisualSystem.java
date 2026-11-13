@@ -207,7 +207,7 @@ final class ToxiVisualSystem {
         ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
         int titaniumEdge = blend(EDGE_STROKE, CHROME,
                 LIGHT_MODE ? 0.30f : 0.30f + (0.38f * profile.edgeStrength));
-        base.setStroke(Math.max(1, dp(0.9f)), Color.argb(ToxiThemeEngine.edgeAlpha(220),
+        base.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.9f))), Color.argb(ToxiThemeEngine.edgeAlpha(220),
                 Color.red(titaniumEdge), Color.green(titaniumEdge), Color.blue(titaniumEdge)));
 
         int crownAlpha = ToxiThemeEngine.highlightAlpha(LIGHT_MODE ? 42 : (raised ? 58 : 44));
@@ -215,11 +215,11 @@ final class ToxiVisualSystem {
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
         glass.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
-        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 68 : 104),
+        glass.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.6f))), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 68 : 104),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
                 new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
-        int inset = Math.max(1, dp(1));
+        int inset = Math.max(1, dp(ToxiThemeEngine.spacing(1)));
         layered.setLayerInset(1, inset, inset, inset, inset);
         return layered;
     }
@@ -244,7 +244,7 @@ final class ToxiVisualSystem {
         GradientDrawable accent = new GradientDrawable(materialOrientation(),
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
         accent.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
-        accent.setStroke(Math.max(1, dp(0.9f)), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 140 : 175),
+        accent.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.9f))), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 140 : 175),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         return accent;
     }
