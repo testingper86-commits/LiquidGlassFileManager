@@ -66,7 +66,7 @@ for source in JAVA.glob("*.java"):
         raise SystemExit(f"Dynamic Island runtime reference remains in {source.relative_to(ROOT)}")
 
 theme = (JAVA / "ToxiThemeSystem.java").read_text(encoding="utf-8")
-match = re.search(r'static final String\\[\\] NAMES = \\{(.*?)\\};', theme, re.S)
+match = re.search(r'static final String\[\] NAMES = \{(.*?)\};', theme, re.S)
 if not match or len(re.findall(r'"[^"]+"', match.group(1))) != 5:
     raise SystemExit("The new visual system must define exactly five curated themes")
 touch_engine = JAVA / "ToxiPowerTouchEngine.java"
