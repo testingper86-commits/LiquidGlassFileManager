@@ -260,7 +260,7 @@ final class AboutScreenBuilder {
         View marker = new View(activity);
         android.graphics.drawable.GradientDrawable markerShape = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{ABOUT_CYAN, Color.rgb(22, 119, 255)});
+                new int[]{ABOUT_CYAN, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX]});
         markerShape.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)));
         marker.setBackground(markerShape);
         heading.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19))));
@@ -418,10 +418,14 @@ final class AboutScreenBuilder {
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        int theme = ToxiVisualSystem.THEME_INDEX;
+        int accent = ToxiVisualSystem.ACCENT;
+        int accentEnd = ToxiThemeSystem.ACCENT_ENDS[theme];
+        int chrome = ToxiVisualSystem.CHROME;
         int[][] palettes = {
-                {Color.rgb(0, 125, 151), Color.rgb(24, 48, 100)},
-                {Color.rgb(88, 54, 145), Color.rgb(27, 44, 84)},
-                {Color.rgb(23, 110, 112), Color.rgb(35, 44, 91)}
+                {ToxiThemeSystem.SOFT_ACCENTS[theme], ToxiVisualSystem.CANVAS},
+                {ToxiVisualSystem.RAISED_SURFACE, ToxiThemeSystem.SOFT_ACCENTS[theme]},
+                {ToxiVisualSystem.SURFACE_COLOR, ToxiVisualSystem.CANVAS}
         };
         paint.setShader(new android.graphics.LinearGradient(0, 0, size, size, palettes[kind][0], palettes[kind][1], Shader.TileMode.CLAMP));
         canvas.drawRoundRect(new RectF(0, 0, size, size), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), paint);
@@ -435,7 +439,7 @@ final class AboutScreenBuilder {
         }
         paint.setStyle(Paint.Style.FILL);
         if (kind == 0) {
-            paint.setColor(Color.rgb(0, 229, 255));
+            paint.setColor(accent);
             android.graphics.Path folder = new android.graphics.Path();
             folder.moveTo(size * .17f, size * .36f);
             folder.lineTo(size * .41f, size * .36f);
@@ -445,13 +449,13 @@ final class AboutScreenBuilder {
             folder.lineTo(size * .20f, size * .72f);
             folder.close();
             canvas.drawPath(folder, paint);
-            paint.setColor(Color.rgb(13, 41, 60));
+            paint.setColor(ToxiVisualSystem.CANVAS);
             canvas.drawRoundRect(new RectF(size * .27f, size * .51f, size * .43f, size * .64f), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), paint);
             canvas.drawRoundRect(new RectF(size * .48f, size * .51f, size * .64f, size * .64f), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), paint);
         } else if (kind == 1) {
             paint.setColor(Color.argb(225, 244, 249, 255));
             canvas.drawRoundRect(new RectF(size * .16f, size * .19f, size * .84f, size * .80f), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)), paint);
-            int[] colors = {Color.rgb(0, 184, 212), Color.rgb(255, 173, 92), Color.rgb(157, 124, 255)};
+            int[] colors = {accent, accentEnd, chrome};
             for (int i = 0; i < 3; i++) {
                 paint.setColor(colors[i]);
                 float left = size * (.23f + i * .20f);
@@ -473,7 +477,7 @@ final class AboutScreenBuilder {
             right.lineTo(size * .77f, size * .50f);
             right.lineTo(size * .61f, size * .71f);
             canvas.drawPath(right, paint);
-            paint.setColor(Color.rgb(206, 184, 255));
+            paint.setColor(accentEnd);
             canvas.drawLine(size * .55f, size * .25f, size * .45f, size * .75f, paint);
         }
         android.graphics.drawable.BitmapDrawable drawable = new android.graphics.drawable.BitmapDrawable(activity.getResources(), bitmap);
