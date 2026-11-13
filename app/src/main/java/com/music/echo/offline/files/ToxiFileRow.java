@@ -85,7 +85,7 @@ final class ToxiFileRow {
         h.ckOff = unchecked;
         h.more.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE, ToxiVisualSystem.TEXT_SECONDARY));
         h.row.setBackground(selected?h.bgSel:h.bgNormal);
-        if(selecting){h.more.setVisibility(View.GONE);h.check.setVisibility(View.VISIBLE);h.check.setBackground(selected?h.ckOn:h.ckOff);h.check.setImageDrawable(selected?ToxiIcons.symbol(ToxiIcons.CHECK,0xFF101820):null);h.check.setContentDescription(selected?"Selected":"Not selected");}
+        if(selecting){h.more.setVisibility(View.GONE);h.check.setVisibility(View.VISIBLE);h.check.setBackground(selected?h.ckOn:h.ckOff);h.check.setImageDrawable(selected?ToxiIcons.symbol(ToxiIcons.CHECK, ToxiVisualSystem.LIGHT_MODE ? 0xFFFFFFFF : 0xFF101820):null);h.check.setContentDescription(selected?"Selected":"Not selected");}
         else{h.more.setVisibility(View.VISIBLE);h.check.setVisibility(View.GONE);}
     }
     static void applyLabel(Holder h,int colorIndex){

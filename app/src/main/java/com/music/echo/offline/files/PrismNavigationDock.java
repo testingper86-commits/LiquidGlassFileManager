@@ -87,7 +87,7 @@ final class PrismNavigationDock {
                     v.animate().cancel();
                     v.setScaleX(0.94f);
                     v.setScaleY(0.94f);
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(190)
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(ToxiThemeEngine.motionDuration(190L))
                             .setInterpolator(new android.view.animation.OvershootInterpolator(1.25f)).start();
                 }
                 onTabSelected.accept(index);
@@ -222,7 +222,7 @@ final class PrismNavigationDock {
                 int left = tabGroup.getLeft() + target.getLeft();
                 int top = tabGroup.getTop() + target.getTop();
                 int inset = ToxiVisualSystem.dp(5);
-                selection.animate().translationX(left + inset).translationY(top + inset).setDuration(145)
+                selection.animate().translationX(left + inset).translationY(top + inset).setDuration(ToxiThemeEngine.motionDuration(145L))
                         .setInterpolator(new DecelerateInterpolator(1.6f)).start();
             }
         }

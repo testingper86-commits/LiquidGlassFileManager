@@ -28,6 +28,8 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
     }
     public void setProgressColors(int active, int inactive) { activeColor=active; inactiveColor=inactive; invalidate(); }
     @Override protected synchronized void onDraw(Canvas canvas) {
+        activeColor = ToxiVisualSystem.ACCENT;
+        inactiveColor = ToxiVisualSystem.EDGE_STROKE;
         float left=getPaddingLeft(), right=getWidth()-getPaddingRight();
         if(right<=left) return;
         float y=getHeight()/2f, radius=Math.max(1.5f*density,2.2f*density);

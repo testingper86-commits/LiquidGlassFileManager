@@ -23,7 +23,8 @@ final class ToxiPowerTouchEngine {
     static void attach(View target, int themeIndex) {
         if (target == null) return;
         int color = ToxiThemeSystem.ACCENTS[ToxiThemeSystem.normalize(themeIndex)];
-        float threshold = SWIPE_DISTANCE_DP * target.getResources().getDisplayMetrics().density;
+        float threshold = SWIPE_DISTANCE_DP * ToxiThemeEngine.profile().motionScale
+                * target.getResources().getDisplayMetrics().density;
         TouchFeedback feedback = new TouchFeedback(target, color, threshold);
         target.setOnTouchListener(feedback);
         target.addOnAttachStateChangeListener(feedback);
@@ -84,8 +85,8 @@ final class ToxiPowerTouchEngine {
                 case MotionEvent.ACTION_UP:
                     cancelCharge();
                     if (valid && !reducedMotion()) {
-                        if (moved) animate(new EffectDrawable(color, downX, downY, lastX, lastY, false), 260L);
-                        else if (!charged) animate(new EffectDrawable(color, downX, downY, downX, downY, false), 220L);
+                        if (moved) animate(new EffectDrawable(color, downX, downY, lastX, lastY, false), ToxiThemeEngine.motionDuration(260L));
+                        else if (!charged) animate(new EffectDrawable(color, downX, downY, downX, downY, false), ToxiThemeEngine.motionDuration(220L));
                     }
                     resetGesture();
                     break;
@@ -103,7 +104,7 @@ final class ToxiPowerTouchEngine {
         private void showCharge() {
             if (valid && !moved && target.isAttachedToWindow() && target.isPressed() && !reducedMotion()) {
                 charged = true;
-                animate(new EffectDrawable(color, downX, downY, downX, downY, true), 360L);
+                animate(new EffectDrawable(color, downX, downY, downX, downY, true), ToxiThemeEngine.motionDuration(360L));
             }
         }
 
@@ -192,7 +193,7 @@ final class ToxiPowerTouchEngine {
                 paint.setAlpha(Math.round(55f * (1f - progress)));
                 canvas.drawCircle(x1, y1, 14f + progress * 8f, paint);
             } else {
-                paint.setStrokeWidth(Math.max(1f, 2.2f * (1f - progress)));
+                paint.setStrokeWidth(Math.max(1f, ToxiThemeEngine.profile().iconStroke * (1f - progress)));
                 canvas.drawCircle(x1, y1, 4f + progress * 25f, paint);
                 if (Math.hypot(x2 - x1, y2 - y1) > 8f) {
                     paint.setAlpha(Math.round(115f * (1f - progress)));
