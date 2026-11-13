@@ -1033,6 +1033,7 @@ public class MainActivity extends ComponentActivity {
         final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         final Paint auroraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private int auroraWidth = -1, auroraHeight = -1, auroraAccent, auroraEnd;
+        private boolean auroraLightMode;
         private Shader auroraPrimary, auroraSecondary, auroraTertiary;
         BgView(android.content.Context c) {
             super(c);
@@ -1059,11 +1060,13 @@ public class MainActivity extends ComponentActivity {
             int accent = ToxiVisualSystem.ACCENT;
             int accentEnd = ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX];
             if (width == auroraWidth && height == auroraHeight
-                    && accent == auroraAccent && accentEnd == auroraEnd) return;
+                    && accent == auroraAccent && accentEnd == auroraEnd
+                    && auroraLightMode == ToxiVisualSystem.LIGHT_MODE) return;
             auroraWidth = width;
             auroraHeight = height;
             auroraAccent = accent;
             auroraEnd = accentEnd;
+            auroraLightMode = ToxiVisualSystem.LIGHT_MODE;
             float radius = Math.max(width, height) * 0.76f;
             int primaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 24 : 42;
             int secondaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 17 : 30;
@@ -1147,6 +1150,7 @@ public class MainActivity extends ComponentActivity {
 
         @Override protected void onDraw(Canvas canvas) {
             int width = getWidth(), height = getHeight();
+            if (width <= 0 || height <= 0) return;
             canvas.drawColor(ToxiVisualSystem.CANVAS);
             drawAurora(canvas, width, height);
             int accent = ToxiVisualSystem.ACCENT;
