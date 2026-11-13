@@ -129,7 +129,7 @@ final class ToxiVisualSystem {
         if (message != null) {
             message.setTextColor(TEXT_SECONDARY);
             message.setTypeface(Typeface.create(fontFamily(), Typeface.NORMAL));
-            message.setLineSpacing(dp(3), 1f);
+            message.setLineSpacing(dp(ToxiThemeEngine.spacing(3)), 1f);
         }
         int[] buttonIds = {android.R.id.button1, android.R.id.button2, android.R.id.button3};
         for (int id : buttonIds) {
@@ -138,16 +138,16 @@ final class ToxiVisualSystem {
             button.setTextColor(ACCENT);
             button.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
             button.setAllCaps(false);
-            button.setMinHeight(dp(44));
+            button.setMinHeight(dp(ToxiThemeEngine.spacing(44)));
         }
         ListView list = dialog.getListView();
         if (list != null) {
             list.setBackgroundColor(Color.TRANSPARENT);
             list.setDivider(new android.graphics.drawable.ColorDrawable(EDGE_STROKE));
-            list.setDividerHeight(Math.max(1, dp(1)));
+            list.setDividerHeight(Math.max(1, dp(ToxiThemeEngine.spacing(1))));
             GradientDrawable selector = new GradientDrawable();
             selector.setColor(Color.argb(32, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT)));
-            selector.setCornerRadius(dp(10));
+            selector.setCornerRadius(dp(ToxiThemeEngine.radius(10)));
             list.setSelector(selector);
             list.post(() -> {
                 for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i));
@@ -256,7 +256,7 @@ final class ToxiVisualSystem {
         view.setTextColor(color);
         view.setTypeface(Typeface.create(fontFamily(), strong ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
-        view.setLineSpacing(dp(3), 1f);
+        view.setLineSpacing(dp(ToxiThemeEngine.spacing(3)), 1f);
         view.setHorizontallyScrolling(false);
         if (Build.VERSION.SDK_INT >= 23) view.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);
         if (Build.VERSION.SDK_INT >= 29) view.setBreakStrategy(android.graphics.text.LineBreaker.BREAK_STRATEGY_HIGH_QUALITY);
@@ -266,9 +266,9 @@ final class ToxiVisualSystem {
     static ImageView iconButton(Context context, int symbol, int color) {
         ImageView view = new ImageView(context);
         view.setImageDrawable(ToxiIcons.symbol(symbol, color));
-        view.setPadding(dp(13), dp(13), dp(13), dp(13));
-        view.setMinimumWidth(dp(48));
-        view.setMinimumHeight(dp(48));
+        view.setPadding(dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)));
+        view.setMinimumWidth(dp(ToxiThemeEngine.spacing(48)));
+        view.setMinimumHeight(dp(ToxiThemeEngine.spacing(48)));
         view.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
         view.setScaleType(ImageView.ScaleType.FIT_CENTER);
         view.setBackground(surface(14, true));
