@@ -115,6 +115,7 @@ final class SafBrowserController {
                             showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
                             return true;
                         });
+                });
                 listing.show();
             });
         });
