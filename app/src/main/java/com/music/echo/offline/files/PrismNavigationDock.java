@@ -69,7 +69,7 @@ final class PrismNavigationDock {
             glyphs[i] = new NebulaHomeView.Glyph(activity, symbols[i], NebulaHomeView.TEXT);
             glyphs[i].setContentDescription(TAB_NAMES[i]);
             item.addView(glyphs[i], new LinearLayout.LayoutParams(
-                    NebulaHomeView.dp(activity, 21), NebulaHomeView.dp(activity, 21)));
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(21)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(21))));
             labels[i] = new TextView(activity);
             labels[i].setText(TAB_NAMES[i]);
             labels[i].setTextSize(9.5f);
@@ -114,7 +114,7 @@ final class PrismNavigationDock {
         tabGroup.setOrientation(rail ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         tabGroup.setGravity(Gravity.CENTER);
         tabGroup.setBaselineAligned(false);
-        int inset = ToxiVisualSystem.dp(5);
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
         surface.setPadding(inset, inset, inset, inset);
         for (View item : items) {
             if (item == null) continue;
@@ -139,11 +139,11 @@ final class PrismNavigationDock {
         }
         FrameLayout.LayoutParams params;
         if (rail) {
-            params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, 82),
-                    NebulaHomeView.dp(activity, 340), Gravity.START | Gravity.CENTER_VERTICAL);
+            params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(82)),
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(340)), Gravity.START | Gravity.CENTER_VERTICAL);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
         } else {
-            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 64), Gravity.BOTTOM);
+            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(64)), Gravity.BOTTOM);
             params.setMargins(NebulaHomeView.dp(activity, 14), 0,
                     NebulaHomeView.dp(activity, 14), Math.max(ToxiVisualSystem.BOTTOM_INSET,
                     NebulaHomeView.dp(activity, 24)) + NebulaHomeView.dp(activity, 12));
