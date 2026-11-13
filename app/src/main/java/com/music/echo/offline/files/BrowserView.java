@@ -795,7 +795,6 @@ final class BrowserView extends FrameLayout {
             }
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter); spinner.setSelection(selected);
         return spinner;
     }
@@ -832,6 +831,7 @@ final class BrowserView extends FrameLayout {
         text.setTextSize(13);
         text.setSingleLine(true);
         text.setEllipsize(TextUtils.TruncateAt.END);
+        text.setBackground(ToxiVisualSystem.surface(10, false));
         text.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         return text;
@@ -925,7 +925,6 @@ final class BrowserView extends FrameLayout {
                 return styleSpinnerRow(super.getDropDownView(position, convertView, parent), getItem(position));
             }
         };
-        cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);
         final TextView preview = ToxiVisualSystem.text(a, "Enter rename rules to preview the result.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         preview.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
