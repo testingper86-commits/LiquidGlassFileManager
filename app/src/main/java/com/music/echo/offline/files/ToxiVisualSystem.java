@@ -300,6 +300,14 @@ final class ToxiVisualSystem {
         return view;
     }
 
+    static void styleSeekBar(android.widget.SeekBar seekBar) {
+        if (seekBar == null || Build.VERSION.SDK_INT < 21) return;
+        seekBar.setProgressTintList(ColorStateList.valueOf(ACCENT));
+        seekBar.setThumbTintList(ColorStateList.valueOf(ACCENT));
+        seekBar.setProgressBackgroundTintList(ColorStateList.valueOf(EDGE_STROKE));
+        seekBar.setSplitTrack(false);
+    }
+
     static void interactive(View view) {
         view.setClickable(true);
         view.setFocusable(true);

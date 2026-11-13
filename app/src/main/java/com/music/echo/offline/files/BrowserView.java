@@ -880,8 +880,8 @@ final class BrowserView extends FrameLayout {
         final EditText start = input("1");
         final EditText increment = input("1");
         final EditText padding = input("1");
-        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);
-        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setChecked(true);
+        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); numbering.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
+        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT)); preserve.setChecked(true);
         final Spinner capitalization = new Spinner(a);
         ArrayAdapter<String> cases = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"});
         cases.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); capitalization.setAdapter(cases);

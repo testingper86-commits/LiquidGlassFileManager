@@ -344,7 +344,7 @@ public class ViewerActivity extends ComponentActivity {
             });
         }
         TextView brightLabel=ToxiVisualSystem.text(this,"Brightness",12,ToxiVisualSystem.TEXT_PRIMARY,true); panel.addView(brightLabel);
-        SeekBar bright=new SeekBar(this); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(36))));
+        SeekBar bright=new SeekBar(this); ToxiVisualSystem.styleSeekBar(bright); bright.setMax(200); bright.setProgress(100); panel.addView(bright,new LinearLayout.LayoutParams(-1,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(36))));
         bright.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int p,boolean u){if(u){brightness[0]=(p-100)/100f;render.run();}} public void onStartTrackingTouch(SeekBar b){} public void onStopTrackingTouch(SeekBar b){}});
         ToxiVisualSystem.dialogBuilder(this).setTitle("Image editor").setView(panel).setNegativeButton("Cancel",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();}).setNeutralButton("Reset",(d,w)->{if(working[0]!=null&&!working[0].isRecycled())working[0].recycle();currentImageBitmap=original;show();}).setPositiveButton("Save copy",(d,w)->saveEditedImage(working[0])).show();
     }
@@ -556,7 +556,7 @@ public class ViewerActivity extends ComponentActivity {
         durationTv.setGravity(Gravity.CENTER);
         durationTv.setMinWidth(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(36)));
         ToxiWaveSeekBar seekBar = new ToxiWaveSeekBar(this);
-        seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiThemeSystem.EDGES[ToxiVisualSystem.THEME_INDEX]);
+        seekBar.setSquiggleColors(ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE);
         seekBar.setMax(1);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(34)), 1f);
         seekParams.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
@@ -1347,7 +1347,7 @@ public class ViewerActivity extends ComponentActivity {
         panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         TextView note = ToxiVisualSystem.text(this, "Audio effects depend on Android/device support and may reset when the track changes.", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         panel.addView(note);
-        final SeekBar bass = new SeekBar(this); bass.setMax(1000);
+        final SeekBar bass = new SeekBar(this); ToxiVisualSystem.styleSeekBar(bass); bass.setMax(1000);
         panel.addView(ToxiVisualSystem.text(this, "Bass boost", 13, ToxiVisualSystem.TEXT_PRIMARY, true)); panel.addView(bass);
         try { bass.setProgress(bassBoost == null ? 0 : bassBoost.getRoundedStrength()); } catch (Exception ignored) { }
         bass.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -1363,7 +1363,7 @@ public class ViewerActivity extends ComponentActivity {
                     final short band = i;
                     int center = equalizer.getCenterFreq(band) / 1000;
                     panel.addView(ToxiVisualSystem.text(this, center + " Hz", 12, ToxiVisualSystem.TEXT_SECONDARY, false));
-                    SeekBar seek = new SeekBar(this); seek.setMax(range[1] - range[0]);
+                    SeekBar seek = new SeekBar(this); ToxiVisualSystem.styleSeekBar(seek); seek.setMax(range[1] - range[0]);
                     seek.setProgress(equalizer.getBandLevel(band) - range[0]);
                     seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                         public void onProgressChanged(SeekBar b, int value, boolean fromUser) { if (fromUser && equalizer != null) try { equalizer.setBandLevel(band, (short)(value + range[0])); } catch (Exception ignored) { } }

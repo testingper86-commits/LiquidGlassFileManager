@@ -826,7 +826,7 @@ public class MainActivity extends ComponentActivity {
     Switch sw(final String key, boolean def, final Runnable onChange) {
         Switch s = new Switch(this);
         s.setChecked(ToxiVisualSystem.booleanPreference(key, def));
-        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE}));
+        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.signalTextColor(), ToxiVisualSystem.EDGE_STROKE}));
         s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)), ToxiVisualSystem.LIGHT_MODE ? Color.argb(180, Color.red(ToxiVisualSystem.EDGE_STROKE), Color.green(ToxiVisualSystem.EDGE_STROKE), Color.blue(ToxiVisualSystem.EDGE_STROKE)) : Color.argb(90, 255, 255, 255)}));
         ToxiMotion.attach(s);
         ToxiMotion.setActive(s, false);
