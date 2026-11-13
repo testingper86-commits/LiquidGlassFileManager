@@ -339,7 +339,7 @@ public class ViewerActivity extends ComponentActivity {
             btn.setOnClickListener(v->{
                 if(action==0){ rotation[0]=(rotation[0]+90)%360; render.run(); }
                 else if(action==1){flip[0]=!flip[0]; render.run();}
-                else if(action==2){ new AlertDialog.Builder(this).setTitle("Crop ratio").setSingleChoiceItems(new String[]{"Original","Square 1:1","Portrait 4:3","Wide 16:9"},crop[0],(d,which)->{crop[0]=which;d.dismiss();render.run();}).setNegativeButton("Cancel",null).show(); }
+                else if(action==2){ ToxiVisualSystem.dialogBuilder(this).setTitle("Crop ratio").setSingleChoiceItems(new String[]{"Original","Square 1:1","Portrait 4:3","Wide 16:9"},crop[0],(d,which)->{crop[0]=which;d.dismiss();render.run();}).setNegativeButton("Cancel",null).show(); }
                 else {gray[0]=!gray[0];render.run();}
             });
         }

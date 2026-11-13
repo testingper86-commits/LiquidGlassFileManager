@@ -149,7 +149,9 @@ final class ToxiVisualSystem {
             selector.setColor(Color.argb(32, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT)));
             selector.setCornerRadius(dp(10));
             list.setSelector(selector);
-            for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i));
+            list.post(() -> {
+                for (int i = 0; i < list.getChildCount(); i++) styleDialogTree(list.getChildAt(i));
+            });
         }
         View content = dialog.findViewById(android.R.id.content);
         if (content != null) styleDialogTree(content);

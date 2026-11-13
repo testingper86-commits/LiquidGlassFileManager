@@ -9,11 +9,11 @@ final class ToxiMotion {
     static void detach(View view) { view.setAlpha(1f); view.setTranslationZ(0f); }
     static void setActive(View view, boolean active) {
         view.setAlpha(active ? 0.94f : 1f);
-        view.setTranslationZ(active ? ToxiVisualSystem.dp(1) : 0f);
+        view.setTranslationZ(active ? ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f)) : 0f);
     }
     static void watchFocus(View view) {
         view.setOnFocusChangeListener((target, focused) -> {
-            target.setTranslationZ(focused ? ToxiVisualSystem.dp(2) : 0f);
+            target.setTranslationZ(focused ? ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2f)) : 0f);
             target.setAlpha(focused ? 1f : 0.98f);
         });
     }
