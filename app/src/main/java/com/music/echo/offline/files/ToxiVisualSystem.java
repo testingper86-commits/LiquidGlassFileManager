@@ -95,24 +95,24 @@ final class ToxiVisualSystem {
     /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
-        int tintAlpha = LIGHT_MODE ? 10 : (raised ? 28 : 19);
+        int tintAlpha = LIGHT_MODE ? 14 : (raised ? 48 : 36);
         int accentTint = Color.argb(tintAlpha, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
-        int lowerTint = Color.argb(LIGHT_MODE ? 5 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int lowerTint = Color.argb(LIGHT_MODE ? 8 : 20, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 7 : 17)),
                 Math.min(255, Color.green(fill) + (LIGHT_MODE ? 8 : 20)),
                 Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
         GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
         base.setCornerRadius(dp(radiusDp));
-        int titaniumEdge = blend(EDGE_STROKE, CHROME, LIGHT_MODE ? 0.22f : 0.48f);
+        int titaniumEdge = blend(EDGE_STROKE, CHROME, LIGHT_MODE ? 0.30f : 0.58f);
         base.setStroke(Math.max(1, dp(0.9f)), titaniumEdge);
 
-        int crownAlpha = LIGHT_MODE ? 34 : (raised ? 42 : 30);
+        int crownAlpha = LIGHT_MODE ? 42 : (raised ? 58 : 44);
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
         glass.setCornerRadius(dp(radiusDp));
-        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(LIGHT_MODE ? 52 : 76,
+        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(LIGHT_MODE ? 68 : 104,
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
                 new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});

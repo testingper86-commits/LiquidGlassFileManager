@@ -399,17 +399,11 @@ final class NebulaHomeView {
         host.addView(row, margins(a, -1, -2, 0, 0, 0, 11));
     }
 
-    private static GradientDrawable toolCardSurface(int accent) {
-        GradientDrawable surface = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {
-                        ToxiIcons.mix(PANEL, accent, 0.075f),
-                        PANEL,
-                        ToxiIcons.mix(PANEL, Color.BLACK, 0.035f)
-                });
-        surface.setCornerRadius(dpRadius(18));
-        surface.setStroke(Math.max(1, dpRadius(1)), BORDER);
-        return surface;
+    private static Drawable toolCardSurface(int accent) {
+        // Keep utility cards on the same theme-owned liquid-glass material as Home,
+        // Theme Studio, navigation and the file-management surfaces. The glyph remains
+        // the per-tool signal; the card itself must never introduce a second palette.
+        return ToxiVisualSystem.surface(18, true);
     }
 
     private static int dpRadius(int value) {
