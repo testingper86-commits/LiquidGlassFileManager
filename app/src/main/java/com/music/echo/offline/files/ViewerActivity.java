@@ -1154,7 +1154,7 @@ public class ViewerActivity extends ComponentActivity {
         for (int i = 0; i < extraButtons.length; i++) {
             TextView b = extraButtons[i];
             b.setGravity(Gravity.CENTER);
-            b.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42)));
+            b.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(42)));
             b.setSingleLine(true);
             b.setEllipsize(android.text.TextUtils.TruncateAt.END);
             b.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)));
