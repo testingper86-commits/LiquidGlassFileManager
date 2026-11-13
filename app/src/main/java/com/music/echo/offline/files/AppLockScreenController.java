@@ -72,6 +72,18 @@ final class AppLockScreenController {
         dialog.setContentView(root);
         dialog.setOnKeyListener((ignored, keyCode, event) -> keyCode == android.view.KeyEvent.KEYCODE_BACK);
         dialog.show();
+        android.view.Window lockWindow = dialog.getWindow();
+        if (lockWindow != null) {
+            lockWindow.setStatusBarColor(ToxiVisualSystem.CANVAS);
+            lockWindow.setNavigationBarColor(ToxiVisualSystem.CANVAS);
+            if (Build.VERSION.SDK_INT >= 23) {
+                int flags = lockWindow.getDecorView().getSystemUiVisibility();
+                int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                lockWindow.getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE
+                        ? flags | lightFlags : flags & ~lightFlags);
+            }
+        }
         if (Build.VERSION.SDK_INT >= 28) tryBiometric(dialog);
     }
 
