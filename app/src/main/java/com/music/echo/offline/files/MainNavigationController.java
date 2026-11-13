@@ -1,11 +1,11 @@
 package com.music.echo.offline.files;
 
-import android.os.Environment;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 import java.io.File;
+import android.os.Environment;
 
-/** Coordinates the five-orb dock with existing file-manager destinations. */
+/** Coordinates the restored four-tab floating dock. */
 final class MainNavigationController {
     private final MainActivity activity;
     private PrismNavigationDock navigationBar;
@@ -21,42 +21,35 @@ final class MainNavigationController {
         navigationBar.build();
     }
     void selectTab(int index) {
-        if (navigationBar == null || index < 0 || index > 4) return;
+        if (navigationBar == null || index < 0 || index > 3) return;
         navigationBar.moveHighlight(index);
-        if (index == 2) { activity.openStorageAnalyzer(); return; }
-        if (index == 3) { activity.showFavorites(); return; }
-        int screenIndex = index == 4 ? 3 : index;
         View[] screens = activity.screens;
-        if (screens == null || screenIndex < 0 || screenIndex >= screens.length) return;
+        if (screens == null || index >= screens.length) return;
         activity.closeOverlay();
-        activity.tab = screenIndex;
+        activity.tab = index;
         syncVisibility(false);
         for (int i = 0; i < screens.length; i++) {
             View screen = screens[i];
             screen.animate().cancel();
-            screen.setVisibility(i == screenIndex ? View.VISIBLE : View.GONE);
+            screen.setVisibility(i == index ? View.VISIBLE : View.GONE);
             screen.setAlpha(1f);
             screen.setTranslationY(0f);
         }
-        View selected = screens[screenIndex];
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-            selected.setAlpha(1f); selected.setTranslationY(0f);
-        } else {
+        View selected = screens[index];
+        if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
             selected.setAlpha(0f); selected.setTranslationY(ToxiVisualSystem.dp(8));
             selected.animate().alpha(1f).translationY(0f).setDuration(180)
                     .setInterpolator(new DecelerateInterpolator()).start();
         }
-        if (screenIndex == 0) {
+        if (index == 0) {
             activity.buildHome();
             activity.homeScroll.post(() -> activity.homeScroll.scrollTo(0, 0));
-        } else if (screenIndex == 1) {
-            if (activity.filesView.cur == null) {
-                String configured = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
-                File start = configured != null && new File(configured).isDirectory()
-                        ? new File(configured) : Environment.getExternalStorageDirectory();
-                activity.filesView.showDir(start);
-            }
-        } else if (screenIndex == 2) activity.buildTools();
+        } else if (index == 1 && activity.filesView.cur == null) {
+            String configured = ToxiVisualSystem.PREFERENCES.getString("default_folder", null);
+            File start = configured != null && new File(configured).isDirectory()
+                    ? new File(configured) : Environment.getExternalStorageDirectory();
+            activity.filesView.showDir(start);
+        } else if (index == 2) activity.buildTools();
         else activity.buildSettings();
     }
     void handleBackNavigation() {
@@ -67,15 +60,10 @@ final class MainNavigationController {
         activity.finish();
     }
     void syncVisibility(boolean selecting) {
-        if (navigationBar == null) return;
-        navigationBar.setVisible(activity.currentOverlay() == null && !selecting);
+        if (navigationBar != null) navigationBar.setVisible(activity.currentOverlay() == null && !selecting);
     }
-    void applyBottomInset() {
-        if (navigationBar != null) { navigationBar.applyBottomInset(); navigationBar.setImeVisible(imeVisible); }
-    }
+    void applyBottomInset() { if (navigationBar != null) { navigationBar.applyBottomInset(); navigationBar.setImeVisible(imeVisible); } }
     void setImeVisible(boolean visible) { imeVisible = visible; if (navigationBar != null) navigationBar.setImeVisible(visible); }
     void moveHighlight(int index) { if (navigationBar != null) navigationBar.moveHighlight(index); }
-    void recolor(int selectedIndex) {
-        if (navigationBar != null) navigationBar.recolor(selectedIndex == 3 ? 4 : selectedIndex);
-    }
+    void recolor(int selectedIndex) { if (navigationBar != null) navigationBar.recolor(Math.max(0, Math.min(3, selectedIndex))); }
 }

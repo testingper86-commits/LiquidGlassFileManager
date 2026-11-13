@@ -481,8 +481,16 @@ public class MainActivity extends ComponentActivity {
         buildHome();
         buildTools();
         buildSettings();
-        if (vault.getChildCount() > 0) buildVault();
-        if (recycle.getChildCount() > 0) buildRecycleBin();
+        View activeOverlay = currentOverlay();
+        if (vaultScroll != null && (vault.getChildCount() > 0 || activeOverlay == vaultScroll)) buildVault();
+        if (recycleScroll != null && (recycle.getChildCount() > 0 || activeOverlay == recycleScroll)) buildRecycleBin();
+        if (activeOverlay == themeScroll) buildThemeScreen();
+        else if (activeOverlay == aboutScroll) {
+            AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
+            aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
+        } else if (activeOverlay == favView) favView.refreshFavs();
+        if (activeOverlay == listView) listView.recolor();
+        if (activeOverlay != null) activeOverlay.invalidate();
     }
 
     // ---------------- HOME ----------------
