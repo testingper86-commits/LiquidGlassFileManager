@@ -90,18 +90,18 @@ final class AboutScreenBuilder {
         LinearLayout profile = new LinearLayout(activity);
         profile.setOrientation(LinearLayout.VERTICAL);
         profile.setGravity(Gravity.CENTER_HORIZONTAL);
-        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(26));
+        profile.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(24));
         profile.setBackground(ToxiVisualSystem.surface(28, true));
         profile.setElevation(0f);
         FrameLayout avatarFrame = new FrameLayout(activity);
         GradientDrawable avatarHalo = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiVisualSystem.ACCENT, ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX],
-                        Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT))});
+                        Color.argb(70, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT))});
         avatarHalo.setShape(GradientDrawable.OVAL);
-        avatarHalo.setStroke(ToxiVisualSystem.dp(1), Color.argb(210, 255, 255, 255));
+        avatarHalo.setStroke(ToxiVisualSystem.dp(2), Color.argb(225, 255, 255, 255));
         avatarFrame.setBackground(avatarHalo);
         avatarFrame.setElevation(0f);
-        avatarFrame.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
+        avatarFrame.setPadding(ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(6));
         ImageView avatar = new ImageView(activity);
         // Load the supplied creator portrait directly from the packaged drawable.
         // Avoid eager BitmapFactory decoding, which can leave only a blank background.
@@ -117,13 +117,13 @@ final class AboutScreenBuilder {
             }
         });
         FrameLayout.LayoutParams avatarParams = new FrameLayout.LayoutParams(
-                ToxiVisualSystem.dp(124), ToxiVisualSystem.dp(124), Gravity.CENTER);
+                ToxiVisualSystem.dp(132), ToxiVisualSystem.dp(132), Gravity.CENTER);
         avatarFrame.addView(avatar, avatarParams);
-        profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(136), ToxiVisualSystem.dp(136)));
+        profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(144), ToxiVisualSystem.dp(144)));
         TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
         name.setLetterSpacing(0.10f);
         name.setGravity(Gravity.CENTER);
-        name.setPadding(0, ToxiVisualSystem.dp(13), 0, 0);
+        name.setPadding(0, ToxiVisualSystem.dp(15), 0, 0);
         profile.addView(name);
         TextView role = aboutText("Corporate Professional · Coder · Gamer · Tech Enthusiast", 12.5f, ABOUT_MUTED, false);
         role.setGravity(Gravity.CENTER);

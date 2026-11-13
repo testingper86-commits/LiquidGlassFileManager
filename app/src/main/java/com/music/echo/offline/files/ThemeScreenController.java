@@ -58,9 +58,9 @@ final class ThemeScreenController {
         ImageView glyph = new ImageView(activity);
         glyph.setImageResource(themePoster(ToxiVisualSystem.THEME_INDEX));
         glyph.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        glyph.setPadding(ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7), ToxiVisualSystem.dp(7));
+        glyph.setPadding(0, 0, 0, 0);
         mark.addView(glyph, new FrameLayout.LayoutParams(-1, -1));
-        current.addView(mark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(54), ToxiVisualSystem.dp(54)));
+        current.addView(mark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(62), ToxiVisualSystem.dp(82)));
         LinearLayout active = new LinearLayout(activity);
         active.setOrientation(LinearLayout.VERTICAL);
         active.setPadding(ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(8), 0);
@@ -86,14 +86,14 @@ final class ThemeScreenController {
             tile.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9));
             tile.setBackground(selected ? ToxiVisualSystem.accentSurface(22) : ToxiVisualSystem.surface(22, true));
             tile.setElevation(ToxiVisualSystem.dp(selected ? 4 : 1));
-            tile.setMinimumHeight(ToxiVisualSystem.dp(84));
+            tile.setMinimumHeight(ToxiVisualSystem.dp(122));
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
             poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
             poster.setBackground(ToxiVisualSystem.surface(14, true));
             poster.setClipToOutline(true);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " poster artwork");
-            tile.addView(poster, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(52), ToxiVisualSystem.dp(68)));
+            tile.addView(poster, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(76), ToxiVisualSystem.dp(104)));
             LinearLayout text = new LinearLayout(activity);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(6), 0);

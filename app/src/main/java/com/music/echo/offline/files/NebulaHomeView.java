@@ -439,17 +439,26 @@ final class NebulaHomeView {
     static GradientDrawable navigationSurface() {
         syncPalette();
         float density = Resources.getSystem().getDisplayMetrics().density;
-        int top = Color.argb(232, Color.red(PANEL_ALT), Color.green(PANEL_ALT), Color.blue(PANEL_ALT));
-        int bottom = Color.argb(218, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL));
-        int edge = Color.argb(150, Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
+        int top = Color.argb(246, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
+        int bottom = Color.argb(238, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL));
+        int edge = Color.argb(185, Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
-        glass.setCornerRadius(22 * density);
+        glass.setCornerRadius(25 * density);
         glass.setStroke(Math.max(1, Math.round(density)), edge);
         return glass;
     }
 
-    static GradientDrawable navigationHighlight() { syncPalette(); return background(Color.argb(34, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), Color.argb(100, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), 16); }
+    static GradientDrawable navigationHighlight() {
+        syncPalette();
+        GradientDrawable active = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(48, Color.red(LIME), Color.green(LIME), Color.blue(LIME)),
+                        Color.argb(22, Color.red(ICE), Color.green(ICE), Color.blue(ICE))});
+        active.setCornerRadius(18 * Resources.getSystem().getDisplayMetrics().density);
+        active.setStroke(Math.max(1, Math.round(Resources.getSystem().getDisplayMetrics().density)),
+                Color.argb(190, Color.red(LIME), Color.green(LIME), Color.blue(LIME)));
+        return active;
+    }
 
     static Drawable navigationItemSurface() { syncPalette(); return new RippleDrawable(ColorStateList.valueOf(Color.argb(32, Color.red(TEXT), Color.green(TEXT), Color.blue(TEXT))), null, null); }
 
