@@ -22,7 +22,7 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
             inactiveColor = ToxiVisualSystem.EDGE_STROKE;
         }
         setSplitTrack(false);
-        setPadding(Math.max(getPaddingLeft(), (int)(ToxiThemeEngine.spacing(8f)*density)), Math.max(getPaddingTop(), (int)(ToxiThemeEngine.spacing(9f)*density)), Math.max(getPaddingRight(), (int)(8*density)), Math.max(getPaddingBottom(), (int)(9*density)));
+        setPadding(Math.max(getPaddingLeft(), (int)(ToxiThemeEngine.spacing(8f)*density)), Math.max(getPaddingTop(), (int)(ToxiThemeEngine.spacing(9f)*density)), Math.max(getPaddingRight(), (int)(ToxiThemeEngine.spacing(8f)*density)), Math.max(getPaddingBottom(), (int)(ToxiThemeEngine.spacing(9f)*density)));
         setProgressDrawable(null);
         setThumb(null);
         setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x00000000));
