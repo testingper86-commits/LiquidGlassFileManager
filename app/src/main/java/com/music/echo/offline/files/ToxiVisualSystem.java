@@ -216,6 +216,35 @@ final class ToxiVisualSystem {
         }
     }
 
+    /** Apply the profile's silhouette rather than reducing every identity to one rounded rectangle. */
+    private static void applyGeometry(GradientDrawable drawable, float radiusDp) {
+        float radius = dp(ToxiThemeEngine.radius(radiusDp));
+        float a = radius, b = radius, c = radius, d = radius;
+        switch (ToxiThemeEngine.profile().geometry) {
+            case VOYAGE:
+                b = radius * 0.72f;
+                d = radius * 0.72f;
+                break;
+            case SHINOBI:
+                a = radius * 0.48f;
+                c = radius * 0.48f;
+                break;
+            case BREATHING:
+                a = radius * 0.68f;
+                b = radius * 0.68f;
+                c = radius * 1.16f;
+                d = radius * 1.16f;
+                break;
+            case ULTRA:
+                a = b = c = d = radius * 1.28f;
+                break;
+            case FORTRESS:
+                a = b = c = d = Math.max(dp(3), radius * 0.38f);
+                break;
+        }
+        drawable.setCornerRadii(new float[]{a, a, b, b, c, c, d, d});
+    }
+
     /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
     static Drawable auroraBackground() { return new ToxiAuroraDrawable(); }
 
@@ -229,7 +258,7 @@ final class ToxiVisualSystem {
                 Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
         GradientDrawable base = new GradientDrawable(materialOrientation(),
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
-        base.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
+        applyGeometry(base, radiusDp);
         ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
         int titaniumEdge = blend(EDGE_STROKE, CHROME,
                 LIGHT_MODE ? 0.30f : 0.30f + (0.38f * profile.edgeStrength));
@@ -240,7 +269,7 @@ final class ToxiVisualSystem {
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
-        glass.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
+        applyGeometry(glass, radiusDp);
         glass.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.6f))), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 68 : 104),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
@@ -269,7 +298,7 @@ final class ToxiVisualSystem {
     static Drawable accentSurface(float radiusDp) {
         GradientDrawable accent = new GradientDrawable(materialOrientation(),
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
-        accent.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
+        applyGeometry(accent, radiusDp);
         accent.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.9f))), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 140 : 175),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         return accent;
@@ -293,8 +322,8 @@ final class ToxiVisualSystem {
         ImageView view = new ImageView(context);
         view.setImageDrawable(ToxiIcons.symbol(symbol, color));
         view.setPadding(dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)));
-        view.setMinimumWidth(dp(48));
-        view.setMinimumHeight(dp(48));
+        view.setMinimumWidth(dp(ToxiThemeEngine.touchTarget(48)));
+        view.setMinimumHeight(dp(ToxiThemeEngine.touchTarget(48)));
         view.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
         view.setScaleType(ImageView.ScaleType.FIT_CENTER);
         view.setBackground(surface(14, true));
@@ -335,9 +364,19 @@ final class ToxiVisualSystem {
     }
 
 
-    /** Staggered entrance for screen-level panels; disabled when the user requests reduced motion. */
+    private static boolean motionAllowed(Context context) {
+        if (booleanPreference("reduce_motion", false)) return false;
+        try {
+            return Settings.Global.getFloat(context.getContentResolver(),
+                    Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f;
+        } catch (RuntimeException unavailable) {
+            return true;
+        }
+    }
+
+    /** Staggered entrance for screen-level panels; follows both app and system motion settings. */
     static void revealChildren(ViewGroup group) {
-        if (group == null || booleanPreference("reduce_motion", false)) return;
+        if (group == null || !motionAllowed(group.getContext())) return;
         group.post(() -> {
             if (!group.isAttachedToWindow()) return;
             int visibleIndex = 0;
@@ -358,7 +397,7 @@ final class ToxiVisualSystem {
 
     /** Restrained spring response for touch targets, with no animation under reduced motion. */
     static void touchSpring(View view) {
-        if (view == null || booleanPreference("reduce_motion", false)) return;
+        if (view == null || !motionAllowed(view.getContext())) return;
         view.animate().cancel();
         float pressScale = 1f - (0.025f * ToxiThemeEngine.profile().motionScale);
         view.setScaleX(pressScale);
