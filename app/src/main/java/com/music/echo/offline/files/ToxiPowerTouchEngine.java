@@ -29,10 +29,6 @@ final class ToxiPowerTouchEngine {
         target.addOnAttachStateChangeListener(feedback);
     }
 
-    private boolean reducedMotion() {
-        return !ToxiVisualSystem.motionAllowed(target.getContext());
-    }
-
     private static final class TouchFeedback implements View.OnTouchListener, View.OnAttachStateChangeListener {
         private final View target;
         private final float threshold;
@@ -46,6 +42,10 @@ final class ToxiPowerTouchEngine {
         TouchFeedback(View target, float threshold) {
             this.target = target;
             this.threshold = threshold;
+        }
+
+        private boolean reducedMotion() {
+            return !ToxiVisualSystem.motionAllowed(target.getContext());
         }
 
         @Override public boolean onTouch(View view, MotionEvent event) {
