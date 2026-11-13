@@ -106,13 +106,15 @@ final class SafBrowserController {
                     if (row.directory) showSafLevel(tree, childUri, row.name);
                     else importSafDoc(childUri, row.name);
                 }).setNegativeButton("Close", null).create();
-                listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
+                listing.setOnShowListener(ignored -> {
+                    ToxiVisualSystem.styleDialog(listing);
+                    listing.getListView().setOnItemLongClickListener(
                         (parent, view, position, id) -> {
                             SafStorageOperations.DirectoryEntry row = rows.get(position);
                             Uri selected = SafStorageOperations.documentUriInTree(tree, row.documentId);
                             showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
                             return true;
-                        }));
+                        });
                 listing.show();
             });
         });

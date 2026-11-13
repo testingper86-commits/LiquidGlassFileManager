@@ -108,7 +108,7 @@ final class ToxiVisualSystem {
 
         @Override public AlertDialog show() {
             AlertDialog dialog = super.show();
-            applyDialogStyle(dialog);
+            styleDialog(dialog);
             return dialog;
         }
 
@@ -119,7 +119,7 @@ final class ToxiVisualSystem {
         }
     }
 
-    private static void applyDialogStyle(AlertDialog dialog) {
+    static void styleDialog(AlertDialog dialog) {
         if (dialog == null) return;
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(surface(24, true));

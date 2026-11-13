@@ -591,6 +591,7 @@ final class BrowserView extends FrameLayout {
         java.util.concurrent.atomic.AtomicBoolean dismissed = new java.util.concurrent.atomic.AtomicBoolean(false);
         dialog.setOnDismissListener(d -> dismissed.set(true));
         dialog.setOnShowListener(d -> {
+            ToxiVisualSystem.styleDialog(dialog);
             a.executeIo(() -> {
                 long[] total = new long[2];
                 boolean complete = true;
