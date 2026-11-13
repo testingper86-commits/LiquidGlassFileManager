@@ -335,7 +335,7 @@ final class AboutScreenBuilder {
         markerColumn.addView(dot, dotParams);
         if (!last) {
             View line = new View(activity);
-            line.setBackgroundColor(Color.argb(110, 0, 145, 172));
+            line.setBackgroundColor(Color.argb(110, Color.red(ABOUT_CYAN), Color.green(ABOUT_CYAN), Color.blue(ABOUT_CYAN)));
             LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(26)));
             lineParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
             markerColumn.addView(line, lineParams);
