@@ -47,7 +47,7 @@ final class ToxiIcons {
 
     private static final class SymbolDrawable extends Drawable {
         final int id; final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        SymbolDrawable(int id,int color) { this.id=id; p.setColor(color); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.15f); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND); }
+        SymbolDrawable(int id,int color) { this.id=id; p.setColor(color); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(ToxiThemeEngine.iconStroke()); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND); }
         void line(Canvas c,float x1,float y1,float x2,float y2){c.drawLine(x1,y1,x2,y2,p);}
         void circle(Canvas c,float x,float y,float r){c.drawCircle(x,y,r,p);}
         void rect(Canvas c,float l,float t,float r,float b,float rad){c.drawRoundRect(new RectF(l,t,r,b),rad,rad,p);}
@@ -112,7 +112,48 @@ final class ToxiIcons {
                 case SETTINGS: circle(canvas,12,12,3);circle(canvas,12,12,8);line(canvas,12,1.5f,12,4);line(canvas,12,20,12,22.5f);line(canvas,1.5f,12,4,12);line(canvas,20,12,22.5f,12);line(canvas,4.5f,4.5f,6.3f,6.3f);line(canvas,17.7f,17.7f,19.5f,19.5f);line(canvas,19.5f,4.5f,17.7f,6.3f);line(canvas,6.3f,17.7f,4.5f,19.5f);break;
                 default: path(canvas,5,3,15,3,20,8,20,21,5,21,5,3);path(canvas,15,3,15,8,20,8);break;
             }
+            drawIdentityTreatment(canvas);
             canvas.restoreToCount(save);
+        }
+        private void drawIdentityTreatment(Canvas canvas) {
+            ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
+            int originalColor = p.getColor();
+            Paint.Style originalStyle = p.getStyle();
+            float originalWidth = p.getStrokeWidth();
+            p.setColor(ToxiThemeSystem.CHROME[profile.index]);
+            p.setAlpha(72);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(0.8f);
+            switch (profile.geometry) {
+                case VOYAGE:
+                    canvas.drawArc(new RectF(1.5f,1.5f,22.5f,22.5f),205,58,false,p);
+                    canvas.drawCircle(19.2f,4.8f,1.15f,p);
+                    break;
+                case SHINOBI:
+                    canvas.drawLine(17.2f,2.5f,21.5f,6.8f,p);
+                    canvas.drawLine(18.8f,1.5f,22.5f,5.2f,p);
+                    break;
+                case BREATHING:
+                    Path wave = new Path();
+                    wave.moveTo(2.2f,19.8f); wave.cubicTo(7f,18f,8f,7f,14f,5f);
+                    wave.cubicTo(17f,4f,19f,6f,21.5f,3f);
+                    canvas.drawPath(wave,p);
+                    break;
+                case ULTRA:
+                    canvas.drawCircle(12f,12f,10.3f,p);
+                    canvas.drawCircle(12f,12f,1.1f,p);
+                    break;
+                case FORTRESS:
+                    canvas.drawLine(2f,3f,2f,8f,p);
+                    canvas.drawLine(2f,3f,7f,3f,p);
+                    canvas.drawLine(22f,16f,22f,21f,p);
+                    canvas.drawLine(17f,21f,22f,21f,p);
+                    break;
+            }
+            p.setColor(originalColor);
+            p.setAlpha(255);
+            p.setStyle(originalStyle);
+            p.setStrokeWidth(originalWidth);
         }
         @Override public void setAlpha(int alpha){p.setAlpha(alpha);}
         @Override public void setColorFilter(ColorFilter filter){p.setColorFilter(filter);}

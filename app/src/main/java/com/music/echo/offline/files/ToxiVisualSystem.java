@@ -61,17 +61,18 @@ final class ToxiVisualSystem {
     }
 
     static String fontFamily() {
-        if (PREFERENCES == null) return "sans-serif";
-        switch (PREFERENCES.getInt("font_family", 0)) {
+        int preference = PREFERENCES == null ? 0 : PREFERENCES.getInt("font_family", 0);
+        switch (preference) {
             case 1: return "sans-serif-rounded";
             case 2: return "serif";
             case 3: return "monospace";
-            default: return "sans-serif";
+            default: return ToxiThemeEngine.profile().typeface;
         }
     }
 
     static void applyTheme(int index, boolean save) {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
+        ToxiThemeEngine.activate(THEME_INDEX);
         LIGHT_MODE = PREFERENCES != null && PREFERENCES.getBoolean("light", false);
         ACCENT = ToxiThemeSystem.ACCENTS[THEME_INDEX];
         CHROME = ToxiThemeSystem.CHROME[THEME_INDEX];
@@ -103,7 +104,7 @@ final class ToxiVisualSystem {
                 Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
         GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
-        base.setCornerRadius(dp(radiusDp));
+        base.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
         int titaniumEdge = blend(EDGE_STROKE, CHROME, LIGHT_MODE ? 0.30f : 0.58f);
         base.setStroke(Math.max(1, dp(0.9f)), titaniumEdge);
 
@@ -111,7 +112,7 @@ final class ToxiVisualSystem {
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
-        glass.setCornerRadius(dp(radiusDp));
+        glass.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
         glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(LIGHT_MODE ? 68 : 104,
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
