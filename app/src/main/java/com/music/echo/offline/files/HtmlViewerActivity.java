@@ -38,6 +38,8 @@ public final class HtmlViewerActivity extends ComponentActivity {
     private WebView webView;
 
     @Override protected void onCreate(Bundle state) {
+        boolean lightAppearance = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
+        setTheme(lightAppearance ? com.music.echo.offline.R.style.AppTheme_Light : com.music.echo.offline.R.style.AppTheme);
         super.onCreate(state);
         ToxiBackNavigation.bind(this, this::finish);
         ToxiVisualSystem.initialize(this);
@@ -62,6 +64,13 @@ public final class HtmlViewerActivity extends ComponentActivity {
 
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            int flags = getWindow().getDecorView().getSystemUiVisibility();
+            int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (android.os.Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE
+                    ? flags | lightFlags : flags & ~lightFlags);
+        }
         FrameLayout root = new FrameLayout(this);
         root.setBackground(ToxiVisualSystem.auroraBackground());
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
