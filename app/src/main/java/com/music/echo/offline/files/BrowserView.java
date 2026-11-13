@@ -294,7 +294,7 @@ final class BrowserView extends FrameLayout {
         search.setBackground(ToxiVisualSystem.surface(18, true));
         selBar.setBackground(ToxiVisualSystem.surface(18, true));
         pasteBtn.setBackground(ToxiVisualSystem.accentSurface(18));
-        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
+        prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.signalTextColor()));
         empty.setTextColor(ToxiVisualSystem.TEXT_SECONDARY);
         int firstVisible = lv.getFirstVisiblePosition();
         View firstChild = lv.getChildAt(0);
@@ -913,8 +913,8 @@ final class BrowserView extends FrameLayout {
         final EditText start = input("1");
         final EditText increment = input("1");
         final EditText padding = input("1");
-        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); numbering.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
-        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT)); preserve.setChecked(true);
+        final CheckBox numbering = new CheckBox(a); numbering.setText("Append sequential number"); numbering.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); numbering.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.signalTextColor()));
+        final CheckBox preserve = new CheckBox(a); preserve.setText("Preserve file extensions (default)"); preserve.setTextColor(ToxiVisualSystem.TEXT_PRIMARY); preserve.setButtonTintList(ColorStateList.valueOf(ToxiVisualSystem.signalTextColor())); preserve.setChecked(true);
         final Spinner capitalization = new Spinner(a);
         ArrayAdapter<String> cases = new ArrayAdapter<String>(a, android.R.layout.simple_spinner_item,
                 new String[]{"Keep capitalization", "lowercase", "UPPERCASE", "Title Case"}) {
