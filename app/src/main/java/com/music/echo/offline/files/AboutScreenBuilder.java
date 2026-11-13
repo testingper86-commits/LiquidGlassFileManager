@@ -131,7 +131,7 @@ final class AboutScreenBuilder {
         profile.addView(role, new LinearLayout.LayoutParams(-1, -2));
         TextView tagline = aboutText("“Building ideas into experiences that matter.”", 14, ABOUT_TEXT, false);
         tagline.setGravity(Gravity.CENTER);
-        tagline.setTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
+        tagline.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.ITALIC));
         tagline.setPadding(0, ToxiVisualSystem.dp(15), 0, 0);
         profile.addView(tagline, new LinearLayout.LayoutParams(-1, -2));
         about.addView(profile, lpm(-1, -2, 16, 0, 16, 8));
@@ -210,7 +210,7 @@ final class AboutScreenBuilder {
         about.addView(thanks, lpm(-1, -2, 16, 0, 16, 8));
         TextView signoff = aboutText("“Stay curious. Keep creating. Never stop improving.”", 13, ABOUT_TEXT, false);
         signoff.setGravity(Gravity.CENTER);
-        signoff.setTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
+        signoff.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.ITALIC));
         about.addView(signoff, lpm(-1, -2, 16, 0, 16, 8));
         TextView copyright = aboutText("© 2026 CHANDU · PERSONAL PROFILE", 10.5f, ABOUT_MUTED, true);
         copyright.setLetterSpacing(0.08f);
@@ -308,7 +308,7 @@ final class AboutScreenBuilder {
         accent.setBackgroundColor(ABOUT_CYAN);
         card.addView(accent, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(3), -1));
         TextView quote = aboutText(value, 12.5f, ABOUT_TEXT, false);
-        quote.setTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
+        quote.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.ITALIC));
         quote.setLineSpacing(ToxiVisualSystem.dp(2), 1.03f);
         quote.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
         card.addView(quote, new LinearLayout.LayoutParams(0, -2, 1f));

@@ -1154,10 +1154,10 @@ public class MainActivity extends ComponentActivity {
                 start += sweep;
             }
             t.setColor(ToxiVisualSystem.TEXT_PRIMARY);
-            t.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+            t.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
             t.setTextSize(ToxiVisualSystem.dp(22));
             c.drawText(big, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(5), t);
-            t.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+            t.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.NORMAL));
             t.setTextSize(ToxiVisualSystem.dp(11));
             t.setColor(ToxiVisualSystem.TEXT_SECONDARY);
             c.drawText(small, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(21), t);

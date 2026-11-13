@@ -84,7 +84,7 @@ final class VaultScreenController {
         hero.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
         hero.setBackground(ToxiVisualSystem.accentSurface(26));
         TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, 0xFFFFFFFF, true);
-        emblem.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        emblem.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.NORMAL));
         hero.addView(emblem);
         hero.addView(ToxiVisualSystem.text(activity, "Your files. Your boundary.", 19, 0xFFFFFFFF, true), params(0, 8, 0, 5));
         hero.addView(ToxiVisualSystem.text(activity,
