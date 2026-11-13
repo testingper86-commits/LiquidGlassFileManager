@@ -291,8 +291,8 @@ final class ToxiVisualSystem {
         ImageView view = new ImageView(context);
         view.setImageDrawable(ToxiIcons.symbol(symbol, color));
         view.setPadding(dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)));
-        view.setMinimumWidth(dp(ToxiThemeEngine.touchTarget(48)));
-        view.setMinimumHeight(dp(ToxiThemeEngine.touchTarget(48)));
+        view.setMinimumWidth(dp(48));
+        view.setMinimumHeight(dp(48));
         view.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
         view.setScaleType(ImageView.ScaleType.FIT_CENTER);
         view.setBackground(surface(14, true));
