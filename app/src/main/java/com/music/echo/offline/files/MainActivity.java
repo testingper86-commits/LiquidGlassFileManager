@@ -518,7 +518,7 @@ public class MainActivity extends ComponentActivity {
     TextView section(String t) {
         TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setLetterSpacing(0.08f);
-        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setText(t.toUpperCase(java.util.Locale.ROOT));
         setLeadingIcon(v, ToxiIcons.NEXT);
         v.setGravity(Gravity.CENTER_VERTICAL);
@@ -555,7 +555,7 @@ public class MainActivity extends ComponentActivity {
     TextView sectionLabel(String t) {
         TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setLetterSpacing(0.08f);
-        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setGravity(Gravity.CENTER_VERTICAL);
         v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)));
         v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
