@@ -695,7 +695,7 @@ final class BrowserView extends FrameLayout {
             ToxiVisualSystem.clipRound(thumb, 12);
             FrameLayout.LayoutParams thumbLp = new FrameLayout.LayoutParams(
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(columns <= 2 ? 76 : 68)),
-                    ToxiVisualSystem.dp(columns <= 2 ? 76 : 68), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(columns <= 2 ? 76 : 68)), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             tile.addView(thumb, thumbLp);
             TextView nameTv = ToxiVisualSystem.text(a, "", 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
             nameTv.setMaxLines(2);

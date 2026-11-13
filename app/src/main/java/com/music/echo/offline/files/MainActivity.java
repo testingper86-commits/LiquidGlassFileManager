@@ -632,7 +632,7 @@ public class MainActivity extends ComponentActivity {
             if (i == 0 || groupForItem[i] != groupForItem[i - 1]) {
                 TextView group = ToxiVisualSystem.text(this, groupNames[groupForItem[i]], 10.5f, ToxiVisualSystem.ACCENT, true);
                 group.setLetterSpacing(0.09f);
-                group.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(i == 0 ? 4 : 14), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
+                group.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(i == 0 ? 4 : 14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
                 menu.addView(group, new LinearLayout.LayoutParams(-1, -2));
             }
             LinearLayout item = new LinearLayout(this);
@@ -783,7 +783,7 @@ public class MainActivity extends ComponentActivity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackground(ToxiVisualSystem.surface(18, false));
         row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
-        row.setMinimumHeight(ToxiVisualSystem.dp(sub == null ? 64 : 78));
+        row.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(sub == null ? 64 : 78)));
         FrameLayout symbolPlate = new FrameLayout(this);
         symbolPlate.setBackground(ToxiVisualSystem.surface(13, true));
         ImageView symbol = new ImageView(this);
