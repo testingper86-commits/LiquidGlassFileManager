@@ -52,6 +52,7 @@ public final class ToxiThemeSystemTest {
         assertEquals(5, geometries.size());
         assertEquals(5, materials.size());
         assertTrue(typefaces.size() >= 3);
+        ToxiThemeEngine.activate(0);
     }
 
     @Test public void themeEngineNormalizesInvalidSavedIndexes() {
