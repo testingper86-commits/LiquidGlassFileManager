@@ -167,7 +167,7 @@ final class ThemeScreenController {
         identity.setLetterSpacing(0.09f);
         actions.addView(identity, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView action = ToxiVisualSystem.text(activity, "OPEN FOLDER", 10,
-                Color.WHITE, true);
+                ToxiVisualSystem.accentForeground(), true);
         action.setGravity(Gravity.CENTER);
         action.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)),
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),

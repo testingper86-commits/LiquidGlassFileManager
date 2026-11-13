@@ -177,6 +177,17 @@ final class ToxiVisualSystem {
         }
     }
 
+    /** High-contrast foreground for controls rendered on the active accent material. */
+    static int accentForeground() {
+        return Color.luminance(ACCENT) > 0.42f ? 0xFF101820 : Color.WHITE;
+    }
+
+    static int accentForeground(int alpha) {
+        int color = accentForeground();
+        return Color.argb(Math.max(0, Math.min(255, alpha)),
+                Color.red(color), Color.green(color), Color.blue(color));
+    }
+
     static String themeDescription(int index) { return ToxiThemeSystem.description(index); }
     static boolean booleanPreference(String key, boolean fallback) { return PREFERENCES != null && PREFERENCES.getBoolean(key, fallback); }
     static void setBooleanPreference(String key, boolean value) { if (PREFERENCES != null) PREFERENCES.edit().putBoolean(key, value).apply(); }

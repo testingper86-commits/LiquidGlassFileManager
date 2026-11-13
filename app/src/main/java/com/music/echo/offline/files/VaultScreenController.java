@@ -83,13 +83,13 @@ final class VaultScreenController {
         hero.setOrientation(LinearLayout.VERTICAL);
         hero.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)));
         hero.setBackground(ToxiVisualSystem.accentSurface(26));
-        TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, 0xFFFFFFFF, true);
+        TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, ToxiVisualSystem.accentForeground(), true);
         emblem.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.NORMAL));
         hero.addView(emblem);
         hero.addView(ToxiVisualSystem.text(activity, "Your files. Your boundary.", 19, 0xFFFFFFFF, true), params(0, 8, 0, 5));
         hero.addView(ToxiVisualSystem.text(activity,
                 "Protected file contents use AES-256 encryption with a key held by Android Keystore.",
-                12, 0xEFFFFFFF, false));
+                12, ToxiVisualSystem.accentForeground(239), false));
         LinearLayout metrics = new LinearLayout(activity);
         metrics.setGravity(Gravity.CENTER_VERTICAL);
         metrics.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(17)), 0, 0);
@@ -135,7 +135,7 @@ final class VaultScreenController {
         LinearLayout block = new LinearLayout(activity);
         block.setOrientation(LinearLayout.VERTICAL);
         block.addView(ToxiVisualSystem.text(activity, value, 19, 0xFFFFFFFF, true));
-        TextView caption = ToxiVisualSystem.text(activity, label, 8, 0xDFFFFFFF, true);
+        TextView caption = ToxiVisualSystem.text(activity, label, 8, ToxiVisualSystem.accentForeground(223), true);
         caption.setLetterSpacing(0.12f);
         caption.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0);
         block.addView(caption);
