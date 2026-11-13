@@ -179,6 +179,41 @@ final class ThemeScreenController {
         ToxiVisualSystem.interactive(action);
         actions.addView(action, new LinearLayout.LayoutParams(-2, -2));
         preview.addView(actions);
+
+        LinearLayout states = new LinearLayout(activity);
+        states.setGravity(Gravity.CENTER_VERTICAL);
+        states.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, 0);
+        TextView ready = ToxiVisualSystem.text(activity, "READY", 9,
+                ToxiVisualSystem.accentForeground(), true);
+        ready.setGravity(Gravity.CENTER);
+        ready.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
+        ready.setBackground(ToxiVisualSystem.accentSurface(9));
+        states.addView(ready, new LinearLayout.LayoutParams(-2, -2));
+        TextView glass = ToxiVisualSystem.text(activity, "GLASS SURFACE", 9,
+                ToxiVisualSystem.TEXT_SECONDARY, true);
+        glass.setGravity(Gravity.CENTER);
+        glass.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
+        glass.setBackground(ToxiVisualSystem.surface(9, false));
+        LinearLayout.LayoutParams glassParams = new LinearLayout.LayoutParams(-2, -2);
+        glassParams.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7));
+        states.addView(glass, glassParams);
+        preview.addView(states);
+
+        android.widget.SeekBar sampleSeek = new android.widget.SeekBar(activity);
+        sampleSeek.setMax(100);
+        sampleSeek.setProgress(68);
+        sampleSeek.setContentDescription("Theme preview progress control");
+        sampleSeek.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+        ToxiVisualSystem.styleSeekBar(sampleSeek);
+        LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(-1, -2);
+        seekParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
+        preview.addView(sampleSeek, seekParams);
         panel.addView(preview, activity.lpm(-1, -2, 0, 0, 0, 12));
     }
 
