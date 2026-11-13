@@ -440,7 +440,7 @@ final class NebulaHomeView {
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{top, bottom});
         glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(25)));
-        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(1)), edge);
+        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), edge);
         return glass;
     }
 
@@ -450,7 +450,7 @@ final class NebulaHomeView {
                 new int[]{Color.argb(48, Color.red(LIME), Color.green(LIME), Color.blue(LIME)),
                         Color.argb(22, Color.red(ICE), Color.green(ICE), Color.blue(ICE))});
         active.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(18)));
-        active.setStroke(Math.max(1, ToxiVisualSystem.dp(1)),
+        active.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))),
                 Color.argb(190, Color.red(LIME), Color.green(LIME), Color.blue(LIME)));
         return active;
     }
@@ -461,7 +461,7 @@ final class NebulaHomeView {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
         d.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
-        d.setStroke(Math.max(1, ToxiVisualSystem.dp(1)), stroke);
+        d.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), stroke);
         return d;
     }
 

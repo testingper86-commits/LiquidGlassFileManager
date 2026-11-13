@@ -71,7 +71,7 @@ final class ToxiFileRow {
         h.name.setText(entry.name);
         String meta=entry.dir?"Folder":ToxiVisualSystem.formatSize(entry.len);
         h.sub.setText(meta+"  ·  "+ToxiVisualSystem.formatDate(entry.mod)+(extra!=null&&!extra.isEmpty()?"  ·  "+extra:""));
-        Thumbs.bind(h.icon,entry,ToxiVisualSystem.dp(48));
+        Thumbs.bind(h.icon,entry,ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48f)));
         h.bgNormal = ToxiVisualSystem.surface(18, false);
         h.bgSel = ToxiVisualSystem.accentSurface(18);
         GradientDrawable checked = new GradientDrawable();
@@ -90,6 +90,6 @@ final class ToxiFileRow {
     }
     static void applyLabel(Holder h,int colorIndex){
         if(colorIndex<0){h.labelDot.setVisibility(View.GONE);return;}
-        GradientDrawable dot=new GradientDrawable();dot.setShape(GradientDrawable.OVAL);dot.setColor(Labels.COLORS[colorIndex%Labels.COLORS.length]);dot.setStroke(ToxiVisualSystem.dp(1),ToxiVisualSystem.CANVAS);h.labelDot.setBackground(dot);h.labelDot.setVisibility(View.VISIBLE);
+        GradientDrawable dot=new GradientDrawable();dot.setShape(GradientDrawable.OVAL);dot.setColor(Labels.COLORS[colorIndex%Labels.COLORS.length]);dot.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f)),ToxiVisualSystem.CANVAS);h.labelDot.setBackground(dot);h.labelDot.setVisibility(View.VISIBLE);
     }
 }
