@@ -51,7 +51,7 @@ final class PrismNavigationDock {
         surface.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
     }
 
-    FrameLayout view() { return surface; }
+    View view() { return surface; }
     void setVisible(boolean visible) { surface.setVisibility(visible ? View.VISIBLE : View.GONE); }
     void setImeVisible(boolean visible) {
         imeVisible = visible;
