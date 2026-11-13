@@ -31,13 +31,13 @@ final class ToxiFileRow {
         h.row.setOrientation(LinearLayout.HORIZONTAL);
         h.row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         h.bgNormal=ToxiVisualSystem.surface(20,false); h.bgSel=ToxiVisualSystem.accentSurface(20); h.row.setBackground(h.bgNormal);
-        h.row.setElevation(ToxiVisualSystem.dp(1.5f));
+        h.row.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)));
         FrameLayout iconFrame=new FrameLayout(context);
         h.icon=new ImageView(context); h.icon.setScaleType(ImageView.ScaleType.CENTER_CROP); ToxiVisualSystem.clipRound(h.icon,12);
-        iconFrame.setBackground(ToxiVisualSystem.surface(15,true)); iconFrame.setPadding(ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3),ToxiVisualSystem.dp(3));
+        iconFrame.setBackground(ToxiVisualSystem.surface(15,true)); iconFrame.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)));
         iconFrame.addView(h.icon,new FrameLayout.LayoutParams(-1,-1));
         h.labelDot=new View(context); h.labelDot.setVisibility(View.GONE);
-        FrameLayout.LayoutParams dotLp=new FrameLayout.LayoutParams(ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(10),Gravity.BOTTOM|Gravity.END);
+        FrameLayout.LayoutParams dotLp=new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),Gravity.BOTTOM|Gravity.END);
         iconFrame.addView(h.labelDot,dotLp);
         LinearLayout.LayoutParams iconLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(50)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(50))); iconLp.rightMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14));
         h.row.addView(iconFrame,iconLp);
@@ -48,12 +48,12 @@ final class ToxiFileRow {
         LinearLayout.LayoutParams subLp=new LinearLayout.LayoutParams(-1,-2);subLp.topMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));labels.addView(h.sub,subLp);
         h.row.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
         h.more=new ImageView(context);h.more.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE,ToxiVisualSystem.TEXT_SECONDARY));
-        h.more.setPadding(ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(10),ToxiVisualSystem.dp(10));
+        h.more.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         h.more.setContentDescription("More options");ToxiVisualSystem.interactive(h.more);h.row.addView(h.more,new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40))));
-        h.check=new ImageView(context);h.check.setPadding(ToxiVisualSystem.dp(5),ToxiVisualSystem.dp(5),ToxiVisualSystem.dp(5),ToxiVisualSystem.dp(5));
+        h.check=new ImageView(context);h.check.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
         GradientDrawable on=new GradientDrawable();on.setShape(GradientDrawable.OVAL);on.setColor(ToxiVisualSystem.ACCENT);h.ckOn=on;
-        GradientDrawable off=new GradientDrawable();off.setShape(GradientDrawable.OVAL);off.setColor(Color.TRANSPARENT);off.setStroke(ToxiVisualSystem.dp(1.5f),ToxiVisualSystem.TEXT_SECONDARY);h.ckOff=off;
-        LinearLayout.LayoutParams checkLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28),ToxiVisualSystem.dp(28));checkLp.rightMargin=ToxiVisualSystem.dp(8);h.check.setVisibility(View.GONE);h.row.addView(h.check,checkLp);
+        GradientDrawable off=new GradientDrawable();off.setShape(GradientDrawable.OVAL);off.setColor(Color.TRANSPARENT);off.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)),ToxiVisualSystem.TEXT_SECONDARY);h.ckOff=off;
+        LinearLayout.LayoutParams checkLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)));checkLp.rightMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));h.check.setVisibility(View.GONE);h.row.addView(h.check,checkLp);
         h.root.addView(h.row,new FrameLayout.LayoutParams(-1,-2));h.root.setTag(h);return h.root;
     }
     static Holder holder(View view) {
@@ -81,7 +81,7 @@ final class ToxiFileRow {
         GradientDrawable unchecked = new GradientDrawable();
         unchecked.setShape(GradientDrawable.OVAL);
         unchecked.setColor(Color.TRANSPARENT);
-        unchecked.setStroke(ToxiVisualSystem.dp(1.5f), ToxiVisualSystem.TEXT_SECONDARY);
+        unchecked.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)), ToxiVisualSystem.TEXT_SECONDARY);
         h.ckOff = unchecked;
         h.more.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE, ToxiVisualSystem.TEXT_SECONDARY));
         h.row.setBackground(selected?h.bgSel:h.bgNormal);

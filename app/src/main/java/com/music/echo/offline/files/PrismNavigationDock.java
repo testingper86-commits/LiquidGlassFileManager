@@ -85,8 +85,9 @@ final class PrismNavigationDock {
                 ToxiVisualSystem.feedback(v);
                 if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
                     v.animate().cancel();
-                    v.setScaleX(0.94f);
-                    v.setScaleY(0.94f);
+                    float pressScale = 1f - (0.06f * ToxiThemeEngine.profile().motionScale);
+                    v.setScaleX(pressScale);
+                    v.setScaleY(pressScale);
                     v.animate().scaleX(1f).scaleY(1f).setDuration(ToxiThemeEngine.motionDuration(190L))
                             .setInterpolator(new android.view.animation.OvershootInterpolator(1.25f)).start();
                 }
@@ -168,7 +169,7 @@ final class PrismNavigationDock {
         if (target == null || target.getWidth() == 0 || target.getHeight() == 0) return;
         int x = tabGroup.getLeft() + target.getLeft();
         int y = tabGroup.getTop() + target.getTop();
-        int inset = ToxiVisualSystem.dp(5);
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
         FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(
                 Math.max(0, target.getWidth() - inset * 2),
                 Math.max(0, target.getHeight() - inset * 2));
@@ -221,7 +222,7 @@ final class PrismNavigationDock {
                 }
                 int left = tabGroup.getLeft() + target.getLeft();
                 int top = tabGroup.getTop() + target.getTop();
-                int inset = ToxiVisualSystem.dp(5);
+                int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
                 selection.animate().translationX(left + inset).translationY(top + inset).setDuration(ToxiThemeEngine.motionDuration(145L))
                         .setInterpolator(new DecelerateInterpolator(1.6f)).start();
             }

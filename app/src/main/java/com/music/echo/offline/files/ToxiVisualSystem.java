@@ -292,7 +292,7 @@ final class ToxiVisualSystem {
     static void clipRound(View view, final float radiusDp) {
         view.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View target, Outline outline) {
-                outline.setRoundRect(0, 0, target.getWidth(), target.getHeight(), dp(radiusDp));
+                outline.setRoundRect(0, 0, target.getWidth(), target.getHeight(), dp(ToxiThemeEngine.radius(radiusDp)));
             }
         });
         view.setClipToOutline(true);

@@ -22,10 +22,10 @@ final class ToxiPowerTouchEngine {
 
     static void attach(View target, int themeIndex) {
         if (target == null) return;
-        int color = ToxiThemeSystem.ACCENTS[ToxiThemeSystem.normalize(themeIndex)];
-        float threshold = SWIPE_DISTANCE_DP * ToxiThemeEngine.profile().motionScale
+        int normalizedTheme = ToxiThemeSystem.normalize(themeIndex);
+        float threshold = ToxiThemeEngine.spacing(SWIPE_DISTANCE_DP) * ToxiThemeEngine.profile().motionScale
                 * target.getResources().getDisplayMetrics().density;
-        TouchFeedback feedback = new TouchFeedback(target, color, threshold);
+        TouchFeedback feedback = new TouchFeedback(target, threshold);
         target.setOnTouchListener(feedback);
         target.addOnAttachStateChangeListener(feedback);
     }
@@ -36,7 +36,6 @@ final class ToxiPowerTouchEngine {
 
     private static final class TouchFeedback implements View.OnTouchListener, View.OnAttachStateChangeListener {
         private final View target;
-        private final int color;
         private final float threshold;
         private final Runnable charge = this::showCharge;
         private float downX, downY, lastX, lastY;
@@ -45,9 +44,8 @@ final class ToxiPowerTouchEngine {
         private ValueAnimator animator;
         private EffectDrawable drawable;
 
-        TouchFeedback(View target, int color, float threshold) {
+        TouchFeedback(View target, float threshold) {
             this.target = target;
-            this.color = color;
             this.threshold = threshold;
         }
 
@@ -85,8 +83,8 @@ final class ToxiPowerTouchEngine {
                 case MotionEvent.ACTION_UP:
                     cancelCharge();
                     if (valid && !reducedMotion()) {
-                        if (moved) animate(new EffectDrawable(color, downX, downY, lastX, lastY, false), ToxiThemeEngine.motionDuration(260L));
-                        else if (!charged) animate(new EffectDrawable(color, downX, downY, downX, downY, false), ToxiThemeEngine.motionDuration(220L));
+                        if (moved) animate(new EffectDrawable(downX, downY, lastX, lastY, false), ToxiThemeEngine.motionDuration(260L));
+                        else if (!charged) animate(new EffectDrawable(downX, downY, downX, downY, false), ToxiThemeEngine.motionDuration(220L));
                     }
                     resetGesture();
                     break;
@@ -104,7 +102,7 @@ final class ToxiPowerTouchEngine {
         private void showCharge() {
             if (valid && !moved && target.isAttachedToWindow() && target.isPressed() && !reducedMotion()) {
                 charged = true;
-                animate(new EffectDrawable(color, downX, downY, downX, downY, true), ToxiThemeEngine.motionDuration(360L));
+                animate(new EffectDrawable(downX, downY, downX, downY, true), ToxiThemeEngine.motionDuration(360L));
             }
         }
 
@@ -161,13 +159,11 @@ final class ToxiPowerTouchEngine {
 
     private static final class EffectDrawable extends Drawable {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final int color;
         private final float x1, y1, x2, y2;
         private final boolean charge;
         private float progress;
 
-        EffectDrawable(int color, float x1, float y1, float x2, float y2, boolean charge) {
-            this.color = color;
+        EffectDrawable(float x1, float y1, float x2, float y2, boolean charge) {
             this.x1 = x1;
             this.y1 = y1;
             this.x2 = x2;
@@ -183,24 +179,24 @@ final class ToxiPowerTouchEngine {
         @Override public void draw(Canvas canvas) {
             Rect bounds = getBounds();
             int save = canvas.save();
-            paint.setColor(color);
+            paint.setColor(ToxiVisualSystem.ACCENT);
             paint.setAlpha(Math.round(150f * (1f - progress)));
             if (charge) {
-                paint.setStrokeWidth(Math.max(1f, bounds.width() * .012f));
+                paint.setStrokeWidth(Math.max(1f, bounds.width() * .012f * ToxiThemeEngine.profile().iconStroke / 2f));
                 RectF ring = new RectF(x1 - 14f - progress * 8f, y1 - 14f - progress * 8f,
-                        x1 + 14f + progress * 8f, y1 + 14f + progress * 8f);
+                        x1 + ToxiThemeEngine.spacing(14f) + progress * ToxiThemeEngine.spacing(8f), y1 + 14f + progress * 8f);
                 canvas.drawArc(ring, -90f, progress * 350f, false, paint);
                 paint.setAlpha(Math.round(55f * (1f - progress)));
                 canvas.drawCircle(x1, y1, 14f + progress * 8f, paint);
             } else {
                 paint.setStrokeWidth(Math.max(1f, ToxiThemeEngine.profile().iconStroke * (1f - progress)));
-                canvas.drawCircle(x1, y1, 4f + progress * 25f, paint);
+                canvas.drawCircle(x1, y1, ToxiThemeEngine.spacing(4f) + progress * ToxiThemeEngine.spacing(25f), paint);
                 if (Math.hypot(x2 - x1, y2 - y1) > 8f) {
                     paint.setAlpha(Math.round(115f * (1f - progress)));
                     paint.setStrokeWidth(Math.max(1f, 3f * (1f - progress)));
                     Path trail = new Path();
                     trail.moveTo(x1, y1);
-                    trail.quadTo((x1 + x2) * .5f, (y1 + y2) * .5f - 8f, x2, y2);
+                    trail.quadTo((x1 + x2) * .5f, (y1 + y2) * .5f - ToxiThemeEngine.spacing(8f), x2, y2);
                     canvas.drawPath(trail, paint);
                 }
             }
