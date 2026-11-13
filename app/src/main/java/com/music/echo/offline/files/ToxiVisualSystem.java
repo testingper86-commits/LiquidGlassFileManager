@@ -120,7 +120,9 @@ final class ToxiVisualSystem {
             dialog.getWindow().setBackgroundDrawable(surface(24, true));
             dialog.getWindow().setDimAmount(LIGHT_MODE ? 0.28f : 0.58f);
         }
-        TextView title = dialog.findViewById(android.R.id.alertTitle);
+        int titleId = dialog.getContext().getResources().getIdentifier("alertTitle", "id", "android");
+        if (titleId == 0) titleId = android.R.id.title;
+        TextView title = dialog.findViewById(titleId);
         if (title != null) {
             title.setTextColor(TEXT_PRIMARY);
             title.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
@@ -162,7 +164,7 @@ final class ToxiVisualSystem {
             TextView text = (TextView) view;
             if (view instanceof Button) text.setTextColor(signalTextColor());
             else if (view.getId() == android.R.id.message) text.setTextColor(TEXT_SECONDARY);
-            else if (view.getId() == android.R.id.alertTitle || styleListText) text.setTextColor(TEXT_PRIMARY);
+            else if (styleListText) text.setTextColor(TEXT_PRIMARY);
             text.setTypeface(Typeface.create(fontFamily(), text.getTypeface() != null
                     && text.getTypeface().isBold() ? Typeface.BOLD : Typeface.NORMAL));
         }
