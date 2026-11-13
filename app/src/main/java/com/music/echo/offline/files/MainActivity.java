@@ -15,6 +15,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
@@ -1030,6 +1031,9 @@ public class MainActivity extends ComponentActivity {
     static final class BgView extends View {
         final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final Paint auroraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int auroraWidth = -1, auroraHeight = -1, auroraAccent, auroraEnd;
+        private Shader auroraPrimary, auroraSecondary, auroraTertiary;
         BgView(android.content.Context c) {
             super(c);
             setLayerType(LAYER_TYPE_NONE, null);
@@ -1049,6 +1053,42 @@ public class MainActivity extends ComponentActivity {
                 if (ToxiVisualSystem.booleanPreference("blur", false) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), Shader.TileMode.CLAMP));
                 else setRenderEffect(null);
             }
+        }
+
+        private void ensureAurora(int width, int height) {
+            int accent = ToxiVisualSystem.ACCENT;
+            int accentEnd = ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX];
+            if (width == auroraWidth && height == auroraHeight
+                    && accent == auroraAccent && accentEnd == auroraEnd) return;
+            auroraWidth = width;
+            auroraHeight = height;
+            auroraAccent = accent;
+            auroraEnd = accentEnd;
+            float radius = Math.max(width, height) * 0.76f;
+            int primaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 24 : 42;
+            int secondaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 17 : 30;
+            auroraPrimary = new RadialGradient(width * 0.18f, height * 0.22f, radius,
+                    new int[]{Color.argb(primaryAlpha, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+            auroraSecondary = new RadialGradient(width * 0.86f, height * 0.58f, radius * 0.82f,
+                    new int[]{Color.argb(secondaryAlpha, Color.red(accentEnd), Color.green(accentEnd), Color.blue(accentEnd)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+            int blended = ToxiIcons.mix(accent, accentEnd, 0.5f);
+            auroraTertiary = new RadialGradient(width * 0.52f, height * 0.94f, radius * 0.58f,
+                    new int[]{Color.argb(ToxiVisualSystem.LIGHT_MODE ? 10 : 18,
+                            Color.red(blended), Color.green(blended), Color.blue(blended)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        }
+
+        private void drawAurora(Canvas canvas, int width, int height) {
+            ensureAurora(width, height);
+            auroraPaint.setShader(auroraPrimary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(auroraSecondary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(auroraTertiary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(null);
         }
 
         private void drawThemePattern(Canvas canvas, int width, int height, float step) {
@@ -1108,6 +1148,7 @@ public class MainActivity extends ComponentActivity {
         @Override protected void onDraw(Canvas canvas) {
             int width = getWidth(), height = getHeight();
             canvas.drawColor(ToxiVisualSystem.CANVAS);
+            drawAurora(canvas, width, height);
             int accent = ToxiVisualSystem.ACCENT;
             gridPaint.setColor(Color.argb(10, Color.red(accent), Color.green(accent), Color.blue(accent)));
             gridPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(0.65f))));
