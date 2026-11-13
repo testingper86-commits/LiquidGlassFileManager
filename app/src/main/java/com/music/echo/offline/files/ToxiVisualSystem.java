@@ -179,7 +179,10 @@ final class ToxiVisualSystem {
 
     /** High-contrast foreground for controls rendered on the active accent material. */
     static int accentForeground() {
-        return Color.luminance(ACCENT) > 0.42f ? 0xFF101820 : Color.WHITE;
+        float luminance = Color.luminance(ACCENT);
+        float darkContrast = (luminance + 0.05f) / 0.05f;
+        float lightContrast = 1.05f / (luminance + 0.05f);
+        return darkContrast >= lightContrast ? 0xFF101820 : Color.WHITE;
     }
 
     static int accentForeground(int alpha) {
