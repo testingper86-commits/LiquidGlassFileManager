@@ -104,7 +104,7 @@ public final class DeveloperStudioActivity extends ComponentActivity {
     private EditText editor(String hint,int minLines){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(13);e.setTypeface(android.graphics.Typeface.MONOSPACE);e.setTextColor(ToxiVisualSystem.TEXT_PRIMARY);e.setHintTextColor(ToxiVisualSystem.TEXT_SECONDARY);e.setBackground(ToxiVisualSystem.surface(14,true));e.setPadding(dp(12),dp(10),dp(12),dp(10));e.setGravity(Gravity.TOP|Gravity.START);e.setMinLines(minLines);e.setSingleLine(false);return e;}
     private LinearLayout vertical(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);l.setPadding(dp(16),dp(12),dp(16),dp(24));return l;}
     private void base(String title,String description){
-        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackground(ToxiVisualSystem.auroraBackground());
         LinearLayout header=new LinearLayout(this);header.setOrientation(LinearLayout.HORIZONTAL);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(8),dp(6),dp(16),dp(6));header.setMinimumHeight(dp(60));
         ImageView back=ToxiVisualSystem.iconButton(this,ToxiIcons.BACK,ToxiVisualSystem.TEXT_PRIMARY);back.setContentDescription(current>=0?"Back to Developer Studio":"Back to ToxiFiles");back.setFocusable(true);back.setOnClickListener(v->handleBackNavigation());
         header.addView(back,new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)),ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));

@@ -123,7 +123,7 @@ public class ViewerActivity extends ComponentActivity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         root = new FrameLayout(this);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        root.setBackground(ToxiVisualSystem.auroraBackground());
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         stage = new FrameLayout(this);
@@ -516,7 +516,7 @@ public class ViewerActivity extends ComponentActivity {
         enterVideoImmersiveMode();
         // TextureView does not support background drawables on Android; put the black
         // fallback on its FrameLayout parent instead of the TextureView itself.
-        stage.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        stage.setBackground(ToxiVisualSystem.auroraBackground());
         final TextureView texture = new TextureView(this);
         videoTexture = texture;
         // Keep the video texture opaque; some vendor renderers show audio-only playback

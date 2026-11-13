@@ -63,7 +63,7 @@ public final class HtmlViewerActivity extends ComponentActivity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        root.setBackground(ToxiVisualSystem.auroraBackground());
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);

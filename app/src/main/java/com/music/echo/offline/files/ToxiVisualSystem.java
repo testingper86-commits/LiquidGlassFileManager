@@ -215,6 +215,8 @@ final class ToxiVisualSystem {
     }
 
     /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
+    static Drawable auroraBackground() { return new ToxiAuroraDrawable(); }
+
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
         int tintAlpha = LIGHT_MODE ? 14 : (raised ? 48 : 36);

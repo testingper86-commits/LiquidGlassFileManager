@@ -41,7 +41,7 @@ final class AppLockScreenController {
         final Dialog dialog = new Dialog(activity, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setCancelable(false);
         FrameLayout root = new FrameLayout(activity);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        root.setBackground(ToxiVisualSystem.auroraBackground());
         LinearLayout column = new LinearLayout(activity);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setGravity(Gravity.CENTER);
