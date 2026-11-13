@@ -912,7 +912,9 @@ final class BrowserView extends FrameLayout {
         capitalization.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){ public void onNothingSelected(AdapterView<?> p){} public void onItemSelected(AdapterView<?> p,View v,int pos,long id){refresh.run();} });
         numbering.setOnCheckedChangeListener((b,c)->refresh.run()); preserve.setOnCheckedChangeListener((b,c)->refresh.run()); refresh.run();
         AlertDialog editor = ToxiVisualSystem.dialogBuilder(a).setTitle("Batch Rename Studio · " + list.size() + " items").setView(scroll).setNegativeButton("Cancel",null).setPositiveButton("Review rename",null).create();
-        editor.setOnShowListener(d -> editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        editor.setOnShowListener(d -> {
+            ToxiVisualSystem.styleDialog(editor);
+            editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             final long token = ++previewGeneration[0];
             if (pendingPreview[0] != null) preview.removeCallbacks(pendingPreview[0]);
             final android.widget.Button review = editor.getButton(AlertDialog.BUTTON_POSITIVE);
@@ -935,7 +937,8 @@ final class BrowserView extends FrameLayout {
                             .setNegativeButton("Cancel",null).setPositiveButton("Rename",(dd,ww)->{editor.dismiss();executeBatchRename(plan);}).show();
                 });
             });
-        }));
+            });
+        });
         editor.show();
     }
 
