@@ -27,7 +27,7 @@ final class SettingsScreenController {
         settingsMasthead.setGravity(Gravity.CENTER_VERTICAL);
         settingsMasthead.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(8));
         ImageView settingsMark = new ImageView(activity);
-        settingsMark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
+        settingsMark.setImageResource(R.drawable.toxifiles_master_art);
         settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(38), ToxiVisualSystem.dp(38)));
         LinearLayout settingsTitleBlock = new LinearLayout(activity);
         settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
