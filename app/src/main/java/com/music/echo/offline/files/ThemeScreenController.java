@@ -74,6 +74,7 @@ final class ThemeScreenController {
         check.setContentDescription("Active theme");
         current.addView(check, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(30), ToxiVisualSystem.dp(42)));
         panel.addView(current, activity.lpm(-1, -2, 0, 0, 0, 12));
+        addLivePreview(panel);
         TextView label = ToxiVisualSystem.text(activity, "FIVE COMPLETE THEME IDENTITIES", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.12f);
         label.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(8));
@@ -126,5 +127,68 @@ final class ThemeScreenController {
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
+    }
+
+    /** A real Android component sample rendered with the currently active design tokens. */
+    private void addLivePreview(LinearLayout panel) {
+        TextView label = ToxiVisualSystem.text(activity, "LIVE COMPONENT PREVIEW",
+                10, ToxiVisualSystem.TEXT_SECONDARY, true);
+        label.setLetterSpacing(0.13f);
+        label.setPadding(ToxiVisualSystem.dp(3), 0, 0, ToxiVisualSystem.dp(7));
+        panel.addView(label);
+
+        LinearLayout preview = new LinearLayout(activity);
+        preview.setOrientation(LinearLayout.VERTICAL);
+        preview.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13),
+                ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13));
+        preview.setBackground(ToxiVisualSystem.surface(22, true));
+
+        LinearLayout heading = new LinearLayout(activity);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView folder = new ImageView(activity);
+        folder.setImageDrawable(ToxiIcons.symbol(ToxiIcons.FOLDER, ToxiVisualSystem.ACCENT));
+        folder.setBackground(ToxiVisualSystem.surface(13, false));
+        folder.setPadding(ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(9),
+                ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(9));
+        heading.addView(folder, new LinearLayout.LayoutParams(
+                ToxiVisualSystem.dp(42), ToxiVisualSystem.dp(42)));
+
+        LinearLayout fileDetails = new LinearLayout(activity);
+        fileDetails.setOrientation(LinearLayout.VERTICAL);
+        fileDetails.setPadding(ToxiVisualSystem.dp(11), 0, 0, 0);
+        fileDetails.addView(ToxiVisualSystem.text(activity, "Project files", 14,
+                ToxiVisualSystem.TEXT_PRIMARY, true));
+        TextView detail = ToxiVisualSystem.text(activity, "12 items  ·  Updated just now",
+                10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
+        detail.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
+        fileDetails.addView(detail);
+        heading.addView(fileDetails, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        ImageView more = ToxiVisualSystem.iconButton(activity, ToxiIcons.MORE,
+                ToxiVisualSystem.TEXT_SECONDARY);
+        more.setContentDescription("Preview more actions");
+        heading.addView(more, new LinearLayout.LayoutParams(
+                ToxiVisualSystem.dp(42), ToxiVisualSystem.dp(42)));
+        preview.addView(heading);
+
+        LinearLayout actions = new LinearLayout(activity);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        actions.setPadding(0, ToxiVisualSystem.dp(12), 0, 0);
+        TextView status = ToxiVisualSystem.text(activity,
+                ToxiThemeEngine.profile().identity.toUpperCase(java.util.Locale.ROOT),
+                9, ToxiVisualSystem.ACCENT, true);
+        status.setLetterSpacing(0.09f);
+        actions.addView(status, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView action = ToxiVisualSystem.text(activity, "OPEN FOLDER", 10,
+                Color.WHITE, true);
+        action.setGravity(Gravity.CENTER);
+        action.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10),
+                ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(10));
+        action.setBackground(ToxiVisualSystem.accentSurface(12));
+        action.setOnClickListener(view -> ToxiVisualSystem.feedback(view));
+        ToxiVisualSystem.interactive(action);
+        actions.addView(action, new LinearLayout.LayoutParams(-2, -2));
+        preview.addView(actions);
+        panel.addView(preview, activity.lpm(-1, -2, 0, 0, 0, 12));
     }
 }
