@@ -1,7 +1,7 @@
 name: ToxiFiles Android Build
 on:
   push:
-    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
+    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office", "ci/add-debug-apk-artifact"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -73,6 +73,14 @@ jobs:
           test -s core/src/test/java/com/music/echo/offline/files/PinHashTest.java
           test -s core/src/main/java/com/music/echo/offline/files/SafePathResolver.java
           test -s core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java
+          test -s app/src/main/java/com/music/echo/offline/files/SettingsScreenController.java
+          test -s app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java
+          test -s app/src/main/java/com/music/echo/offline/files/ToxiBackNavigation.java
+          test -s app/src/main/res/drawable-nodpi/theme_poster_onepiece.webp
+          test -s app/src/main/res/drawable-nodpi/theme_poster_naruto.webp
+          test -s app/src/main/res/drawable-nodpi/theme_poster_demon.webp
+          test -s app/src/main/res/drawable-nodpi/theme_poster_dragonball.webp
+          test -s app/src/main/res/drawable-nodpi/theme_poster_aot.webp
           chmod +x gradlew
       - name: Set up JDK 17
         uses: actions/setup-java@v4
