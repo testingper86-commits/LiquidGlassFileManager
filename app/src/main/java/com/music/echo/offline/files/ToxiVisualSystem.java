@@ -160,7 +160,7 @@ final class ToxiVisualSystem {
     private static void styleDialogTree(View view) {
         if (view instanceof TextView) {
             TextView text = (TextView) view;
-            text.setTextColor(view instanceof Button ? ACCENT
+            text.setTextColor(view instanceof Button ? signalTextColor()
                     : (view.getId() == android.R.id.message ? TEXT_SECONDARY : TEXT_PRIMARY));
             text.setTypeface(Typeface.create(fontFamily(), text.getTypeface() != null
                     && text.getTypeface().isBold() ? Typeface.BOLD : Typeface.NORMAL));
