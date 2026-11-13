@@ -39,7 +39,11 @@ final class ToxiIcons {
             default:return "Action";
         }
     }
-    static Drawable symbol(int id, int color) { return new SymbolDrawable(id, color); }
+    static Drawable symbol(int id, int color) {
+        int resolvedColor = color == ToxiVisualSystem.ACCENT
+                ? ToxiVisualSystem.signalTextColor() : color;
+        return new SymbolDrawable(id, resolvedColor);
+    }
     static Drawable fileTile(int fileKind) { return new FileTileDrawable(fileKind); }
     static int mix(int a,int b,float t) {
         return Color.rgb((int)(Color.red(a)+(Color.red(b)-Color.red(a))*t), (int)(Color.green(a)+(Color.green(b)-Color.green(a))*t), (int)(Color.blue(a)+(Color.blue(b)-Color.blue(a))*t));
