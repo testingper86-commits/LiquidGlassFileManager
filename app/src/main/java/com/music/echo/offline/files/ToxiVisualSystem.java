@@ -105,15 +105,18 @@ final class ToxiVisualSystem {
         GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
         base.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
-        int titaniumEdge = blend(EDGE_STROKE, CHROME, LIGHT_MODE ? 0.30f : 0.58f);
-        base.setStroke(Math.max(1, dp(0.9f)), titaniumEdge);
+        ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
+        int titaniumEdge = blend(EDGE_STROKE, CHROME,
+                LIGHT_MODE ? 0.30f : 0.30f + (0.38f * profile.edgeStrength));
+        base.setStroke(Math.max(1, dp(0.9f)), Color.argb(ToxiThemeEngine.edgeAlpha(220),
+                Color.red(titaniumEdge), Color.green(titaniumEdge), Color.blue(titaniumEdge)));
 
-        int crownAlpha = LIGHT_MODE ? 42 : (raised ? 58 : 44);
+        int crownAlpha = ToxiThemeEngine.highlightAlpha(LIGHT_MODE ? 42 : (raised ? 58 : 44));
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
         glass.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
-        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(LIGHT_MODE ? 68 : 104,
+        glass.setStroke(Math.max(1, dp(0.6f)), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 68 : 104),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         android.graphics.drawable.LayerDrawable layered =
                 new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
@@ -141,8 +144,8 @@ final class ToxiVisualSystem {
     static Drawable accentSurface(float radiusDp) {
         GradientDrawable accent = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{ToxiThemeSystem.ACCENTS[THEME_INDEX], ToxiThemeSystem.ACCENT_ENDS[THEME_INDEX]});
-        accent.setCornerRadius(dp(radiusDp));
-        accent.setStroke(Math.max(1, dp(0.9f)), Color.argb(LIGHT_MODE ? 140 : 175,
+        accent.setCornerRadius(dp(ToxiThemeEngine.radius(radiusDp)));
+        accent.setStroke(Math.max(1, dp(0.9f)), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 140 : 175),
                 Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
         return accent;
     }
@@ -183,7 +186,7 @@ final class ToxiVisualSystem {
             int rippleColor = Color.argb(48, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
             GradientDrawable mask = new GradientDrawable();
             mask.setColor(Color.WHITE);
-            mask.setCornerRadius(dp(14));
+            mask.setCornerRadius(dp(ToxiThemeEngine.radius(14)));
             view.setForeground(new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask));
         }
         ToxiPowerTouchEngine.attach(view, THEME_INDEX);
@@ -208,12 +211,12 @@ final class ToxiVisualSystem {
             for (int i = 0; i < group.getChildCount(); i++) {
                 final View child = group.getChildAt(i);
                 if (child.getVisibility() != View.VISIBLE) continue;
-                final long delay = Math.min(visibleIndex++, 8) * 28L;
+                final long delay = Math.min(visibleIndex++, 8) * ToxiThemeEngine.motionDuration(28L);
                 child.animate().cancel();
                 child.setAlpha(0f);
-                child.setTranslationY(dp(9));
+                child.setTranslationY(dp(ToxiThemeEngine.motionDistance(9f)));
                 child.animate().alpha(1f).translationY(0f).setStartDelay(delay)
-                        .setDuration(210L)
+                        .setDuration(ToxiThemeEngine.motionDuration(210L))
                         .setInterpolator(new android.view.animation.DecelerateInterpolator())
                         .start();
             }
@@ -224,9 +227,10 @@ final class ToxiVisualSystem {
     static void touchSpring(View view) {
         if (view == null || booleanPreference("reduce_motion", false)) return;
         view.animate().cancel();
-        view.setScaleX(0.975f);
-        view.setScaleY(0.975f);
-        view.animate().scaleX(1f).scaleY(1f).setDuration(180L)
+        float pressScale = 1f - (0.025f * ToxiThemeEngine.profile().motionScale);
+        view.setScaleX(pressScale);
+        view.setScaleY(pressScale);
+        view.animate().scaleX(1f).scaleY(1f).setDuration(ToxiThemeEngine.motionDuration(180L))
                 .setInterpolator(new android.view.animation.OvershootInterpolator(1.15f)).start();
     }
 

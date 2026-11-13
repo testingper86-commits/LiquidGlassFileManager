@@ -118,12 +118,13 @@ final class ToxiIcons {
         private void drawIdentityTreatment(Canvas canvas) {
             ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
             int originalColor = p.getColor();
+            int originalAlpha = p.getAlpha();
             Paint.Style originalStyle = p.getStyle();
             float originalWidth = p.getStrokeWidth();
             p.setColor(ToxiThemeSystem.CHROME[profile.index]);
-            p.setAlpha(72);
+            p.setAlpha(ToxiThemeEngine.edgeAlpha(72));
             p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(0.8f);
+            p.setStrokeWidth(0.8f * ToxiThemeEngine.profile().iconStroke / 2f);
             switch (profile.geometry) {
                 case VOYAGE:
                     canvas.drawArc(new RectF(1.5f,1.5f,22.5f,22.5f),205,58,false,p);
@@ -151,7 +152,7 @@ final class ToxiIcons {
                     break;
             }
             p.setColor(originalColor);
-            p.setAlpha(255);
+            p.setAlpha(originalAlpha);
             p.setStyle(originalStyle);
             p.setStrokeWidth(originalWidth);
         }
@@ -162,9 +163,9 @@ final class ToxiIcons {
 
     private static final class FileTileDrawable extends Drawable {
         final int kind, color; final Paint fill=new Paint(Paint.ANTI_ALIAS_FLAG), edge=new Paint(Paint.ANTI_ALIAS_FLAG), sheen=new Paint(Paint.ANTI_ALIAS_FLAG); final SymbolDrawable glyph;
-        FileTileDrawable(int kind){this.kind=kind;color=FileKinds.color(kind);glyph=new SymbolDrawable(FileKinds.glyph(kind),0xFFF4F7FA);edge.setStyle(Paint.Style.STROKE);edge.setStrokeWidth(1f);edge.setColor(0x66FFFFFF);}
+        FileTileDrawable(int kind){this.kind=kind;color=FileKinds.color(kind);glyph=new SymbolDrawable(FileKinds.glyph(kind),0xFFF4F7FA);edge.setStyle(Paint.Style.STROKE);edge.setStrokeWidth(1f);edge.setColor(Color.argb(ToxiThemeEngine.edgeAlpha(102),255,255,255));}
         @Override protected void onBoundsChange(Rect b){fill.setShader(new LinearGradient(b.left,b.top,b.right,b.bottom,new int[]{mix(color,0xFFFFFFFF,.18f),color,mix(color,0xFF000000,.2f)},null,Shader.TileMode.CLAMP));}
-        @Override public void draw(Canvas c){Rect b=getBounds();RectF r=new RectF(b);float rad=b.width()*.22f;c.drawRoundRect(r,rad,rad,fill);RectF top=new RectF(b.left+1,b.top+1,b.right-1,b.top+b.height()*.42f);sheen.setShader(new LinearGradient(0,top.top,0,top.bottom,new int[]{0x55FFFFFF,0x00FFFFFF},null,Shader.TileMode.CLAMP));c.drawRoundRect(top,rad*.8f,rad*.8f,sheen);c.drawRoundRect(r,rad,rad,edge);int inset=(int)(b.width()*.22f);glyph.setBounds(b.left+inset,b.top+inset,b.right-inset,b.bottom-inset);glyph.draw(c);}
+        @Override public void draw(Canvas c){Rect b=getBounds();RectF r=new RectF(b);float rad=b.width()*.22f*ToxiThemeEngine.profile().cornerScale;c.drawRoundRect(r,rad,rad,fill);RectF top=new RectF(b.left+1,b.top+1,b.right-1,b.top+b.height()*.42f);sheen.setShader(new LinearGradient(0,top.top,0,top.bottom,new int[]{0x55FFFFFF,0x00FFFFFF},null,Shader.TileMode.CLAMP));c.drawRoundRect(top,rad*.8f,rad*.8f,sheen);c.drawRoundRect(r,rad,rad,edge);int inset=(int)(b.width()*.22f);glyph.setBounds(b.left+inset,b.top+inset,b.right-inset,b.bottom-inset);glyph.draw(c);}
         @Override public void setAlpha(int a){fill.setAlpha(a);glyph.setAlpha(a);}
         @Override public void setColorFilter(ColorFilter f){fill.setColorFilter(f);glyph.setColorFilter(f);}
         @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
