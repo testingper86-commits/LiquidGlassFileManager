@@ -351,7 +351,7 @@ final class ToxiVisualSystem {
             mask.setCornerRadius(dp(ToxiThemeEngine.radius(14)));
             view.setForeground(new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask));
         }
-        ToxiPowerTouchEngine.attach(view, THEME_INDEX);
+        ToxiPowerTouchEngine.attach(view);
     }
 
     static void clipRound(View view, final float radiusDp) {
@@ -364,7 +364,7 @@ final class ToxiVisualSystem {
     }
 
 
-    private static boolean motionAllowed(Context context) {
+    static boolean motionAllowed(Context context) {
         if (booleanPreference("reduce_motion", false)) return false;
         try {
             return Settings.Global.getFloat(context.getContentResolver(),

@@ -48,6 +48,8 @@ public final class ToxiThemeSystemTest {
             assertTrue(ToxiThemeEngine.highlightAlpha(120) <= 255);
             assertTrue(ToxiThemeEngine.motionDuration(200) >= 90);
             assertTrue(ToxiThemeEngine.motionDistance(10) > 0f);
+            assertTrue(ToxiThemeEngine.touchTarget(32) >= 48f);
+            assertTrue(ToxiThemeEngine.touchTarget(56) >= 56f);
         }
         assertEquals(5, geometries.size());
         assertEquals(5, materials.size());

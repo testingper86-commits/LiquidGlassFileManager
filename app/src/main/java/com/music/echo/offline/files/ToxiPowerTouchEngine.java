@@ -20,7 +20,7 @@ final class ToxiPowerTouchEngine {
     private static final float SWIPE_DISTANCE_DP = 18f;
     private ToxiPowerTouchEngine() { }
 
-    static void attach(View target, int themeIndex) {
+    static void attach(View target) {
         if (target == null) return;
         float threshold = ToxiThemeEngine.spacing(SWIPE_DISTANCE_DP) * ToxiThemeEngine.profile().motionScale
                 * target.getResources().getDisplayMetrics().density;
@@ -29,8 +29,8 @@ final class ToxiPowerTouchEngine {
         target.addOnAttachStateChangeListener(feedback);
     }
 
-    private static boolean reducedMotion() {
-        return ToxiVisualSystem.booleanPreference("reduce_motion", false);
+    private boolean reducedMotion() {
+        return !ToxiVisualSystem.motionAllowed(target.getContext());
     }
 
     private static final class TouchFeedback implements View.OnTouchListener, View.OnAttachStateChangeListener {
