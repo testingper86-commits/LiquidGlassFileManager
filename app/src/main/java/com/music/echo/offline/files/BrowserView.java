@@ -296,7 +296,14 @@ final class BrowserView extends FrameLayout {
         pasteBtn.setBackground(ToxiVisualSystem.accentSurface(18));
         prog.setIndeterminateTintList(ColorStateList.valueOf(ToxiVisualSystem.ACCENT));
         empty.setTextColor(ToxiVisualSystem.TEXT_SECONDARY);
-        ad.notifyDataSetChanged();
+        int firstVisible = lv.getFirstVisiblePosition();
+        View firstChild = lv.getChildAt(0);
+        int firstTop = firstChild == null ? 0 : firstChild.getTop();
+        lv.setAdapter(null);
+        lv.setAdapter(ad);
+        if (ad.getCount() > 0) {
+            lv.setSelectionFromTop(Math.min(firstVisible, ad.getCount() - 1), firstTop);
+        }
     }
 
     // ---------- loading ----------
@@ -687,7 +694,7 @@ final class BrowserView extends FrameLayout {
             thumb.setBackground(ToxiVisualSystem.surface(12, true));
             ToxiVisualSystem.clipRound(thumb, 12);
             FrameLayout.LayoutParams thumbLp = new FrameLayout.LayoutParams(
-                    ToxiVisualSystem.dp(columns <= 2 ? 76 : 68),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(columns <= 2 ? 76 : 68)),
                     ToxiVisualSystem.dp(columns <= 2 ? 76 : 68), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             tile.addView(thumb, thumbLp);
             TextView nameTv = ToxiVisualSystem.text(a, "", 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
@@ -704,7 +711,7 @@ final class BrowserView extends FrameLayout {
             checkLp.setMargins(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), 0);
             tile.addView(check, checkLp);
             LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0,
-                    ToxiVisualSystem.dp(columns <= 2 ? 138 : 126), 1f);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(columns <= 2 ? 138 : 126)), 1f);
             tileLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
             row.addView(tile, tileLp);
         }
