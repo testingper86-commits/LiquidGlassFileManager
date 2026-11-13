@@ -54,7 +54,7 @@ final class ToxiFileRow {
         GradientDrawable on=new GradientDrawable();on.setShape(GradientDrawable.OVAL);on.setColor(ToxiVisualSystem.ACCENT);h.ckOn=on;
         GradientDrawable off=new GradientDrawable();off.setShape(GradientDrawable.OVAL);off.setColor(Color.TRANSPARENT);off.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)),ToxiVisualSystem.TEXT_SECONDARY);h.ckOff=off;
         LinearLayout.LayoutParams checkLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)));checkLp.rightMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));h.check.setVisibility(View.GONE);h.row.addView(h.check,checkLp);
-        h.root.addView(h.row,new FrameLayout.LayoutParams(-1,-2));h.root.setTag(h);return h.root;
+        h.root.addView(h.row,new FrameLayout.LayoutParams(-1,-2));h.root.setTag(h);ToxiVisualSystem.interactive(h.root);ToxiVisualSystem.interactive(h.row);return h.root;
     }
     static Holder holder(View view) {
         if (!(view instanceof FrameLayout)) return null;
