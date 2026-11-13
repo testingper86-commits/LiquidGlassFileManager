@@ -49,7 +49,7 @@ final class ToxiFileRow {
         h.row.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
         h.more=new ImageView(context);h.more.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE,ToxiVisualSystem.TEXT_SECONDARY));
         h.more.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
-        h.more.setContentDescription("More options");ToxiVisualSystem.interactive(h.more);h.row.addView(h.more,new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40))));
+        h.more.setContentDescription("More options");ToxiVisualSystem.interactive(h.more);h.row.addView(h.more,new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(40)),ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(40))));
         h.check=new ImageView(context);h.check.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
         GradientDrawable on=new GradientDrawable();on.setShape(GradientDrawable.OVAL);on.setColor(ToxiVisualSystem.ACCENT);h.ckOn=on;
         GradientDrawable off=new GradientDrawable();off.setShape(GradientDrawable.OVAL);off.setColor(Color.TRANSPARENT);off.setStroke(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)),ToxiVisualSystem.TEXT_SECONDARY);h.ckOff=off;

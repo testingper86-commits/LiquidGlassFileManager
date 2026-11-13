@@ -522,7 +522,7 @@ public class MainActivity extends ComponentActivity {
         v.setText(t.toUpperCase(java.util.Locale.ROOT));
         setLeadingIcon(v, ToxiIcons.NEXT);
         v.setGravity(Gravity.CENTER_VERTICAL);
-        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)));
+        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         v.setBackground(ToxiVisualSystem.surface(16, false));
         ToxiVisualSystem.interactive(v);

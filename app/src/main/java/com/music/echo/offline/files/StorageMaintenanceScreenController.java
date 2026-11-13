@@ -58,7 +58,7 @@ final class StorageMaintenanceScreenController {
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         header.addView(ToxiVisualSystem.text(activity, "Duplicate Files", 22, ToxiVisualSystem.TEXT_PRIMARY, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
         header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56)));
@@ -164,7 +164,7 @@ final class StorageMaintenanceScreenController {
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         header.addView(ToxiVisualSystem.text(activity, "Empty Folders", 22, ToxiVisualSystem.TEXT_PRIMARY, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
         header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56)));

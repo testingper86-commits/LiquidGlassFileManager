@@ -66,7 +66,7 @@ final class VaultScreenController {
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         LinearLayout titleBlock = new LinearLayout(activity);
         titleBlock.setOrientation(LinearLayout.VERTICAL);
         titleBlock.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0, 0);

@@ -62,7 +62,7 @@ final class PrismNavigationDock {
             LinearLayout item = new LinearLayout(activity);
             item.setGravity(Gravity.CENTER);
             item.setOrientation(LinearLayout.VERTICAL);
-            item.setMinimumWidth(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(48)));
+            item.setMinimumWidth(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
             item.setMinimumHeight(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(48)));
             item.setPadding(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)),
                     NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)));

@@ -60,6 +60,11 @@ final class ToxiThemeEngine {
 
     static float spacing(float baseDp) { return baseDp * profile().spacingScale; }
 
+    /** Keep interactive targets at least 48 dp while allowing larger profiles to grow. */
+    static float touchTarget(float baseDp) {
+        return Math.max(48f, Math.max(baseDp, spacing(baseDp)));
+    }
+
     static float iconStroke() {
         return profile().iconStroke;
     }

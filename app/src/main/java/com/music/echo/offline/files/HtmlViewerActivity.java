@@ -80,7 +80,7 @@ public final class HtmlViewerActivity extends ComponentActivity {
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back to file manager");
         back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46))));
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(46)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46))));
         TextView title = ToxiVisualSystem.text(this, document.getName(), 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
@@ -88,7 +88,7 @@ public final class HtmlViewerActivity extends ComponentActivity {
         ImageView reload = ToxiVisualSystem.iconButton(this, ToxiIcons.REFRESH, ToxiVisualSystem.TEXT_PRIMARY);
         reload.setContentDescription("Reload HTML document");
         reload.setOnClickListener(v -> webView.reload());
-        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)));
+        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(44)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)));
         reloadLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6));
         bar.addView(reload, reloadLp);
         column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56))));

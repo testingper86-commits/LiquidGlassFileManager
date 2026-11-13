@@ -75,7 +75,7 @@ final class AboutScreenBuilder {
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ABOUT_TEXT);
         back.setContentDescription("Back");
         back.setOnClickListener(v -> onBack.run());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48))));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(0, -2, 1f);
         titleParams.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12));
         titleParams.rightMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));

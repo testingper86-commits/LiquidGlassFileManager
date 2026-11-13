@@ -138,7 +138,7 @@ final class ToxiVisualSystem {
             button.setTextColor(signalTextColor());
             button.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
             button.setAllCaps(false);
-            button.setMinHeight(dp(ToxiThemeEngine.spacing(44)));
+            button.setMinHeight(dp(ToxiThemeEngine.touchTarget(44)));
         }
         ListView list = dialog.getListView();
         if (list != null) {
@@ -289,8 +289,8 @@ final class ToxiVisualSystem {
         ImageView view = new ImageView(context);
         view.setImageDrawable(ToxiIcons.symbol(symbol, color));
         view.setPadding(dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)), dp(ToxiThemeEngine.spacing(13)));
-        view.setMinimumWidth(dp(ToxiThemeEngine.spacing(48)));
-        view.setMinimumHeight(dp(ToxiThemeEngine.spacing(48)));
+        view.setMinimumWidth(dp(ToxiThemeEngine.touchTarget(48)));
+        view.setMinimumHeight(dp(ToxiThemeEngine.touchTarget(48)));
         view.setContentDescription(ToxiIcons.accessibilityLabel(symbol));
         view.setScaleType(ImageView.ScaleType.FIT_CENTER);
         view.setBackground(surface(14, true));
