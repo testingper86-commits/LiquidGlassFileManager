@@ -22,7 +22,7 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
             inactiveColor = ToxiVisualSystem.EDGE_STROKE;
         }
         setSplitTrack(false);
-        setPadding(Math.max(getPaddingLeft(), (int)(8*density)), Math.max(getPaddingTop(), (int)(9*density)), Math.max(getPaddingRight(), (int)(8*density)), Math.max(getPaddingBottom(), (int)(9*density)));
+        setPadding(Math.max(getPaddingLeft(), (int)(ToxiThemeEngine.spacing(8f)*density)), Math.max(getPaddingTop(), (int)(ToxiThemeEngine.spacing(9f)*density)), Math.max(getPaddingRight(), (int)(8*density)), Math.max(getPaddingBottom(), (int)(9*density)));
         setProgressDrawable(null);
         setThumb(null);
         setBackgroundTintList(android.content.res.ColorStateList.valueOf(0x00000000));
@@ -40,8 +40,10 @@ public final class ToxiProgressSeekBar extends AppCompatSeekBar {
         invalidate();
     }
     @Override protected synchronized void onDraw(Canvas canvas) {
-        activeColor = ToxiVisualSystem.ACCENT;
-        inactiveColor = ToxiVisualSystem.EDGE_STROKE;
+        if (!customColors) {
+            activeColor = ToxiVisualSystem.ACCENT;
+            inactiveColor = ToxiVisualSystem.EDGE_STROKE;
+        }
         float left=getPaddingLeft(), right=getWidth()-getPaddingRight();
         if(right<=left) return;
         float y=getHeight()/2f, radius=Math.max(1.5f*density, ToxiThemeEngine.spacing(2.2f)*density);
