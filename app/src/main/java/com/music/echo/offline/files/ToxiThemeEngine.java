@@ -34,13 +34,13 @@ final class ToxiThemeEngine {
         new Profile(0, "Grand Voyage", Geometry.VOYAGE, Material.OCEAN_TITANIUM,
                 "sans-serif", 1.12f, 1.08f, 1.75f, .58f, .24f, 1.00f),
         new Profile(1, "Shinobi Spirit", Geometry.SHINOBI, Material.CHAKRA_FORGED,
-                "sans-serif-condensed", .82f, .88f, 2.0f, .72f, .20f, .92f),
+                "sans-serif-condensed", .82f, .88f, 2.00f, .72f, .20f, .92f),
         new Profile(2, "Breathing Legends", Geometry.BREATHING, Material.BREATHING_STEEL,
-                "sans-serif-medium", .94f, .96f, 1.85f, .68f, .28f, 1.08f),
+                "sans-serif-medium", .94f, .96f, 1.82f, .68f, .28f, 1.08f),
         new Profile(3, "Ultra Instinct", Geometry.ULTRA, Material.AURA_ALLOY,
-                "sans-serif-light", 1.00f, 1.02f, 1.75f, .62f, .34f, 1.18f),
+                "sans-serif-light", 1.00f, 1.02f, 1.90f, .62f, .34f, 1.18f),
         new Profile(4, "Titan Frontier", Geometry.FORTRESS, Material.MILITARY_TITANIUM,
-                "sans-serif-condensed", .76f, .84f, 2.0f, .82f, .16f, .86f)
+                "sans-serif-condensed", .76f, .84f, 1.96f, .82f, .16f, .86f)
     };
 
     private static int activeIndex;
