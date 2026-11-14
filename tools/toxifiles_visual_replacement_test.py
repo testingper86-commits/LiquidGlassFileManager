@@ -143,7 +143,7 @@ for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = T
 for filename, content, token in [
     ("NebulaHomeView.java", home, "ToxiThemeIdentityView.create(a, 248"),
     ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 196"),
-    ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 68"),
+    ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 148"),
 ]:
     if token not in content:
         raise SystemExit(f"{filename} is missing its live anime identity surface")
