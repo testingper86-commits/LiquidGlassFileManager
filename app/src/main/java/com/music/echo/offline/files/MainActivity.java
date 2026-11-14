@@ -15,6 +15,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
@@ -92,7 +93,6 @@ public class MainActivity extends ComponentActivity {
     View[] screens;
     private MainNavigationController navigationController;
     TextView busyTv;
-    DynamicIslandView dynamicIsland;
     int busyCount, tab = 0, pendingCat = -1;
     private MainOverlayController overlayController;
     private FileOpenCoordinator fileOpenCoordinator;
@@ -128,14 +128,23 @@ public class MainActivity extends ComponentActivity {
         appLockLifecycle.register();
         ToxiVisualSystem.initialize(this);
         safBrowserController.restorePersistedTree();
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         favoritesRepository.load(getSharedPreferences("lg_favs", MODE_PRIVATE));
 
         root = new FrameLayout(this);
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
-        else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        if (Build.VERSION.SDK_INT >= 28) {
+            android.view.WindowManager.LayoutParams windowParams = getWindow().getAttributes();
+            windowParams.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(windowParams);
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            getWindow().setNavigationBarContrastEnforced(false);
+            getWindow().setStatusBarContrastEnforced(false);
+        }
+        applySystemBarAppearance();
 
         bg = new BgView(this);
         root.addView(bg, new FrameLayout.LayoutParams(-1, -1));
@@ -208,7 +217,7 @@ public class MainActivity extends ComponentActivity {
         buildNav();
         busyTv = ToxiVisualSystem.text(this, "Working\u2026", 13, ToxiVisualSystem.TEXT_PRIMARY, true);
         busyTv.setBackground(ToxiVisualSystem.accentSurface(20));
-        busyTv.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
+        busyTv.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         busyTv.setVisibility(View.GONE);
         busyTv.setContentDescription("Operation progress. Tap to request cancellation.");
         busyTv.setOnClickListener(v -> { cancellation.cancelActive(); LanTransfer.cancel(); ToxiVisualSystem.toast(this, "Cancellation requested"); });
@@ -216,15 +225,20 @@ public class MainActivity extends ComponentActivity {
 
         setContentView(root);
         applySystemBarAppearance();
-        dynamicIsland = new DynamicIslandView(this);
-        root.addView(dynamicIsland, new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
                 android.graphics.Insets navigation = insets.getInsets(WindowInsets.Type.navigationBars() | WindowInsets.Type.displayCutout());
+                android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());
                 ToxiVisualSystem.TOP_INSET = in.top;
-                ToxiVisualSystem.BOTTOM_INSET = Math.max(navigation.bottom, ToxiVisualSystem.dp(24));
-            } else { ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop(); ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom(); }
+                ToxiVisualSystem.BOTTOM_INSET = Math.max(navigation.bottom, 0);
+                ToxiVisualSystem.IME_INSET = ime.bottom;
+            } else {
+                ToxiVisualSystem.TOP_INSET = insets.getSystemWindowInsetTop();
+                ToxiVisualSystem.BOTTOM_INSET = insets.getSystemWindowInsetBottom();
+                ToxiVisualSystem.IME_INSET = 0;
+            }
+            navigationController.setImeVisible(Build.VERSION.SDK_INT >= 30 && insets.isVisible(WindowInsets.Type.ime()));
             applyInsets();
             return insets;
         });
@@ -243,24 +257,27 @@ public class MainActivity extends ComponentActivity {
     }
 
     void applyInsets() {
+        // Apply each system inset exactly once: content owns top/cutout; the dock owns bottom bars.
         content.setPadding(0, ToxiVisualSystem.TOP_INSET, 0, 0);
         navigationController.applyBottomInset();
         FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) busyTv.getLayoutParams();
-        bp.topMargin = ToxiVisualSystem.TOP_INSET + ToxiVisualSystem.dp(8);
+        bp.topMargin = ToxiVisualSystem.TOP_INSET + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));
         busyTv.setLayoutParams(bp);
         homeScroll.setPadding(0, 0, 0, 0);
         if (homeScrollFooter != null) {
             ViewGroup.LayoutParams footerParams = homeScrollFooter.getLayoutParams();
-            footerParams.height = ToxiVisualSystem.dp(220) + ToxiVisualSystem.BOTTOM_INSET;
+            footerParams.height = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(110)) + ToxiVisualSystem.BOTTOM_INSET;
             homeScrollFooter.setLayoutParams(footerParams);
         }
         // Reserve enough scrollable space for the bottom navigation and system gesture area.
-        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(96) + ToxiVisualSystem.BOTTOM_INSET);
-        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
-        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(24) + ToxiVisualSystem.BOTTOM_INSET);
+        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112)) + ToxiVisualSystem.BOTTOM_INSET
+                + ToxiVisualSystem.IME_INSET);
+        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112))
+                + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
         filesView.applyInsets(); favView.applyInsets(); listView.applyInsets();
     }
 
@@ -278,6 +295,9 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
+        boolean appearanceChanged = ToxiVisualSystem.refresh(this);
+        if (appearanceChanged && root != null) recolor();
+        applySystemBarAppearance();
         appLockLifecycle.onResume();
         if (hasAccess() != accessOk) onAccessChanged();
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
@@ -307,7 +327,6 @@ public class MainActivity extends ComponentActivity {
     // ---------------- index ----------------
     void startIndex() {
         if (!hasAccess()) return;
-        if(dynamicIsland!=null)dynamicIsland.update("Scanning storage",-1);
         Indexer.I.start(indexDoneCallback);
     }
 
@@ -350,8 +369,6 @@ public class MainActivity extends ComponentActivity {
         if (isFinishing() || isDestroyed()) return;
         Indexer ix = Indexer.I;
         Indexer.PublishedSnapshot index = ix.snapshot();
-        if (dynamicIsland != null && busyCount == 0)
-            dynamicIsland.update(ix.incomplete ? "Storage index incomplete" : "ToxiFiles ready", -1);
         if (!ix.lastError.isEmpty()) {
             ToxiVisualSystem.toast(this, index.ready
                     ? "Storage refresh failed. Showing the last successful index."
@@ -390,7 +407,6 @@ public class MainActivity extends ComponentActivity {
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, busyCount > 0);
         if (busyCount == 1 && on) busyTv.setText("Working\u2026"); // reset text for ops that don't call progress()
-        if(dynamicIsland!=null){dynamicIsland.update(busyCount>0?busyTv.getText().toString().replace(" Â· tap to cancel",""):"ToxiFiles ready",-1);if(busyCount>0)dynamicIsland.setAction("Request cancellation",()->{cancellation.cancelActive();ToxiVisualSystem.toast(this,"Cancellation requested");});else dynamicIsland.setAction(null,null);}
     }
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
@@ -400,12 +416,6 @@ public class MainActivity extends ComponentActivity {
         busyTv.setText(text + " Â· tap to cancel");
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, true);
-        if (dynamicIsland != null) {
-            int percent = -1;
-            int[] counts = DeveloperStudioCore.parseProgressCount(text);
-            if (counts != null) percent = Math.max(0, Math.min(100, (int)(100L * counts[0] / counts[1])));
-            dynamicIsland.update(text, percent);
-        }
     }
 
     // ---------------- opening things ----------------
@@ -455,18 +465,26 @@ public class MainActivity extends ComponentActivity {
     void moveHighlight(int i) { navigationController.moveHighlight(i); }
 
     void applySystemBarAppearance() {
-        if (Build.VERSION.SDK_INT < 23) return;
-        View decor = getWindow().getDecorView();
-        int flags = decor.getSystemUiVisibility();
-        int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-        if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-        decor.setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
+        // MainActivity draws edge-to-edge; transparent system bars reveal the active canvas.
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
     }
 
+    /** Rebuild the application UI from the single persisted theme profile without changing navigation. */
     void recolor() {
+        View activeOverlay = currentOverlay();
+        int selectedTab = tab;
+        int homeY = homeScroll == null ? 0 : homeScroll.getScrollY();
+        int toolsY = toolsScroll == null ? 0 : toolsScroll.getScrollY();
+        int settingsY = settingsScroll == null ? 0 : settingsScroll.getScrollY();
+        int overlayY = activeOverlay instanceof ScrollView ? ((ScrollView) activeOverlay).getScrollY() : 0;
+        int fileFirstVisible = filesView == null ? 0 : filesView.lv.getFirstVisiblePosition();
+        View fileFirstChild = filesView == null ? null : filesView.lv.getChildAt(0);
+        int fileFirstTop = fileFirstChild == null ? 0 : fileFirstChild.getTop();
+
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         applySystemBarAppearance();
         bg.invalidate();
+        bg.applyBlur();
         navigationController.recolor(tab);
         filesView.recolor();
         favView.recolor();
@@ -474,39 +492,68 @@ public class MainActivity extends ComponentActivity {
         buildHome();
         buildTools();
         buildSettings();
-        if (vault.getChildCount() > 0) buildVault();
-        if (recycle.getChildCount() > 0) buildRecycleBin();
+        if (vaultScroll != null && (vault.getChildCount() > 0 || activeOverlay == vaultScroll)) buildVault();
+        if (recycleScroll != null && (recycle.getChildCount() > 0 || activeOverlay == recycleScroll)) buildRecycleBin();
+
+        if (activeOverlay == themeScroll) buildThemeScreen();
+        else if (activeOverlay == aboutScroll) {
+            AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
+            aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
+        } else if (activeOverlay == favView) favView.refreshFavs();
+        else if (activeOverlay == listView) listView.recolor();
+
+        // Rebuilding content must not change the currently selected root tab or close an overlay.
+        tab = selectedTab;
+        if (activeOverlay != null) {
+            overlayController.refreshAppearance();
+            busyTv.bringToFront();
+            activeOverlay.invalidate();
+        } else {
+            syncNavigationVisibility(false);
+        }
+        homeScroll.post(() -> homeScroll.scrollTo(0, homeY));
+        toolsScroll.post(() -> toolsScroll.scrollTo(0, toolsY));
+        settingsScroll.post(() -> settingsScroll.scrollTo(0, settingsY));
+        filesView.post(() -> {
+            if (filesView.lv.getAdapter() != null && filesView.lv.getAdapter().getCount() > 0) {
+                filesView.lv.setSelectionFromTop(Math.min(fileFirstVisible, filesView.lv.getAdapter().getCount() - 1), fileFirstTop);
+            }
+        });
+        if (activeOverlay instanceof ScrollView) {
+            ((ScrollView) activeOverlay).post(() -> ((ScrollView) activeOverlay).scrollTo(0, overlayY));
+        }
     }
 
     // ---------------- HOME ----------------
     LinearLayout.LayoutParams lpm(int w, int h, int l, int t, int r, int b) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h);
-        p.setMargins(ToxiVisualSystem.dp(l), ToxiVisualSystem.dp(t), ToxiVisualSystem.dp(r), ToxiVisualSystem.dp(b));
+        p.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(l)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(t)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(r)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(b)));
         return p;
     }
 
     int dialogListHeight() {
-        int available = getResources().getDisplayMetrics().heightPixels - ToxiVisualSystem.TOP_INSET - ToxiVisualSystem.BOTTOM_INSET - ToxiVisualSystem.dp(260);
-        return Math.max(ToxiVisualSystem.dp(180), Math.min(ToxiVisualSystem.dp(520), available));
+        int available = getResources().getDisplayMetrics().heightPixels - ToxiVisualSystem.TOP_INSET
+                - ToxiVisualSystem.BOTTOM_INSET - ToxiVisualSystem.IME_INSET - ToxiVisualSystem.dp(ToxiThemeEngine.spacing(260));
+        return Math.max(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(180)), Math.min(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(520)), available));
     }
 
     void setLeadingIcon(TextView target, int symbol) {
         android.graphics.drawable.Drawable icon = ToxiIcons.symbol(symbol, ToxiVisualSystem.ACCENT);
-        int size = ToxiVisualSystem.dp(17);
+        int size = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(17));
         icon.setBounds(0, 0, size, size);
         target.setCompoundDrawables(icon, null, null, null);
-        target.setCompoundDrawablePadding(ToxiVisualSystem.dp(10));
+        target.setCompoundDrawablePadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
     }
 
     TextView section(String t) {
         TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setLetterSpacing(0.08f);
-        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setText(t.toUpperCase(java.util.Locale.ROOT));
         setLeadingIcon(v, ToxiIcons.NEXT);
         v.setGravity(Gravity.CENTER_VERTICAL);
-        v.setMinHeight(ToxiVisualSystem.dp(48));
-        v.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11));
+        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+        v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         v.setBackground(ToxiVisualSystem.surface(16, false));
         ToxiVisualSystem.interactive(v);
         v.setContentDescription(t + ", collapsed settings section. Double tap to expand.");
@@ -538,10 +585,10 @@ public class MainActivity extends ComponentActivity {
     TextView sectionLabel(String t) {
         TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         v.setLetterSpacing(0.08f);
-        v.setTextColor(ToxiVisualSystem.ACCENT);
+        v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setGravity(Gravity.CENTER_VERTICAL);
-        v.setMinHeight(ToxiVisualSystem.dp(48));
-        v.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(11));
+        v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+        v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
         v.setBackground(ToxiVisualSystem.surface(16, false));
         v.setFocusable(false);
         v.setLayoutParams(lpm(-1, -2, 16, 14, 16, 6));
@@ -553,16 +600,16 @@ public class MainActivity extends ComponentActivity {
     View homeSection(String title) {
         LinearLayout line = new LinearLayout(this);
         line.setGravity(Gravity.CENTER_VERTICAL);
-        line.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(10));
+        line.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         View marker = new View(this);
         marker.setBackground(ToxiVisualSystem.accentSurface(3));
-        line.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(3), ToxiVisualSystem.dp(16)));
+        line.addView(marker, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16))));
         TextView label = ToxiVisualSystem.text(this, title, 15, ToxiVisualSystem.TEXT_PRIMARY, true);
-        label.setPadding(ToxiVisualSystem.dp(10), 0, ToxiVisualSystem.dp(12), 0);
+        label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
         line.addView(label, new LinearLayout.LayoutParams(-2, -2));
         View rule = new View(this);
         rule.setBackgroundColor(Color.argb(48, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)));
-        line.addView(rule, new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(1), 1f));
+        line.addView(rule, new LinearLayout.LayoutParams(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)), 1f));
         return line;
     }
 
@@ -598,7 +645,7 @@ public class MainActivity extends ComponentActivity {
     void showOtherSections() {
         LinearLayout menu = new LinearLayout(this);
         menu.setOrientation(LinearLayout.VERTICAL);
-        menu.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(6), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(10));
+        menu.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         List<View> actions = new ArrayList<>();
 
         // Group related destinations under plain, familiar headings. Compatibility markers: APK installer files; System apps; Downloaded apps.
@@ -616,25 +663,25 @@ public class MainActivity extends ComponentActivity {
             if (i == 0 || groupForItem[i] != groupForItem[i - 1]) {
                 TextView group = ToxiVisualSystem.text(this, groupNames[groupForItem[i]], 10.5f, ToxiVisualSystem.ACCENT, true);
                 group.setLetterSpacing(0.09f);
-                group.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(i == 0 ? 4 : 14), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(7));
+                group.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(i == 0 ? 4 : 14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
                 menu.addView(group, new LinearLayout.LayoutParams(-1, -2));
             }
             LinearLayout item = new LinearLayout(this);
             item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(12));
+            item.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
             item.setBackground(ToxiVisualSystem.surface(16, false));
             item.setFocusable(true);
             LinearLayout labels = new LinearLayout(this);
             labels.setOrientation(LinearLayout.VERTICAL);
             labels.addView(ToxiVisualSystem.text(this, names[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
             TextView sub = ToxiVisualSystem.text(this, descriptions[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-            sub.setPadding(0, ToxiVisualSystem.dp(4), 0, 0);
+            sub.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, 0);
             labels.addView(sub);
             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
             ImageView arrow = new ImageView(this);
             arrow.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
             arrow.setContentDescription("Open category");
-            item.addView(arrow, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(24), ToxiVisualSystem.dp(30)));
+            item.addView(arrow, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(30))));
             item.setContentDescription(names[i] + ". " + descriptions[i] + ". Open");
             ToxiVisualSystem.interactive(item);
             menu.addView(item, lpm(-1, -2, 0, 3, 0, 3));
@@ -646,15 +693,15 @@ public class MainActivity extends ComponentActivity {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.addView(menu);
         TextView title = ToxiVisualSystem.text(this, "Other", 24, ToxiVisualSystem.TEXT_PRIMARY, true);
-        title.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(4));
+        title.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)));
         TextView subtitle = ToxiVisualSystem.text(this, "Other files, APKs, apps and settings", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        subtitle.setPadding(ToxiVisualSystem.dp(20), 0, ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
+        subtitle.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         LinearLayout outer = new LinearLayout(this);
         outer.setOrientation(LinearLayout.VERTICAL);
         outer.addView(title);
         outer.addView(subtitle);
         outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).create();
+        AlertDialog dialog = ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).create();
         for (int i = 0; i < actions.size(); i++) {
             final int choice = i;
             actions.get(i).setOnClickListener(v -> {
@@ -694,7 +741,7 @@ public class MainActivity extends ComponentActivity {
         v.setBackground(ToxiVisualSystem.surface(18, true));
         v.setText(title + "\n" + subtitle);
         v.setCompoundDrawablesWithIntrinsicBounds(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT), null, null, null);
-        v.setCompoundDrawablePadding(ToxiVisualSystem.dp(8));
+        v.setCompoundDrawablePadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         return v;
     }
 
@@ -707,13 +754,13 @@ public class MainActivity extends ComponentActivity {
             if (isSystem == system && !hidden.contains(ai.packageName) && (system || pm.getLaunchIntentForPackage(ai.packageName) != null)) apps.add(ai);
         }
         java.util.Collections.sort(apps, (a,b) -> String.valueOf(pm.getApplicationLabel(a)).compareToIgnoreCase(String.valueOf(pm.getApplicationLabel(b))));
-        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
+        LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); list.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(false);
         for (ApplicationInfo ai : apps) {
-            LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(9)); item.setBackground(ToxiVisualSystem.surface(16, false));
+            LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9))); item.setBackground(ToxiVisualSystem.surface(16, false));
             ImageView icon = new ImageView(this); try { icon.setImageDrawable(pm.getApplicationIcon(ai)); } catch (Exception ignored) {}
-            item.addView(icon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(32), ToxiVisualSystem.dp(32)));
-            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
+            item.addView(icon, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32))));
+            LinearLayout labels = new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL); labels.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0, 0);
             labels.addView(ToxiVisualSystem.text(this, String.valueOf(pm.getApplicationLabel(ai)), 14, ToxiVisualSystem.TEXT_PRIMARY, true));
             labels.addView(ToxiVisualSystem.text(this, ai.packageName, 10, ToxiVisualSystem.TEXT_SECONDARY, false));
             item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -723,28 +770,28 @@ public class MainActivity extends ComponentActivity {
         if (apps.isEmpty()) list.addView(ToxiVisualSystem.text(this, "No launchable apps found in this section.", 13, ToxiVisualSystem.TEXT_SECONDARY, false));
         scroll.addView(list);
         TextView heading = ToxiVisualSystem.text(this, system ? "System Apps" : "Downloaded Apps", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
-        heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(8));
+        heading.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL); outer.addView(heading); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showBuiltInTools() {
         String[] tools = {"Dual-Pane File Explorer", "Professional Hex Editor", "Folder Comparator", "Character Encoding Converter", "Advanced ZIP Editor", "File Integrity Verification Studio", "Advanced Text Editor"};
         String[] details = {"Browse two folders side by side and copy, move or delete files.", "Inspect and edit binary data with hexadecimal offsets and ASCII.", "Compare folder trees and verify file content with SHA-256.", "Convert text between UTF-8, UTF-16, ASCII and legacy encodings.", "Rename, delete and add ZIP entries without extracting the archive.", "Calculate MD5, SHA-1, SHA-256, SHA-512 and CRC32.", "Regex search, encoding-aware save, syntax coloring and large-file limits."};
         LinearLayout list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(8));
+        list.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         for (int i = 0; i < tools.length; i++) {
             final int index = i; LinearLayout item = new LinearLayout(this); item.setOrientation(LinearLayout.VERTICAL);
-            item.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(13)); item.setBackground(ToxiVisualSystem.surface(16, true));
+            item.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13))); item.setBackground(ToxiVisualSystem.surface(16, true));
             item.addView(ToxiVisualSystem.text(this, tools[i], 14, ToxiVisualSystem.TEXT_PRIMARY, true));
-            TextView detail = ToxiVisualSystem.text(this, details[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false); detail.setPadding(0, ToxiVisualSystem.dp(4), 0, 0); item.addView(detail);
+            TextView detail = ToxiVisualSystem.text(this, details[i], 11.5f, ToxiVisualSystem.TEXT_SECONDARY, false); detail.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, 0); item.addView(detail);
             item.setOnClickListener(v -> { Intent launch = new Intent(this, ToxiToolsActivity.class); launch.putExtra("tool_index", index); startActivity(launch); });
             list.addView(item, lpm(-1, -2, 0, 3, 0, 3));
         }
         ScrollView scroll = new ScrollView(this); scroll.addView(list); LinearLayout outer = new LinearLayout(this); outer.setOrientation(LinearLayout.VERTICAL);
-        TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(18), ToxiVisualSystem.dp(6));
+        TextView heading = ToxiVisualSystem.text(this, "ToxiFiles built-in tools", 22, ToxiVisualSystem.TEXT_PRIMARY, true); heading.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         outer.addView(heading); outer.addView(ToxiVisualSystem.text(this, "Seven offline utilities integrated into the existing file manager.", 12, ToxiVisualSystem.TEXT_SECONDARY, false)); outer.addView(scroll, new LinearLayout.LayoutParams(-1, dialogListHeight()));
-        new AlertDialog.Builder(this).setView(outer).setNegativeButton("Back", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setView(outer).setNegativeButton("Back", null).show();
     }
 
     void showCrashLogOptions() { crashReports.showCrashLogOptions(); }
@@ -757,7 +804,7 @@ public class MainActivity extends ComponentActivity {
                 "Storage access: " + (hasAccess() ? "Granted" : "Not granted") + "\n" +
                 "Crash report: " + (CrashLogger.hasReport(this) ? "Available on this device" : "None saved") + "\n\n" +
                 "No usage data is uploaded by this screen. Diagnostics remain on this device unless you explicitly share a report.";
-        new AlertDialog.Builder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> crashReports.showCrashLogOptions()).setNegativeButton("Close", null).show();
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Usage & diagnostics").setMessage(msg).setPositiveButton("View crash options", (d,w) -> crashReports.showCrashLogOptions()).setNegativeButton("Close", null).show();
     }
 
     // ---------------- SETTINGS ----------------
@@ -766,18 +813,18 @@ public class MainActivity extends ComponentActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackground(ToxiVisualSystem.surface(18, false));
-        row.setPadding(ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(13), ToxiVisualSystem.dp(12));
-        row.setMinimumHeight(ToxiVisualSystem.dp(sub == null ? 64 : 78));
+        row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+        row.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(sub == null ? 64 : 78)));
         FrameLayout symbolPlate = new FrameLayout(this);
         symbolPlate.setBackground(ToxiVisualSystem.surface(13, true));
         ImageView symbol = new ImageView(this);
         symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT));
         symbol.setContentDescription(ToxiIcons.accessibilityLabel(glyph));
-        symbolPlate.addView(symbol, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), Gravity.CENTER));
-        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(40), ToxiVisualSystem.dp(40)));
+        symbolPlate.addView(symbol, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), Gravity.CENTER));
+        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40))));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(1), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(1));
+        copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)));
         TextView titleView = ToxiVisualSystem.text(this, title, 14.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
         titleView.setMaxLines(2);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -787,7 +834,7 @@ public class MainActivity extends ComponentActivity {
             detail.setMaxLines(2);
             detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams detailLp = new LinearLayout.LayoutParams(-1, -2);
-            detailLp.topMargin = ToxiVisualSystem.dp(4);
+            detailLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
             copy.addView(detail, detailLp);
         }
         row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -796,8 +843,8 @@ public class MainActivity extends ComponentActivity {
         } else if (listener != null) {
             ImageView chevron = new ImageView(this);
             chevron.setImageDrawable(ToxiIcons.symbol(ToxiIcons.NEXT, ToxiVisualSystem.TEXT_SECONDARY));
-            chevron.setPadding(ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5), ToxiVisualSystem.dp(5));
-            row.addView(chevron, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(28)));
+            chevron.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
+            row.addView(chevron, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28))));
         }
         if (listener != null) {
             row.setOnClickListener(view -> { ToxiVisualSystem.feedback(view); listener.onClick(view); });
@@ -809,7 +856,7 @@ public class MainActivity extends ComponentActivity {
     Switch sw(final String key, boolean def, final Runnable onChange) {
         Switch s = new Switch(this);
         s.setChecked(ToxiVisualSystem.booleanPreference(key, def));
-        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.ACCENT, ToxiVisualSystem.EDGE_STROKE}));
+        s.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{ToxiVisualSystem.signalTextColor(), ToxiVisualSystem.EDGE_STROKE}));
         s.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{Color.argb(120, Color.red(ToxiVisualSystem.ACCENT), Color.green(ToxiVisualSystem.ACCENT), Color.blue(ToxiVisualSystem.ACCENT)), ToxiVisualSystem.LIGHT_MODE ? Color.argb(180, Color.red(ToxiVisualSystem.EDGE_STROKE), Color.green(ToxiVisualSystem.EDGE_STROKE), Color.blue(ToxiVisualSystem.EDGE_STROKE)) : Color.argb(90, 255, 255, 255)}));
         ToxiMotion.attach(s);
         ToxiMotion.setActive(s, false);
@@ -841,7 +888,7 @@ public class MainActivity extends ComponentActivity {
                 + "\u2022 App Lock protects opening this app; Vault behavior and its limits are described separately in the Vault screen.\n"
                 + "\u2022 Settings export creates a readable JSON file. Do not share it if it contains preferences you consider private.\n\n"
                 + "This is an in-app permission/feature summary, not an independent network-traffic audit. To verify network behavior, inspect the source and test traffic on the device.";
-        new AlertDialog.Builder(this).setTitle("Privacy & network information")
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Privacy & network information")
                 .setMessage(report).setPositiveButton("OK", null).show();
     }
 
@@ -871,7 +918,7 @@ public class MainActivity extends ComponentActivity {
 
     View wrapField(View v) {
         FrameLayout f = new FrameLayout(this);
-        f.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(22), 0);
+        f.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0);
         f.addView(v, new FrameLayout.LayoutParams(-1, -2));
         return f;
     }
@@ -955,9 +1002,9 @@ public class MainActivity extends ComponentActivity {
             final String result = message;
             runUiIfAlive(() -> {
                 ToxiVisualSystem.toast(this, result);
-                ToxiVisualSystem.applyTheme(ToxiVisualSystem.PREFERENCES.getInt("theme", 0), false);
+                boolean changed = ToxiVisualSystem.refresh(this);
+                if (changed) setTheme(ToxiVisualSystem.LIGHT_MODE ? R.style.AppTheme_Light : R.style.AppTheme);
                 recolor();
-                buildSettings();
             });
         });
     }
@@ -990,10 +1037,11 @@ public class MainActivity extends ComponentActivity {
 
     void fontDialog() {
         String[] fonts = {"System Sans", "Rounded", "Serif", "Monospace"};
-        new AlertDialog.Builder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
+        ToxiVisualSystem.dialogBuilder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
             ToxiVisualSystem.PREFERENCES.edit().putInt("font_family", which).apply();
             d.dismiss();
-            recreate();
+            ToxiVisualSystem.refresh(this);
+            recolor();
         }).setNegativeButton("Cancel", null).show();
     }
     void themeDialog() { openThemeScreen(); }
@@ -1014,6 +1062,10 @@ public class MainActivity extends ComponentActivity {
     static final class BgView extends View {
         final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final Paint auroraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int auroraWidth = -1, auroraHeight = -1, auroraAccent, auroraEnd;
+        private boolean auroraLightMode;
+        private Shader auroraPrimary, auroraSecondary, auroraTertiary;
         BgView(android.content.Context c) {
             super(c);
             setLayerType(LAYER_TYPE_NONE, null);
@@ -1030,98 +1082,116 @@ public class MainActivity extends ComponentActivity {
                     android.app.ActivityManager am = (android.app.ActivityManager) getContext().getSystemService(android.content.Context.ACTIVITY_SERVICE);
                     lowRam = am != null && am.isLowRamDevice();
                 } catch (Exception ignored) { }
-                if (ToxiVisualSystem.booleanPreference("blur", false) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(10), Shader.TileMode.CLAMP));
+                if (ToxiVisualSystem.booleanPreference("blur", false) && !lowRam) setRenderEffect(RenderEffect.createBlurEffect(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), Shader.TileMode.CLAMP));
                 else setRenderEffect(null);
             }
         }
 
+        private void ensureAurora(int width, int height) {
+            int accent = ToxiVisualSystem.ACCENT;
+            int accentEnd = ToxiThemeSystem.ACCENT_ENDS[ToxiVisualSystem.THEME_INDEX];
+            if (width == auroraWidth && height == auroraHeight
+                    && accent == auroraAccent && accentEnd == auroraEnd
+                    && auroraLightMode == ToxiVisualSystem.LIGHT_MODE) return;
+            auroraWidth = width;
+            auroraHeight = height;
+            auroraAccent = accent;
+            auroraEnd = accentEnd;
+            auroraLightMode = ToxiVisualSystem.LIGHT_MODE;
+            float radius = Math.max(width, height) * 0.76f;
+            int primaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 24 : 42;
+            int secondaryAlpha = ToxiVisualSystem.LIGHT_MODE ? 17 : 30;
+            auroraPrimary = new RadialGradient(width * 0.18f, height * 0.22f, radius,
+                    new int[]{Color.argb(primaryAlpha, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+            auroraSecondary = new RadialGradient(width * 0.86f, height * 0.58f, radius * 0.82f,
+                    new int[]{Color.argb(secondaryAlpha, Color.red(accentEnd), Color.green(accentEnd), Color.blue(accentEnd)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+            int blended = ToxiIcons.mix(accent, accentEnd, 0.5f);
+            auroraTertiary = new RadialGradient(width * 0.52f, height * 0.94f, radius * 0.58f,
+                    new int[]{Color.argb(ToxiVisualSystem.LIGHT_MODE ? 10 : 18,
+                            Color.red(blended), Color.green(blended), Color.blue(blended)),
+                            Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        }
+
+        private void drawAurora(Canvas canvas, int width, int height) {
+            ensureAurora(width, height);
+            auroraPaint.setShader(auroraPrimary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(auroraSecondary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(auroraTertiary);
+            canvas.drawRect(0, 0, width, height, auroraPaint);
+            auroraPaint.setShader(null);
+        }
+
         private void drawThemePattern(Canvas canvas, int width, int height, float step) {
-            int theme = ToxiVisualSystem.THEME_INDEX;
-            switch (theme) {
-                case 1: // Ember-breath diagonal flow
-                    for (float offset = -height; offset < width; offset += step * 1.6f)
-                        canvas.drawLine(offset, 0, offset + height, height, gridPaint);
-                    break;
-                case 2: // Infinity-domain concentric geometry
-                    for (float radius = step; radius < Math.max(width, height); radius += step * 1.8f)
-                        canvas.drawCircle(width * .5f, height * .42f, radius, gridPaint);
-                    break;
-                case 3: // Titan frontier structural bands
-                    for (float y = step * .5f; y < height; y += step * 1.5f) {
-                        canvas.drawLine(0, y, width, y, gridPaint);
-                        canvas.drawLine(0, y + step * .12f, width, y + step * .12f, gridPaint);
-                    }
-                    for (float x = step; x < width; x += step * 2.5f)
-                        canvas.drawLine(x, 0, x, height, gridPaint);
-                    break;
-                case 4: // Shinobi chakra nodes
-                    gridPaint.setStyle(Paint.Style.FILL);
-                    for (float y = step * .5f; y < height; y += step)
-                        for (float x = step * .5f; x < width; x += step)
-                            canvas.drawCircle(x, y, ToxiVisualSystem.dp(1.35f), gridPaint);
-                    gridPaint.setStyle(Paint.Style.STROKE);
-                    break;
-                case 5: // Grand-voyage wave contours
-                    android.graphics.Path wave = new android.graphics.Path();
-                    for (float base = step; base < height + step; base += step * 1.35f) {
-                        wave.reset();
-                        wave.moveTo(0, base);
-                        for (float x = 0; x <= width; x += step * .5f)
-                            wave.lineTo(x, base + (float) Math.sin((x / step) + (base / step)) * step * .18f);
-                        canvas.drawPath(wave, gridPaint);
+            switch (ToxiVisualSystem.THEME_INDEX) {
+                case 0: // Grand Voyage: layered rolling ocean contours and distant horizon.
+                    android.graphics.Path ocean = new android.graphics.Path();
+                    float horizon = height * .43f;
+                    canvas.drawLine(0, horizon, width, horizon, gridPaint);
+                    for (int row = 0; row < 7; row++) {
+                        float base = horizon + step * (.35f + row * .52f);
+                        ocean.reset();
+                        ocean.moveTo(0, base);
+                        for (float x = 0; x <= width; x += step * .4f)
+                            ocean.lineTo(x, base + (float) Math.sin(x / step * .85f + row * .72f) * step * .17f);
+                        canvas.drawPath(ocean, gridPaint);
                     }
                     break;
-                case 6: // Ultra-instinct radial field
-                    for (float radius = step * .7f; radius < Math.max(width, height); radius += step * 1.5f)
-                        canvas.drawCircle(width * .5f, height * .5f, radius, gridPaint);
-                    for (float angle = 0; angle < 360; angle += 30) {
+                case 1: // Shinobi Spirit: chakra-ring arcs and controlled diagonal wind paths.
+                    for (float radius = step * .65f; radius < Math.max(width, height); radius += step * 1.65f)
+                        canvas.drawCircle(width * .72f, height * .28f, radius, gridPaint);
+                    for (float offset = -height; offset < width; offset += step * 2.5f)
+                        canvas.drawLine(offset, 0, offset + height * .58f, height, gridPaint);
+                    break;
+                case 2: // Breathing Legends: flowing blade arcs and flame-like angled lines.
+                    for (float offset = -height; offset < width; offset += step * 1.8f) {
+                        android.graphics.Path slash = new android.graphics.Path();
+                        slash.moveTo(offset, height);
+                        slash.cubicTo(offset + step, height * .68f, offset + height * .25f, height * .22f,
+                                offset + height * .48f, 0);
+                        canvas.drawPath(slash, gridPaint);
+                    }
+                    break;
+                case 3: // Ultra Instinct: radial energy field with concentric kinetic rings.
+                    for (float radius = step * .7f; radius < Math.max(width, height); radius += step * 1.55f)
+                        canvas.drawCircle(width * .5f, height * .47f, radius, gridPaint);
+                    for (float angle = 0; angle < 360; angle += 24) {
                         double radians = Math.toRadians(angle);
-                        canvas.drawLine(width * .5f, height * .5f,
+                        canvas.drawLine(width * .5f, height * .47f,
                                 width * .5f + (float) Math.cos(radians) * width,
-                                height * .5f + (float) Math.sin(radians) * height, gridPaint);
+                                height * .47f + (float) Math.sin(radians) * height, gridPaint);
                     }
                     break;
-                case 7: // Soul-reaper vertical veil
-                    for (float x = step * .5f; x < width; x += step * .72f)
-                        canvas.drawLine(x, 0, x + (float) Math.sin(x / step) * step * .22f, height, gridPaint);
-                    break;
-                case 8: // EVA containment lattice
-                    for (float x = step * .5f; x < width; x += step * 1.5f)
-                        canvas.drawLine(x, 0, x, height, gridPaint);
-                    for (float y = step * .5f; y < height; y += step * 1.5f)
+                default: // Titan Frontier: fortress wall bands, vertical battlements and horizon.
+                    float wall = height * .62f;
+                    canvas.drawLine(0, wall, width, wall, gridPaint);
+                    canvas.drawLine(0, wall + step * .10f, width, wall + step * .10f, gridPaint);
+                    for (float x = step * .35f; x < width; x += step * 1.65f) {
+                        canvas.drawLine(x, wall - step * .48f, x, height, gridPaint);
+                        canvas.drawLine(x - step * .18f, wall - step * .48f, x + step * .18f, wall - step * .48f, gridPaint);
+                    }
+                    for (float y = wall + step * .65f; y < height; y += step * 1.2f)
                         canvas.drawLine(0, y, width, y, gridPaint);
-                    for (float x = 0; x < width; x += step * 3f)
-                        canvas.drawLine(x, 0, Math.min(width, x + height * .28f), height, gridPaint);
-                    break;
-                case 9: // Lunar orbit paths and stars
-                    for (float radius = step; radius < Math.max(width, height); radius += step * 2.1f)
-                        canvas.drawCircle(width * .72f, height * .22f, radius, gridPaint);
-                    gridPaint.setStyle(Paint.Style.FILL);
-                    for (int i = 0; i < 24; i++) {
-                        float x = (i * 97f + step * .37f) % Math.max(1, width);
-                        float y = (i * 151f + step * .61f) % Math.max(1, height);
-                        canvas.drawCircle(x, y, ToxiVisualSystem.dp(i % 4 == 0 ? 1.7f : .8f), gridPaint);
-                    }
-                    gridPaint.setStyle(Paint.Style.STROKE);
-                    break;
-                default: // Shadow-monarch orthogonal grid
-                    for (float x = step * .5f; x < width; x += step) canvas.drawLine(x, 0, x, height, gridPaint);
-                    for (float y = step * .5f; y < height; y += step) canvas.drawLine(0, y, width, y, gridPaint);
                     break;
             }
         }
 
         @Override protected void onDraw(Canvas canvas) {
             int width = getWidth(), height = getHeight();
+            if (width <= 0 || height <= 0) return;
             canvas.drawColor(ToxiVisualSystem.CANVAS);
+            drawAurora(canvas, width, height);
             int accent = ToxiVisualSystem.ACCENT;
             gridPaint.setColor(Color.argb(10, Color.red(accent), Color.green(accent), Color.blue(accent)));
-            gridPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(0.65f)));
-            float step = ToxiVisualSystem.dp(48);
+            gridPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(0.65f))));
+            float step = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(48));
             drawThemePattern(canvas, width, height, step);
             markerPaint.setColor(Color.argb(34, Color.red(accent), Color.green(accent), Color.blue(accent)));
-            markerPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(1.1f)));
-            float inset = ToxiVisualSystem.dp(20), mark = ToxiVisualSystem.dp(38);
+            markerPaint.setStrokeWidth(Math.max(1f, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.1f))));
+            float inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), mark = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(38));
             canvas.drawLine(inset, inset, inset + mark, inset, markerPaint);
             canvas.drawLine(inset, inset, inset, inset + mark, markerPaint);
             canvas.drawLine(width - inset - mark, height - inset, width - inset, height - inset, markerPaint);
@@ -1145,7 +1215,7 @@ public class MainActivity extends ComponentActivity {
         void set(float[] pa, int[] co, String b, String s) { parts = pa; cols = co; big = b; small = s; invalidate(); }
 
         @Override protected void onDraw(Canvas c) {
-            float sw = ToxiVisualSystem.dp(11), pad = sw / 2f + ToxiVisualSystem.dp(2);
+            float sw = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), pad = sw / 2f + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2));
             r.set(pad, pad, getWidth() - pad, getHeight() - pad);
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeWidth(sw);
@@ -1160,13 +1230,13 @@ public class MainActivity extends ComponentActivity {
                 start += sweep;
             }
             t.setColor(ToxiVisualSystem.TEXT_PRIMARY);
-            t.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-            t.setTextSize(ToxiVisualSystem.dp(22));
-            c.drawText(big, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(5), t);
-            t.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-            t.setTextSize(ToxiVisualSystem.dp(11));
+            t.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
+            t.setTextSize(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)));
+            c.drawText(big, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), t);
+            t.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.NORMAL));
+            t.setTextSize(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
             t.setColor(ToxiVisualSystem.TEXT_SECONDARY);
-            c.drawText(small, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(21), t);
+            c.drawText(small, getWidth() / 2f, getHeight() / 2f + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(21)), t);
         }
     }
 }

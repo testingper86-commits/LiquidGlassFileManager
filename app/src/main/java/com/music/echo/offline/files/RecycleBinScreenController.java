@@ -32,26 +32,27 @@ final class RecycleBinScreenController {
 
     private void render(List<RecycleBin.Item> items, boolean loading) {
         activity.recycle.removeAllViews();
-        activity.recycle.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4),
-                ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(28));
+        activity.recycle.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)));
 
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
+        header.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         LinearLayout titleBlock = new LinearLayout(activity);
         titleBlock.setOrientation(LinearLayout.VERTICAL);
-        titleBlock.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
+        titleBlock.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0, 0);
         titleBlock.addView(ToxiVisualSystem.text(activity, "RECOVERY SYSTEM", 9, ToxiVisualSystem.ACCENT, true));
         titleBlock.addView(ToxiVisualSystem.text(activity, "Recycle Bin", 25, ToxiVisualSystem.TEXT_PRIMARY, true));
         header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
 
         TextView emptyButton = ToxiVisualSystem.text(activity, "Empty", 12, ToxiVisualSystem.ACCENT, true);
         emptyButton.setBackground(ToxiVisualSystem.surface(14, true));
-        emptyButton.setPadding(ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(15), ToxiVisualSystem.dp(11));
-        emptyButton.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Empty Recycle Bin?")
+        emptyButton.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+        emptyButton.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
+        emptyButton.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Empty Recycle Bin?")
                 .setMessage("Every item will be permanently deleted. This can't be undone.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Empty", (dialog, which) -> RecycleBin.empty(activity, message -> {
@@ -68,7 +69,7 @@ final class RecycleBinScreenController {
 
         LinearLayout hero = new LinearLayout(activity);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(19), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
+        hero.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)));
         hero.setBackground(ToxiVisualSystem.surface(24, true));
         TextView overline = ToxiVisualSystem.text(activity, "SAFE DELETION LAYER", 9, ToxiVisualSystem.ACCENT, true);
         overline.setLetterSpacing(0.15f);
@@ -79,7 +80,7 @@ final class RecycleBinScreenController {
                 "Restore an item while it is retained, or remove it permanently when you are certain.",
                 12, ToxiVisualSystem.TEXT_SECONDARY, false));
         LinearLayout metrics = new LinearLayout(activity);
-        metrics.setPadding(0, ToxiVisualSystem.dp(16), 0, 0);
+        metrics.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), 0, 0);
         metrics.addView(metric(items == null ? "—" : String.valueOf(items.size()), "ITEMS HELD"),
                 new LinearLayout.LayoutParams(0, -2, 1f));
         metrics.addView(metric(items == null ? "—" : ToxiVisualSystem.formatSize(totalBytes), "SPACE HELD"),
@@ -98,7 +99,9 @@ final class RecycleBinScreenController {
                     loading ? "Your recovery index is being read." : "Check storage access and retry.");
             if (!loading) {
                 TextView retry = ToxiVisualSystem.text(activity, "RETRY", 10, ToxiVisualSystem.ACCENT, true);
-                retry.setPadding(0, ToxiVisualSystem.dp(12), 0, 0);
+                retry.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+                retry.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+                ToxiVisualSystem.interactive(retry);
                 retry.setOnClickListener(view -> reload());
                 status.addView(retry);
             }
@@ -124,7 +127,7 @@ final class RecycleBinScreenController {
     private LinearLayout stateCard(String title, String description) {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(ToxiVisualSystem.dp(19), ToxiVisualSystem.dp(21), ToxiVisualSystem.dp(19), ToxiVisualSystem.dp(20));
+        card.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(21)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(19)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)));
         card.setBackground(ToxiVisualSystem.surface(21, false));
         card.addView(ToxiVisualSystem.text(activity, title, 15, ToxiVisualSystem.TEXT_PRIMARY, true));
         card.addView(ToxiVisualSystem.text(activity, description, 12, ToxiVisualSystem.TEXT_SECONDARY, false), params(0, 6, 0, 0));
@@ -137,7 +140,7 @@ final class RecycleBinScreenController {
         block.addView(ToxiVisualSystem.text(activity, value, 17, ToxiVisualSystem.TEXT_PRIMARY, true));
         TextView caption = ToxiVisualSystem.text(activity, label, 8, ToxiVisualSystem.TEXT_SECONDARY, true);
         caption.setLetterSpacing(0.09f);
-        caption.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
+        caption.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0);
         block.addView(caption);
         return block;
     }
@@ -150,7 +153,7 @@ final class RecycleBinScreenController {
 
     void showItemMenu(final RecycleBin.Item item) {
         String[] options = {"Restore", "Delete forever"};
-        new AlertDialog.Builder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
             if (which == 0) {
                 RecycleBin.restore(activity, item, message -> {
                     ToxiVisualSystem.toast(activity, message);
@@ -158,7 +161,7 @@ final class RecycleBinScreenController {
                     reload();
                 });
             } else {
-                new AlertDialog.Builder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
                         .setNegativeButton("Cancel", null)
                         .setPositiveButton("Delete", (confirmDialog, confirmWhich) ->
                                 RecycleBin.permanentDelete(activity, java.util.Collections.singletonList(item), message -> {
@@ -173,7 +176,7 @@ final class RecycleBinScreenController {
         final int[] days = {7, 14, 30, 60, 90};
         String[] labels = new String[days.length];
         for (int i = 0; i < days.length; i++) labels[i] = days[i] + " days";
-        new AlertDialog.Builder(activity).setTitle("Recycle Bin retention")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Recycle Bin retention")
                 .setItems(labels, (dialog, which) -> {
                     ToxiVisualSystem.PREFERENCES.edit().putInt("recyclebin_days", days[which]).apply();
                     activity.buildSettings();

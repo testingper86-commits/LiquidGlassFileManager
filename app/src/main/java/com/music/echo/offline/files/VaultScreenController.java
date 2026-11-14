@@ -20,7 +20,7 @@ final class VaultScreenController {
 
     void showSetPinDialog() {
         final android.widget.EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle(Vault.hasPin(activity) ? "Change Vault PIN" : "Set Vault PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(Vault.hasPin(activity) ? "Change Vault PIN" : "Set Vault PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String pin = input.getText().toString().trim();
@@ -40,7 +40,7 @@ final class VaultScreenController {
             return;
         }
         final android.widget.EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle("Enter Vault PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Enter Vault PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Unlock", (dialog, which) -> {
                     if (Vault.checkPin(activity, input.getText().toString().trim())) {
@@ -57,19 +57,19 @@ final class VaultScreenController {
 
     void build() {
         activity.vault.removeAllViews();
-        activity.vault.setPadding(ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(4),
-                ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(28));
+        activity.vault.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)),
+                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)));
 
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(8));
+        header.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         LinearLayout titleBlock = new LinearLayout(activity);
         titleBlock.setOrientation(LinearLayout.VERTICAL);
-        titleBlock.setPadding(ToxiVisualSystem.dp(12), 0, 0, 0);
+        titleBlock.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0, 0, 0);
         titleBlock.addView(ToxiVisualSystem.text(activity, "PRIVATE SPACE", 9, ToxiVisualSystem.ACCENT, true));
         titleBlock.addView(ToxiVisualSystem.text(activity, "Vault", 25, ToxiVisualSystem.TEXT_PRIMARY, true));
         header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -81,18 +81,18 @@ final class VaultScreenController {
 
         LinearLayout hero = new LinearLayout(activity);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(18));
+        hero.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)));
         hero.setBackground(ToxiVisualSystem.accentSurface(26));
-        TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, 0xFFFFFFFF, true);
-        emblem.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        TextView emblem = ToxiVisualSystem.text(activity, "◈", 34, ToxiVisualSystem.accentForeground(), true);
+        emblem.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.NORMAL));
         hero.addView(emblem);
         hero.addView(ToxiVisualSystem.text(activity, "Your files. Your boundary.", 19, 0xFFFFFFFF, true), params(0, 8, 0, 5));
         hero.addView(ToxiVisualSystem.text(activity,
                 "Protected file contents use AES-256 encryption with a key held by Android Keystore.",
-                12, 0xEFFFFFFF, false));
+                12, ToxiVisualSystem.accentForeground(239), false));
         LinearLayout metrics = new LinearLayout(activity);
         metrics.setGravity(Gravity.CENTER_VERTICAL);
-        metrics.setPadding(0, ToxiVisualSystem.dp(17), 0, 0);
+        metrics.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(17)), 0, 0);
         metrics.addView(metric(items.size() + "", "SECURED ITEMS"), new LinearLayout.LayoutParams(0, -2, 1f));
         metrics.addView(metric(ToxiVisualSystem.formatSize(totalBytes), "SPACE USED"), new LinearLayout.LayoutParams(0, -2, 1f));
         hero.addView(metrics);
@@ -103,7 +103,7 @@ final class VaultScreenController {
             LinearLayout empty = new LinearLayout(activity);
             empty.setGravity(Gravity.CENTER);
             empty.setOrientation(LinearLayout.VERTICAL);
-            empty.setPadding(ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28), ToxiVisualSystem.dp(22), ToxiVisualSystem.dp(28));
+            empty.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)));
             empty.setBackground(ToxiVisualSystem.surface(22, false));
             empty.addView(ToxiVisualSystem.text(activity, "◌", 32, ToxiVisualSystem.ACCENT, true));
             empty.addView(ToxiVisualSystem.text(activity, "Nothing stored yet", 16, ToxiVisualSystem.TEXT_PRIMARY, true), params(0, 10, 0, 5));
@@ -126,7 +126,7 @@ final class VaultScreenController {
         TextView securityNote = ToxiVisualSystem.text(activity,
                 "The PIN unlocks this screen. It is not used to derive the encryption key. Keep your device credentials private.",
                 11, ToxiVisualSystem.TEXT_SECONDARY, false);
-        securityNote.setPadding(ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(8), 0);
+        securityNote.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0);
         activity.vault.addView(securityNote);
         ToxiVisualSystem.revealChildren(activity.vault);
     }
@@ -135,9 +135,9 @@ final class VaultScreenController {
         LinearLayout block = new LinearLayout(activity);
         block.setOrientation(LinearLayout.VERTICAL);
         block.addView(ToxiVisualSystem.text(activity, value, 19, 0xFFFFFFFF, true));
-        TextView caption = ToxiVisualSystem.text(activity, label, 8, 0xDFFFFFFF, true);
+        TextView caption = ToxiVisualSystem.text(activity, label, 8, ToxiVisualSystem.accentForeground(223), true);
         caption.setLetterSpacing(0.12f);
-        caption.setPadding(0, ToxiVisualSystem.dp(3), 0, 0);
+        caption.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0);
         block.addView(caption);
         return block;
     }
@@ -156,7 +156,7 @@ final class VaultScreenController {
 
     void showItemMenu(final Vault.Item item) {
         String[] options = {"Move out of Vault", "Delete forever"};
-        new AlertDialog.Builder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(item.file.getName()).setItems(options, (dialog, which) -> {
             if (which == 0) {
                 Vault.restoreOut(activity, item, message -> {
                     ToxiVisualSystem.toast(activity, message);
@@ -164,7 +164,7 @@ final class VaultScreenController {
                     build();
                 });
             } else {
-                new AlertDialog.Builder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete forever?").setMessage("This can't be undone.")
                         .setNegativeButton("Cancel", null)
                         .setPositiveButton("Delete", (confirmDialog, confirmWhich) ->
                                 Vault.deleteForever(activity, item, message -> {

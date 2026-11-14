@@ -100,19 +100,22 @@ final class SafBrowserController {
                 if (rows.isEmpty()) { ToxiVisualSystem.toast(activity, "This folder is empty"); return; }
                 String[] names = new String[rows.size()];
                 for (int i = 0; i < rows.size(); i++) names[i] = rows.get(i).name;
-                AlertDialog listing = new AlertDialog.Builder(activity).setTitle(title).setItems(names, (d, w) -> {
+                AlertDialog listing = ToxiVisualSystem.dialogBuilder(activity).setTitle(title).setItems(names, (d, w) -> {
                     SafStorageOperations.DirectoryEntry row = rows.get(w);
                     Uri childUri = SafStorageOperations.documentUriInTree(tree, row.documentId);
                     if (row.directory) showSafLevel(tree, childUri, row.name);
                     else importSafDoc(childUri, row.name);
                 }).setNegativeButton("Close", null).create();
-                listing.setOnShowListener(ignored -> listing.getListView().setOnItemLongClickListener(
+                listing.setOnShowListener(ignored -> {
+                    ToxiVisualSystem.styleDialog(listing);
+                    listing.getListView().setOnItemLongClickListener(
                         (parent, view, position, id) -> {
                             SafStorageOperations.DirectoryEntry row = rows.get(position);
                             Uri selected = SafStorageOperations.documentUriInTree(tree, row.documentId);
                             showSafDocumentActions(tree, docUri, title, selected, row.name, row.directory);
                             return true;
-                        }));
+                        });
+                });
                 listing.show();
             });
         });
@@ -123,7 +126,7 @@ final class SafBrowserController {
     private void showSafDocumentActions(Uri tree, Uri parent, String title, Uri document,
                                          String name, boolean directory) {
         String[] actions = new String[]{"Duplicate here", "Move to folder", "Rename", "Delete"};
-        new AlertDialog.Builder(activity).setTitle(name).setItems(actions, (dialog, which) -> {
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(name).setItems(actions, (dialog, which) -> {
             String action = actions[which];
             if ("Duplicate here".equals(action)) {
                 runSafAction(tree, parent, title, "Duplicated " + name,
@@ -136,7 +139,7 @@ final class SafBrowserController {
                 input.setSingleLine(true);
                 input.setText(name);
                 input.setSelection(input.length());
-                new AlertDialog.Builder(activity).setTitle("Rename document").setView(input)
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Rename document").setView(input)
                         .setPositiveButton("Rename", (d, w) -> {
                             String newName = input.getText().toString();
                             if (name.equals(newName)) return;
@@ -144,7 +147,7 @@ final class SafBrowserController {
                                     () -> SafStorageOperations.renameDocument(activity.getContentResolver(), document, newName));
                         }).setNegativeButton("Cancel", null).show();
             } else {
-                new AlertDialog.Builder(activity).setTitle("Delete " + name + "?")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete " + name + "?")
                         .setMessage("This permanently deletes the selected item from the chosen storage provider.")
                         .setNegativeButton("Cancel", null)
                         .setPositiveButton("Delete", (d, w) -> runSafAction(tree, parent, title, "Deleted " + name,
@@ -179,7 +182,7 @@ final class SafBrowserController {
                     ToxiVisualSystem.toast(activity, "No other destination folders are available here");
                     return;
                 }
-                new AlertDialog.Builder(activity).setTitle("Move " + sourceName + " to folder")
+                ToxiVisualSystem.dialogBuilder(activity).setTitle("Move " + sourceName + " to folder")
                         .setItems(choices.toArray(new String[0]), (dialog, which) -> {
                             if (canMoveHere && which == 0) {
                                 runSafAction(tree, sourceParent, sourceParentTitle, "Moved " + sourceName,

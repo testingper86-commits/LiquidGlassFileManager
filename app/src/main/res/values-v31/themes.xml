@@ -8,9 +8,9 @@
         <item name="android:colorAccent">@color/toxifiles_signal</item>
         <item name="android:windowBackground">@color/toxifiles_canvas</item>
         <item name="android:windowSplashScreenBackground">@color/toxifiles_canvas</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_toxifiles_brand_mark</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#142435</item>
-        <item name="android:windowSplashScreenAnimationDuration">240</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/toxifiles_splash_transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#080711</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
         <item name="android:alertDialogTheme">@style/ToxiDialogTheme</item>
     </style>
     <style name="AppTheme_Light" parent="android:style/Theme.Material.Light.NoActionBar">
@@ -23,9 +23,9 @@
         <item name="android:colorAccent">#347B67</item>
         <item name="android:windowBackground">#F3F6FA</item>
         <item name="android:windowSplashScreenBackground">#F3F6FA</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_toxifiles_brand_mark</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#E3EEE9</item>
-        <item name="android:windowSplashScreenAnimationDuration">240</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/toxifiles_splash_transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#080711</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
         <item name="android:alertDialogTheme">@style/ToxiDialogTheme_Light</item>
     </style>
 </resources>

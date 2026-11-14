@@ -14,9 +14,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
-import android.os.Environment;
-import android.os.StatFs;
 import android.os.Build;
+import android.os.StatFs;
 import android.view.Gravity;
 import android.view.animation.DecelerateInterpolator;
 import android.view.View;
@@ -24,9 +23,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
-
 import java.io.File;
 
 /** Independent NEBULA OS home and tools presentation. All actions delegate to existing app modules. */
@@ -69,14 +66,16 @@ final class NebulaHomeView {
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
         ImageView mark = new ImageView(a);
-        mark.setImageResource(R.drawable.ic_toxifiles_brand_mark);
-        mark.setContentDescription("ToxiFiles Prism mark");
+        mark.setImageResource(R.drawable.toxifiles_master_art);
+        mark.setContentDescription("ToxiFiles master brand artwork");
         mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
+        mark.setBackground(background(PANEL_ALT, BORDER, 11));
+        mark.setPadding(dp(a, 3), dp(a, 3), dp(a, 3), dp(a, 3));
+        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
         LinearLayout identity = new LinearLayout(a);
         identity.setOrientation(LinearLayout.VERTICAL);
         identity.setPadding(dp(a, 12), 0, 0, 0);
-        TextView word = text(a, "TOXIFILES", 19, TEXT, true);
+        TextView word = text(a, "TOXIFILES", 19, LIME, true);
         word.setLetterSpacing(0.16f);
         identity.addView(word);
         TextView edition = text(a, "PRISM  /  PERSONAL FILESPACE", 8.5f, MUTED, true);
@@ -88,7 +87,9 @@ final class NebulaHomeView {
         live.setBackground(background(PANEL_ALT, BORDER, 18));
         live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
         mast.addView(live);
-        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 19));
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 12));
+        host.addView(ToxiThemeIdentityView.create(a, 248, "ACTIVE IDENTITY"),
+                margins(a, -1, -2, 0, 0, 0, 18));
 
         TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
         overline.setLetterSpacing(0.2f);
@@ -190,7 +191,8 @@ final class NebulaHomeView {
         }
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1, dp(a, 112) + ToxiVisualSystem.BOTTOM_INSET));
+        host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1,
+                dp(a, 110) + ToxiVisualSystem.BOTTOM_INSET));
     }
 
     private static int gridColumns(MainActivity a) {
@@ -220,7 +222,7 @@ final class NebulaHomeView {
                     .alpha(1f)
                     .translationY(0f)
                     .setStartDelay(index * 35L)
-                    .setDuration(220L)
+                    .setDuration(ToxiThemeEngine.motionDuration(220L))
                     .setInterpolator(new DecelerateInterpolator())
                     .start();
         });
@@ -233,6 +235,8 @@ final class NebulaHomeView {
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
         host.setBackgroundColor(BACKGROUND);
 
+        host.addView(ToxiThemeIdentityView.create(a, 196, "WORKSPACE IDENTITY"),
+                margins(a, -1, -2, 0, 0, 0, 18));
         TextView eyebrow = text(a, "TOXIFILES / WORKSPACE", 10, ICE, true);
         eyebrow.setLetterSpacing(0.15f);
         host.addView(eyebrow);
@@ -272,6 +276,7 @@ final class NebulaHomeView {
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
                 card.setOnClickListener(v -> a.launchNebulaTool(index));
+                ToxiVisualSystem.interactive(card);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         rowItems == 1 ? -1 : 0, dp(a, 122), rowItems == 1 ? 0f : 1f);
                 if (rowItems > 1) {
@@ -293,21 +298,12 @@ final class NebulaHomeView {
     }
 
     private static void addStorage(MainActivity a, LinearLayout host) {
-        File root = Environment.getExternalStorageDirectory();
-        long total = 0L;
-        long available = 0L;
-        if (root != null) {
-            try {
-                StatFs storage = new StatFs(root.getPath());
-                total = Math.max(0L, storage.getTotalBytes());
-                available = Math.max(0L, Math.min(total, storage.getAvailableBytes()));
-            } catch (IllegalArgumentException | SecurityException ignored) {
-                total = 0L;
-                available = 0L;
-            }
-        }
-        long used = total > 0 ? Math.max(0L, total - available) : 0L;
-        int percent = total > 0 ? (int) Math.max(0L, Math.min(100L, Math.round((double) used * 100.0d / (double) total))) : 0;
+        StorageCapacity capacity = readStorageCapacity(a);
+        long total = capacity.total;
+        long available = capacity.available;
+        long used = capacity.used;
+        int percent = total > 0 ? (int) Math.max(0L, Math.min(100L,
+                Math.round((double) used * 100.0d / (double) total))) : -1;
 
         LinearLayout card = panel(a, 17);
         LinearLayout top = new LinearLayout(a);
@@ -315,7 +311,7 @@ final class NebulaHomeView {
         LinearLayout copy = new LinearLayout(a);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(a, "STORAGE OVERVIEW", 9, ICE, true));
-        copy.addView(text(a, "Primary shared storage", 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
+        copy.addView(text(a, capacity.label, 17, TEXT, true), margins(a, -1, -2, 0, 5, 0, 0));
         top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView pct = text(a, total > 0 ? percent + "%" : "--", 22, LIME, true);
         top.addView(pct);
@@ -337,10 +333,39 @@ final class NebulaHomeView {
         values.addView(storageValue(a, "USED", total > 0 ? formatSize(used) : "Unavailable", LIME), new LinearLayout.LayoutParams(0, -2, 1f));
         values.addView(storageValue(a, "AVAILABLE", total > 0 ? formatSize(available) : "Unavailable", ICE), new LinearLayout.LayoutParams(0, -2, 1f));
         card.addView(values);
-        card.setContentDescription(total > 0 ? "Primary shared storage. " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
+        if (capacity.error != null) card.addView(text(a, capacity.error, 9, MUTED, false), margins(a, -1, -2, 0, 8, 0, 0));
+        card.setContentDescription(total > 0 ? capacity.label + ". " + formatSize(used) + " used, " + formatSize(available) + " available, " + percent + " percent used. Tap to analyze storage." : "Device storage information unavailable. Tap to analyze storage.");
         card.setFocusable(true);
         card.setOnClickListener(v -> a.openStorageAnalyzer());
+        ToxiVisualSystem.interactive(card);
         host.addView(card, margins(a, -1, -2, 0, 0, 0, 20));
+    }
+
+    private static final class StorageCapacity {
+        final String label;
+        final long total, available, used;
+        final String error;
+        StorageCapacity(String label, long total, long available, String error) {
+            this.label = label;
+            this.total = Math.max(0L, total);
+            this.available = Math.max(0L, Math.min(this.total, available));
+            this.used = this.total - this.available;
+            this.error = error;
+        }
+    }
+
+    private static StorageCapacity readStorageCapacity(MainActivity activity) {
+        File root = android.os.Environment.getExternalStorageDirectory();
+        if (root == null) return new StorageCapacity("Shared storage", 0L, 0L, "Storage volume unavailable");
+        try {
+            StatFs stats = new StatFs(root.getAbsolutePath());
+            long total = stats.getTotalBytes();
+            long available = Math.min(total, Math.max(0L, stats.getAvailableBytes()));
+            if (total <= 0L) return new StorageCapacity("Shared storage", 0L, 0L, "System did not report volume capacity");
+            return new StorageCapacity("Primary shared storage", total, available, null);
+        } catch (IllegalArgumentException | SecurityException failure) {
+            return new StorageCapacity("Shared storage", 0L, 0L, "Storage statistics unavailable");
+        }
     }
 
     private static View storageValue(MainActivity a, String label, String value, int accent) {
@@ -380,21 +405,15 @@ final class NebulaHomeView {
         host.addView(row, margins(a, -1, -2, 0, 0, 0, 11));
     }
 
-    private static GradientDrawable toolCardSurface(int accent) {
-        GradientDrawable surface = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {
-                        ToxiIcons.mix(PANEL, accent, 0.075f),
-                        PANEL,
-                        ToxiIcons.mix(PANEL, Color.BLACK, 0.035f)
-                });
-        surface.setCornerRadius(dpRadius(18));
-        surface.setStroke(Math.max(1, dpRadius(1)), BORDER);
-        return surface;
+    private static Drawable toolCardSurface(int accent) {
+        // Keep utility cards on the same theme-owned liquid-glass material as Home,
+        // Theme Studio, navigation and the file-management surfaces. The glyph remains
+        // the per-tool signal; the card itself must never introduce a second palette.
+        return ToxiVisualSystem.surface(18, true);
     }
 
     private static int dpRadius(int value) {
-        return Math.max(1, Math.round(value * Resources.getSystem().getDisplayMetrics().density));
+        return Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.radius(value)));
     }
 
     private static LinearLayout panel(MainActivity a, int radius) {
@@ -409,7 +428,7 @@ final class NebulaHomeView {
         TextView view = new TextView(a);
         view.setText(value);
         view.setTextSize(size);
-        view.setTextColor(color);
+        view.setTextColor(color == LIME ? ToxiVisualSystem.signalTextColor() : color);
         view.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), medium ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         return view;
@@ -419,18 +438,36 @@ final class NebulaHomeView {
         return text(a, value, 12, color, true);
     }
 
-    static GradientDrawable navigationSurface() { syncPalette(); return background(PANEL_ALT, BORDER, 22); }
+    static GradientDrawable navigationSurface() {
+        syncPalette();
+        int top = Color.argb(246, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
+        int bottom = Color.argb(238, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL));
+        int edge = Color.argb(185, Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{top, bottom});
+        glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(25)));
+        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), edge);
+        return glass;
+    }
 
-    static GradientDrawable navigationHighlight() { syncPalette(); return background(Color.argb(34, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), Color.argb(100, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), 16); }
+    static GradientDrawable navigationHighlight() {
+        syncPalette();
+        GradientDrawable active = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(48, Color.red(LIME), Color.green(LIME), Color.blue(LIME)),
+                        Color.argb(22, Color.red(ICE), Color.green(ICE), Color.blue(ICE))});
+        active.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(18)));
+        active.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))),
+                Color.argb(190, Color.red(LIME), Color.green(LIME), Color.blue(LIME)));
+        return active;
+    }
 
     static Drawable navigationItemSurface() { syncPalette(); return new RippleDrawable(ColorStateList.valueOf(Color.argb(32, Color.red(TEXT), Color.green(TEXT), Color.blue(TEXT))), null, null); }
 
     private static GradientDrawable background(int color, int stroke, int radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
-        float density = Resources.getSystem().getDisplayMetrics().density;
-        d.setCornerRadius(radius * density);
-        d.setStroke(Math.max(1, Math.round(density)), stroke);
+        d.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
+        d.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), stroke);
         return d;
     }
 
@@ -441,7 +478,7 @@ final class NebulaHomeView {
     }
 
     static int dp(MainActivity a, float value) {
-        return Math.round(value * a.getResources().getDisplayMetrics().density);
+        return Math.round(ToxiThemeEngine.spacing(value) * a.getResources().getDisplayMetrics().density);
     }
 
     private static String formatSize(long bytes) {

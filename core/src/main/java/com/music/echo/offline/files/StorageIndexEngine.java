@@ -35,6 +35,67 @@ final class StorageIndexEngine {
         }
     }
 
+    static final class VolumeSnapshot {
+        final String volumeId;
+        final String label;
+        final long totalBytes;
+        final long availableBytes;
+        final long usedBytes;
+        final boolean primary;
+        VolumeSnapshot(String volumeId, String label, long totalBytes, long availableBytes, boolean primary) {
+            if (volumeId == null || volumeId.isEmpty() || totalBytes < 0 || availableBytes < 0 || availableBytes > totalBytes) {
+                throw new IllegalArgumentException("Invalid storage volume statistics");
+            }
+            this.volumeId = volumeId;
+            this.label = label == null ? "Storage" : label;
+            this.totalBytes = totalBytes;
+            this.availableBytes = availableBytes;
+            this.usedBytes = totalBytes - availableBytes;
+            this.primary = primary;
+        }
+    }
+
+    static final class CategoryTotals {
+        final long[] bytes;
+        final int[] counts;
+        final long totalIndexedBytes;
+        final int totalIndexedFiles;
+        final boolean complete;
+        final int entriesVisited;
+        CategoryTotals(long[] bytes, int[] counts, long totalIndexedBytes, int totalIndexedFiles,
+                       boolean complete, int entriesVisited) {
+            this.bytes = bytes.clone();
+            this.counts = counts.clone();
+            this.totalIndexedBytes = totalIndexedBytes;
+            this.totalIndexedFiles = totalIndexedFiles;
+            this.complete = complete;
+            this.entriesVisited = entriesVisited;
+        }
+    }
+
+    static final class TotalsBuilder {
+        private final long[] bytes = new long[7];
+        private final int[] counts = new int[7];
+        private long totalBytes;
+        private int totalFiles;
+        void add(int category, long size) {
+            if (category < 0 || category >= bytes.length || size < 0) throw new IllegalArgumentException("Invalid file category");
+            bytes[category] = saturatedAdd(bytes[category], size);
+            counts[category] = counts[category] == Integer.MAX_VALUE ? Integer.MAX_VALUE : counts[category] + 1;
+            totalBytes = saturatedAdd(totalBytes, size);
+            totalFiles = totalFiles == Integer.MAX_VALUE ? Integer.MAX_VALUE : totalFiles + 1;
+        }
+        CategoryTotals finish(Result scan) {
+            return new CategoryTotals(bytes, counts, totalBytes, totalFiles,
+                    scan != null && !scan.incomplete && !scan.truncated, scan == null ? 0 : scan.entriesVisited);
+        }
+    }
+
+    static long saturatedAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
+    }
+
     private static final class State {
         final int maxDepth;
         final int maxEntries;

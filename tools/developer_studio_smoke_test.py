@@ -8,6 +8,7 @@ BASE = ROOT / "app/src/main/java/com/music/echo/offline/files"
 activity = (BASE / "DeveloperStudioActivity.java").read_text(encoding="utf-8")
 core = (ROOT / "core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java").read_text(encoding="utf-8")
 main = (BASE / "MainActivity.java").read_text(encoding="utf-8")
+settings_controller = (BASE / "SettingsScreenController.java").read_text(encoding="utf-8")
 tools_activity = (BASE / "ToxiToolsActivity.java").read_text(encoding="utf-8")
 settings_backup = (BASE / "SettingsBackupManager.java").read_text(encoding="utf-8")
 back_navigation = (BASE / "ToxiBackNavigation.java").read_text(encoding="utf-8")
@@ -38,7 +39,6 @@ app_node = manifest_root.find("application")
 dev_activity = next((item for item in app_node.findall("activity") if item.attrib.get(android_ns + "name") == ".files.DeveloperStudioActivity"), None)
 require(dev_activity is not None and dev_activity.attrib.get(android_ns + "exported") == "false" and dev_activity.find("intent-filter") is None,
         "Developer Studio activity is private and non-exported")
-settings_controller = (BASE / "SettingsScreenController.java").read_text(encoding="utf-8")
 require(settings_controller.count("new Intent(activity, DeveloperStudioActivity.class)") == 1 and "Developer Studio" in settings_controller and "settingsScreenController.build();" in main,
         "single Developer-only entry point exists in the extracted Settings screen")
 require("EXTRA_FILE_PATH" not in activity and "tool_index" not in activity,
@@ -64,11 +64,12 @@ require("validateRegexPattern" in core and "MAX_DIFF_LINES" in core and "50_000"
         "regex and diff engines enforce conservative pattern and input complexity limits")
 require("isReadOnlySql" in core and "DeveloperStudioCore.isReadOnlySql(sql)" in activity,
         "SQL Studio accepts only bounded read-only statements through a tokenizer")
-require("parseProgressCount" in core and "Pattern.compile" not in main and "Pattern.compile" not in (BASE / "DynamicIslandView.java").read_text(encoding="utf-8"),
+require("parseProgressCount" in core and "Pattern.compile" not in main and "DynamicIslandView" not in main,
         "progress parsing is bounded and does not use regex backtracking")
 require("MAX_RELATION_FILES" in core and "MAX_TEXT_CHARS" in core,
         "source analysis has explicit input bounds")
-require("getOnBackPressedDispatcher().addCallback(activity" in back_navigation and "new OnBackPressedCallback(true)" in back_navigation, "system Back uses a lifecycle-aware AndroidX dispatcher")
+require("getOnBackPressedDispatcher().addCallback(activity" in back_navigation and "new OnBackPressedCallback(true)" in back_navigation,
+        "system Back uses a lifecycle-aware AndroidX dispatcher")
 require("private void handleBackNavigation()" in activity and "ToxiBackNavigation.bind(this, this::handleBackNavigation);" in activity,
         "Developer Studio hardware back uses the screen-aware navigation handler")
 require("current>=0" in activity and "cancelWork();showHome();" in activity and "else{finish();}" in activity,

@@ -1,7 +1,7 @@
 name: ToxiFiles Android Build
 on:
   push:
-    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office"]
+    branches: [main, master, "feature/toxifiles-final-liquid-glass-ui", "feature/toxifiles-360-offline-office", "ci/add-debug-apk-artifact"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,66 +16,80 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Verify native Android project
         shell: bash
         run: |
           set -euo pipefail
-          test -s gradlew
-          test -s gradle/wrapper/gradle-wrapper.jar
-          test -s app/src/main/java/com/music/echo/offline/files/MainActivity.java
-          test -s app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiIcons.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiMotion.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiProgressSeekBar.java
-          test -s app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java
-          test -s core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
-          test -s core/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
-          test -s app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java
-          test -s core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
-          test -s core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
-          test -s tools/developer_studio_smoke_test.py
-          test -s app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
-          test -s app/src/main/res/drawable/ic_toxifiles_brand_mark.xml
-          test -s app/src/main/res/drawable/ic_toxifiles_app_icon.xml
-          test -s app/src/main/res/drawable/ic_toxifiles_notification.xml
-          test -s app/src/main/res/drawable/toxifiles_splash.xml
-          test -s app/build.gradle.kts
-          test -s settings.gradle || test -s settings.gradle.kts
-          test -s core/build.gradle.kts
-          test -s core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
-          test -s core/src/main/java/com/music/echo/offline/files/TaskScheduler.java
-          test -s core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java
-          test -s core/src/main/java/com/music/echo/offline/files/FileOperationEngine.java
-          test -s core/src/main/java/com/music/echo/offline/files/ArchiveOperations.java
-          test -s core/src/test/java/com/music/echo/offline/files/ArchiveOperationsTest.java
-          test -s core/src/test/java/com/music/echo/offline/files/FileOperationEngineTest.java
-          test -s core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java
-          test -s foundation/build.gradle.kts
-          test -s foundation/src/main/AndroidManifest.xml
-          test -s foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java
-          test -s foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java
-          test -s foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java
-          test -s foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java
-          test -s core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java
-          test -s core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java
-          test -s core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java
-          test -s core/src/main/java/com/music/echo/offline/files/ArchivePath.java
-          test -s core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
-          test -s core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java
-          test -s core/src/main/java/com/music/echo/offline/files/PinHash.java
-          test -s core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java
-          test -s core/src/test/java/com/music/echo/offline/files/PinHashTest.java
-          test -s core/src/main/java/com/music/echo/offline/files/SafePathResolver.java
-          test -s core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java
+          required_files=(
+            gradlew
+            gradle/wrapper/gradle-wrapper.jar
+            app/src/main/java/com/music/echo/offline/files/MainActivity.java
+            app/src/main/java/com/music/echo/offline/files/ViewerActivity.java
+            app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java
+            app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java
+            app/src/main/java/com/music/echo/offline/files/ToxiIcons.java
+            app/src/main/java/com/music/echo/offline/files/ToxiFileRow.java
+            app/src/main/java/com/music/echo/offline/files/ToxiMotion.java
+            app/src/main/java/com/music/echo/offline/files/ToxiProgressSeekBar.java
+            app/src/main/java/com/music/echo/offline/files/ToxiToolsActivity.java
+            core/src/main/java/com/music/echo/offline/files/ToxiToolCore.java
+            core/src/test/java/com/music/echo/offline/files/ToxiToolCoreTest.java
+            app/src/main/java/com/music/echo/offline/files/DeveloperStudioActivity.java
+            core/src/main/java/com/music/echo/offline/files/DeveloperStudioCore.java
+            core/src/test/java/com/music/echo/offline/files/DeveloperStudioCoreTest.java
+            tools/developer_studio_smoke_test.py
+            app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java
+            app/src/main/res/drawable/ic_toxifiles_notification.xml
+            app/src/main/res/drawable/toxifiles_splash.xml
+            app/build.gradle.kts
+            settings.gradle.kts
+            core/build.gradle.kts
+            core/src/main/java/com/music/echo/offline/files/OperationCancellation.java
+            core/src/main/java/com/music/echo/offline/files/TaskScheduler.java
+            core/src/main/java/com/music/echo/offline/files/StorageIndexEngine.java
+            core/src/main/java/com/music/echo/offline/files/FileOperationEngine.java
+            core/src/main/java/com/music/echo/offline/files/ArchiveOperations.java
+            core/src/test/java/com/music/echo/offline/files/ArchiveOperationsTest.java
+            core/src/test/java/com/music/echo/offline/files/FileOperationEngineTest.java
+            core/src/test/java/com/music/echo/offline/files/StorageIndexEngineTest.java
+            foundation/build.gradle.kts
+            foundation/src/main/AndroidManifest.xml
+            foundation/src/main/java/com/music/echo/offline/files/TaskCoordinator.java
+            foundation/src/main/java/com/music/echo/offline/files/SafStorageOperations.java
+            foundation/src/main/java/com/music/echo/offline/files/ToxiUriPermissions.java
+            foundation/src/main/java/com/music/echo/offline/files/CrashLogger.java
+            core/src/test/java/com/music/echo/offline/files/TaskSchedulerTest.java
+            core/src/main/java/com/music/echo/offline/files/DuplicateFinder.java
+            core/src/test/java/com/music/echo/offline/files/DuplicateFinderTest.java
+            core/src/main/java/com/music/echo/offline/files/ArchivePath.java
+            core/src/test/java/com/music/echo/offline/files/ArchivePathTest.java
+            core/src/main/java/com/music/echo/offline/files/BatchRenameEngine.java
+            core/src/main/java/com/music/echo/offline/files/PinHash.java
+            core/src/test/java/com/music/echo/offline/files/BatchRenameEngineTest.java
+            core/src/test/java/com/music/echo/offline/files/PinHashTest.java
+            core/src/main/java/com/music/echo/offline/files/SafePathResolver.java
+            core/src/test/java/com/music/echo/offline/files/SafePathResolverTest.java
+            app/src/main/java/com/music/echo/offline/files/SettingsScreenController.java
+            app/src/main/java/com/music/echo/offline/files/SettingsBackupManager.java
+            app/src/main/java/com/music/echo/offline/files/ToxiBackNavigation.java
+            app/src/main/res/drawable-nodpi/theme_poster_onepiece.webp
+            app/src/main/res/drawable-nodpi/theme_poster_naruto.webp
+            app/src/main/res/drawable-nodpi/theme_poster_demon.webp
+            app/src/main/res/drawable-nodpi/theme_poster_dragonball.webp
+            app/src/main/res/drawable-nodpi/theme_poster_aot.webp
+          )
+          for file in "${required_files[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error file=$file::Required project file is missing or empty"
+              exit 1
+            fi
+          done
           chmod +x gradlew
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.3.0
         with:
           distribution: temurin
           java-version: "17"
@@ -106,6 +120,15 @@ jobs:
         run: python3 tools/dependency_audit.py
       - name: Run Android unit tests and lint
         run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: ToxiFiles-debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Build optimized universal release APK
         run: ./gradlew --no-daemon assembleRelease
       - name: Enforce 5 MiB universal APK budget
@@ -114,7 +137,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           apks=(app/build/outputs/apk/release/*.apk)
-          ((${#apks[@]} == 1)) || { echo "::error::Expected one universal release APK; found ${#apks[@]}"; exit 1; }
+          (("${#apks[@]}" == 1)) || { echo "::error::Expected one universal release APK; found ${#apks[@]}"; exit 1; }
           for apk in "${apks[@]}"; do
             size=$(stat -c '%s' "$apk")
             echo "$(basename "$apk"): $((size / 1024)) KiB"
