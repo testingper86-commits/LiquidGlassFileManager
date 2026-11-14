@@ -116,8 +116,20 @@ final class ToxiVisualSystem {
             case 1: return "sans-serif-rounded";
             case 2: return "serif";
             case 3: return "monospace";
-            default: return ToxiThemeEngine.profile().typeface;
+            default: return ToxiThemeEngine.bodyTypeface();
         }
+    }
+
+    /** Display typography follows the active identity unless the user chose a global font. */
+    static String headingFontFamily() {
+        int preference = PREFERENCES == null ? 0 : PREFERENCES.getInt("font_family", 0);
+        return preference == 0 ? ToxiThemeEngine.headingTypeface() : fontFamily();
+    }
+
+    /** Technical metadata uses a monospaced face without overriding explicit font preferences. */
+    static String monoFontFamily() {
+        int preference = PREFERENCES == null ? 0 : PREFERENCES.getInt("font_family", 0);
+        return preference == 0 ? ToxiThemeEngine.monoTypeface() : fontFamily();
     }
 
     private static ToxiThemePersistence.Store themePreferenceStore() {
@@ -180,7 +192,7 @@ final class ToxiVisualSystem {
         TextView title = dialog.findViewById(titleId);
         if (title != null) {
             title.setTextColor(TEXT_PRIMARY);
-            title.setTypeface(Typeface.create(fontFamily(), Typeface.BOLD));
+            title.setTypeface(Typeface.create(headingFontFamily(), Typeface.BOLD));
         }
         TextView message = dialog.findViewById(android.R.id.message);
         if (message != null) {
@@ -220,8 +232,8 @@ final class ToxiVisualSystem {
             if (view instanceof Button) text.setTextColor(signalTextColor());
             else if (view.getId() == android.R.id.message) text.setTextColor(TEXT_SECONDARY);
             else if (styleListText) text.setTextColor(TEXT_PRIMARY);
-            text.setTypeface(Typeface.create(fontFamily(), text.getTypeface() != null
-                    && text.getTypeface().isBold() ? Typeface.BOLD : Typeface.NORMAL));
+            boolean bold = text.getTypeface() != null && text.getTypeface().isBold();
+            text.setTypeface(Typeface.create(bold ? headingFontFamily() : fontFamily(), bold ? Typeface.BOLD : Typeface.NORMAL));
         }
         if (view instanceof EditText) {
             EditText input = (EditText) view;
@@ -366,7 +378,7 @@ final class ToxiVisualSystem {
         view.setText(value);
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         view.setTextColor(color == ACCENT ? signalTextColor() : color);
-        view.setTypeface(Typeface.create(fontFamily(), strong ? Typeface.BOLD : Typeface.NORMAL));
+        view.setTypeface(Typeface.create(strong ? headingFontFamily() : fontFamily(), strong ? Typeface.BOLD : Typeface.NORMAL));
         view.setIncludeFontPadding(false);
         view.setLineSpacing(dp(ToxiThemeEngine.spacing(3)), 1f);
         view.setHorizontallyScrolling(false);
