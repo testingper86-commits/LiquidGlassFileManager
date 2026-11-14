@@ -17,14 +17,14 @@ final class ToxiThemeSystem {
         "Deep black · ultra violet · kinetic blue",
         "Gunmetal black · military olive · titan crimson"
     };
-    static final int[] ACCENTS = {0xFF39D6D0, 0xFFFF8B3D, 0xFFED5B52, 0xFF9D8BFF, 0xFFB7C477};
-    static final int[] ACCENT_ENDS = {0xFFFFC66E, 0xFFE63E35, 0xFFFFC65D, 0xFF39BDEB, 0xFFD95145};
-    static final int[] CHROME = {0xFFB7C6CC, 0xFFBAC0C8, 0xFFC5B9B5, 0xFFB9C5E3, 0xFFB9BDB8};
-    static final int[] CANVAS = {0xFF05090D, 0xFF090708, 0xFF0B0809, 0xFF070812, 0xFF090B0B};
-    static final int[] SURFACES = {0xFF101820, 0xFF17100F, 0xFF1A1012, 0xFF111323, 0xFF151918};
+    static final int[] ACCENTS = {0xFF39D6D0, 0xFFFF8B3D, 0xFFF04D5E, 0xFF59C7FF, 0xFFE43757};
+    static final int[] ACCENT_ENDS = {0xFFFFC66E, 0xFFE63E35, 0xFFB9A9FF, 0xFF8D7CFF, 0xFFF2B64B};
+    static final int[] CHROME = {0xFFB7C6CC, 0xFFBAC0C8, 0xFFC4CCDB, 0xFFD2D9E3, 0xFFAEBBC4};
+    static final int[] CANVAS = {0xFF05090D, 0xFF090708, 0xFF000810, 0xFF090B10, 0xFF050810};
+    static final int[] SURFACES = {0xFF101820, 0xFF17100F, 0xFF241827, 0xFF111C31, 0xFF202832};
     static final int[] RAISED = {0xFF1A2931, 0xFF281816, 0xFF2C1719, 0xFF20203A, 0xFF242B25};
     static final int[] EDGES = {0xFF536F78, 0xFF74513A, 0xFF76464A, 0xFF5C5A91, 0xFF626F5C};
-    static final int[] MUTED = {0xFFA9C1C5, 0xFFC7A995, 0xFFC9A8A7, 0xFFB3B9D9, 0xFFB6BDAF};
+    static final int[] MUTED = {0xFFA9C1C5, 0xFFC7A995, 0xFFFBF4F0, 0xFFF4F8FF, 0xFFAEBBC4};
     static final int[] SOFT_ACCENTS = {0xFF163A3C, 0xFF442116, 0xFF451C24, 0xFF28234F, 0xFF323A27};
     static final int[] LIGHT_CANVAS = {0xFFF0F6F6, 0xFFFFF2E9, 0xFFFFF0F0, 0xFFF1F2FF, 0xFFF2F4F0};
     static final int[] LIGHT_SURFACES = {0xFFFCFFFF, 0xFFFFFCF8, 0xFFFFFBFA, 0xFFFCFCFF, 0xFFFCFEFA};
