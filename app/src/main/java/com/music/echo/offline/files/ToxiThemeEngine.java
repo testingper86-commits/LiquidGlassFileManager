@@ -58,6 +58,24 @@ final class ToxiThemeEngine {
         return Math.max(4, Math.round(baseDp * profile().cornerScale));
     }
 
+    /** Theme-specific display face, using Android system fonts available on supported devices. */
+    static String headingTypeface() {
+        switch (profile().index) {
+            case 0: return "sans-serif";
+            case 1: return "sans-serif-medium";
+            case 2: return "sans-serif-medium";
+            case 3: return "sans-serif-condensed";
+            case 4: return "sans-serif-condensed";
+            default: return "sans-serif";
+        }
+    }
+
+    /** Neutral high-legibility body face; theme character is carried by display typography. */
+    static String bodyTypeface() { return "sans-serif"; }
+
+    /** Monospaced face for paths, dates, sizes and compact technical metadata. */
+    static String monoTypeface() { return "monospace"; }
+
     static float spacing(float baseDp) { return baseDp * profile().spacingScale; }
 
     /** Keep interactive targets at least 48 dp while allowing larger profiles to grow. */
