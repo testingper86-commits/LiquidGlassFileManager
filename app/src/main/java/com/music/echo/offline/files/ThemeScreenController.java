@@ -84,40 +84,69 @@ final class ThemeScreenController {
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
             final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
-            LinearLayout tile = new LinearLayout(activity);
-            tile.setGravity(Gravity.CENTER_VERTICAL);
-            tile.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(9)));
+            FrameLayout tile = new FrameLayout(activity);
+            tile.setClipChildren(true);
+            tile.setClipToPadding(true);
             tile.setBackground(ToxiVisualSystem.surface(22, true));
-            tile.setElevation(0f);
-            tile.setAlpha(selected ? 1f : 0.94f);
-            tile.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(122)));
+            tile.setClipToOutline(true);
+
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
             poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            poster.setBackground(ToxiVisualSystem.surface(14, true));
-            poster.setClipToOutline(true);
-            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " poster artwork");
-            tile.addView(poster, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(76)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(104))));
-            LinearLayout text = new LinearLayout(activity);
-            text.setOrientation(LinearLayout.VERTICAL);
-            text.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), 0);
-            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 14, selected ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_PRIMARY, selected);
+            poster.setAlpha(selected ? 1f : 0.88f);
+            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " cinematic poster artwork");
+            tile.addView(poster, new FrameLayout.LayoutParams(-1, -1));
+
+            View shade = new View(activity);
+            android.graphics.drawable.GradientDrawable shadeGradient =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                            new int[]{Color.argb(12, 0, 0, 0), Color.argb(78, 0, 0, 0),
+                                    Color.argb(232, 0, 0, 0)});
+            shade.setBackground(shadeGradient);
+            tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+            LinearLayout copy = new LinearLayout(activity);
+            copy.setOrientation(LinearLayout.VERTICAL);
+            copy.setGravity(Gravity.BOTTOM);
+            copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
+            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
+                    17, Color.WHITE, true);
             themeName.setMaxLines(2);
             themeName.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            text.addView(themeName);
+            copy.addView(themeName);
             TextView description = ToxiVisualSystem.text(activity,
-                selected ? "ACTIVE  /  " + ToxiVisualSystem.themeDescription(i) : ToxiVisualSystem.themeDescription(i),
-                10.5f, ToxiVisualSystem.TEXT_SECONDARY, false);
-            description.setMaxLines(2);
+                    ToxiVisualSystem.themeDescription(i), 11,
+                    Color.argb(225, 245, 248, 250), false);
+            description.setMaxLines(1);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            description.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0);
-            text.addView(description);
-            tile.addView(text, new LinearLayout.LayoutParams(0, -2, 1f));
-            ImageView state = new ImageView(activity);
-            state.setImageDrawable(ToxiIcons.symbol(selected ? ToxiIcons.CHECK : ToxiIcons.NEXT,
-                selected ? ToxiVisualSystem.ACCENT : ToxiVisualSystem.TEXT_SECONDARY));
-            state.setContentDescription(selected ? "Selected theme" : "Apply theme");
-            tile.addView(state, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42))));
+            LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(-1, -2);
+            descriptionParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
+            copy.addView(description, descriptionParams);
+            tile.addView(copy, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
+
+            TextView state = ToxiVisualSystem.text(activity,
+                    selected ? "✓  ACTIVE THEME" : "TAP TO APPLY",
+                    9.5f, selected ? ToxiVisualSystem.accentForeground() : Color.WHITE, true);
+            state.setLetterSpacing(0.08f);
+            state.setGravity(Gravity.CENTER);
+            state.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
+            state.setBackground(selected ? ToxiVisualSystem.accentSurface(14)
+                    : ToxiVisualSystem.surface(14, false));
+            FrameLayout.LayoutParams stateParams = new FrameLayout.LayoutParams(-2, -2,
+                    Gravity.TOP | Gravity.END);
+            stateParams.setMargins(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
+            tile.addView(state, stateParams);
+            tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". "
+                    + ToxiVisualSystem.themeDescription(i) + (selected ? ". Active theme" : ". Double tap to apply"));
+            tile.setFocusable(true);
             tile.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
                 ToxiVisualSystem.applyTheme(themeIndex, true);
@@ -125,7 +154,9 @@ final class ThemeScreenController {
                 activity.themeScroll.post(this::build);
             });
             ToxiVisualSystem.interactive(tile);
-            panel.addView(tile, activity.lpm(-1, -2, 0, 0, 0, 6));
+            LinearLayout.LayoutParams tileParams = activity.lpm(-1,
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(148)), 0, 0, 0, 10);
+            panel.addView(tile, tileParams);
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);

@@ -88,7 +88,7 @@ final class NebulaHomeView {
         live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
         mast.addView(live);
         host.addView(mast, margins(a, -1, -2, 0, 0, 0, 12));
-        host.addView(ToxiThemeIdentityView.create(a, 112, "ACTIVE IDENTITY"),
+        host.addView(ToxiThemeIdentityView.create(a, 248, "ACTIVE IDENTITY"),
                 margins(a, -1, -2, 0, 0, 0, 18));
 
         TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
@@ -235,7 +235,7 @@ final class NebulaHomeView {
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
         host.setBackgroundColor(BACKGROUND);
 
-        host.addView(ToxiThemeIdentityView.create(a, 112, "WORKSPACE IDENTITY"),
+        host.addView(ToxiThemeIdentityView.create(a, 196, "WORKSPACE IDENTITY"),
                 margins(a, -1, -2, 0, 0, 0, 18));
         TextView eyebrow = text(a, "TOXIFILES / WORKSPACE", 10, ICE, true);
         eyebrow.setLetterSpacing(0.15f);

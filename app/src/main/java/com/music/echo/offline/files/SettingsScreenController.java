@@ -41,7 +41,7 @@ final class SettingsScreenController {
         settingsTitleBlock.addView(settingsEyebrow, eyebrowLp);
         settingsMasthead.addView(settingsTitleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         activity.settings.addView(settingsMasthead);
-        activity.settings.addView(ToxiThemeIdentityView.create(activity, 116, "SYSTEM IDENTITY"),
+        activity.settings.addView(ToxiThemeIdentityView.create(activity, 196, "SYSTEM IDENTITY"),
                 activity.lpm(-1, -2, 16, 4, 16, 12));
         t.setOnClickListener(v -> {
             int taps = ToxiVisualSystem.PREFERENCES.getInt("developer_unlock_taps", 0) + 1;

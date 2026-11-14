@@ -141,8 +141,8 @@ for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = T
         raise SystemExit(f"Home/Tools theme palette is missing: {token}")
 # Each primary destination must render the active poster, not only recolor generic controls.
 for filename, content, token in [
-    ("NebulaHomeView.java", home, "ToxiThemeIdentityView.create(a, 112"),
-    ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 116"),
+    ("NebulaHomeView.java", home, "ToxiThemeIdentityView.create(a, 248"),
+    ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 196"),
     ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 68"),
 ]:
     if token not in content:
@@ -154,6 +154,12 @@ for token in ["theme_poster_onepiece", "theme_poster_naruto", "theme_poster_demo
         raise SystemExit(f"Shared anime identity surface is missing: {token}")
 if "identityBanner.refresh();" not in browser:
     raise SystemExit("Files screen does not refresh its active anime artwork after theme changes")
+if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not in screen or "ACTIVE THEME" not in screen:
+    raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
+if "ToxiThemeIdentityView.create(a, 196, \"WORKSPACE IDENTITY\")" not in home:
+    raise SystemExit("Tools workspace identity must use its designed cinematic banner height")
+if "DOMINATORS" not in (JAVA / "AboutScreenBuilder.java").read_text(encoding="utf-8"):
+    raise SystemExit("Creator profile must use the approved DOMINATORS identity")
 if "private final int fixedHeightPx" not in identity_view or "setMeasuredDimension(measuredWidth, measuredHeight)" not in identity_view:
     raise SystemExit("Anime identity poster must be constrained to its designed banner height in wrap-content screens")
 if "ToxiThemeEngine.spacing(112)" not in main_activity:

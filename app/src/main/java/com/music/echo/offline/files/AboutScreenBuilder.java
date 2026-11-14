@@ -120,7 +120,7 @@ final class AboutScreenBuilder {
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), Gravity.CENTER);
         avatarFrame.addView(avatar, avatarParams);
         profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144))));
-        TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
+        TextView name = aboutText("DOMINATORS", 30, ABOUT_TEXT, true);
         name.setLetterSpacing(0.10f);
         name.setGravity(Gravity.CENTER);
         name.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)), 0, 0);
@@ -212,7 +212,7 @@ final class AboutScreenBuilder {
         signoff.setGravity(Gravity.CENTER);
         signoff.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.ITALIC));
         about.addView(signoff, lpm(-1, -2, 16, 0, 16, 8));
-        TextView copyright = aboutText("© 2026 CHANDU · PERSONAL PROFILE", 10.5f, ABOUT_MUTED, true);
+        TextView copyright = aboutText("© 2026 DOMINATORS · PERSONAL PROFILE", 10.5f, ABOUT_MUTED, true);
         copyright.setLetterSpacing(0.08f);
         copyright.setGravity(Gravity.CENTER);
         about.addView(copyright, lpm(-1, -2, 16, 0, 16, 12));

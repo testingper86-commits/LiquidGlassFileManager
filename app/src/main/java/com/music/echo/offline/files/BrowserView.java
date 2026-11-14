@@ -110,7 +110,7 @@ final class BrowserView extends FrameLayout {
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
         headerLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         col.addView(header, headerLp);
-        identityBanner = ToxiThemeIdentityView.create(a, 68, "ACTIVE IDENTITY");
+        identityBanner = ToxiThemeIdentityView.create(a, 148, "ACTIVE IDENTITY");
         LinearLayout.LayoutParams identityLp = new LinearLayout.LayoutParams(-1, -2);
         identityLp.setMargins(ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14),
                 ToxiVisualSystem.dp(8));
