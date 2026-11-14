@@ -272,7 +272,7 @@ final class ToxiVisualSystem {
     }
 
     /** One profile-derived corner model is shared by drawable surfaces and clipped views. */
-    private static float[] profileCornerRadii(float radiusDp) {
+    static float[] profileCornerRadii(float radiusDp) {
         float radius = dp(ToxiThemeEngine.radius(radiusDp));
         float topLeft = radius, topRight = radius, bottomRight = radius, bottomLeft = radius;
         switch (ToxiThemeEngine.profile().geometry) {

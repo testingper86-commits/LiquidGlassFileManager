@@ -94,6 +94,22 @@ public final class ToxiThemeSystemTest {
         ToxiThemeEngine.activate(0);
     }
 
+    @Test public void allFiveThemesProduceDistinctClippingSilhouettes() {
+        float previousDensity = ToxiVisualSystem.D;
+        ToxiVisualSystem.D = 1f;
+        java.util.Set<String> silhouettes = new java.util.HashSet<>();
+        for (int i = 0; i < ToxiThemeSystem.NAMES.length; i++) {
+            ToxiThemeEngine.activate(i);
+            float[] radii = ToxiVisualSystem.profileCornerRadii(18f);
+            assertEquals(8, radii.length);
+            for (float radius : radii) assertTrue(radius > 0f);
+            silhouettes.add(java.util.Arrays.toString(radii));
+        }
+        assertEquals("Each theme must clip views with its own silhouette", 5, silhouettes.size());
+        ToxiThemeEngine.activate(0);
+        ToxiVisualSystem.D = previousDensity;
+    }
+
     @Test public void themeEngineNormalizesInvalidSavedIndexes() {
         ToxiThemeEngine.activate(-10);
         assertEquals(0, ToxiThemeEngine.profile().index);
