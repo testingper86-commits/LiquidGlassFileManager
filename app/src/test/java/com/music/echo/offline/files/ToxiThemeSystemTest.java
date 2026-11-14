@@ -78,6 +78,41 @@ public final class ToxiThemeSystemTest {
         assertEquals(0, ToxiThemeEngine.profile().index);
     }
 
+
+    @Test public void persistedThemeSurvivesFreshEngineRestorationAndRebuildsPalette() {
+        final java.util.Map<String, Integer> durable = new java.util.HashMap<>();
+        ToxiThemePersistence.Store writer = new ToxiThemePersistence.Store() {
+            @Override public int readTheme() { return durable.containsKey("theme") ? durable.get("theme") : 0; }
+            @Override public void writeTheme(int index) { durable.put("theme", index); }
+        };
+        for (int i = 0; i < ToxiThemeSystem.NAMES.length; i++) {
+            assertEquals(i, ToxiThemePersistence.save(writer, i));
+            ToxiThemeEngine.activate(0); // Simulate a newly created runtime after process recreation.
+            ToxiThemePersistence.Store reader = new ToxiThemePersistence.Store() {
+                @Override public int readTheme() { return durable.containsKey("theme") ? durable.get("theme") : 0; }
+                @Override public void writeTheme(int index) { durable.put("theme", index); }
+            };
+            assertEquals(i, ToxiThemePersistence.restore(reader));
+            assertEquals(i, ToxiThemeEngine.profile().index);
+            assertEquals(ToxiThemeSystem.ACCENTS[i], ToxiThemeSystem.ACCENTS[ToxiThemeEngine.profile().index]);
+            assertEquals(ToxiThemeSystem.CANVAS[i], ToxiThemeSystem.CANVAS[ToxiThemeEngine.profile().index]);
+        }
+        ToxiThemeEngine.activate(0);
+    }
+
+    @Test public void persistedThemeRestorationUsesSafeDefaultAndClampsCorruptValues() {
+        final int[] stored = {Integer.MIN_VALUE};
+        ToxiThemePersistence.Store store = new ToxiThemePersistence.Store() {
+            @Override public int readTheme() { return stored[0]; }
+            @Override public void writeTheme(int index) { stored[0] = index; }
+        };
+        assertEquals(0, ToxiThemePersistence.restore(null));
+        assertEquals(0, ToxiThemePersistence.restore(store));
+        stored[0] = Integer.MAX_VALUE;
+        assertEquals(ToxiThemeSystem.NAMES.length - 1, ToxiThemePersistence.restore(store));
+        ToxiThemeEngine.activate(0);
+    }
+
     @Test public void eachThemeHasDistinctAccentAndChromeIdentity() {
         java.util.HashSet<Integer> pairs = new java.util.HashSet<>();
         for (int i = 0; i < 5; i++) {

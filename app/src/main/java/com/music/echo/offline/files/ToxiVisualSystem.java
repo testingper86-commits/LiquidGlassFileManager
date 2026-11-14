@@ -67,7 +67,7 @@ final class ToxiVisualSystem {
         D = context.getResources().getDisplayMetrics().density;
         if (PREFERENCES == null) PREFERENCES = context.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
         boolean highContrast = Settings.Secure.getInt(context.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
-        int requestedIndex = ToxiThemeSystem.normalize(PREFERENCES.getInt("theme", 0));
+        int requestedIndex = ToxiThemePersistence.restore(themePreferenceStore());
         boolean light = PREFERENCES.getBoolean("light", false);
         boolean changed = requestedIndex != THEME_INDEX || light != LIGHT_MODE || highContrast != HIGH_CONTRAST;
         HIGH_CONTRAST = highContrast;
@@ -120,6 +120,15 @@ final class ToxiVisualSystem {
         }
     }
 
+    private static ToxiThemePersistence.Store themePreferenceStore() {
+        return new ToxiThemePersistence.Store() {
+            @Override public int readTheme() { return PREFERENCES.getInt("theme", 0); }
+            @Override public void writeTheme(int index) {
+                PREFERENCES.edit().putInt("theme", index).apply();
+            }
+        };
+    }
+
     static void applyTheme(int index, boolean save) {
         THEME_INDEX = ToxiThemeSystem.normalize(index);
         ToxiThemeEngine.activate(THEME_INDEX);
@@ -136,7 +145,7 @@ final class ToxiVisualSystem {
         BLOOM_PRIMARY = Color.argb(LIGHT_MODE ? 20 : 38, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         BLOOM_SECONDARY = Color.argb(LIGHT_MODE ? 12 : 24, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
         BLOOM_TERTIARY = Color.argb(LIGHT_MODE ? 7 : 12, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
-        if (save && PREFERENCES != null) PREFERENCES.edit().putInt("theme", THEME_INDEX).apply();
+        if (save && PREFERENCES != null) ToxiThemePersistence.save(themePreferenceStore(), THEME_INDEX);
     }
 
     /** All native prompts use the active theme material and typography. */
