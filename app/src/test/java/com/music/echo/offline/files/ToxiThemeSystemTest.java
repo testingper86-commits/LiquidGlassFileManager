@@ -64,6 +64,32 @@ public final class ToxiThemeSystemTest {
         assertEquals(4, ToxiThemeEngine.profile().index);
     }
 
+    @Test public void activeProfileCanBeSwitchedAndRestoredWithoutStaleTokens() {
+        for (int i = 0; i < ToxiThemeSystem.NAMES.length; i++) {
+            ToxiThemeEngine.activate(i);
+            assertEquals(i, ToxiThemeEngine.profile().index);
+            assertEquals(ToxiThemeSystem.NAMES.length, ToxiThemeSystem.ACCENTS.length);
+            assertEquals(ToxiThemeSystem.NAMES.length, ToxiThemeSystem.CHROME.length);
+            assertEquals(ToxiThemeSystem.NAMES.length, ToxiThemeSystem.ACCENT_ENDS.length);
+            assertEquals(ToxiThemeSystem.NAMES.length, ToxiThemeSystem.LIGHT_CANVAS.length);
+            assertEquals(ToxiThemeSystem.NAMES.length, ToxiThemeSystem.LIGHT_SURFACES.length);
+        }
+        ToxiThemeEngine.activate(0);
+        assertEquals(0, ToxiThemeEngine.profile().index);
+    }
+
+    @Test public void eachThemeHasDistinctAccentAndChromeIdentity() {
+        java.util.HashSet<Integer> pairs = new java.util.HashSet<>();
+        for (int i = 0; i < 5; i++) {
+            assertFalse(ToxiThemeSystem.ACCENTS[i] == ToxiThemeSystem.CHROME[i]);
+            assertFalse(ToxiThemeSystem.ACCENT_ENDS[i] == ToxiThemeSystem.CHROME[i]);
+            assertTrue(ToxiThemeSystem.SOFT_ACCENTS[i] != ToxiThemeSystem.CANVAS[i]);
+            assertTrue(ToxiThemeSystem.LIGHT_EDGES[i] != ToxiThemeSystem.LIGHT_CANVAS[i]);
+            pairs.add(ToxiThemeSystem.ACCENTS[i] ^ ToxiThemeSystem.CHROME[i]);
+        }
+        assertEquals(5, pairs.size());
+    }
+
     @Test public void themeIndexIsSafelyBoundedForSavedPreferenceMigration() {
         assertEquals(0, ToxiThemeSystem.normalize(-1));
         assertEquals(0, ToxiThemeSystem.normalize(0));

@@ -21,6 +21,7 @@ import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.HapticFeedbackConstants;
 import android.view.ViewOutlineProvider;
+import android.view.Window;
 import android.widget.ImageView;
 import android.widget.Toast;
 import java.text.SimpleDateFormat;
@@ -52,10 +53,55 @@ final class ToxiVisualSystem {
     private ToxiVisualSystem() { }
 
     static void initialize(Context context) {
-        D = context.getResources().getDisplayMetrics().density;
-        HIGH_CONTRAST = Settings.Secure.getInt(context.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
+        if (context == null) throw new IllegalArgumentException("context must not be null");
         if (PREFERENCES == null) PREFERENCES = context.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
-        applyTheme(PREFERENCES.getInt("theme", 0), false);
+        refresh(context);
+    }
+
+    /**
+     * Re-read persisted appearance preferences and rebuild the active palette.
+     * @return true when theme palette, light appearance, or accessibility contrast changed.
+     */
+    static boolean refresh(Context context) {
+        if (context == null) throw new IllegalArgumentException("context must not be null");
+        D = context.getResources().getDisplayMetrics().density;
+        if (PREFERENCES == null) PREFERENCES = context.getApplicationContext().getSharedPreferences("lg_settings", Context.MODE_PRIVATE);
+        boolean highContrast = Settings.Secure.getInt(context.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
+        int requestedIndex = ToxiThemeSystem.normalize(PREFERENCES.getInt("theme", 0));
+        boolean light = PREFERENCES.getBoolean("light", false);
+        boolean changed = requestedIndex != THEME_INDEX || light != LIGHT_MODE || highContrast != HIGH_CONTRAST;
+        HIGH_CONTRAST = highContrast;
+        applyTheme(requestedIndex, false);
+        return changed;
+    }
+
+    /**
+     * Apply icon contrast and optional opaque system-bar surfaces to an Activity window.
+     * edgeToEdge keeps system bars transparent so the themed app canvas is visible behind them.
+     * Existing immersive/fullscreen flags are preserved.
+     */
+    static void applyWindowChrome(Window window, boolean edgeToEdge) {
+        if (window == null) return;
+        if (edgeToEdge) {
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.TRANSPARENT);
+        } else {
+            window.setStatusBarColor(CANVAS);
+            window.setNavigationBarColor(CANVAS);
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            window.setNavigationBarDividerColor(EDGE_STROKE);
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
+        if (Build.VERSION.SDK_INT < 23) return;
+        View decor = window.getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        decor.setSystemUiVisibility(LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
     }
 
     static int dp(float value) { return Math.round(value * D); }

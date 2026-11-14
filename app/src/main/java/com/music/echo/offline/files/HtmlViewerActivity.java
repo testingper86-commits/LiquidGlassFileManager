@@ -62,15 +62,7 @@ public final class HtmlViewerActivity extends ComponentActivity {
 
         assetHost = "doc-" + documentOriginId(document) + ASSET_DOMAIN_SUFFIX;
 
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
-        if (android.os.Build.VERSION.SDK_INT >= 23) {
-            int flags = getWindow().getDecorView().getSystemUiVisibility();
-            int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            if (android.os.Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE
-                    ? flags | lightFlags : flags & ~lightFlags);
-        }
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
         FrameLayout root = new FrameLayout(this);
         root.setBackground(ToxiVisualSystem.auroraBackground());
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
@@ -146,6 +138,12 @@ public final class HtmlViewerActivity extends ComponentActivity {
         column.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(root);
         webView.loadUrl("https://" + assetHost + "/local/" + Uri.encode(document.getName()));
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        ToxiVisualSystem.refresh(this);
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
     }
 
     private WebResourceResponse intercept(WebViewAssetLoader loader, Uri uri) {

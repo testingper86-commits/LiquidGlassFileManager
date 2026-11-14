@@ -120,8 +120,7 @@ public class ViewerActivity extends ComponentActivity {
         paths = getIntent().getStringArrayListExtra("paths");
         idx = getIntent().getIntExtra("index", 0);
         if (paths == null || paths.isEmpty()) { finish(); return; }
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
         root = new FrameLayout(this);
         root.setBackground(ToxiVisualSystem.auroraBackground());
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
@@ -166,12 +165,6 @@ public class ViewerActivity extends ComponentActivity {
         nextBtn = edge(ToxiIcons.NEXT, Gravity.END | Gravity.CENTER_VERTICAL, 1);
 
         setContentView(root);
-        if (Build.VERSION.SDK_INT >= 23) {
-            int flags = getWindow().getDecorView().getSystemUiVisibility();
-            int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            getWindow().getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
-        }
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets in = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -1821,6 +1814,8 @@ public class ViewerActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
+        ToxiVisualSystem.refresh(this);
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
         if (AppLock.enabled(this) && !MainActivity.unlocked) { finish(); return; }
         if (backgroundAudioHandoff) {
             try {

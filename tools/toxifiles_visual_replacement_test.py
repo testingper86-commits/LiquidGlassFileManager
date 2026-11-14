@@ -96,4 +96,56 @@ for index, resource in poster_map.items():
     data = poster.read_bytes()
     if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
         raise SystemExit(f"Theme poster is not a real WebP image: {poster.relative_to(ROOT)}")
-print("ToxiFiles visual replacement audit passed: 5 real WebP theme posters, current splash/launcher/notification resources and primary screens integrated.")
+# Full application-wide anime theme acceptance gate.
+theme_engine = (JAVA / "ToxiThemeEngine.java").read_text(encoding="utf-8")
+visual_system = (JAVA / "ToxiVisualSystem.java").read_text(encoding="utf-8")
+main_activity = (JAVA / "MainActivity.java").read_text(encoding="utf-8")
+navigation = (JAVA / "PrismNavigationDock.java").read_text(encoding="utf-8")
+home = (JAVA / "NebulaHomeView.java").read_text(encoding="utf-8")
+settings = (JAVA / "SettingsScreenController.java").read_text(encoding="utf-8")
+theme_test = (ROOT / "app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java").read_text(encoding="utf-8")
+
+for token in ["Geometry", "Material", "cornerScale", "spacingScale", "iconStroke", "motionScale"]:
+    if token not in theme_engine:
+        raise SystemExit(f"Theme engine is missing an independent profile mechanism: {token}")
+for token in ["static boolean refresh(Context context)", "boolean changed = requestedIndex != THEME_INDEX",
+               "PREFERENCES.getInt(", "applyWindowChrome(Window window, boolean edgeToEdge)",
+               "styleDialog(dialog)", "fontFamily()", "ToxiPowerTouchEngine.attach(view);"]:
+    if token not in visual_system:
+        raise SystemExit(f"Shared visual runtime is missing required mechanism: {token}")
+if "ToxiVisualSystem.refresh(this)" not in main_activity or "void recolor()" not in main_activity:
+    raise SystemExit("MainActivity does not refresh persisted theme state and rebuild on resume")
+if "ToxiVisualSystem.applyWindowChrome(getWindow(), true);" not in main_activity:
+    raise SystemExit("MainActivity does not apply shared edge-to-edge system bar contrast")
+if "getWindow().setStatusBarColor(Color.TRANSPARENT);" in main_activity or "getWindow().setNavigationBarColor(Color.TRANSPARENT);" in main_activity:
+    raise SystemExit("MainActivity must route system bar setup through the shared window-chrome mechanism")
+overlay_controller = (JAVA / "MainOverlayController.java").read_text(encoding="utf-8")
+if "int selectedTab = tab;" not in main_activity or "overlayController.refreshAppearance();" not in main_activity:
+    raise SystemExit("Theme refresh must preserve the active tab and delegate active overlay restoration")
+if "void refreshAppearance()" not in overlay_controller or "current.setVisibility(View.VISIBLE)" not in overlay_controller or "backgroundScreen.setVisibility(blur ? View.VISIBLE : View.INVISIBLE)" not in overlay_controller:
+    raise SystemExit("Overlay manager must preserve blur, visibility and active overlay semantics during theme refresh")
+for name in ["ViewerActivity.java", "HtmlViewerActivity.java"]:
+    content = (JAVA / name).read_text(encoding="utf-8")
+    if "ToxiVisualSystem.applyWindowChrome(getWindow(), true);" not in content or "ToxiVisualSystem.refresh(this);" not in content:
+        raise SystemExit(f"{name} is missing shared edge-to-edge theme refresh")
+for name in ["ToxiToolsActivity.java", "DeveloperStudioActivity.java"]:
+    content = (JAVA / name).read_text(encoding="utf-8")
+    if not re.search(r"ToxiVisualSystem\.applyWindowChrome\(getWindow\(\),\s*false\);", content):
+        raise SystemExit(f"{name} is missing shared themed system bars")
+if not all(token in navigation for token in ['"Home", "Files", "Tools", "Settings"', "recolor(", "navigationSurface()"]):
+    raise SystemExit("The four original navigation destinations and theme-aware dock must remain")
+for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = ToxiVisualSystem.ACCENT", "ICE = ToxiThemeSystem.ACCENT_ENDS"]:
+    if token not in home:
+        raise SystemExit(f"Home/Tools theme palette is missing: {token}")
+theme_screen = (JAVA / "ThemeScreenController.java").read_text(encoding="utf-8")
+for token in ["ToxiVisualSystem.THEME_NAMES", "ToxiVisualSystem.applyTheme", "activity.recolor()"]:
+    if token not in theme_screen and token not in settings:
+        raise SystemExit(f"Theme Studio and Settings must support live theme selection: {token}")
+for token in ["activeProfileCanBeSwitchedAndRestoredWithoutStaleTokens", "eachThemeHasDistinctAccentAndChromeIdentity"]:
+    if token not in theme_test:
+        raise SystemExit(f"Theme unit regression test missing: {token}")
+if "ToxiVisualSystem.refresh(this);" not in main_activity:
+    raise SystemExit("Main screen must reload persisted appearance state after returning to foreground")
+
+print("ToxiFiles visual replacement audit passed: five themes, five real WebP posters, shared live theme runtime, edge-to-edge system bar contract, all primary activities, metallic home/tools surfaces and four-tab navigation.")
+

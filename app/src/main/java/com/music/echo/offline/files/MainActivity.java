@@ -128,8 +128,6 @@ public class MainActivity extends ComponentActivity {
         appLockLifecycle.register();
         ToxiVisualSystem.initialize(this);
         safBrowserController.restorePersistedTree();
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         favoritesRepository.load(getSharedPreferences("lg_favs", MODE_PRIVATE));
 
         root = new FrameLayout(this);
@@ -146,6 +144,7 @@ public class MainActivity extends ComponentActivity {
             getWindow().setNavigationBarContrastEnforced(false);
             getWindow().setStatusBarContrastEnforced(false);
         }
+        applySystemBarAppearance();
 
         bg = new BgView(this);
         root.addView(bg, new FrameLayout.LayoutParams(-1, -1));
@@ -296,6 +295,9 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
+        boolean appearanceChanged = ToxiVisualSystem.refresh(this);
+        if (appearanceChanged && root != null) recolor();
+        applySystemBarAppearance();
         appLockLifecycle.onResume();
         if (hasAccess() != accessOk) onAccessChanged();
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
@@ -463,18 +465,26 @@ public class MainActivity extends ComponentActivity {
     void moveHighlight(int i) { navigationController.moveHighlight(i); }
 
     void applySystemBarAppearance() {
-        if (Build.VERSION.SDK_INT < 23) return;
-        View decor = getWindow().getDecorView();
-        int flags = decor.getSystemUiVisibility();
-        int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-        if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-        decor.setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE ? (flags | lightFlags) : (flags & ~lightFlags));
+        // MainActivity draws edge-to-edge; transparent system bars reveal the active canvas.
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
     }
 
+    /** Rebuild the application UI from the single persisted theme profile without changing navigation. */
     void recolor() {
+        View activeOverlay = currentOverlay();
+        int selectedTab = tab;
+        int homeY = homeScroll == null ? 0 : homeScroll.getScrollY();
+        int toolsY = toolsScroll == null ? 0 : toolsScroll.getScrollY();
+        int settingsY = settingsScroll == null ? 0 : settingsScroll.getScrollY();
+        int overlayY = activeOverlay instanceof ScrollView ? ((ScrollView) activeOverlay).getScrollY() : 0;
+        int fileFirstVisible = filesView == null ? 0 : filesView.lv.getFirstVisiblePosition();
+        View fileFirstChild = filesView == null ? null : filesView.lv.getChildAt(0);
+        int fileFirstTop = fileFirstChild == null ? 0 : fileFirstChild.getTop();
+
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
         applySystemBarAppearance();
         bg.invalidate();
+        bg.applyBlur();
         navigationController.recolor(tab);
         filesView.recolor();
         favView.recolor();
@@ -482,16 +492,36 @@ public class MainActivity extends ComponentActivity {
         buildHome();
         buildTools();
         buildSettings();
-        View activeOverlay = currentOverlay();
         if (vaultScroll != null && (vault.getChildCount() > 0 || activeOverlay == vaultScroll)) buildVault();
         if (recycleScroll != null && (recycle.getChildCount() > 0 || activeOverlay == recycleScroll)) buildRecycleBin();
+
         if (activeOverlay == themeScroll) buildThemeScreen();
         else if (activeOverlay == aboutScroll) {
             AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
             aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
         } else if (activeOverlay == favView) favView.refreshFavs();
-        if (activeOverlay == listView) listView.recolor();
-        if (activeOverlay != null) activeOverlay.invalidate();
+        else if (activeOverlay == listView) listView.recolor();
+
+        // Rebuilding content must not change the currently selected root tab or close an overlay.
+        tab = selectedTab;
+        if (activeOverlay != null) {
+            overlayController.refreshAppearance();
+            busyTv.bringToFront();
+            activeOverlay.invalidate();
+        } else {
+            syncNavigationVisibility(false);
+        }
+        homeScroll.post(() -> homeScroll.scrollTo(0, homeY));
+        toolsScroll.post(() -> toolsScroll.scrollTo(0, toolsY));
+        settingsScroll.post(() -> settingsScroll.scrollTo(0, settingsY));
+        filesView.post(() -> {
+            if (filesView.lv.getAdapter() != null && filesView.lv.getAdapter().getCount() > 0) {
+                filesView.lv.setSelectionFromTop(Math.min(fileFirstVisible, filesView.lv.getAdapter().getCount() - 1), fileFirstTop);
+            }
+        });
+        if (activeOverlay instanceof ScrollView) {
+            ((ScrollView) activeOverlay).post(() -> ((ScrollView) activeOverlay).scrollTo(0, overlayY));
+        }
     }
 
     // ---------------- HOME ----------------
@@ -972,9 +1002,9 @@ public class MainActivity extends ComponentActivity {
             final String result = message;
             runUiIfAlive(() -> {
                 ToxiVisualSystem.toast(this, result);
-                ToxiVisualSystem.applyTheme(ToxiVisualSystem.PREFERENCES.getInt("theme", 0), false);
+                boolean changed = ToxiVisualSystem.refresh(this);
+                if (changed) setTheme(ToxiVisualSystem.LIGHT_MODE ? R.style.AppTheme_Light : R.style.AppTheme);
                 recolor();
-                buildSettings();
             });
         });
     }
@@ -1010,7 +1040,8 @@ public class MainActivity extends ComponentActivity {
         ToxiVisualSystem.dialogBuilder(this).setTitle("Font style").setSingleChoiceItems(fonts, ToxiVisualSystem.PREFERENCES.getInt("font_family", 0), (d, which) -> {
             ToxiVisualSystem.PREFERENCES.edit().putInt("font_family", which).apply();
             d.dismiss();
-            recreate();
+            ToxiVisualSystem.refresh(this);
+            recolor();
         }).setNegativeButton("Cancel", null).show();
     }
     void themeDialog() { openThemeScreen(); }

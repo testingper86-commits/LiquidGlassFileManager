@@ -18,6 +18,32 @@ final class MainOverlayController {
 
     View current() { return current; }
 
+    /** Reapplies the active overlay's background treatment after a theme palette rebuild. */
+    void refreshAppearance() {
+        if (current == null) return;
+        View backgroundScreen = activity.screens[activity.tab];
+        boolean blur = Build.VERSION.SDK_INT >= 31
+                && ToxiVisualSystem.booleanPreference("blur", false)
+                && !ToxiVisualSystem.HIGH_CONTRAST;
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (blur) {
+                backgroundScreen.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
+                        ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)),
+                        ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)),
+                        android.graphics.Shader.TileMode.CLAMP));
+            } else {
+                backgroundScreen.setRenderEffect(null);
+            }
+        }
+        backgroundScreen.setVisibility(blur ? View.VISIBLE : View.INVISIBLE);
+        current.setBackgroundColor(Color.argb(ToxiVisualSystem.HIGH_CONTRAST ? 255 : 248,
+                Color.red(ToxiVisualSystem.CANVAS), Color.green(ToxiVisualSystem.CANVAS),
+                Color.blue(ToxiVisualSystem.CANVAS)));
+        current.setVisibility(View.VISIBLE);
+        current.bringToFront();
+        activity.syncNavigationVisibility(false);
+    }
+
     void show(View overlay) {
         if (overlay == null) throw new IllegalArgumentException("overlay must not be null");
         if (current != null && current != overlay) close();

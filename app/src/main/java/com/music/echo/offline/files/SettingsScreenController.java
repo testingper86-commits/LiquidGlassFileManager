@@ -61,7 +61,7 @@ final class SettingsScreenController {
         activity.settings.addView(activity.section("Appearance"));
         activity.settings.addView(activity.row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> activity.openThemeScreen()), activity.lpm(-1, -2, 16, 0, 16, 8));
         activity.settings.addView(activity.switchRow(ToxiIcons.PALETTE, "Light appearance", "Use a bright, high-clarity surface palette", "light", false, () -> {
-            ToxiVisualSystem.applyTheme(ToxiVisualSystem.THEME_INDEX, false);
+            ToxiVisualSystem.refresh(activity);
             activity.setTheme(ToxiVisualSystem.LIGHT_MODE ? R.style.AppTheme_Light : R.style.AppTheme);
             activity.recolor();
         }), activity.lpm(-1, -2, 16, 0, 16, 8));
