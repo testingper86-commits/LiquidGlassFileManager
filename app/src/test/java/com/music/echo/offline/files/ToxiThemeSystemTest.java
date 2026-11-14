@@ -28,7 +28,6 @@ public final class ToxiThemeSystemTest {
         }
     }
 
-
     @Test public void eachThemeProfileDrivesDistinctGeometryMaterialAndMotion() {
         java.util.HashSet<ToxiThemeEngine.Geometry> geometries = new java.util.HashSet<>();
         java.util.HashSet<ToxiThemeEngine.Material> materials = new java.util.HashSet<>();
@@ -57,6 +56,44 @@ public final class ToxiThemeSystemTest {
         ToxiThemeEngine.activate(0);
     }
 
+    @Test public void everyProfileHasItsOwnCornerSpacingStrokeEdgeHighlightAndMotionScale() {
+        java.util.Set<Float> corners = new java.util.HashSet<>();
+        java.util.Set<Float> spacing = new java.util.HashSet<>();
+        java.util.Set<Float> strokes = new java.util.HashSet<>();
+        java.util.Set<Float> edges = new java.util.HashSet<>();
+        java.util.Set<Float> highlights = new java.util.HashSet<>();
+        java.util.Set<Float> motion = new java.util.HashSet<>();
+        java.util.Set<Integer> radii = new java.util.HashSet<>();
+        java.util.Set<Integer> edgeOutputs = new java.util.HashSet<>();
+        java.util.Set<Integer> highlightOutputs = new java.util.HashSet<>();
+        java.util.Set<Long> durationOutputs = new java.util.HashSet<>();
+        for (int i = 0; i < ToxiThemeSystem.NAMES.length; i++) {
+            ToxiThemeEngine.activate(i);
+            ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
+            corners.add(profile.cornerScale);
+            spacing.add(profile.spacingScale);
+            strokes.add(profile.iconStroke);
+            edges.add(profile.edgeStrength);
+            highlights.add(profile.highlightStrength);
+            motion.add(profile.motionScale);
+            radii.add(ToxiThemeEngine.radius(16));
+            edgeOutputs.add(ToxiThemeEngine.edgeAlpha(200));
+            highlightOutputs.add(ToxiThemeEngine.highlightAlpha(120));
+            durationOutputs.add(ToxiThemeEngine.motionDuration(200));
+        }
+        assertEquals("Every theme must own a distinct corner scale", 5, corners.size());
+        assertEquals("Every theme must own a distinct spacing scale", 5, spacing.size());
+        assertEquals("Every theme must own a distinct icon stroke", 5, strokes.size());
+        assertEquals("Every theme must own a distinct edge strength", 5, edges.size());
+        assertEquals("Every theme must own a distinct highlight strength", 5, highlights.size());
+        assertEquals("Every theme must own a distinct motion scale", 5, motion.size());
+        assertEquals("Geometry tokens must produce distinct component radii", 5, radii.size());
+        assertEquals("Edge tokens must produce distinct rendered alpha values", 5, edgeOutputs.size());
+        assertEquals("Highlight tokens must produce distinct rendered alpha values", 5, highlightOutputs.size());
+        assertEquals("Motion tokens must produce distinct animation durations", 5, durationOutputs.size());
+        ToxiThemeEngine.activate(0);
+    }
+
     @Test public void themeEngineNormalizesInvalidSavedIndexes() {
         ToxiThemeEngine.activate(-10);
         assertEquals(0, ToxiThemeEngine.profile().index);
@@ -77,7 +114,6 @@ public final class ToxiThemeSystemTest {
         ToxiThemeEngine.activate(0);
         assertEquals(0, ToxiThemeEngine.profile().index);
     }
-
 
     @Test public void persistedThemeSurvivesFreshEngineRestorationAndRebuildsPalette() {
         final java.util.Map<String, Integer> durable = new java.util.HashMap<>();
