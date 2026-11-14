@@ -233,7 +233,7 @@ def main():
     require('Obsidian Titanium' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java") and 'hasIndependentTokens()' in source("app/src/main/java/com/music/echo/offline/files/ToxiThemeSystem.java"), "current theme catalog uses independent design tokens")
     theme_screen = source("app/src/main/java/com/music/echo/offline/files/ThemeScreenController.java")
     require("themeScreenController = new ThemeScreenController(this);" in main and "themeScreenController.open();" in main and "themeScreenController.build();" in main and "ToxiVisualSystem.applyTheme(themeIndex, true);" in theme_screen and "activity.recolor();" in theme_screen and "activity.themeScroll.addView" in theme_screen, "MainActivity delegates Appearance Lab rendering and live theme previews to its screen controller")
-    require('settingsScroll.setClipToPadding(true)' in main and 'ToxiVisualSystem.dp(ToxiThemeEngine.spacing(96)) + ToxiVisualSystem.BOTTOM_INSET' in main, "Settings reserves scroll space above bottom navigation")
+    require('settingsScroll.setClipToPadding(true)' in main and 'ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112)) + ToxiVisualSystem.BOTTOM_INSET' in main, "Settings reserves scroll space above bottom navigation")
     require('activity.settings.addView(activity.section("About"))' in settings_controller and 'About ToxiFiles' in settings_controller, "About remains at the bottom of Settings")
 
     file_ops = source("app/src/main/java/com/music/echo/offline/files/FileOps.java")
