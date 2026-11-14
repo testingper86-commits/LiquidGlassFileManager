@@ -271,33 +271,35 @@ final class ToxiVisualSystem {
         }
     }
 
-    /** Apply the profile's silhouette rather than reducing every identity to one rounded rectangle. */
-    private static void applyGeometry(GradientDrawable drawable, float radiusDp) {
+    /** One profile-derived corner model is shared by drawable surfaces and clipped views. */
+    private static float[] profileCornerRadii(float radiusDp) {
         float radius = dp(ToxiThemeEngine.radius(radiusDp));
-        float a = radius, b = radius, c = radius, d = radius;
+        float topLeft = radius, topRight = radius, bottomRight = radius, bottomLeft = radius;
         switch (ToxiThemeEngine.profile().geometry) {
             case VOYAGE:
-                b = radius * 0.72f;
-                d = radius * 0.72f;
+                topRight = bottomLeft = radius * 0.72f;
                 break;
             case SHINOBI:
-                a = radius * 0.48f;
-                c = radius * 0.48f;
+                topLeft = bottomRight = radius * 0.48f;
                 break;
             case BREATHING:
-                a = radius * 0.68f;
-                b = radius * 0.68f;
-                c = radius * 1.16f;
-                d = radius * 1.16f;
+                topLeft = topRight = radius * 0.68f;
+                bottomRight = bottomLeft = radius * 1.16f;
                 break;
             case ULTRA:
-                a = b = c = d = radius * 1.28f;
+                topLeft = topRight = bottomRight = bottomLeft = radius * 1.28f;
                 break;
             case FORTRESS:
-                a = b = c = d = Math.max(dp(3), radius * 0.38f);
+                topLeft = topRight = bottomRight = bottomLeft = Math.max(dp(3), radius * 0.38f);
                 break;
         }
-        drawable.setCornerRadii(new float[]{a, a, b, b, c, c, d, d});
+        return new float[]{topLeft, topLeft, topRight, topRight,
+                bottomRight, bottomRight, bottomLeft, bottomLeft};
+    }
+
+    /** Apply the profile's silhouette rather than reducing every identity to one rounded rectangle. */
+    private static void applyGeometry(GradientDrawable drawable, float radiusDp) {
+        drawable.setCornerRadii(profileCornerRadii(radiusDp));
     }
 
     /** Prism liquid material: layered tint, a specular crown and a theme-aware glass edge. */
@@ -412,7 +414,29 @@ final class ToxiVisualSystem {
     static void clipRound(View view, final float radiusDp) {
         view.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View target, Outline outline) {
-                outline.setRoundRect(0, 0, target.getWidth(), target.getHeight(), dp(ToxiThemeEngine.radius(radiusDp)));
+                int width = target.getWidth();
+                int height = target.getHeight();
+                if (width <= 0 || height <= 0) {
+                    outline.setEmpty();
+                    return;
+                }
+                float[] radii = profileCornerRadii(radiusDp);
+                float maxRadius = Math.max(Math.max(radii[0], radii[2]),
+                        Math.max(radii[4], radii[6]));
+                float limit = Math.min(width, height) * 0.5f;
+                if (maxRadius > limit) {
+                    float scale = limit / maxRadius;
+                    for (int i = 0; i < radii.length; i++) radii[i] *= scale;
+                }
+                if (Build.VERSION.SDK_INT >= 21) {
+                    android.graphics.Path silhouette = new android.graphics.Path();
+                    silhouette.addRoundRect(new android.graphics.RectF(0, 0, width, height),
+                            radii, android.graphics.Path.Direction.CW);
+                    outline.setConvexPath(silhouette);
+                } else {
+                    outline.setRoundRect(0, 0, width, height,
+                            dp(ToxiThemeEngine.radius(radiusDp)));
+                }
             }
         });
         view.setClipToOutline(true);
