@@ -177,6 +177,36 @@ public final class ToxiThemeSystemTest {
         assertEquals(5, pairs.size());
     }
 
+    @Test public void approvedCanvaPaletteAnchorsAreAppliedToMatchingThemes() {
+        assertEquals(0xFFF04D5E, ToxiThemeSystem.ACCENTS[2]);
+        assertEquals(0xFFB9A9FF, ToxiThemeSystem.ACCENT_ENDS[2]);
+        assertEquals(0xFF000810, ToxiThemeSystem.CANVAS[2]);
+        assertEquals(0xFF241827, ToxiThemeSystem.SURFACES[2]);
+        assertEquals(0xFF59C7FF, ToxiThemeSystem.ACCENTS[3]);
+        assertEquals(0xFF8D7CFF, ToxiThemeSystem.ACCENT_ENDS[3]);
+        assertEquals(0xFF111C31, ToxiThemeSystem.SURFACES[3]);
+        assertEquals(0xFFE43757, ToxiThemeSystem.ACCENTS[4]);
+        assertEquals(0xFFF2B64B, ToxiThemeSystem.ACCENT_ENDS[4]);
+        assertEquals(0xFF050810, ToxiThemeSystem.CANVAS[4]);
+        assertEquals(0xFF202832, ToxiThemeSystem.SURFACES[4]);
+    }
+
+    @Test public void typographyRolesMatchTheApprovedThemeDirections() {
+        ToxiThemeEngine.activate(0);
+        assertEquals("sans-serif", ToxiThemeEngine.headingTypeface());
+        ToxiThemeEngine.activate(1);
+        assertEquals("sans-serif-medium", ToxiThemeEngine.headingTypeface());
+        ToxiThemeEngine.activate(2);
+        assertEquals("sans-serif-medium", ToxiThemeEngine.headingTypeface());
+        ToxiThemeEngine.activate(3);
+        assertEquals("sans-serif-condensed", ToxiThemeEngine.headingTypeface());
+        ToxiThemeEngine.activate(4);
+        assertEquals("sans-serif-condensed", ToxiThemeEngine.headingTypeface());
+        assertEquals("sans-serif", ToxiThemeEngine.bodyTypeface());
+        assertEquals("monospace", ToxiThemeEngine.monoTypeface());
+        ToxiThemeEngine.activate(0);
+    }
+
     @Test public void themeIndexIsSafelyBoundedForSavedPreferenceMigration() {
         assertEquals(0, ToxiThemeSystem.normalize(-1));
         assertEquals(0, ToxiThemeSystem.normalize(0));
