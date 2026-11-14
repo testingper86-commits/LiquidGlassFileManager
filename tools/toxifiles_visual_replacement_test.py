@@ -154,6 +154,10 @@ for token in ["theme_poster_onepiece", "theme_poster_naruto", "theme_poster_demo
         raise SystemExit(f"Shared anime identity surface is missing: {token}")
 if "identityBanner.refresh();" not in browser:
     raise SystemExit("Files screen does not refresh its active anime artwork after theme changes")
+if "private final int fixedHeightPx" not in identity_view or "setMeasuredDimension(measuredWidth, measuredHeight)" not in identity_view:
+    raise SystemExit("Anime identity poster must be constrained to its designed banner height in wrap-content screens")
+if "ToxiThemeEngine.spacing(112)" not in main_activity:
+    raise SystemExit("Tools and Settings must reserve clear space below scroll content for the floating navigation dock")
 theme_screen = (JAVA / "ThemeScreenController.java").read_text(encoding="utf-8")
 for token in ["ToxiVisualSystem.THEME_NAMES", "ToxiVisualSystem.applyTheme", "activity.recolor()"]:
     if token not in theme_screen and token not in settings:

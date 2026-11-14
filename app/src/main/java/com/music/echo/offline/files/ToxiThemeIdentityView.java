@@ -16,12 +16,14 @@ final class ToxiThemeIdentityView extends FrameLayout {
     private final ImageView artwork;
     private final ViewOverlay overlay;
     private final TextView eyebrow, title, description;
+    private final int fixedHeightPx;
 
     ToxiThemeIdentityView(Context context, int heightDp, String label) {
         super(context);
         setClipChildren(true);
         setClipToPadding(true);
-        setMinimumHeight(ToxiVisualSystem.dp(heightDp));
+        fixedHeightPx = ToxiVisualSystem.dp(heightDp);
+        setMinimumHeight(fixedHeightPx);
         setBackground(ToxiVisualSystem.surface(20, true));
         ToxiVisualSystem.clipRound(this, 20f);
         artwork = new ImageView(context);
@@ -52,6 +54,18 @@ final class ToxiThemeIdentityView extends FrameLayout {
         copy.addView(description, descriptionLp);
         addView(copy, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER_VERTICAL));
         refresh();
+    }
+
+    /** Keep poster artwork inside its designed compact banner height in wrap-content scroll layouts. */
+    @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int measuredWidth = resolveSize(getSuggestedMinimumWidth(), widthMeasureSpec);
+        int measuredHeight = resolveSize(fixedHeightPx, heightMeasureSpec);
+        int childWidthSpec = MeasureSpec.makeMeasureSpec(Math.max(0, measuredWidth - getPaddingLeft() - getPaddingRight()), MeasureSpec.EXACTLY);
+        int childHeightSpec = MeasureSpec.makeMeasureSpec(Math.max(0, measuredHeight - getPaddingTop() - getPaddingBottom()), MeasureSpec.EXACTLY);
+        for (int i = 0; i < getChildCount(); i++) {
+            getChildAt(i).measure(childWidthSpec, childHeightSpec);
+        }
+        setMeasuredDimension(measuredWidth, measuredHeight);
     }
 
     void refresh() {

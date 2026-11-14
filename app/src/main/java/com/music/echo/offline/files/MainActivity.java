@@ -270,9 +270,9 @@ public class MainActivity extends ComponentActivity {
             homeScrollFooter.setLayoutParams(footerParams);
         }
         // Reserve enough scrollable space for the bottom navigation and system gesture area.
-        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(96)) + ToxiVisualSystem.BOTTOM_INSET
+        settingsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112)) + ToxiVisualSystem.BOTTOM_INSET
                 + ToxiVisualSystem.IME_INSET);
-        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24))
+        if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112))
                 + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
         aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
         recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
