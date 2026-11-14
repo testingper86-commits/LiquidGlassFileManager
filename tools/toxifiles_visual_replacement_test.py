@@ -103,6 +103,8 @@ main_activity = (JAVA / "MainActivity.java").read_text(encoding="utf-8")
 navigation = (JAVA / "PrismNavigationDock.java").read_text(encoding="utf-8")
 home = (JAVA / "NebulaHomeView.java").read_text(encoding="utf-8")
 settings = (JAVA / "SettingsScreenController.java").read_text(encoding="utf-8")
+browser = (JAVA / "BrowserView.java").read_text(encoding="utf-8")
+identity_view = (JAVA / "ToxiThemeIdentityView.java").read_text(encoding="utf-8")
 theme_test = (ROOT / "app/src/test/java/com/music/echo/offline/files/ToxiThemeSystemTest.java").read_text(encoding="utf-8")
 
 for token in ["Geometry", "Material", "cornerScale", "spacingScale", "iconStroke", "motionScale"]:
@@ -137,6 +139,21 @@ if not all(token in navigation for token in ['"Home", "Files", "Tools", "Setting
 for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = ToxiVisualSystem.ACCENT", "ICE = ToxiThemeSystem.ACCENT_ENDS"]:
     if token not in home:
         raise SystemExit(f"Home/Tools theme palette is missing: {token}")
+# Each primary destination must render the active poster, not only recolor generic controls.
+for filename, content, token in [
+    ("NebulaHomeView.java", home, "ToxiThemeIdentityView.create(a, 112"),
+    ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 116"),
+    ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 68"),
+]:
+    if token not in content:
+        raise SystemExit(f"{filename} is missing its live anime identity surface")
+for token in ["theme_poster_onepiece", "theme_poster_naruto", "theme_poster_demon",
+              "theme_poster_dragonball", "theme_poster_aot", "void refresh()",
+              "overlay.refresh()", "ToxiVisualSystem.THEME_NAMES[index]"]:
+    if token not in identity_view:
+        raise SystemExit(f"Shared anime identity surface is missing: {token}")
+if "identityBanner.refresh();" not in browser:
+    raise SystemExit("Files screen does not refresh its active anime artwork after theme changes")
 theme_screen = (JAVA / "ThemeScreenController.java").read_text(encoding="utf-8")
 for token in ["ToxiVisualSystem.THEME_NAMES", "ToxiVisualSystem.applyTheme", "activity.recolor()"]:
     if token not in theme_screen and token not in settings:
