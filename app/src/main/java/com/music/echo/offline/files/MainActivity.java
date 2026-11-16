@@ -1125,20 +1125,63 @@ public class MainActivity extends ComponentActivity {
             auroraPaint.setShader(null);
         }
 
+        private void drawGrandVoyagePattern(Canvas canvas, int width, int height, float step) {
+            android.graphics.Path ocean = new android.graphics.Path();
+            float horizon = height * .43f;
+            canvas.drawLine(0, horizon, width, horizon, gridPaint);
+            for (int row = 0; row < 7; row++) {
+                float base = horizon + step * (.35f + row * .52f);
+                ocean.reset();
+                ocean.moveTo(0, base);
+                for (float x = 0; x <= width; x += step * .4f) {
+                    float phase = x / step * .85f + row * .72f;
+                    ocean.lineTo(x, base + (float) Math.sin(phase) * step * .17f
+                            + (float) Math.sin(phase * .43f + row) * step * .06f);
+                }
+                canvas.drawPath(ocean, gridPaint);
+            }
+
+            // A quiet chart route connects the lower-left sea to the compass at the upper-right.
+            markerPaint.setStyle(Paint.Style.STROKE);
+            markerPaint.setStrokeCap(Paint.Cap.ROUND);
+            markerPaint.setStrokeWidth(Math.max(1f, step * .035f));
+            int gold = ToxiThemeSystem.ACCENT_ENDS[0];
+            markerPaint.setColor(Color.argb(ToxiVisualSystem.LIGHT_MODE ? 20 : 28,
+                    Color.red(gold), Color.green(gold), Color.blue(gold)));
+            android.graphics.Path route = new android.graphics.Path();
+            route.moveTo(width * .08f, height * .70f);
+            route.cubicTo(width * .25f, height * .52f, width * .48f, height * .75f,
+                    width * .75f, height * .34f);
+            markerPaint.setPathEffect(new android.graphics.DashPathEffect(
+                    new float[]{Math.max(2f, step * .12f), Math.max(3f, step * .16f)}, 0f));
+            canvas.drawPath(route, markerPaint);
+            markerPaint.setPathEffect(null);
+
+            // Eight-point compass rose: restrained metallic linework, not a character logo.
+            float cx = width * .78f, cy = height * .29f;
+            float radius = Math.min(width, height) * .105f;
+            markerPaint.setStrokeWidth(Math.max(1f, step * .045f));
+            canvas.drawCircle(cx, cy, radius * 1.12f, markerPaint);
+            canvas.drawCircle(cx, cy, radius * .16f, markerPaint);
+            for (int i = 0; i < 8; i++) {
+                double angle = Math.PI * i / 4d - Math.PI / 2d;
+                float dx = (float) Math.cos(angle), dy = (float) Math.sin(angle);
+                float inner = radius * (i % 2 == 0 ? .20f : .42f);
+                float outer = radius * (i % 2 == 0 ? 1f : .72f);
+                canvas.drawLine(cx + dx * inner, cy + dy * inner,
+                        cx + dx * outer, cy + dy * outer, markerPaint);
+            }
+            markerPaint.setStyle(Paint.Style.FILL);
+            markerPaint.setTextAlign(Paint.Align.CENTER);
+            markerPaint.setTextSize(Math.max(step * .24f, ToxiVisualSystem.dp(8)));
+            canvas.drawText("N", cx, cy - radius * 1.28f, markerPaint);
+            markerPaint.setTextAlign(Paint.Align.LEFT);
+        }
+
         private void drawThemePattern(Canvas canvas, int width, int height, float step) {
             switch (ToxiVisualSystem.THEME_INDEX) {
-                case 0: // Grand Voyage: layered rolling ocean contours and distant horizon.
-                    android.graphics.Path ocean = new android.graphics.Path();
-                    float horizon = height * .43f;
-                    canvas.drawLine(0, horizon, width, horizon, gridPaint);
-                    for (int row = 0; row < 7; row++) {
-                        float base = horizon + step * (.35f + row * .52f);
-                        ocean.reset();
-                        ocean.moveTo(0, base);
-                        for (float x = 0; x <= width; x += step * .4f)
-                            ocean.lineTo(x, base + (float) Math.sin(x / step * .85f + row * .72f) * step * .17f);
-                        canvas.drawPath(ocean, gridPaint);
-                    }
+                case 0: // Grand Voyage: ocean contours, a plotted route and a compass rose.
+                    drawGrandVoyagePattern(canvas, width, height, step);
                     break;
                 case 1: // Shinobi Spirit: chakra-ring arcs and controlled diagonal wind paths.
                     for (float radius = step * .65f; radius < Math.max(width, height); radius += step * 1.65f)
