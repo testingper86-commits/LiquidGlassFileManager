@@ -74,6 +74,8 @@ final class VaultScreenController {
         titleBlock.addView(ToxiVisualSystem.text(activity, "Vault", 25, ToxiVisualSystem.TEXT_PRIMARY, true));
         header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         activity.vault.addView(header, new LinearLayout.LayoutParams(-1, -2));
+        activity.vault.addView(ToxiThemeIdentityView.create(activity, 132, "SECURE SPACE IDENTITY"),
+                params(4, 2, 4, 8));
 
         List<Vault.Item> items = Vault.list(activity);
         long totalBytes = 0L;

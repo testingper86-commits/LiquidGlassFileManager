@@ -62,6 +62,8 @@ final class RecycleBinScreenController {
         ToxiVisualSystem.interactive(emptyButton);
         header.addView(emptyButton, new LinearLayout.LayoutParams(-2, -2));
         activity.recycle.addView(header, new LinearLayout.LayoutParams(-1, -2));
+        activity.recycle.addView(ToxiThemeIdentityView.create(activity, 132, "RECOVERY IDENTITY"),
+                params(4, 2, 4, 8));
 
         int retentionDays = ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30);
         long totalBytes = 0L;
