@@ -1,6 +1,7 @@
 package com.music.echo.offline.files;
 
 import android.graphics.Color;
+import android.webkit.MimeTypeMap;
 import java.util.HashMap;
 
 /** File type detection, colours and MIME types. */
