@@ -69,7 +69,6 @@ final class BrowserView extends FrameLayout {
     final EditText search;
     final ProgressBar prog;
     final LinearLayout selBar, header;
-    final ToxiThemeIdentityView identityBanner;
     final View.OnClickListener moreL = v -> itemMenu((Entry) v.getTag());
 
     BrowserView(MainActivity act, boolean overlay, boolean favs) {
@@ -110,12 +109,6 @@ final class BrowserView extends FrameLayout {
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(-1, -2);
         headerLp.setMargins(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         col.addView(header, headerLp);
-        identityBanner = ToxiThemeIdentityView.create(a, 148, "ACTIVE IDENTITY");
-        LinearLayout.LayoutParams identityLp = new LinearLayout.LayoutParams(-1, -2);
-        identityLp.setMargins(ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14),
-                ToxiVisualSystem.dp(8));
-        col.addView(identityBanner, identityLp);
-
         pathTv = ToxiVisualSystem.text(a, "", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
         pathTv.setSingleLine(true);
         pathTv.setEllipsize(TextUtils.TruncateAt.START);
@@ -292,7 +285,6 @@ final class BrowserView extends FrameLayout {
     }
 
     void recolor() {
-        identityBanner.refresh();
         setBackgroundColor(ToxiVisualSystem.CANVAS);
         header.setBackground(ToxiVisualSystem.surface(22, false));
         back.setImageDrawable(ToxiIcons.symbol(ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY));

@@ -114,8 +114,8 @@ final class NebulaHomeView {
         section.addView(text(a, "05 CHANNELS", 8.5f, MUTED, true));
         host.addView(section, margins(a, -1, -2, 0, 3, 0, 13));
 
-        String[] names = {"Images", "Videos", "Audio", "Documents", "Downloads"};
-        String[] details = {"Visual library", "Motion library", "Sound library", "Reading & records", "Recently received"};
+        String[] names = {"Images", "Videos", "Music", "Documents", "Downloads"};
+        String[] details = {"Photos and pictures", "Movies and clips", "Songs and audio", "PDFs and documents", "Downloaded files"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files", "download"};
         int[] accents = {LIME, ICE, VIOLET, ICE, LIME};
         int columns = gridColumns(a);
@@ -225,12 +225,13 @@ final class NebulaHomeView {
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
         host.setBackgroundColor(BACKGROUND);
 
-        host.addView(ToxiThemeIdentityView.create(a, 196, "WORKSPACE IDENTITY"),
-                margins(a, -1, -2, 0, 0, 0, 18));
-        TextView eyebrow = text(a, "TOXIFILES / WORKSPACE", 10, ICE, true);
-        eyebrow.setLetterSpacing(0.15f);
-        host.addView(eyebrow);
-        host.addView(text(a, "Tools Studio", 28, TEXT, true), margins(a, -1, -2, 0, 8, 0, 4));
+        LinearLayout toolsHeader = new LinearLayout(a);
+        toolsHeader.setGravity(Gravity.CENTER_VERTICAL);
+        toolsHeader.setPadding(dp(a, 16), dp(a, 6), dp(a, 12), dp(a, 6));
+        toolsHeader.setBackground(ToxiVisualSystem.surface(24, true));
+        toolsHeader.addView(text(a, "Tools", 24, TEXT, true),
+                new LinearLayout.LayoutParams(0, -2, 1f));
+        host.addView(toolsHeader, margins(a, -1, -2, 0, 0, 0, 18));
         host.addView(text(a, "Seven focused utilities. Each opens directly.", 13, MUTED, false), margins(a, -1, -2, 0, 0, 0, 22));
         addSectionTitle(a, host, "OFFLINE UTILITIES", "7 TOOLS");
         String[] names = {"Dual-Pane Explorer", "Hex Editor", "Folder Comparator", "Encoding Converter", "ZIP Editor", "Integrity Studio", "Text Editor"};

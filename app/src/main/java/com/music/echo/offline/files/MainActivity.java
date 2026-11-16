@@ -378,7 +378,7 @@ public class MainActivity extends ComponentActivity {
             ToxiVisualSystem.toast(this, "Storage scan incomplete. Some files may be missing.");
         }
         String[] names = Indexer.CAT_NAMES;
-        if (pendingCat >= 0 && pendingCat < 6) { listView.setList(names[pendingCat], index.cats.get(pendingCat), false, false); pendingCat = -1; }
+        if (pendingCat >= 0 && pendingCat < index.cats.size()) { listView.setList(names[pendingCat], index.cats.get(pendingCat), false, false); pendingCat = -1; }
         else if (pendingCat == -2) { listView.setList("Search", index.all, true, true); pendingCat = -1; }
         if (tab == 0 && overlayController.current() == null && home.getVisibility() == View.VISIBLE) buildHome();
     }
@@ -630,7 +630,13 @@ public class MainActivity extends ComponentActivity {
         if (!hasAccess()) { showStorageAccess(); return; }
         File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         if (downloads == null || !downloads.isDirectory()) {
-            ToxiVisualSystem.toast(this, "Downloads folder is not available on this device");
+            File root = Environment.getExternalStorageDirectory();
+            File alternate = root == null ? null : new File(root, "Downloads");
+            if (alternate == null || !alternate.isDirectory()) alternate = root == null ? null : new File(root, "Download");
+            downloads = alternate;
+        }
+        if (downloads == null || !downloads.isDirectory() || !downloads.canRead()) {
+            ToxiVisualSystem.toast(this, "Downloads folder is not available or readable");
             return;
         }
         selectTab(1);
@@ -724,12 +730,12 @@ public class MainActivity extends ComponentActivity {
         Indexer ix = Indexer.I;
         List<Entry> apks = new ArrayList<>();
         Indexer.PublishedSnapshot index = ix.snapshot();
-        if (index.ready && index.cats.size() > 6) {
-            for (Entry e : index.cats.get(6)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
+        if (index.ready && index.cats.size() > 5) {
+            for (Entry e : index.cats.get(5)) if (!e.dir && e.kind == FileKinds.APK) apks.add(e);
         }
         listView.setList("APK files", apks, false, false);
         if (!index.ready) {
-            pendingCat = 6;
+            pendingCat = 5;
             if (!ix.running) startIndex();
             ToxiVisualSystem.toast(this, "Scanning storage for APK files\u2026");
         }

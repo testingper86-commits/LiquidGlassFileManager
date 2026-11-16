@@ -142,8 +142,8 @@ for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = T
 # Each primary destination must render the active poster, not only recolor generic controls.
 for filename, content, token in [
     ("NebulaHomeView.java", home, "new ThemeWallpaperDrawable(a)"),
-    ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 196"),
-    ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 148"),
+    ("SettingsScreenController.java", settings, '"Settings", 24'),
+    ("BrowserView.java", browser, "header.setBackground(ToxiVisualSystem.surface(24, true))"),
 ]:
     if token not in content:
         raise SystemExit(f"{filename} is missing its live anime identity surface")
@@ -152,16 +152,16 @@ for token in ["theme_poster_onepiece", "theme_poster_naruto", "theme_poster_demo
               "overlay.refresh()", "ToxiVisualSystem.THEME_NAMES[index]"]:
     if token not in identity_view:
         raise SystemExit(f"Shared anime identity surface is missing: {token}")
-if "identityBanner.refresh();" not in browser:
-    raise SystemExit("Files screen does not refresh its active anime artwork after theme changes")
+if "identityBanner" in browser or "ToxiThemeIdentityView.create" in browser:
+    raise SystemExit("File lists must not insert a separate anime banner above the requested content")
 if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not in screen or "ACTIVE THEME" not in screen:
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
 if "new ThemeWallpaperDrawable(a)" not in home or "homeGlassSurface(20, index == 0)" not in home:
     raise SystemExit("Home must use full-page active-theme artwork and transparent glass cards")
 if "ToxiThemeIdentityView.create(a, 248" in home:
     raise SystemExit("Home must not reserve a separate anime identity banner")
-if "ToxiThemeIdentityView.create(a, 196, \"WORKSPACE IDENTITY\")" not in home:
-    raise SystemExit("Tools workspace identity must use its designed cinematic banner height")
+if "ToxiThemeIdentityView.create(a, 196" in home or '"Tools", 24' not in home:
+    raise SystemExit("Tools must use the compact shared page header without a separate identity banner")
 if "DOMINATORS" not in (JAVA / "AboutScreenBuilder.java").read_text(encoding="utf-8"):
     raise SystemExit("Creator profile must use the approved DOMINATORS identity")
 if "private final int fixedHeightPx" not in identity_view or "setMeasuredDimension(measuredWidth, measuredHeight)" not in identity_view:

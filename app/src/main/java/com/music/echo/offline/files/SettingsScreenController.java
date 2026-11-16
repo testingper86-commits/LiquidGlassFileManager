@@ -1,15 +1,12 @@
 package com.music.echo.offline.files;
 
-import com.music.echo.offline.R;
 
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,26 +20,17 @@ final class SettingsScreenController {
 
     void build() {
         activity.settings.removeAllViews();
-        LinearLayout settingsMasthead = new LinearLayout(activity);
-        settingsMasthead.setGravity(Gravity.CENTER_VERTICAL);
-        settingsMasthead.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
-        ImageView settingsMark = new ImageView(activity);
-        settingsMark.setImageResource(R.drawable.toxifiles_master_art);
-        settingsMasthead.addView(settingsMark, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(38)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(38))));
-        LinearLayout settingsTitleBlock = new LinearLayout(activity);
-        settingsTitleBlock.setOrientation(LinearLayout.VERTICAL);
-        settingsTitleBlock.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), 0, 0, 0);
-        TextView t = ToxiVisualSystem.text(activity, "Prism console", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
-        settingsTitleBlock.addView(t);
-        TextView settingsEyebrow = ToxiVisualSystem.text(activity, "PRISM / SYSTEM CONFIGURATION", 9.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
-        settingsEyebrow.setLetterSpacing(0.11f);
-        LinearLayout.LayoutParams eyebrowLp = new LinearLayout.LayoutParams(-2, -2);
-        eyebrowLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
-        settingsTitleBlock.addView(settingsEyebrow, eyebrowLp);
-        settingsMasthead.addView(settingsTitleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
-        activity.settings.addView(settingsMasthead);
-        activity.settings.addView(ToxiThemeIdentityView.create(activity, 196, "SYSTEM IDENTITY"),
-                activity.lpm(-1, -2, 16, 4, 16, 12));
+        LinearLayout settingsHeader = new LinearLayout(activity);
+        settingsHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        settingsHeader.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(6),
+                ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(6));
+        settingsHeader.setBackground(ToxiVisualSystem.surface(24, true));
+        TextView t = ToxiVisualSystem.text(activity, "Settings", 24,
+                ToxiVisualSystem.TEXT_PRIMARY, true);
+        t.setSingleLine(true);
+        settingsHeader.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        activity.settings.addView(settingsHeader,
+                activity.lpm(-1, -2, 14, 8, 14, 16));
         t.setOnClickListener(v -> {
             int taps = ToxiVisualSystem.PREFERENCES.getInt("developer_unlock_taps", 0) + 1;
             if (taps >= 7) {
@@ -54,12 +42,6 @@ final class SettingsScreenController {
                 if (taps >= 4) ToxiVisualSystem.toast(activity, (7 - taps) + " more taps to unlock developer options");
             }
         });
-        TextView intro = ToxiVisualSystem.text(activity, "Tune the materials, behavior and privacy of your filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
-        intro.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
-        activity.settings.addView(intro);
-        TextView hint = ToxiVisualSystem.text(activity, "Each module opens its own live controls.", 11.5f, ToxiVisualSystem.ACCENT, false);
-        hint.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(22)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
-        activity.settings.addView(hint);
         activity.settings.addView(activity.section("Appearance"));
         activity.settings.addView(activity.row(ToxiIcons.PALETTE, "Interface identity", ToxiVisualSystem.THEME_NAMES[ToxiVisualSystem.THEME_INDEX], null, v -> activity.openThemeScreen()), activity.lpm(-1, -2, 16, 0, 16, 8));
         activity.settings.addView(activity.switchRow(ToxiIcons.PALETTE, "Light appearance", "Use a bright, high-clarity surface palette", "light", false, () -> {

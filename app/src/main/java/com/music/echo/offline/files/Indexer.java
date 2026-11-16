@@ -15,7 +15,7 @@ import java.util.Iterator;
 /** Android adapter: categorizes core filesystem snapshots and publishes them on the UI thread. */
 final class Indexer {
     static final Indexer I = new Indexer();
-    static final String[] CAT_NAMES = {"Images", "Videos", "Audio", "Documents", "Archives", "Apps", "Other"};
+    static final String[] CAT_NAMES = {"Images", "Videos", "Music", "Documents", "Archives", "Apps", "Other"};
 
     volatile boolean ready, running, dirty, truncated, incomplete;
     volatile String lastError = "";
