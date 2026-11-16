@@ -173,6 +173,11 @@ for token in ["activeProfileCanBeSwitchedAndRestoredWithoutStaleTokens", "eachTh
         raise SystemExit(f"Theme unit regression test missing: {token}")
 if "ToxiVisualSystem.refresh(this);" not in main_activity:
     raise SystemExit("Main screen must reload persisted appearance state after returning to foreground")
+# Grand Voyage must render its own nautical chart language, not only reuse the shared palette.
+for token in ["drawGrandVoyagePattern", "DashPathEffect", "Eight-point compass rose",
+              "drawGrandVoyagePattern(canvas, width, height, step)"]:
+    if token not in main_activity:
+        raise SystemExit(f"Grand Voyage is missing its nautical chart treatment: {token}")
 
-print("ToxiFiles visual replacement audit passed: five themes, five real WebP posters, shared live theme runtime, edge-to-edge system bar contract, all primary activities, metallic home/tools surfaces and four-tab navigation.")
+print("ToxiFiles visual replacement audit passed: five themes, five real WebP posters, shared live theme runtime, edge-to-edge system bar contract, all primary activities, metallic home/tools surfaces, four-tab navigation and the Grand Voyage chart motif.")
 
