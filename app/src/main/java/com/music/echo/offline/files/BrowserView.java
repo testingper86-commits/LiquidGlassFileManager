@@ -150,7 +150,8 @@ final class BrowserView extends FrameLayout {
         lv = new ListView(a);
         lv.setDivider(null);
         lv.setDividerHeight(0);
-        lv.setClipToPadding(false);
+        // Clip rows to the reserved dock inset so the last visible row cannot sit beneath navigation.
+        lv.setClipToPadding(true);
         lv.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(120)));
         lv.setVerticalScrollBarEnabled(false);
         lv.setSelector(new ColorDrawable(Color.TRANSPARENT));

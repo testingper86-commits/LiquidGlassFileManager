@@ -165,7 +165,8 @@ public class MainActivity extends ComponentActivity {
         homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
         toolsScroll = new ScrollView(this);
         toolsScroll.setVerticalScrollBarEnabled(false);
-        toolsScroll.setClipToPadding(false);
+        // Clip to the reserved dock inset; otherwise tool cards draw underneath the floating navigation.
+        toolsScroll.setClipToPadding(true);
         toolsScroll.setFillViewport(true);
         tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.VERTICAL);

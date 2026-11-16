@@ -162,6 +162,10 @@ if "DOMINATORS" not in (JAVA / "AboutScreenBuilder.java").read_text(encoding="ut
     raise SystemExit("Creator profile must use the approved DOMINATORS identity")
 if "private final int fixedHeightPx" not in identity_view or "setMeasuredDimension(measuredWidth, measuredHeight)" not in identity_view:
     raise SystemExit("Anime identity poster must be constrained to its designed banner height in wrap-content screens")
+if "toolsScroll.setClipToPadding(true)" not in main_activity:
+    raise SystemExit("Tools cards must be clipped to the bottom dock safe area")
+if "lv.setClipToPadding(true)" not in browser:
+    raise SystemExit("File rows must be clipped to the bottom dock safe area")
 if "ToxiThemeEngine.spacing(112)" not in main_activity:
     raise SystemExit("Tools and Settings must reserve clear space below scroll content for the floating navigation dock")
 theme_screen = (JAVA / "ThemeScreenController.java").read_text(encoding="utf-8")
