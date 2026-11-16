@@ -122,6 +122,21 @@ jobs:
         run: ./gradlew --no-daemon :core:test :foundation:testDebugUnitTest :foundation:lintDebug :app:testDebugUnitTest :app:lintDebug
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
+      - name: Verify debug APK signature and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK" || { echo "::error::Debug APK was not produced"; exit 1; }
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$AAPT" dump badging "$APK" | grep -q "^package:"
+          sha256sum "$APK"
+          stat -c 'Debug APK size: %s bytes' "$APK"
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
