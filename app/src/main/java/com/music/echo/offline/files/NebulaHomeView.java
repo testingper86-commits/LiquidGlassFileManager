@@ -7,6 +7,11 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.PixelFormat;
+import android.graphics.ColorFilter;
+import android.graphics.drawable.Drawable;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
@@ -61,20 +66,11 @@ final class NebulaHomeView {
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
-        host.setBackgroundColor(BACKGROUND);
-
+        host.setBackground(new ThemeWallpaperDrawable(a));
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView mark = new ImageView(a);
-        mark.setImageResource(R.drawable.toxifiles_master_art);
-        mark.setContentDescription("ToxiFiles master brand artwork");
-        mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        mark.setBackground(background(PANEL_ALT, BORDER, 11));
-        mark.setPadding(dp(a, 3), dp(a, 3), dp(a, 3), dp(a, 3));
-        mast.addView(mark, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
         LinearLayout identity = new LinearLayout(a);
         identity.setOrientation(LinearLayout.VERTICAL);
-        identity.setPadding(dp(a, 12), 0, 0, 0);
         TextView word = text(a, "TOXIFILES", 19, LIME, true);
         word.setLetterSpacing(0.16f);
         identity.addView(word);
@@ -87,16 +83,11 @@ final class NebulaHomeView {
         live.setBackground(background(PANEL_ALT, BORDER, 18));
         live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
         mast.addView(live);
-        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 12));
-        host.addView(ToxiThemeIdentityView.create(a, 248, "ACTIVE IDENTITY"),
-                margins(a, -1, -2, 0, 0, 0, 18));
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 0));
 
-        TextView overline = text(a, "YOUR FILESPACE", 9, ICE, true);
-        overline.setLetterSpacing(0.2f);
-        host.addView(overline);
         TextView headline = text(a, "Everything\nin its element.", 31, TEXT, true);
         headline.setLineSpacing(dp(a, 1), 0.98f);
-        host.addView(headline, margins(a, -1, -2, 0, 8, 0, 7));
+        host.addView(headline, margins(a, -1, -2, 0, 12, 0, 7));
         TextView descriptor = text(a, "A calm, precise view of the content on this device.", 12, MUTED, false);
         host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
@@ -140,7 +131,7 @@ final class NebulaHomeView {
                 item.setOrientation(LinearLayout.VERTICAL);
                 item.setGravity(Gravity.TOP);
                 item.setPadding(dp(a, 13), dp(a, 13), dp(a, 13), dp(a, 13));
-                item.setBackground(ToxiVisualSystem.surface(20, index == 0));
+                item.setBackground(homeGlassSurface(20, index == 0));
                 LinearLayout iconLine = new LinearLayout(a);
                 iconLine.setGravity(Gravity.CENTER_VERTICAL);
                 FrameLayout iconWell = new FrameLayout(a);
@@ -420,8 +411,64 @@ final class NebulaHomeView {
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(a, 15), dp(a, 15), dp(a, 15), dp(a, 14));
-        panel.setBackground(background(PANEL, BORDER, radius));
+        panel.setBackground(homeGlassSurface(radius, true));
         return panel;
+    }
+
+    private static Drawable homeGlassSurface(int radius, boolean raised) {
+        int base = raised ? PANEL_ALT : PANEL;
+        int alpha = ToxiVisualSystem.LIGHT_MODE ? 178 : 48;
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(Math.min(86, alpha + 20), Color.red(base), Color.green(base), Color.blue(base)),
+                        Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base)),
+                        Color.argb(Math.max(24, alpha - 12), Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
+        glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
+        int edge = Color.argb(ToxiThemeEngine.edgeAlpha(210), Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
+        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), edge);
+        return glass;
+    }
+
+    private static int themeArtwork() {
+        switch (ToxiThemeSystem.normalize(ToxiVisualSystem.THEME_INDEX)) {
+            case 0: return R.drawable.theme_poster_onepiece;
+            case 1: return R.drawable.theme_poster_naruto;
+            case 2: return R.drawable.theme_poster_demon;
+            case 3: return R.drawable.theme_poster_dragonball;
+            default: return R.drawable.theme_poster_aot;
+        }
+    }
+
+    private static final class ThemeWallpaperDrawable extends Drawable {
+        private final Bitmap bitmap;
+        private final Paint imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint shadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ThemeWallpaperDrawable(MainActivity activity) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            bitmap = BitmapFactory.decodeResource(activity.getResources(), themeArtwork(), options);
+            int top = Color.argb(92, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
+            int middle = Color.argb(112, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
+            int lower = Color.argb(174, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
+            shadePaint.setShader(new android.graphics.LinearGradient(0f, 0f, 0f, 1f,
+                    new int[]{top, middle, lower}, new float[]{0f, 0.55f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+        }
+        @Override public void draw(Canvas canvas) {
+            android.graphics.Rect bounds = getBounds();
+            if (bitmap != null && !bitmap.isRecycled() && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
+                float scale = Math.max(bounds.width() / (float) bitmap.getWidth(), bounds.height() / (float) bitmap.getHeight());
+                float width = bitmap.getWidth() * scale, height = bitmap.getHeight() * scale;
+                float left = bounds.left + (bounds.width() - width) * 0.5f, top = bounds.top + (bounds.height() - height) * 0.5f;
+                canvas.drawBitmap(bitmap, null, new android.graphics.RectF(left, top, left + width, top + height), imagePaint);
+            } else canvas.drawColor(BACKGROUND);
+            canvas.save();
+            canvas.translate(bounds.left, bounds.top);
+            canvas.scale(1f, Math.max(1f, bounds.height()));
+            canvas.drawRect(0f, 0f, bounds.width(), 1f, shadePaint);
+            canvas.restore();
+        }
+        @Override public void setAlpha(int alpha) { imagePaint.setAlpha(alpha); shadePaint.setAlpha(alpha); invalidateSelf(); }
+        @Override public void setColorFilter(ColorFilter filter) { imagePaint.setColorFilter(filter); shadePaint.setColorFilter(filter); invalidateSelf(); }
+        @Override public int getOpacity() { return PixelFormat.OPAQUE; }
     }
 
     private static TextView text(MainActivity a, String value, float size, int color, boolean medium) {

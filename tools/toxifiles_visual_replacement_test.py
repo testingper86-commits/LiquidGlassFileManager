@@ -156,6 +156,10 @@ if "identityBanner.refresh();" not in browser:
     raise SystemExit("Files screen does not refresh its active anime artwork after theme changes")
 if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not in screen or "ACTIVE THEME" not in screen:
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
+if "new ThemeWallpaperDrawable(a)" not in home or "homeGlassSurface(20, index == 0)" not in home:
+    raise SystemExit("Home must use full-page active-theme artwork and transparent glass cards")
+if "ToxiThemeIdentityView.create(a, 248" in home:
+    raise SystemExit("Home must not reserve a separate anime identity banner")
 if "ToxiThemeIdentityView.create(a, 196, \"WORKSPACE IDENTITY\")" not in home:
     raise SystemExit("Tools workspace identity must use its designed cinematic banner height")
 if "DOMINATORS" not in (JAVA / "AboutScreenBuilder.java").read_text(encoding="utf-8"):
