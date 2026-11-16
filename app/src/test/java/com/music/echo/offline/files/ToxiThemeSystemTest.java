@@ -31,6 +31,7 @@ public final class ToxiThemeSystemTest {
     @Test public void eachThemeProfileDrivesDistinctGeometryMaterialAndMotion() {
         java.util.HashSet<ToxiThemeEngine.Geometry> geometries = new java.util.HashSet<>();
         java.util.HashSet<ToxiThemeEngine.Material> materials = new java.util.HashSet<>();
+        java.util.HashSet<ToxiThemeEngine.Motif> motifs = new java.util.HashSet<>();
         java.util.HashSet<String> typefaces = new java.util.HashSet<>();
         for (int i = 0; i < 5; i++) {
             ToxiThemeEngine.activate(i);
@@ -38,7 +39,10 @@ public final class ToxiThemeSystemTest {
             assertEquals(i, profile.index);
             geometries.add(profile.geometry);
             materials.add(profile.material);
+            motifs.add(profile.motif);
             typefaces.add(profile.typeface);
+            assertEquals("The active display font must come from its profile", profile.typeface,
+                    ToxiThemeEngine.headingTypeface());
             assertTrue(ToxiThemeEngine.radius(16) >= 4);
             assertTrue(ToxiThemeEngine.iconStroke() > 0f);
             assertTrue(ToxiThemeEngine.edgeAlpha(180) >= 0);
@@ -52,6 +56,7 @@ public final class ToxiThemeSystemTest {
         }
         assertEquals(5, geometries.size());
         assertEquals(5, materials.size());
+        assertEquals("Each anime identity must own a distinct emblem motif", 5, motifs.size());
         assertTrue(typefaces.size() >= 3);
         ToxiThemeEngine.activate(0);
     }
@@ -195,11 +200,11 @@ public final class ToxiThemeSystemTest {
         ToxiThemeEngine.activate(0);
         assertEquals("sans-serif", ToxiThemeEngine.headingTypeface());
         ToxiThemeEngine.activate(1);
-        assertEquals("sans-serif-medium", ToxiThemeEngine.headingTypeface());
+        assertEquals("sans-serif-condensed", ToxiThemeEngine.headingTypeface());
         ToxiThemeEngine.activate(2);
         assertEquals("sans-serif-medium", ToxiThemeEngine.headingTypeface());
         ToxiThemeEngine.activate(3);
-        assertEquals("sans-serif-condensed", ToxiThemeEngine.headingTypeface());
+        assertEquals("sans-serif-light", ToxiThemeEngine.headingTypeface());
         ToxiThemeEngine.activate(4);
         assertEquals("sans-serif-condensed", ToxiThemeEngine.headingTypeface());
         assertEquals("sans-serif", ToxiThemeEngine.bodyTypeface());
