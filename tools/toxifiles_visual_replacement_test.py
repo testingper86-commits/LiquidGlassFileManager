@@ -141,7 +141,7 @@ for token in ["syncPalette()", "BACKGROUND = ToxiVisualSystem.CANVAS", "LIME = T
         raise SystemExit(f"Home/Tools theme palette is missing: {token}")
 # Each primary destination must render the active poster, not only recolor generic controls.
 for filename, content, token in [
-    ("NebulaHomeView.java", home, "ToxiThemeIdentityView.create(a, 248"),
+    ("NebulaHomeView.java", home, "new ThemeWallpaperDrawable(a)"),
     ("SettingsScreenController.java", settings, "ToxiThemeIdentityView.create(activity, 196"),
     ("BrowserView.java", browser, "ToxiThemeIdentityView.create(a, 148"),
 ]:
