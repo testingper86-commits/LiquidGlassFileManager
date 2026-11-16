@@ -62,6 +62,29 @@ public class StorageIndexEngineTest {
         assertEquals(visible.getCanonicalFile(), collected.entries.get(0).file.getCanonicalFile());
     }
 
+    @Test public void indexesSharedAndroidMediaButKeepsPrivateAndroidDataExcluded() throws Exception {
+        File root = temporary.newFolder("root");
+        File android = new File(root, "Android");
+        File media = new File(android, "media");
+        File appMedia = new File(media, "com.example.chat");
+        File music = new File(appMedia, "Music");
+        File data = new File(android, "data");
+        assertTrue(android.mkdir());
+        assertTrue(media.mkdir());
+        assertTrue(appMedia.mkdir());
+        assertTrue(music.mkdir());
+        assertTrue(data.mkdir());
+        File sharedSong = new File(music, "voice-note.mp3");
+        File privateFile = new File(data, "private.bin");
+        Files.write(sharedSong.toPath(), new byte[]{1, 2});
+        Files.write(privateFile.toPath(), new byte[]{3});
+
+        Collected collected = scan(root, 9, 100);
+        assertTrue(contains(collected, sharedSong));
+        assertFalse(contains(collected, privateFile));
+        assertFalse(collected.result.incomplete);
+    }
+
     @Test public void includesHiddenEntriesAndRootAndroidDirectoryWhenRequested() throws Exception {
         File root = temporary.newFolder("root"), hidden = new File(root, ".cache"), android = new File(root, "Android");
         assertTrue(hidden.mkdir()); assertTrue(android.mkdir());

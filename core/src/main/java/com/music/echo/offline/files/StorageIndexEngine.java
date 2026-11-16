@@ -178,7 +178,22 @@ final class StorageIndexEngine {
                 if (attributes.isSymbolicLink()) continue;
 
                 if (attributes.isDirectory()) {
-                    if (rootDirectory && !includeRootAndroidDirectory && "Android".equals(name)) continue;
+                    if (rootDirectory && !includeRootAndroidDirectory && "Android".equals(name)) {
+                        // Android/data and Android/obb remain excluded, but user-visible app media
+                        // (for example WhatsApp/Telegram exports) is shared media and must be indexed.
+                        Path publicMedia = child.resolve("media");
+                        try {
+                            if (Files.isDirectory(publicMedia, LinkOption.NOFOLLOW_LINKS)
+                                    && !Files.isSymbolicLink(publicMedia)) {
+                                scanDirectory(publicMedia, depth + 2, false, includeHiddenEntries,
+                                        includeRootAndroidDirectory, state);
+                            }
+                        } catch (SecurityException denied) {
+                            state.incomplete = true;
+                        }
+                        if (state.truncated) return;
+                        continue;
+                    }
                     state.consumer.accept(new Snapshot(child.toFile(), true,
                             attributes.lastModifiedTime().toMillis(), 0L));
                     state.entriesVisited++;
