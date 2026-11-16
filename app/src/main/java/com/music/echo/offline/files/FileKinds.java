@@ -1,7 +1,6 @@
 package com.music.echo.offline.files;
 
 import android.graphics.Color;
-import android.webkit.MimeTypeMap;
 import java.util.HashMap;
 
 /** File type detection, colours and MIME types. */
@@ -37,13 +36,7 @@ final class FileKinds {
         String normalized = extension.trim().toLowerCase(java.util.Locale.ROOT);
         if (normalized.startsWith(".")) normalized = normalized.substring(1);
         Integer kind = M.get(normalized);
-        if (kind != null) return kind;
-        String mime = normalized.isEmpty() ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(normalized);
-        if (mime == null) return OTHER;
-        if (mime.startsWith("image/")) return IMAGE;
-        if (mime.startsWith("video/")) return VIDEO;
-        if (mime.startsWith("audio/")) return AUDIO;
-        return OTHER;
+        return kind == null ? OTHER : kind;
     }
 
     static int kindOfFile(java.io.File file) {
