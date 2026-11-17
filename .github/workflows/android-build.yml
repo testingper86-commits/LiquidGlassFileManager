@@ -103,16 +103,19 @@ jobs:
           java-version: "17"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [[ -z "$SDKMANAGER" ]]; then
+            SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          fi
+          [[ -x "$SDKMANAGER" ]] || { echo "::error::Android SDK command-line tools are unavailable"; exit 1; }
           set +o pipefail
-          yes | sdkmanager --licenses >/dev/null
+          yes | "$SDKMANAGER" --licenses >/dev/null
           set -o pipefail
-          sdkmanager --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+          "$SDKMANAGER" --install 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
       - name: Verify complete visual replacement
         run: python3 tools/toxifiles_visual_replacement_test.py
       - name: Verify restricted offline Developer Studio
