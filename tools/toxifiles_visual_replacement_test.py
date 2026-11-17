@@ -159,7 +159,8 @@ if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not
 if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
     raise SystemExit("Home must use full-page active-theme artwork and theme-adaptive premium glass cards")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
-              "File library", "addDownloadsQuickAccess(a, host)", "Quick access to downloaded files"]:
+              "File library", "addDownloadsQuickAccess(a, host)", "Quick access to downloaded files",
+              "artwork.setImageResource(themeArtwork())", "ImageView.ScaleType.CENTER_CROP", "dp(a, 104)"]:
     if token not in home:
         raise SystemExit(f"Reference homepage composition is missing: {token}")
 if "ToxiThemeIdentityView.create(a, 248" in home:

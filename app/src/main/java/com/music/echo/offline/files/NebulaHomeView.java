@@ -140,7 +140,7 @@ final class NebulaHomeView {
                 });
                 ToxiVisualSystem.interactive(item);
                 LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
-                        rowItems == 1 ? -1 : 0, dp(a, 166), rowItems == 1 ? 0f : 1f);
+                        rowItems == 1 ? -1 : 0, dp(a, 104), rowItems == 1 ? 0f : 1f);
                 if (rowItems > 1) {
                     if (col == 0) cardLp.rightMargin = dp(a, 6);
                     else if (col == rowItems - 1) cardLp.leftMargin = dp(a, 6);
@@ -149,8 +149,8 @@ final class NebulaHomeView {
                 gridRow.addView(item, cardLp);
                 animateHomeCard(a, item, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 166));
-            rowLp.bottomMargin = dp(a, 10);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 104));
+            rowLp.bottomMargin = dp(a, 9);
             host.addView(gridRow, rowLp);
         }
         addDownloadsQuickAccess(a, host);
@@ -161,35 +161,63 @@ final class NebulaHomeView {
     }
 
     private static LinearLayout categoryCard(MainActivity a, String name, String detail, String glyph, int accent) {
-        LinearLayout card = new LinearLayout(a);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.TOP);
-        card.setPadding(dp(a, 16), dp(a, 15), dp(a, 15), dp(a, 14));
+        FrameLayout card = new FrameLayout(a);
         card.setBackground(categoryGlassSurface(accent));
+        card.setClipToOutline(true);
 
+        ImageView artwork = new ImageView(a);
+        artwork.setImageResource(themeArtwork());
+        artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        artwork.setAlpha(0.48f);
+        artwork.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(artwork, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(a);
+        GradientDrawable shadeDrawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{Color.argb(74, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
+                        Color.argb(154, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
+                        Color.argb(216, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
+        shadeDrawable.setCornerRadius(dp(a, 22));
+        shade.setBackground(shadeDrawable);
+        card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout content = new LinearLayout(a);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.TOP);
+        content.setPadding(dp(a, 13), dp(a, 12), dp(a, 13), dp(a, 11));
         LinearLayout iconLine = new LinearLayout(a);
         iconLine.setGravity(Gravity.CENTER_VERTICAL);
         FrameLayout iconWell = new FrameLayout(a);
-        iconWell.setBackground(background(Color.argb(42, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                Color.argb(150, Color.red(accent), Color.green(accent), Color.blue(accent)), 15));
+        iconWell.setBackground(background(Color.argb(48, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)), 14));
         Glyph icon = new Glyph(a, glyph, accent);
-        iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 29), dp(a, 29), Gravity.CENTER));
-        iconLine.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 50), dp(a, 50)));
+        iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 27), dp(a, 27), Gravity.CENTER));
+        iconLine.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
         TextView arrow = text(a, "↗", 19, accent, true);
         arrow.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         iconLine.addView(arrow, new LinearLayout.LayoutParams(0, -1, 1f));
-        card.addView(iconLine, new LinearLayout.LayoutParams(-1, dp(a, 50)));
+        content.addView(iconLine, new LinearLayout.LayoutParams(-1, dp(a, 46)));
         View spacer = new View(a);
-        card.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1f));
-        TextView title = text(a, name, 16, TEXT, true);
+        content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 1f));
+        TextView title = text(a, name, 15.5f, TEXT, true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        card.addView(title, margins(a, -1, -2, 0, 0, 0, 5));
-        TextView subtitle = text(a, detail, 11.5f, MUTED, false);
+        content.addView(title, margins(a, -1, -2, 0, 0, 0, 3));
+        TextView subtitle = text(a, detail, 10.5f, MUTED, false);
         subtitle.setSingleLine(true);
         subtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        card.addView(subtitle);
-        return card;
+        content.addView(subtitle);
+        card.addView(content, new FrameLayout.LayoutParams(-1, -1));
+        return contentCardWrapper(a, card);
+    }
+
+    private static LinearLayout contentCardWrapper(MainActivity a, FrameLayout card) {
+        LinearLayout wrapper = new LinearLayout(a);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.addView(card, new LinearLayout.LayoutParams(-1, -1));
+        wrapper.setClipChildren(true);
+        wrapper.setClipToPadding(true);
+        return wrapper;
     }
 
     private static Drawable categoryGlassSurface(int accent) {
@@ -341,7 +369,7 @@ final class NebulaHomeView {
         int percent = total > 0 ? (int) Math.max(0L, Math.min(100L,
                 Math.round((double) used * 100.0d / (double) total))) : -1;
 
-        LinearLayout card = panel(a, 22);
+        LinearLayout card = panel(a, 20);
         LinearLayout top = new LinearLayout(a);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView storageMark = text(a, "▤", 23, LIME, true);
@@ -366,8 +394,8 @@ final class NebulaHomeView {
         progress.setProgressBackgroundTintList(ColorStateList.valueOf(BORDER));
         progress.setIndeterminate(false);
         LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, dp(a, 8));
-        progressLp.topMargin = dp(a, 17);
-        progressLp.bottomMargin = dp(a, 13);
+        progressLp.topMargin = dp(a, 12);
+        progressLp.bottomMargin = dp(a, 9);
         card.addView(progress, progressLp);
 
         LinearLayout values = new LinearLayout(a);
@@ -380,7 +408,7 @@ final class NebulaHomeView {
         card.setFocusable(true);
         card.setOnClickListener(v -> a.openStorageAnalyzer());
         ToxiVisualSystem.interactive(card);
-        host.addView(card, margins(a, -1, -2, 0, 0, 0, 22));
+        host.addView(card, margins(a, -1, -2, 0, 0, 0, 16));
     }
 
     private static final class StorageCapacity {
