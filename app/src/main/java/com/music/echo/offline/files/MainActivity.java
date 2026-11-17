@@ -306,6 +306,16 @@ public class MainActivity extends ComponentActivity {
         else if (accessOk && !Indexer.I.running && (Indexer.I.dirty || System.currentTimeMillis() - Indexer.I.finished > 180000)) startIndex();
     }
 
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        Thumbs.trimMemory(level);
+    }
+
+    @Override public void onLowMemory() {
+        super.onLowMemory();
+        Thumbs.trimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE);
+    }
+
     @Override protected void onPause() { super.onPause(); }
 
     @Override protected void onUserLeaveHint() {

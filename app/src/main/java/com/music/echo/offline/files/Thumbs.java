@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.ComponentCallbacks2;
 import android.util.LruCache;
 import android.widget.ImageView;
 
@@ -17,8 +18,14 @@ final class Thumbs {
     };
     private static final Handler UI = new Handler(Looper.getMainLooper());
 
+    static void trimMemory(int level) {
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE) CACHE.evictAll();
+        else if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) CACHE.trimToSize(CACHE.maxSize() / 4);
+        else if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) CACHE.trimToSize(CACHE.maxSize() / 2);
+    }
+
     static void bind(final ImageView iv, final Entry e, final int px) {
-        final String key = e.f.getAbsolutePath() + "|" + e.mod;
+        final String key = e.f.getAbsolutePath() + "|" + e.mod + "|" + Math.max(1, px);
         iv.setTag(key);
         boolean needsThumbnail = e.kind == FileKinds.IMAGE || e.kind == FileKinds.VIDEO;
         Bitmap cached = CACHE.get(key);
@@ -41,12 +48,21 @@ final class Thumbs {
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(e.f.getAbsolutePath(), o);
-            int s = 1;
-            while (o.outWidth / (s * 2) >= px && o.outHeight / (s * 2) >= px) s *= 2;
-            o = new BitmapFactory.Options();
-            o.inSampleSize = s;
-            return BitmapFactory.decodeFile(e.f.getAbsolutePath(), o);
+            String path = e.f.getAbsolutePath();
+            BitmapFactory.decodeFile(path, o);
+            if (o.outWidth <= 0 || o.outHeight <= 0) return null;
+            int target = Math.max(1, px);
+            int sample = 1;
+            while (sample <= (1 << 29)
+                    && o.outWidth / (sample * 2) >= target
+                    && o.outHeight / (sample * 2) >= target) {
+                sample *= 2;
+            }
+            BitmapFactory.Options decode = new BitmapFactory.Options();
+            decode.inSampleSize = sample;
+            decode.inPreferredConfig = Bitmap.Config.RGB_565;
+            decode.inDither = true;
+            return BitmapFactory.decodeFile(path, decode);
         } catch (Throwable t) {
             return null;
         }
@@ -59,8 +75,14 @@ final class Thumbs {
             Bitmap b = r.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
             if (b == null) return null;
             int w = b.getWidth(), h = b.getHeight();
-            float sc = (float) px / Math.min(w, h);
-            if (sc < 1f) b = Bitmap.createScaledBitmap(b, Math.max(1, (int) (w * sc)), Math.max(1, (int) (h * sc)), true);
+            int target = Math.max(1, px);
+            float sc = Math.min(1f, (float) target / Math.max(w, h));
+            if (sc < 1f) {
+                Bitmap scaled = Bitmap.createScaledBitmap(b, Math.max(1, Math.round(w * sc)),
+                        Math.max(1, Math.round(h * sc)), true);
+                if (scaled != b && !b.isRecycled()) b.recycle();
+                b = scaled;
+            }
             return b;
         } catch (Throwable t) {
             return null;
