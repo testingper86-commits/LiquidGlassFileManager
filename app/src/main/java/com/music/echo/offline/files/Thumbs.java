@@ -26,7 +26,7 @@ final class Thumbs {
             iv.setImageBitmap(cached);
             return;
         }
-        iv.setImageDrawable(ToxiIcons.fileTile(e.kind));
+        iv.setImageDrawable(ToxiIcons.symbol(FileKinds.glyph(e.kind), ToxiVisualSystem.TEXT_SECONDARY));
         if (!needsThumbnail) return;
         TaskCoordinator.tryExecute(TaskCoordinator.Lane.THUMBNAIL, () -> {
             if (!key.equals(iv.getTag())) return;
