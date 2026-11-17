@@ -1,5 +1,7 @@
 package com.music.echo.offline.files;
 
+import com.music.echo.offline.R;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
