@@ -100,23 +100,18 @@ final class AboutScreenBuilder {
         avatarFrame.setBackground(avatarHalo);
         avatarFrame.setElevation(0f);
         avatarFrame.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
-        TextView avatarMark = new TextView(activity);
-        avatarMark.setText("C");
-        avatarMark.setGravity(Gravity.CENTER);
-        avatarMark.setTextSize(76f);
-        avatarMark.setIncludeFontPadding(false);
-        avatarMark.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
-        avatarMark.setTextColor(Color.WHITE);
-        avatarMark.setLetterSpacing(0.035f);
-        GradientDrawable avatarSurface = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.rgb(12, 48, 58), Color.rgb(20, 91, 91), Color.rgb(10, 31, 43)});
+        ImageView avatarImage = new ImageView(activity);
+        avatarImage.setImageResource(R.drawable.chandu_profile);
+        avatarImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        GradientDrawable avatarSurface = new GradientDrawable();
         avatarSurface.setShape(GradientDrawable.OVAL);
-        avatarSurface.setStroke(ToxiVisualSystem.dp(1), Color.argb(105, 255, 255, 255));
-        avatarMark.setBackground(avatarSurface);
-        avatarMark.setContentDescription("Chandu profile emblem");
+        avatarSurface.setColor(Color.TRANSPARENT);
+        avatarImage.setBackground(avatarSurface);
+        avatarImage.setClipToOutline(true);
+        avatarImage.setContentDescription("Chandu profile photo");
         FrameLayout.LayoutParams avatarParams = new FrameLayout.LayoutParams(
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), Gravity.CENTER);
-        avatarFrame.addView(avatarMark, avatarParams);
+        avatarFrame.addView(avatarImage, avatarParams);
         profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144))));
         TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
         name.setLetterSpacing(0.10f);
