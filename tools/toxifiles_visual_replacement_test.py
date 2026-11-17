@@ -156,8 +156,12 @@ if "identityBanner" in browser or "ToxiThemeIdentityView.create" in browser:
     raise SystemExit("File lists must not insert a separate anime banner above the requested content")
 if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not in screen or "ACTIVE THEME" not in screen:
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
-if "new ThemeWallpaperDrawable(a)" not in home or "homeGlassSurface(20, index == 0)" not in home:
-    raise SystemExit("Home must use full-page active-theme artwork and transparent glass cards")
+if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
+    raise SystemExit("Home must use full-page active-theme artwork and theme-adaptive premium glass cards")
+for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
+              "File library", "addDownloadsQuickAccess(a, host)", "Quick access to downloaded files"]:
+    if token not in home:
+        raise SystemExit(f"Reference homepage composition is missing: {token}")
 if "ToxiThemeIdentityView.create(a, 248" in home:
     raise SystemExit("Home must not reserve a separate anime identity banner")
 if "ToxiThemeIdentityView.create(a, 196" in home or '"Tools", 24' not in home:
