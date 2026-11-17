@@ -1,11 +1,8 @@
 package com.music.echo.offline.files;
 
-import com.music.echo.offline.R;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -103,31 +100,23 @@ final class AboutScreenBuilder {
         avatarFrame.setBackground(avatarHalo);
         avatarFrame.setElevation(0f);
         avatarFrame.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
-        ImageView avatarImage = new ImageView(activity);
-        avatarImage.setImageResource(R.drawable.chandu_profile);
-        avatarImage.setScaleType(ImageView.ScaleType.MATRIX);
-        int avatarSize = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132));
-        android.graphics.drawable.Drawable profileDrawable = avatarImage.getDrawable();
-        if (profileDrawable != null && profileDrawable.getIntrinsicWidth() > 0 && profileDrawable.getIntrinsicHeight() > 0) {
-            float scale = Math.max((float) avatarSize / profileDrawable.getIntrinsicWidth(),
-                    (float) avatarSize / profileDrawable.getIntrinsicHeight());
-            float imageWidth = profileDrawable.getIntrinsicWidth() * scale;
-            float imageHeight = profileDrawable.getIntrinsicHeight() * scale;
-            Matrix profileCrop = new Matrix();
-            profileCrop.setScale(scale, scale);
-            profileCrop.postTranslate((avatarSize - imageWidth) * 0.5f + avatarSize * 0.12f,
-                    (avatarSize - imageHeight) * 0.5f - avatarSize * 0.16f);
-            avatarImage.setImageMatrix(profileCrop);
-        }
-        GradientDrawable photoMask = new GradientDrawable();
-        photoMask.setShape(GradientDrawable.OVAL);
-        photoMask.setColor(Color.WHITE);
-        avatarImage.setBackground(photoMask);
-        avatarImage.setClipToOutline(true);
-        avatarImage.setContentDescription("Chandu profile photo");
+        TextView avatarMark = new TextView(activity);
+        avatarMark.setText("C");
+        avatarMark.setGravity(Gravity.CENTER);
+        avatarMark.setTextSize(76f);
+        avatarMark.setIncludeFontPadding(false);
+        avatarMark.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
+        avatarMark.setTextColor(Color.WHITE);
+        avatarMark.setLetterSpacing(0.035f);
+        GradientDrawable avatarSurface = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(12, 48, 58), Color.rgb(20, 91, 91), Color.rgb(10, 31, 43)});
+        avatarSurface.setShape(GradientDrawable.OVAL);
+        avatarSurface.setStroke(ToxiVisualSystem.dp(1), Color.argb(105, 255, 255, 255));
+        avatarMark.setBackground(avatarSurface);
+        avatarMark.setContentDescription("Chandu profile emblem");
         FrameLayout.LayoutParams avatarParams = new FrameLayout.LayoutParams(
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)), Gravity.CENTER);
-        avatarFrame.addView(avatarImage, avatarParams);
+        avatarFrame.addView(avatarMark, avatarParams);
         profile.addView(avatarFrame, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(144))));
         TextView name = aboutText("CHANDU", 30, ABOUT_TEXT, true);
         name.setLetterSpacing(0.10f);
