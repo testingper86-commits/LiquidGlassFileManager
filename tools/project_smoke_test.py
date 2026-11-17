@@ -217,11 +217,7 @@ def main():
     require("DocumentsContract.createDocument" in saf_ops and "buildChildDocumentsUriUsingTree" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF document duplication creates collision-safe provider documents and cleans partial output")
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
-    portrait = ROOT / "app/src/main/res/drawable-nodpi/dominators_profile.webp"
-    require(portrait.is_file() and portrait.stat().st_size > 0 and portrait.read_bytes()[:4] == b"RIFF" and portrait.read_bytes()[8:12] == b"WEBP", "supplied Dominators creator artwork is packaged as a valid WebP")
-    require(not (ROOT / "app/src/main/res/drawable-nodpi/chandu_profile.jpg").exists(), "superseded Chandu portrait is removed from the repository")
-    about_builder = source("app/src/main/java/com/music/echo/offline/files/AboutScreenBuilder.java")
-    require('R.drawable.dominators_profile' in about_builder and 'R.drawable.chandu_profile' not in about_builder and 'ImageView.ScaleType.CENTER_CROP' in about_builder and 'outline.setOval' in about_builder, "About renders the supplied Dominators artwork as a circular center-cropped avatar")
+    require('avatarMonogram.setText("C")' in about_builder and 'Chandu profile monogram' in about_builder and 'R.drawable.dominators_profile' not in about_builder, "About renders the Chandu monogram with a theme-aware circular avatar")
     dock = source("app/src/main/java/com/music/echo/offline/files/PrismNavigationDock.java")
     require('private static final String[] TAB_NAMES = {"Home", "Files", "Tools", "Settings"}' in dock and 'NebulaHomeView.Glyph' in dock and 'navigationSurface()' in dock and 'navigationHighlight()' in dock and 'ToxiVisualSystem.ACCENT' in dock and 'setImportantForAccessibility' in dock and 'setContentDescription(TAB_NAMES[i]' in dock, "four-tab floating glass navigation retains semantic glyphs, theme-aware surfaces, selected state and accessibility")
     require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")
