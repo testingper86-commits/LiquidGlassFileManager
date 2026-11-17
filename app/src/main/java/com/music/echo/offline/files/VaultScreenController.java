@@ -121,7 +121,7 @@ final class VaultScreenController {
                 ToxiFileRow.bind(holder, entry, false, false, "SECURED  ·  from " + item.originalParent.getName());
                 row.setOnClickListener(view -> showItemMenu(item));
                 holder.more.setOnClickListener(view -> showItemMenu(item));
-                activity.vault.addView(row, params(0, 0, 0, 5));
+                activity.vault.addView(row, params(0, 0, 0, 8));
             }
         }
 

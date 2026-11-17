@@ -550,17 +550,17 @@ public class MainActivity extends ComponentActivity {
 
     TextView section(String t) {
         TextView v = ToxiVisualSystem.text(this, t.toUpperCase(java.util.Locale.ROOT), 11.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
-        v.setLetterSpacing(0.08f);
+        v.setLetterSpacing(0.11f);
         v.setTextColor(ToxiVisualSystem.signalTextColor());
         v.setText(t.toUpperCase(java.util.Locale.ROOT));
         setLeadingIcon(v, ToxiIcons.NEXT);
         v.setGravity(Gravity.CENTER_VERTICAL);
         v.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
-        v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
-        v.setBackground(ToxiVisualSystem.surface(16, false));
+        v.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+        v.setBackground(ToxiVisualSystem.surface(17, true));
         ToxiVisualSystem.interactive(v);
         v.setContentDescription(t + ", collapsed settings section. Double tap to expand.");
-        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 14, 16, 6);
+        LinearLayout.LayoutParams p = lpm(-1, -2, 16, 18, 16, 8);
         v.setLayoutParams(p);
         v.setTag("settings_section");
         v.setOnClickListener(view -> {
@@ -822,19 +822,19 @@ public class MainActivity extends ComponentActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackground(ToxiVisualSystem.surface(18, false));
-        row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
-        row.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(sub == null ? 64 : 78)));
+        row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
+        row.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(sub == null ? 68 : 84)));
         FrameLayout symbolPlate = new FrameLayout(this);
         symbolPlate.setBackground(ToxiVisualSystem.surface(13, true));
         ImageView symbol = new ImageView(this);
         symbol.setImageDrawable(ToxiIcons.symbol(glyph, ToxiVisualSystem.ACCENT));
         symbol.setContentDescription(ToxiIcons.accessibilityLabel(glyph));
         symbolPlate.addView(symbol, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), Gravity.CENTER));
-        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(40))));
+        row.addView(symbolPlate, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(42))));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)));
-        TextView titleView = ToxiVisualSystem.text(this, title, 14.5f, ToxiVisualSystem.TEXT_PRIMARY, true);
+        copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1)));
+        TextView titleView = ToxiVisualSystem.text(this, title, 15, ToxiVisualSystem.TEXT_PRIMARY, true);
         titleView.setMaxLines(2);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         copy.addView(titleView);
@@ -843,7 +843,7 @@ public class MainActivity extends ComponentActivity {
             detail.setMaxLines(2);
             detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams detailLp = new LinearLayout.LayoutParams(-1, -2);
-            detailLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
+            detailLp.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
             copy.addView(detail, detailLp);
         }
         row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));

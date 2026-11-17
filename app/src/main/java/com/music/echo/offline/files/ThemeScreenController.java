@@ -32,7 +32,7 @@ final class ThemeScreenController {
         activity.themeScroll.removeAllViews();
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)));
+        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)));
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
@@ -130,7 +130,7 @@ final class ThemeScreenController {
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(148)), 0, 0, 0, 10);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(164)), 0, 0, 0, 12);
             panel.addView(tile, tileParams);
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));

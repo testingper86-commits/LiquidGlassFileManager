@@ -26,10 +26,10 @@ final class ToxiFileRow {
     static View create(Context context) {
         Holder h=new Holder();
         h.root=new FrameLayout(context);
-        h.root.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
+        h.root.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         h.row=new LinearLayout(context); h.row.setGravity(Gravity.CENTER_VERTICAL);
         h.row.setOrientation(LinearLayout.HORIZONTAL);
-        h.row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)));
+        h.row.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(13)));
         h.bgNormal=ToxiVisualSystem.surface(20,false); h.bgSel=ToxiVisualSystem.accentSurface(20); h.row.setBackground(h.bgNormal);
         h.row.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.5f)));
         FrameLayout iconFrame=new FrameLayout(context);
@@ -39,13 +39,13 @@ final class ToxiFileRow {
         h.labelDot=new View(context); h.labelDot.setVisibility(View.GONE);
         FrameLayout.LayoutParams dotLp=new FrameLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),Gravity.BOTTOM|Gravity.END);
         iconFrame.addView(h.labelDot,dotLp);
-        LinearLayout.LayoutParams iconLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(50)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(50))); iconLp.rightMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14));
+        LinearLayout.LayoutParams iconLp=new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(52)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(52))); iconLp.rightMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(15));
         h.row.addView(iconFrame,iconLp);
         LinearLayout labels=new LinearLayout(context); labels.setOrientation(LinearLayout.VERTICAL);
-        h.name=ToxiVisualSystem.text(context,"",15,ToxiVisualSystem.TEXT_PRIMARY,true); h.name.setSingleLine(true); h.name.setEllipsize(TextUtils.TruncateAt.MIDDLE);
-        h.sub=ToxiVisualSystem.text(context,"",11.5f,ToxiVisualSystem.TEXT_SECONDARY,false); h.sub.setSingleLine(true); h.sub.setEllipsize(TextUtils.TruncateAt.END);
+        h.name=ToxiVisualSystem.text(context,"",15,ToxiVisualSystem.TEXT_PRIMARY,true); h.name.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15); h.name.setSingleLine(true); h.name.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        h.sub=ToxiVisualSystem.text(context,"",11.5f,ToxiVisualSystem.TEXT_SECONDARY,false); h.sub.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11.5f); h.sub.setSingleLine(true); h.sub.setEllipsize(TextUtils.TruncateAt.END);
         labels.addView(h.name,new LinearLayout.LayoutParams(-1,-2));
-        LinearLayout.LayoutParams subLp=new LinearLayout.LayoutParams(-1,-2);subLp.topMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));labels.addView(h.sub,subLp);
+        LinearLayout.LayoutParams subLp=new LinearLayout.LayoutParams(-1,-2);subLp.topMargin=ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6));labels.addView(h.sub,subLp);
         h.row.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
         h.more=new ImageView(context);h.more.setImageDrawable(ToxiIcons.symbol(ToxiIcons.MORE,ToxiVisualSystem.TEXT_SECONDARY));
         h.more.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)),ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
