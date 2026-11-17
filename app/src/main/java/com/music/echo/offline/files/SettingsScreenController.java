@@ -28,10 +28,17 @@ final class SettingsScreenController {
         settingsHeader.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(6),
                 ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(6));
         settingsHeader.setBackground(ToxiVisualSystem.surface(24, true));
+        LinearLayout settingsIdentity = new LinearLayout(activity);
+        settingsIdentity.setOrientation(LinearLayout.VERTICAL);
+        TextView eyebrow = ToxiVisualSystem.text(activity, "PERSONALIZE YOUR FILESPACE", 9,
+                ToxiVisualSystem.signalTextColor(), true);
+        eyebrow.setLetterSpacing(0.12f);
+        settingsIdentity.addView(eyebrow);
         TextView t = ToxiVisualSystem.text(activity, "Settings", 24,
                 ToxiVisualSystem.TEXT_PRIMARY, true);
         t.setSingleLine(true);
-        settingsHeader.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        settingsIdentity.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        settingsHeader.addView(settingsIdentity, new LinearLayout.LayoutParams(0, -2, 1f));
         activity.settings.addView(settingsHeader,
                 activity.lpm(-1, -2, 14, 8, 14, 16));
         t.setOnClickListener(v -> {
@@ -62,7 +69,7 @@ final class SettingsScreenController {
         activity.settings.addView(activity.row(ToxiIcons.SORT, "Default sort", null, null, v -> activity.filesView.sortDialog()), activity.lpm(-1, -2, 16, 0, 16, 8));
 
         activity.settings.addView(activity.section("Storage Access"));
-        activity.settings.addView(activity.row(ToxiIcons.DATABASE, "Storage permission", activity.hasAccess() ? "Allowed Â· manage access" : "Not allowed Â· tap to fix", null, v -> {
+        activity.settings.addView(activity.row(ToxiIcons.DATABASE, "Storage permission", activity.hasAccess() ? "Allowed · manage access" : "Not allowed · tap to fix", null, v -> {
             if (!activity.hasAccess()) { activity.showStorageAccess(); return; }
             try {
                 Intent manage = Build.VERSION.SDK_INT >= 30

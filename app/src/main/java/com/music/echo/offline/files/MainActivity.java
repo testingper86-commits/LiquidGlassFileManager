@@ -416,7 +416,7 @@ public class MainActivity extends ComponentActivity {
 
     /** Called from a background thread via runOnUiThread to show granular "N of M" progress. */
     void progress(String text) {
-        busyTv.setText(text + " Â· tap to cancel");
+        busyTv.setText(text + " · tap to cancel");
         ToxiMotion.attach(busyTv);
         ToxiMotion.setActive(busyTv, true);
     }

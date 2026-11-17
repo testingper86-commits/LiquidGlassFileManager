@@ -92,7 +92,7 @@ final class NebulaHomeView {
         TextView headline = text(a, "Everything\nin its element.", 31, TEXT, true);
         headline.setLineSpacing(dp(a, 1), 0.98f);
         host.addView(headline, margins(a, -1, -2, 0, 12, 0, 7));
-        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 12, MUTED, false);
+        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 13, MUTED, false);
         host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
         if (!a.hasAccess()) {
@@ -134,7 +134,7 @@ final class NebulaHomeView {
                 LinearLayout item = new LinearLayout(a);
                 item.setOrientation(LinearLayout.VERTICAL);
                 item.setGravity(Gravity.TOP);
-                item.setPadding(dp(a, 13), dp(a, 13), dp(a, 13), dp(a, 13));
+                item.setPadding(dp(a, 15), dp(a, 15), dp(a, 15), dp(a, 14));
                 item.setBackground(homeGlassSurface(20, index == 0));
                 LinearLayout iconLine = new LinearLayout(a);
                 iconLine.setGravity(Gravity.CENTER_VERTICAL);
@@ -152,7 +152,7 @@ final class NebulaHomeView {
                 categoryName.setSingleLine(true);
                 categoryName.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 item.addView(categoryName, margins(a, -1, -2, 0, 12, 0, 0));
-                TextView detail = text(a, details[index], 10, MUTED, false);
+                TextView detail = text(a, details[index], 11, MUTED, false);
                 detail.setMaxLines(2);
                 detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 item.addView(detail, margins(a, -1, -2, 0, 5, 0, 0));
@@ -168,7 +168,7 @@ final class NebulaHomeView {
                 });
                 ToxiVisualSystem.interactive(item);
                 LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
-                        rowItems == 1 ? -1 : 0, dp(a, 134), rowItems == 1 ? 0f : 1f);
+                        rowItems == 1 ? -1 : 0, dp(a, 142), rowItems == 1 ? 0f : 1f);
                 if (rowItems > 1) {
                     if (col == 0) cardLp.rightMargin = dp(a, 6);
                     else if (col == rowItems - 1) cardLp.leftMargin = dp(a, 6);
@@ -180,7 +180,7 @@ final class NebulaHomeView {
                 gridRow.addView(item, cardLp);
                 animateHomeCard(a, item, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 134));
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 142));
             rowLp.bottomMargin = dp(a, 10);
             host.addView(gridRow, rowLp);
         }
