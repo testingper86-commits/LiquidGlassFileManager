@@ -173,6 +173,8 @@ public class MainActivity extends ComponentActivity {
         toolsScroll.addView(tools, new FrameLayout.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
         settingsScroll.setVerticalScrollBarEnabled(false);
+        settingsScroll.setFillViewport(true);
+        settingsScroll.setBackgroundColor(Color.TRANSPARENT);
         // Keep Settings rows inside the scroll viewport; the bottom navigation overlays the screen root.
         settingsScroll.setClipToPadding(true);
         settings = new LinearLayout(this);

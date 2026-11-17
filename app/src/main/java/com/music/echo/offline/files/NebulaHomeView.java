@@ -59,6 +59,11 @@ final class NebulaHomeView {
 
     private NebulaHomeView() { }
 
+    static Drawable wallpaper(MainActivity activity) {
+        syncPalette();
+        return new ThemeWallpaperDrawable(activity);
+    }
+
     static void buildHome(MainActivity a, LinearLayout host) {
         syncPalette();
         host.removeAllViews();
@@ -438,7 +443,7 @@ final class NebulaHomeView {
         }
     }
 
-    private static final class ThemeWallpaperDrawable extends Drawable {
+    static final class ThemeWallpaperDrawable extends Drawable {
         private final Bitmap bitmap;
         private final Paint imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint shadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
