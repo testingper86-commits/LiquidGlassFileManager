@@ -217,7 +217,7 @@ def main():
     require("DocumentsContract.createDocument" in saf_ops and "buildChildDocumentsUriUsingTree" in saf_ops and "OperationCancellation.checkCurrent()" in saf_ops, "SAF document duplication creates collision-safe provider documents and cleans partial output")
     visual = source("app/src/main/java/com/music/echo/offline/files/ToxiVisualSystem.java")
     icons = source("app/src/main/java/com/music/echo/offline/files/ToxiIcons.java")
-    require('avatarMonogram.setText("C")' in about_builder and 'Chandu profile monogram' in about_builder and 'R.drawable.dominators_profile' not in about_builder, "About renders the Chandu monogram with a theme-aware circular avatar")
+    require('avatarImage.setImageResource(R.drawable.chandu_profile)' in about_builder and 'Chandu profile photo' in about_builder and 'avatarImage.setClipToOutline(true)' in about_builder and 'R.drawable.dominators_profile' not in about_builder, "About renders the supplied Chandu photo in a circular avatar")
     dock = source("app/src/main/java/com/music/echo/offline/files/PrismNavigationDock.java")
     require('private static final String[] TAB_NAMES = {"Home", "Files", "Tools", "Settings"}' in dock and 'NebulaHomeView.Glyph' in dock and 'navigationSurface()' in dock and 'navigationHighlight()' in dock and 'ToxiVisualSystem.ACCENT' in dock and 'setImportantForAccessibility' in dock and 'setContentDescription(TAB_NAMES[i]' in dock, "four-tab floating glass navigation retains semantic glyphs, theme-aware surfaces, selected state and accessibility")
     require('high_text_contrast_enabled' in visual and 'HIGH_CONTRAST ? 0xFFE8EEF5' in visual, "Android high-contrast mode increases secondary text contrast")

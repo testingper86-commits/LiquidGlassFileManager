@@ -163,8 +163,8 @@ if "ToxiThemeIdentityView.create(a, 248" in home:
 if "ToxiThemeIdentityView.create(a, 196" in home or '"Tools", 24' not in home:
     raise SystemExit("Tools must use the compact shared page header without a separate identity banner")
 creator_profile = (JAVA / "AboutScreenBuilder.java").read_text(encoding="utf-8")
-if "CHANDU" not in creator_profile or "DOMINATORS" in creator_profile:
-    raise SystemExit("Creator profile must use CHANDU and remove the legacy DOMINATORS identity")
+if "CHANDU" not in creator_profile or "DOMINATORS" in creator_profile or "R.drawable.chandu_profile" not in creator_profile:
+    raise SystemExit("Creator profile must use CHANDU, the supplied profile photo, and remove the legacy DOMINATORS identity")
 if "private final int fixedHeightPx" not in identity_view or "setMeasuredDimension(measuredWidth, measuredHeight)" not in identity_view:
     raise SystemExit("Anime identity poster must be constrained to its designed banner height in wrap-content screens")
 if "toolsScroll.setClipToPadding(true)" not in main_activity:
