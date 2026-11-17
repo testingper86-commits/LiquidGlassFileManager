@@ -5,6 +5,7 @@ import com.music.echo.offline.R;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -104,7 +105,20 @@ final class AboutScreenBuilder {
         avatarFrame.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         ImageView avatarImage = new ImageView(activity);
         avatarImage.setImageResource(R.drawable.chandu_profile);
-        avatarImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        avatarImage.setScaleType(ImageView.ScaleType.MATRIX);
+        int avatarSize = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132));
+        android.graphics.drawable.Drawable profileDrawable = avatarImage.getDrawable();
+        if (profileDrawable != null && profileDrawable.getIntrinsicWidth() > 0 && profileDrawable.getIntrinsicHeight() > 0) {
+            float scale = Math.max((float) avatarSize / profileDrawable.getIntrinsicWidth(),
+                    (float) avatarSize / profileDrawable.getIntrinsicHeight());
+            float imageWidth = profileDrawable.getIntrinsicWidth() * scale;
+            float imageHeight = profileDrawable.getIntrinsicHeight() * scale;
+            Matrix profileCrop = new Matrix();
+            profileCrop.setScale(scale, scale);
+            profileCrop.postTranslate((avatarSize - imageWidth) * 0.5f + avatarSize * 0.12f,
+                    (avatarSize - imageHeight) * 0.5f - avatarSize * 0.16f);
+            avatarImage.setImageMatrix(profileCrop);
+        }
         GradientDrawable photoMask = new GradientDrawable();
         photoMask.setShape(GradientDrawable.OVAL);
         photoMask.setColor(Color.WHITE);
