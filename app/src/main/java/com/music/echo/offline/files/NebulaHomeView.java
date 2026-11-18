@@ -527,17 +527,26 @@ final class NebulaHomeView {
         return glass;
     }
 
+    /** Every destination follows the one selected theme identity; section IDs never choose artwork. */
     static Drawable sectionWallpaper(MainActivity activity, int section) {
         syncPalette();
-        int artwork;
-        switch (section) {
-            case 0: artwork = R.drawable.theme_poster_onepiece; break;
-            case 1: artwork = R.drawable.theme_poster_naruto; break;
-            case 2: artwork = R.drawable.theme_poster_demon; break;
-            case 3: artwork = R.drawable.theme_poster_dragonball; break;
-            default: artwork = R.drawable.theme_poster_aot; break;
-        }
-        return new ThemeWallpaperDrawable(activity, artwork);
+        return new ThemeWallpaperDrawable(activity, themeArtwork());
+    }
+
+    /** Refresh all attached and lazily-created destinations from the same active theme profile. */
+    static void applyThemeWallpapers(MainActivity activity) {
+        if (activity == null) return;
+        if (activity.homeScroll != null) activity.homeScroll.setBackground(sectionWallpaper(activity, 0));
+        if (activity.filesView != null) activity.filesView.setBackground(sectionWallpaper(activity, 1));
+        if (activity.toolsScroll != null) activity.toolsScroll.setBackground(sectionWallpaper(activity, 2));
+        if (activity.settingsScroll != null) activity.settingsScroll.setBackground(sectionWallpaper(activity, 3));
+        if (activity.themeScroll != null) activity.themeScroll.setBackground(sectionWallpaper(activity, 4));
+        if (activity.aboutScroll != null) activity.aboutScroll.setBackground(sectionWallpaper(activity, 4));
+        if (activity.recycleScroll != null) activity.recycleScroll.setBackground(sectionWallpaper(activity, 0));
+        if (activity.vaultScroll != null) activity.vaultScroll.setBackground(sectionWallpaper(activity, 2));
+        if (activity.dupScroll != null) activity.dupScroll.setBackground(sectionWallpaper(activity, 1));
+        if (activity.favView != null) activity.favView.setBackground(sectionWallpaper(activity, 4));
+        if (activity.listView != null) activity.listView.setBackground(sectionWallpaper(activity, 4));
     }
 
     private static int themeArtwork() {

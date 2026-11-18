@@ -514,6 +514,7 @@ public class MainActivity extends ComponentActivity {
         int fileFirstTop = fileFirstChild == null ? 0 : fileFirstChild.getTop();
 
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        NebulaHomeView.applyThemeWallpapers(this);
         content.setBackground(NebulaHomeView.wallpaper(this));
         applySystemBarAppearance();
         bg.invalidate();
