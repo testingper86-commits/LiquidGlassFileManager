@@ -319,32 +319,52 @@ final class ToxiVisualSystem {
 
     static Drawable surface(float radiusDp, boolean raised) {
         int fill = raised ? RAISED_SURFACE : SURFACE_COLOR;
-        int tintAlpha = LIGHT_MODE ? 14 : (raised ? 48 : 36);
+        int tintAlpha = LIGHT_MODE ? 18 : (raised ? 58 : 44);
         int accentTint = Color.argb(tintAlpha, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
-        int lowerTint = Color.argb(LIGHT_MODE ? 8 : 20, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
-        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 7 : 17)),
-                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 8 : 20)),
-                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 9 : 23)));
+        int lowerTint = Color.argb(LIGHT_MODE ? 12 : 28, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
+        int top = Color.rgb(Math.min(255, Color.red(fill) + (LIGHT_MODE ? 9 : 23)),
+                Math.min(255, Color.green(fill) + (LIGHT_MODE ? 10 : 26)),
+                Math.min(255, Color.blue(fill) + (LIGHT_MODE ? 12 : 30)));
+        // Keep the material translucent so the canvas and artwork beneath it remain visible.
+        int materialAlpha = LIGHT_MODE ? 226 : (raised ? 202 : 188);
         GradientDrawable base = new GradientDrawable(materialOrientation(),
-                new int[]{top, blend(fill, accentTint), fill, blend(CANVAS, lowerTint)});
+                new int[]{Color.argb(materialAlpha, Color.red(top), Color.green(top), Color.blue(top)),
+                        Color.argb(materialAlpha - 8, Color.red(blend(fill, accentTint)),
+                                Color.green(blend(fill, accentTint)), Color.blue(blend(fill, accentTint))),
+                        Color.argb(materialAlpha - 16, Color.red(fill), Color.green(fill), Color.blue(fill)),
+                        Color.argb(materialAlpha - 22, Color.red(blend(CANVAS, lowerTint)),
+                                Color.green(blend(CANVAS, lowerTint)), Color.blue(blend(CANVAS, lowerTint)))});
         applyGeometry(base, radiusDp);
         ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
         int titaniumEdge = blend(EDGE_STROKE, CHROME,
-                LIGHT_MODE ? 0.30f : 0.30f + (0.38f * profile.edgeStrength));
-        base.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.9f))), Color.argb(ToxiThemeEngine.edgeAlpha(220),
-                Color.red(titaniumEdge), Color.green(titaniumEdge), Color.blue(titaniumEdge)));
+                LIGHT_MODE ? 0.42f : 0.42f + (0.42f * profile.edgeStrength));
+        base.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(1.05f))),
+                Color.argb(ToxiThemeEngine.edgeAlpha(248), Color.red(titaniumEdge),
+                        Color.green(titaniumEdge), Color.blue(titaniumEdge)));
 
-        int crownAlpha = ToxiThemeEngine.highlightAlpha(LIGHT_MODE ? 42 : (raised ? 58 : 44));
+        int crownAlpha = ToxiThemeEngine.highlightAlpha(LIGHT_MODE ? 58 : (raised ? 82 : 66));
         GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{Color.argb(crownAlpha, 255, 255, 255),
+                        Color.argb(LIGHT_MODE ? 15 : 25, 255, 255, 255),
                         Color.argb(LIGHT_MODE ? 5 : 9, 255, 255, 255), Color.TRANSPARENT});
         applyGeometry(glass, radiusDp);
-        glass.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.6f))), Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 68 : 104),
-                Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
+        glass.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.75f))),
+                Color.argb(ToxiThemeEngine.edgeAlpha(LIGHT_MODE ? 116 : 158),
+                        Color.red(CHROME), Color.green(CHROME), Color.blue(CHROME)));
+
+        // A fine inner specular rim makes every side catch light, not only the top edge.
+        GradientDrawable rim = new GradientDrawable();
+        rim.setColor(Color.TRANSPARENT);
+        applyGeometry(rim, radiusDp);
+        rim.setStroke(Math.max(1, dp(ToxiThemeEngine.spacing(0.65f))),
+                Color.argb(ToxiThemeEngine.highlightAlpha(LIGHT_MODE ? 62 : 108), 255, 255, 255));
+
         android.graphics.drawable.LayerDrawable layered =
-                new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass});
-        int inset = Math.max(1, dp(ToxiThemeEngine.spacing(1)));
-        layered.setLayerInset(1, inset, inset, inset, inset);
+                new android.graphics.drawable.LayerDrawable(new Drawable[]{base, glass, rim});
+        int glassInset = Math.max(1, dp(ToxiThemeEngine.spacing(1)));
+        layered.setLayerInset(1, glassInset, glassInset, glassInset, glassInset);
+        int rimInset = Math.max(1, dp(ToxiThemeEngine.spacing(2)));
+        layered.setLayerInset(2, rimInset, rimInset, rimInset, rimInset);
         return layered;
     }
 
