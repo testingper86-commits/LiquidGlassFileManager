@@ -18,9 +18,17 @@ final class ThemeScreenController {
         this.activity = activity;
     }
     void open() {
+        activity.themeScroll.setSaveEnabled(false);
         build();
         activity.themeScroll.scrollTo(0, 0);
         activity.showOverlay(activity.themeScroll);
+        activity.themeScroll.post(() -> activity.themeScroll.scrollTo(0, 0));
+        activity.themeScroll.postDelayed(() -> {
+            if (activity.themeScroll.getVisibility() == View.VISIBLE) {
+                activity.themeScroll.scrollTo(0, 0);
+                activity.themeScroll.fullScroll(View.FOCUS_UP);
+            }
+        }, 250L);
     }
 
     private static int themePoster(int index) {
@@ -33,6 +41,7 @@ final class ThemeScreenController {
         }
     }
     void build() {
+        activity.themeScroll.setSaveEnabled(false);
         activity.themeScroll.setFocusable(true);
         activity.themeScroll.setFocusableInTouchMode(true);
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
