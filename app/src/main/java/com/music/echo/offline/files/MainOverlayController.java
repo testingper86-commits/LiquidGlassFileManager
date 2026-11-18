@@ -52,8 +52,7 @@ final class MainOverlayController {
             accessibility.hideBackground(backgroundScreen, backgroundScreen == activity.settingsScroll ? activity.settings : null);
         }
         current = overlay;
-        int alpha = ToxiVisualSystem.HIGH_CONTRAST ? 255 : 248;
-        overlay.setBackgroundColor(Color.argb(alpha, Color.red(ToxiVisualSystem.CANVAS), Color.green(ToxiVisualSystem.CANVAS), Color.blue(ToxiVisualSystem.CANVAS)));
+        // The overlay ScrollView owns its fixed section wallpaper; do not replace it with a flat fill.
         if (overlay == activity.vaultScroll) activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         boolean blur = Build.VERSION.SDK_INT >= 31 && ToxiVisualSystem.booleanPreference("blur", false) && !ToxiVisualSystem.HIGH_CONTRAST;
         if (blur) {

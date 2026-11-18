@@ -59,9 +59,9 @@ final class NebulaHomeView {
 
     private NebulaHomeView() { }
 
-    static Drawable wallpaper(MainActivity activity) {
+    static Drawable wallpaper(MainActivity a) {
         syncPalette();
-        return new ThemeWallpaperDrawable(activity);
+        return new ThemeWallpaperDrawable(a);
     }
 
     static void buildHome(MainActivity a, LinearLayout host) {
@@ -70,7 +70,8 @@ final class NebulaHomeView {
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
-        host.setBackground(sectionWallpaper(a, 0));
+        a.homeScroll.setBackground(sectionWallpaper(a, 0));
+        host.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout identity = new LinearLayout(a);
@@ -314,7 +315,8 @@ final class NebulaHomeView {
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
-        host.setBackground(sectionWallpaper(a, 2));
+        a.toolsScroll.setBackground(sectionWallpaper(a, 2));
+        host.setBackgroundColor(Color.TRANSPARENT);
 
         LinearLayout toolsHeader = new LinearLayout(a);
         toolsHeader.setGravity(Gravity.CENTER_VERTICAL);

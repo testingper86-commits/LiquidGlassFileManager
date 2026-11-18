@@ -158,6 +158,21 @@ if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
 if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
     raise SystemExit("Home must use full-page active-theme artwork and theme-adaptive premium glass cards")
+for token in ["homeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0))",
+              "filesView.setBackground(NebulaHomeView.sectionWallpaper(this, 1))",
+              "toolsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2))",
+              "settingsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 3))"]:
+    if token not in main_activity:
+        raise SystemExit(f"A primary screen is missing its distinct fixed character wallpaper: {token}")
+if "activity.settings.setBackground(NebulaHomeView.wallpaper(activity))" in settings:
+    raise SystemExit("Settings must not replace its section-specific character wallpaper")
+if "overlay.setBackgroundColor(Color.argb(alpha" in overlay_controller or "current.setBackgroundColor(Color.argb" in overlay_controller:
+    raise SystemExit("Overlay manager must preserve section-specific character wallpapers")
+for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
+              "listView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
+              "int overlaySafeBottom =", "themeScroll.setPadding(0, 0, 0, overlaySafeBottom)"]:
+    if token not in main_activity:
+        raise SystemExit(f"Section wallpaper or scroll-safe layout is missing: {token}")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
               "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloaded apps · Other files",
               "artwork.setImageResource(themeArtwork())", "ImageView.ScaleType.CENTER_CROP", "dp(a, 104)"]:

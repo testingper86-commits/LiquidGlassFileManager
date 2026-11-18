@@ -183,36 +183,48 @@ public class MainActivity extends ComponentActivity {
         settingsScroll.addView(settings, new FrameLayout.LayoutParams(-1, -2));
         themeScroll = new ScrollView(this);
         themeScroll.setVerticalScrollBarEnabled(false);
-        themeScroll.setClipToPadding(false);
+        themeScroll.setClipToPadding(true);
         aboutScroll = new ScrollView(this);
         aboutScroll.setVerticalScrollBarEnabled(false);
-        aboutScroll.setClipToPadding(false);
+        aboutScroll.setClipToPadding(true);
         about = new LinearLayout(this);
         about.setOrientation(LinearLayout.VERTICAL);
         aboutScroll.addView(about, new FrameLayout.LayoutParams(-1, -2));
         recycleScroll = new ScrollView(this);
         recycleScroll.setVerticalScrollBarEnabled(false);
-        recycleScroll.setClipToPadding(false);
+        recycleScroll.setClipToPadding(true);
         recycle = new LinearLayout(this);
         recycle.setOrientation(LinearLayout.VERTICAL);
         recycleScroll.addView(recycle, new FrameLayout.LayoutParams(-1, -2));
         vaultScroll = new ScrollView(this);
         vaultScroll.setVerticalScrollBarEnabled(false);
-        vaultScroll.setClipToPadding(false);
+        vaultScroll.setClipToPadding(true);
         vault = new LinearLayout(this);
         vault.setOrientation(LinearLayout.VERTICAL);
         vaultScroll.addView(vault, new FrameLayout.LayoutParams(-1, -2));
         dupScroll = new ScrollView(this);
         dupScroll.setVerticalScrollBarEnabled(false);
-        dupScroll.setClipToPadding(false);
+        dupScroll.setClipToPadding(true);
         dup = new LinearLayout(this);
         dup.setOrientation(LinearLayout.VERTICAL);
         dupScroll.addView(dup, new FrameLayout.LayoutParams(-1, -2));
 
+        // Keep distinct character artwork fixed behind each screen while its content scrolls.
+        homeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0));
+        toolsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2));
+        settingsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 3));
+        themeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
+        aboutScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
+        recycleScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0));
+        vaultScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2));
+        dupScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 1));
+
         filesView = new BrowserView(this, false, false);
         filesView.setBackground(NebulaHomeView.sectionWallpaper(this, 1));
         favView = new BrowserView(this, true, true);
+        favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
         listView = new BrowserView(this, true, false);
+        listView.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
         screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};
         overlayController = new MainOverlayController(this);
         fileOpenCoordinator = new FileOpenCoordinator(this);
@@ -279,10 +291,12 @@ public class MainActivity extends ComponentActivity {
                 + ToxiVisualSystem.IME_INSET);
         if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112))
                 + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
-        aboutScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
-        recycleScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
-        vaultScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
-        dupScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(24)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
+        int overlaySafeBottom = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET;
+        aboutScroll.setPadding(0, 0, 0, overlaySafeBottom);
+        recycleScroll.setPadding(0, 0, 0, overlaySafeBottom);
+        vaultScroll.setPadding(0, 0, 0, overlaySafeBottom);
+        dupScroll.setPadding(0, 0, 0, overlaySafeBottom);
+        themeScroll.setPadding(0, 0, 0, overlaySafeBottom);
         filesView.applyInsets(); favView.applyInsets(); listView.applyInsets();
     }
 
@@ -514,7 +528,7 @@ public class MainActivity extends ComponentActivity {
         if (activeOverlay == themeScroll) buildThemeScreen();
         else if (activeOverlay == aboutScroll) {
             AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
-            aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
+            aboutScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
         } else if (activeOverlay == favView) favView.refreshFavs();
         else if (activeOverlay == listView) listView.recolor();
 
@@ -1076,7 +1090,7 @@ public class MainActivity extends ComponentActivity {
         aboutScroll.setFillViewport(false);
         aboutScroll.setClipToPadding(false);
         AboutScreenBuilder.populate(this, about, this::closeOverlay, versionName());
-        aboutScroll.setBackgroundColor(AboutScreenBuilder.BACKGROUND);
+        aboutScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
         showOverlay(aboutScroll);
     }
 
