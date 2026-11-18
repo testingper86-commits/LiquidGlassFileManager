@@ -11,6 +11,9 @@ import android.provider.Settings;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.view.ViewGroup;
+import java.util.ArrayList;
+import java.util.List;
 
 final class SettingsScreenController {
     private final MainActivity activity;
@@ -83,8 +86,8 @@ final class SettingsScreenController {
 
         activity.settings.addView(activity.section("Recycle Bin"));
         activity.settings.addView(activity.switchRow(ToxiIcons.TRASH, "Move deleted files to Recycle Bin", "Keep deleted files here before permanent removal", "recyclebin", true, null), activity.lpm(-1, -2, 16, 0, 16, 10));
-        int binCount = RecycleBin.count(activity);
-        activity.settings.addView(activity.row(ToxiIcons.TRASH, "Recycle Bin", binCount == 0 ? "Empty" : binCount + " item" + (binCount == 1 ? "" : "s") + " \u2022 auto-removed after " + ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> activity.showRecycleBin()), activity.lpm(-1, -2, 16, 0, 16, 10));
+        View recycleBinRow = activity.row(ToxiIcons.TRASH, "Recycle Bin", "Checking items…", null, v -> activity.showRecycleBin());
+        activity.settings.addView(recycleBinRow, activity.lpm(-1, -2, 16, 0, 16, 10));
         activity.settings.addView(activity.row(ToxiIcons.TRASH, "Recycle Bin retention", ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30) + " days", null, v -> activity.retentionDialog()), activity.lpm(-1, -2, 16, 0, 16, 10));
 
         activity.settings.addView(activity.section("App Lock"));
@@ -104,7 +107,8 @@ final class SettingsScreenController {
 
         activity.settings.addView(activity.section("Secure Vault"));
         activity.settings.addView(activity.row(ToxiIcons.LOCK, Vault.hasPin(activity) ? "Change Vault PIN" : "Set Vault PIN", "AES-256 encrypted, key held in Android Keystore", null, v -> activity.setVaultPin()), activity.lpm(-1, -2, 16, 0, 16, 10));
-        activity.settings.addView(activity.row(ToxiIcons.FOLDER, "Open Vault", Vault.list(activity).size() + " item" + (Vault.list(activity).size() == 1 ? "" : "s"), null, v -> activity.promptVaultPin()), activity.lpm(-1, -2, 16, 0, 16, 10));
+        View vaultRow = activity.row(ToxiIcons.FOLDER, "Open Vault", "Checking items…", null, v -> activity.promptVaultPin());
+        activity.settings.addView(vaultRow, activity.lpm(-1, -2, 16, 0, 16, 10));
 
         activity.settings.addView(activity.section("Wi-Fi Transfer"));
         activity.settings.addView(activity.row(ToxiIcons.WIFI, "Receive via Wi-Fi", "Both devices must be on the same Wi-Fi network", null, v -> activity.receiveViaWifi()), activity.lpm(-1, -2, 16, 0, 16, 10));
@@ -173,6 +177,39 @@ final class SettingsScreenController {
             }
         }
         ToxiVisualSystem.revealChildren(activity.settings);
+
+        // Keep filesystem enumeration off the UI thread so Settings appears immediately.
+        final View recycleRowRef = recycleBinRow;
+        final View vaultRowRef = vaultRow;
+        final int retentionDays = ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30);
+        activity.executeIo(() -> {
+            final int recycleCount = RecycleBin.count(activity);
+            final int vaultCount = Vault.list(activity).size();
+            activity.runUiIfAlive(() -> {
+                if (recycleRowRef.getParent() == activity.settings) {
+                    updateSubtitle(recycleRowRef, recycleCount == 0 ? "Empty"
+                            : recycleCount + " item" + (recycleCount == 1 ? "" : "s")
+                                    + " • auto-removed after " + retentionDays + " days");
+                }
+                if (vaultRowRef.getParent() == activity.settings) {
+                    updateSubtitle(vaultRowRef, vaultCount + " item" + (vaultCount == 1 ? "" : "s"));
+                }
+            });
+        });
+    }
+
+    private static void updateSubtitle(View row, String value) {
+        ArrayList<TextView> labels = new ArrayList<>();
+        collectTextViews(row, labels);
+        if (labels.size() > 1) labels.get(1).setText(value);
+    }
+
+    private static void collectTextViews(View view, List<TextView> result) {
+        if (view instanceof TextView) result.add((TextView) view);
+        else if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) collectTextViews(group.getChildAt(i), result);
+        }
     }
 
 
