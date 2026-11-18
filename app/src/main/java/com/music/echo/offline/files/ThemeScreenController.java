@@ -4,7 +4,6 @@ import com.music.echo.offline.R;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -20,29 +19,8 @@ final class ThemeScreenController {
     }
     void open() {
         build();
-        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS);
-        activity.themeScroll.requestFocus();
         activity.themeScroll.scrollTo(0, 0);
         activity.showOverlay(activity.themeScroll);
-        resetScrollAfterLayout();
-    }
-
-    private void resetScrollAfterLayout() {
-        ScrollView scroll = activity.themeScroll;
-        ViewTreeObserver observer = scroll.getViewTreeObserver();
-        observer.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override public void onGlobalLayout() {
-                if (scroll.getViewTreeObserver().isAlive()) {
-                    scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                }
-                scroll.scrollTo(0, 0);
-                scroll.requestLayout();
-            }
-        });
-        scroll.postOnAnimation(() -> { scroll.requestFocus(); scroll.scrollTo(0, 0); });
-        scroll.postDelayed(() -> {
-            if (scroll.getVisibility() == View.VISIBLE) scroll.scrollTo(0, 0);
-        }, 80L);
     }
 
     private static int themePoster(int index) {
@@ -60,7 +38,7 @@ final class ThemeScreenController {
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setFocusableInTouchMode(true);
-        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)));
+        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
@@ -84,6 +62,17 @@ final class ThemeScreenController {
         label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         panel.addView(label);
+        // Keep the title and section label fixed; only the poster list is scrollable.
+        ScrollView cardsScroll = new ScrollView(activity);
+        cardsScroll.setFillViewport(false);
+        cardsScroll.setVerticalScrollBarEnabled(false);
+        cardsScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        cardsScroll.setClipToPadding(true);
+        cardsScroll.setNestedScrollingEnabled(false);
+        LinearLayout cards = new LinearLayout(activity);
+        cards.setOrientation(LinearLayout.VERTICAL);
+        cards.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+        cardsScroll.addView(cards, new ScrollView.LayoutParams(-1, -2));
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
             final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
@@ -154,20 +143,17 @@ final class ThemeScreenController {
                 ToxiVisualSystem.feedback(v);
                 ToxiVisualSystem.applyTheme(themeIndex, true);
                 activity.recolor();
-                activity.themeScroll.post(() -> {
-                    build();
-                    resetScrollAfterLayout();
-                });
+                activity.themeScroll.post(this::build);
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(164)), 0, 0, 0, 12);
-            panel.addView(tile, tileParams);
+            cards.addView(tile, tileParams);
         }
-        activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
+        panel.addView(cardsScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        activity.themeScroll.setFillViewport(true);
+        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -1));
         panel.setAlpha(1f);
-        panel.clearFocus();
-        activity.themeScroll.requestFocus();
-        activity.themeScroll.scrollTo(0, 0);
     }
 }
