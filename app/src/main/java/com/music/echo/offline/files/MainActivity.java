@@ -500,6 +500,9 @@ public class MainActivity extends ComponentActivity {
 
     /** Rebuild the application UI from the single persisted theme profile without changing navigation. */
     void recolor() {
+        // Re-derive every palette token from the selected profile before rebuilding any view.
+        // Theme Studio updates THEME_INDEX first; this guarantees the complete UI uses that profile.
+        ToxiVisualSystem.applyTheme(ToxiVisualSystem.THEME_INDEX, false);
         View activeOverlay = currentOverlay();
         int selectedTab = tab;
         int homeY = homeScroll == null ? 0 : homeScroll.getScrollY();
