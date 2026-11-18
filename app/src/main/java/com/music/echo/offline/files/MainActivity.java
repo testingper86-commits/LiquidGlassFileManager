@@ -149,6 +149,7 @@ public class MainActivity extends ComponentActivity {
         bg = new BgView(this);
         root.addView(bg, new FrameLayout.LayoutParams(-1, -1));
         content = new FrameLayout(this);
+        content.setBackground(NebulaHomeView.wallpaper(this));
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         homeScroll = new ScrollView(this);
@@ -495,6 +496,7 @@ public class MainActivity extends ComponentActivity {
         int fileFirstTop = fileFirstChild == null ? 0 : fileFirstChild.getTop();
 
         root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        content.setBackground(NebulaHomeView.wallpaper(this));
         applySystemBarAppearance();
         bg.invalidate();
         bg.applyBlur();

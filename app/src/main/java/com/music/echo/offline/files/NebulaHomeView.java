@@ -116,7 +116,7 @@ final class NebulaHomeView {
         TextView sectionTitle = text(a, "EXPLORE YOUR CONTENT", 10, TEXT, true);
         sectionTitle.setLetterSpacing(0.14f);
         section.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1f));
-        section.addView(text(a, "05 CHANNELS", 8.5f, MUTED, true));
+        section.addView(text(a, "04 LIBRARIES", 8.5f, MUTED, true));
         host.addView(section, margins(a, -1, -2, 0, 3, 0, 13));
 
         String[] names = {"Images", "Videos", "Music", "Documents"};
@@ -153,7 +153,7 @@ final class NebulaHomeView {
             rowLp.bottomMargin = dp(a, 9);
             host.addView(gridRow, rowLp);
         }
-        addDownloadsQuickAccess(a, host);
+        addOtherQuickAccess(a, host);
         a.homeScrollFooter = new View(a);
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1,
@@ -234,26 +234,27 @@ final class NebulaHomeView {
         return glass;
     }
 
-    private static void addDownloadsQuickAccess(MainActivity a, LinearLayout host) {
+    private static void addOtherQuickAccess(MainActivity a, LinearLayout host) {
         LinearLayout row = new LinearLayout(a);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(a, 15), dp(a, 11), dp(a, 15), dp(a, 11));
+        row.setPadding(dp(a, 15), dp(a, 12), dp(a, 15), dp(a, 12));
         row.setBackground(homeGlassSurface(17, true));
         FrameLayout iconWell = new FrameLayout(a);
-        iconWell.setBackground(background(Color.argb(38, Color.red(LIME), Color.green(LIME), Color.blue(LIME)), BORDER, 13));
-        Glyph icon = new Glyph(a, "download", LIME);
+        iconWell.setBackground(background(Color.argb(38, Color.red(ICE), Color.green(ICE), Color.blue(ICE)), BORDER, 13));
+        Glyph icon = new Glyph(a, "grid", ICE);
         iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 23), dp(a, 23), Gravity.CENTER));
-        row.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 42), dp(a, 42)));
+        row.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
         LinearLayout copy = new LinearLayout(a);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setPadding(dp(a, 12), 0, 0, 0);
-        copy.addView(text(a, "Downloads", 14, TEXT, true));
-        copy.addView(text(a, "Quick access to downloaded files", 10.5f, MUTED, false), margins(a, -1, -2, 0, 3, 0, 0));
+        copy.addView(text(a, "Other sections", 14, TEXT, true));
+        copy.addView(text(a, "APK files, system apps and downloaded apps", 10.5f, MUTED, false),
+                margins(a, -1, -2, 0, 3, 0, 0));
         row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
         row.addView(text(a, "↗", 19, ICE, true));
-        row.setContentDescription("Downloads. Quick access to downloaded files.");
+        row.setContentDescription("Other sections. APK files, system apps and downloaded apps.");
         row.setFocusable(true);
-        row.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); a.openDownloads(); });
+        row.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); a.showOtherSections(); });
         ToxiVisualSystem.interactive(row);
         host.addView(row, margins(a, -1, -2, 0, 2, 0, 4));
     }
@@ -296,7 +297,7 @@ final class NebulaHomeView {
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
-        host.setBackgroundColor(BACKGROUND);
+        host.setBackground(new ThemeWallpaperDrawable(a));
 
         LinearLayout toolsHeader = new LinearLayout(a);
         toolsHeader.setGravity(Gravity.CENTER_VERTICAL);

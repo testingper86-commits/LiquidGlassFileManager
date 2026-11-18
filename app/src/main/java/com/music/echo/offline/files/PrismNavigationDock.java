@@ -18,7 +18,7 @@ import java.util.function.IntConsumer;
  */
 final class PrismNavigationDock {
     private static final int TAB_COUNT = 4;
-    private static final int DOCK_HEIGHT_DP = 68;
+    private static final int DOCK_HEIGHT_DP = 88;
     private static final int DOCK_SIDE_INSET_DP = 12;
     private static final int DOCK_BOTTOM_GAP_DP = 16;
     private static final String[] TAB_NAMES = {"Home", "Files", "Tools", "Settings"};
