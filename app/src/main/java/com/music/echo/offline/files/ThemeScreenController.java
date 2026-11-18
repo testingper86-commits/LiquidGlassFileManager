@@ -4,6 +4,7 @@ import com.music.echo.offline.R;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -19,9 +20,29 @@ final class ThemeScreenController {
     }
     void open() {
         build();
+        activity.themeScroll.setDescendantFocusability(View.FOCUS_BEFORE_DESCENDANTS);
+        activity.themeScroll.requestFocus();
         activity.themeScroll.scrollTo(0, 0);
         activity.showOverlay(activity.themeScroll);
-        activity.themeScroll.post(() -> activity.themeScroll.scrollTo(0, 0));
+        resetScrollAfterLayout();
+    }
+
+    private void resetScrollAfterLayout() {
+        ScrollView scroll = activity.themeScroll;
+        ViewTreeObserver observer = scroll.getViewTreeObserver();
+        observer.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() {
+                if (scroll.getViewTreeObserver().isAlive()) {
+                    scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                }
+                scroll.scrollTo(0, 0);
+                scroll.requestLayout();
+            }
+        });
+        scroll.postOnAnimation(() -> scroll.scrollTo(0, 0));
+        scroll.postDelayed(() -> {
+            if (scroll.getVisibility() == View.VISIBLE) scroll.scrollTo(0, 0);
+        }, 80L);
     }
 
     private static int themePoster(int index) {
@@ -35,8 +56,10 @@ final class ThemeScreenController {
     }
     void build() {
         activity.themeScroll.removeAllViews();
+        activity.themeScroll.scrollTo(0, 0);
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setFocusableInTouchMode(true);
         panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)));
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -131,7 +154,10 @@ final class ThemeScreenController {
                 ToxiVisualSystem.feedback(v);
                 ToxiVisualSystem.applyTheme(themeIndex, true);
                 activity.recolor();
-                activity.themeScroll.post(this::build);
+                activity.themeScroll.post(() -> {
+                    build();
+                    resetScrollAfterLayout();
+                });
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
@@ -140,6 +166,7 @@ final class ThemeScreenController {
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
+        panel.requestFocus();
+        activity.themeScroll.scrollTo(0, 0);
     }
-
 }
