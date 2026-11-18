@@ -33,16 +33,21 @@ final class ThemeScreenController {
         }
     }
     void build() {
+        activity.themeScroll.setFocusable(true);
+        activity.themeScroll.setFocusableInTouchMode(true);
+        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         activity.themeScroll.removeAllViews();
         activity.themeScroll.scrollTo(0, 0);
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setFocusableInTouchMode(true);
+        panel.setFocusable(false);
+        panel.setFocusableInTouchMode(false);
         panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
+        back.setFocusable(false);
         back.setOnClickListener(v -> activity.closeOverlay());
         header.addView(back, new LinearLayout.LayoutParams(
                 ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)),
