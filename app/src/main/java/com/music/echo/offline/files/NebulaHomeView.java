@@ -124,8 +124,7 @@ final class NebulaHomeView {
         String[] details = {"Visual library", "Motion library", "Sound library", "File library"};
         String[] glyphs = {"images", "clapperboard", "audio-lines", "files"};
         int[] accents = {LIME, Color.rgb(255, 58, 139), Color.rgb(255, 207, 35), ICE};
-        int[] cardArtworks = {R.drawable.home_category_images, R.drawable.home_category_videos,
-                R.drawable.home_category_audio, R.drawable.home_category_documents};
+        int[] cardArtworks = themeCategoryArtworks(ToxiVisualSystem.THEME_INDEX);
         int columns = gridColumns(a);
         int rowCount = (names.length + columns - 1) / columns;
         for (int row = 0; row < rowCount; row++) {
@@ -161,6 +160,22 @@ final class NebulaHomeView {
         a.homeScrollFooter.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         host.addView(a.homeScrollFooter, new LinearLayout.LayoutParams(-1,
                 dp(a, 110) + ToxiVisualSystem.BOTTOM_INSET));
+    }
+
+
+    private static int[] themeCategoryArtworks(int themeIndex) {
+        switch (ToxiThemeSystem.normalize(themeIndex)) {
+            case 0: return new int[]{R.drawable.home_category_onepiece_images, R.drawable.home_category_onepiece_videos,
+                    R.drawable.home_category_onepiece_audio, R.drawable.home_category_onepiece_documents};
+            case 1: return new int[]{R.drawable.home_category_naruto_images, R.drawable.home_category_naruto_videos,
+                    R.drawable.home_category_naruto_audio, R.drawable.home_category_naruto_documents};
+            case 2: return new int[]{R.drawable.home_category_demon_images, R.drawable.home_category_demon_videos,
+                    R.drawable.home_category_demon_audio, R.drawable.home_category_demon_documents};
+            case 3: return new int[]{R.drawable.home_category_dragonball_images, R.drawable.home_category_dragonball_videos,
+                    R.drawable.home_category_dragonball_audio, R.drawable.home_category_dragonball_documents};
+            default: return new int[]{R.drawable.home_category_aot_images, R.drawable.home_category_aot_videos,
+                    R.drawable.home_category_aot_audio, R.drawable.home_category_aot_documents};
+        }
     }
 
     private static LinearLayout categoryCard(MainActivity a, String name, String detail, String glyph, int accent, int artworkResource) {

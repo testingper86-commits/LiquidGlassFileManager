@@ -33,6 +33,18 @@ for path in required:
     if not path.is_file() or path.stat().st_size == 0:
         raise SystemExit(f"Missing current visual resource: {path.relative_to(ROOT)}")
 
+# Every anime theme must own four real Home category images.
+category_themes = ("onepiece", "naruto", "demon", "dragonball", "aot")
+category_kinds = ("images", "videos", "audio", "documents")
+for theme in category_themes:
+    for kind in category_kinds:
+        artwork = RES / "drawable-nodpi" / f"home_category_{theme}_{kind}.webp"
+        if not artwork.is_file() or artwork.stat().st_size < 1000:
+            raise SystemExit(f"Missing or invalid theme Home artwork: {artwork.relative_to(ROOT)}")
+        data = artwork.read_bytes()
+        if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+            raise SystemExit(f"Theme Home artwork is not a valid WebP: {artwork.relative_to(ROOT)}")
+
 manifest_root = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
 android_ns = "{http://schemas.android.com/apk/res/android}"
 application = manifest_root.find("application")
@@ -184,8 +196,9 @@ for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
         raise SystemExit(f"Section wallpaper or scroll-safe layout is missing: {token}")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
               "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloaded apps · Other files",
-              "R.drawable.home_category_images", "R.drawable.home_category_videos", "R.drawable.home_category_audio",
-              "R.drawable.home_category_documents", "artwork.setImageResource(artworkResource)",
+              "themeCategoryArtworks(ToxiVisualSystem.THEME_INDEX)", "home_category_onepiece_images", "home_category_naruto_images",
+              "home_category_demon_images", "home_category_dragonball_images", "home_category_aot_images",
+              "artwork.setImageResource(artworkResource)",
               "ImageView.ScaleType.CENTER_CROP", "05 CHANNELS", "\"Audio\"", "dp(a, 104)"]:
     if token not in home:
         raise SystemExit(f"Reference homepage composition is missing: {token}")
