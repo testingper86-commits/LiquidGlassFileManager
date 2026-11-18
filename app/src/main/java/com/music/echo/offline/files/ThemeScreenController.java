@@ -49,6 +49,8 @@ final class ThemeScreenController {
         activity.themeScroll.scrollTo(0, 0);
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setClipChildren(false);
+        panel.setClipToPadding(false);
         panel.setFocusable(false);
         panel.setFocusableInTouchMode(false);
         panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
@@ -80,7 +82,9 @@ final class ThemeScreenController {
         // touch interception and prevented theme tiles from receiving drag/click input.
         LinearLayout cards = new LinearLayout(activity);
         cards.setOrientation(LinearLayout.VERTICAL);
-        cards.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
+        cards.setClipChildren(false);
+        cards.setClipToPadding(false);
+        cards.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)));
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
             final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
@@ -160,6 +164,9 @@ final class ThemeScreenController {
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
+        // Keep the final poster fully drawable inside the reserved bottom inset.
+        // ScrollView's default clip-to-padding cut the card at the dock-safe boundary.
+        activity.themeScroll.setClipToPadding(false);
         activity.themeScroll.setOnScrollChangeListener((View v, int scrollX, int scrollY,
                 int oldScrollX, int oldScrollY) -> { });
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
