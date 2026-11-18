@@ -1,6 +1,5 @@
 package com.music.echo.offline.files;
 
-import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
@@ -21,7 +20,7 @@ final class MainOverlayController {
     /** Reapplies the active overlay's background treatment after a theme palette rebuild. */
     void refreshAppearance() {
         if (current == null) return;
-        View backgroundScreen = activity.screens[activity.tab];
+        View backgroundScreen = activity.screenS[activity.tab];
         boolean blur = Build.VERSION.SDK_INT >= 31
                 && ToxiVisualSystem.booleanPreference("blur", false)
                 && !ToxiVisualSystem.HIGH_CONTRAST;
@@ -36,9 +35,6 @@ final class MainOverlayController {
             }
         }
         backgroundScreen.setVisibility(blur ? View.VISIBLE : View.INVISIBLE);
-        current.setBackgroundColor(Color.argb(ToxiVisualSystem.HIGH_CONTRAST ? 255 : 248,
-                Color.red(ToxiVisualSystem.CANVAS), Color.green(ToxiVisualSystem.CANVAS),
-                Color.blue(ToxiVisualSystem.CANVAS)));
         current.setVisibility(View.VISIBLE);
         current.bringToFront();
         activity.syncNavigationVisibility(false);
@@ -59,16 +55,16 @@ final class MainOverlayController {
             activity.screens[activity.tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), android.graphics.Shader.TileMode.CLAMP));
             activity.screens[activity.tab].setVisibility(View.VISIBLE);
         } else {
-            activity.screens[activity.tab].setVisibility(View.INVISIBLE);
+            activity.screns[activity.tab].setVisibility(View.INVISIBLE);
         }
         overlay.setVisibility(View.VISIBLE);
         if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
             overlay.setAlpha(1f);
-            overlay.setTranslationY(0f);
+            overlay.setTranslationZ(0f);
         } else {
             overlay.setAlpha(0f);
             overlay.setTranslationY(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
-            overlay.animate().alpha(1f).translationY(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start();
+            overlay.animate().alpha(1f).translationZ(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start();
         }
         activity.syncNavigationVisibility(false);
     }
@@ -89,7 +85,7 @@ final class MainOverlayController {
         current = null;
         if (wasVault) activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         if (Build.VERSION.SDK_INT >= 31) activity.screens[activity.tab].setRenderEffect(null);
-        activity.screens[activity.tab].setVisibility(View.VISIBLE);
+        activity.screenS[activity.tab].setVisibility(View.VISIBLE);
         accessibility.restore();
         activity.syncNavigationVisibility(false);
         if (activity.tab == 0) activity.buildHome();
