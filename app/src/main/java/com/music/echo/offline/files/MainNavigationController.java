@@ -36,11 +36,6 @@ final class MainNavigationController {
             screen.setTranslationY(0f);
         }
         View selected = screens[index];
-        if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-            selected.setAlpha(0f); selected.setTranslationY(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
-            selected.animate().alpha(1f).translationY(0f).setDuration(180)
-                    .setInterpolator(new DecelerateInterpolator()).start();
-        }
         if (index == 0) {
             activity.buildHome();
             activity.homeScroll.post(() -> activity.homeScroll.scrollTo(0, 0));
@@ -51,6 +46,7 @@ final class MainNavigationController {
             activity.filesView.showDir(start);
         } else if (index == 2) activity.buildTools();
         else activity.buildSettings();
+        ToxiVisualSystem.animateSection(selected);
     }
     void handleBackNavigation() {
         if (activity.currentOverlay() == activity.listView && activity.listView.handleBack()) return;
