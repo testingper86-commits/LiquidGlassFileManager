@@ -205,7 +205,13 @@ final class PrismNavigationDock {
         } else {
             surface.animate().translationY(visible ? hiddenOffset : 0f).alpha(visible ? 0f : 1f)
                     .setDuration(ToxiThemeEngine.motionDuration(180L))
-                    .setInterpolator(new DecelerateInterpolator(1.5f)).start();
+                    .setInterpolator(new DecelerateInterpolator(1.5f))
+                    .withEndAction(() -> {
+                        if (!imeVisible && surface.getVisibility() == View.VISIBLE) {
+                            surface.setTranslationY(0f);
+                            surface.setAlpha(1f);
+                        }
+                    }).start();
         }
     }
 

@@ -291,7 +291,7 @@ public class MainActivity extends ComponentActivity {
                 + ToxiVisualSystem.IME_INSET);
         if (toolsScroll != null) toolsScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112))
                 + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
-        int overlaySafeBottom = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(28)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET;
+        int overlaySafeBottom = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112)) + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET;
         aboutScroll.setPadding(0, 0, 0, overlaySafeBottom);
         recycleScroll.setPadding(0, 0, 0, overlaySafeBottom);
         vaultScroll.setPadding(0, 0, 0, overlaySafeBottom);

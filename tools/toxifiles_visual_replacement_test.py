@@ -215,3 +215,11 @@ for token in ["drawGrandVoyagePattern", "DashPathEffect", "Eight-point compass r
 
 print("ToxiFiles visual replacement audit passed: five themes, five real WebP posters, shared live theme runtime, edge-to-edge system bar contract, all primary activities, metallic home/tools surfaces, four-tab navigation and the Grand Voyage chart motif.")
 
+
+# Dock and overlay safe-area regression contracts.
+main_activity_source = (JAVA / "MainActivity.java").read_text(encoding="utf-8")
+dock_source = (JAVA / "PrismNavigationDock.java").read_text(encoding="utf-8")
+if "int overlaySafeBottom = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(112))" not in main_activity_source:
+    raise SystemExit("About and secondary overlays must reserve the complete dock-safe bottom area")
+if ".withEndAction(() ->" not in dock_source or "if (!imeVisible && surface.getVisibility() == View.VISIBLE)" not in dock_source:
+    raise SystemExit("Dock must reset its translated state after the IME hide animation")
