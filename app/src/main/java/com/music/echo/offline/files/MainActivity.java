@@ -153,6 +153,7 @@ public class MainActivity extends ComponentActivity {
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         homeScroll = new ScrollView(this);
+        configureVerticalScroll(homeScroll);
         homeScroll.setFillViewport(true);
         homeScroll.setSmoothScrollingEnabled(true);
         homeScroll.setFocusable(true);
@@ -165,6 +166,7 @@ public class MainActivity extends ComponentActivity {
         home.setOrientation(LinearLayout.VERTICAL);
         homeScroll.addView(home, new ScrollView.LayoutParams(-1, -2));
         toolsScroll = new ScrollView(this);
+        configureVerticalScroll(toolsScroll);
         toolsScroll.setVerticalScrollBarEnabled(false);
         // Clip to the reserved dock inset; otherwise tool cards draw underneath the floating navigation.
         toolsScroll.setClipToPadding(true);
@@ -173,6 +175,7 @@ public class MainActivity extends ComponentActivity {
         tools.setOrientation(LinearLayout.VERTICAL);
         toolsScroll.addView(tools, new FrameLayout.LayoutParams(-1, -2));
         settingsScroll = new ScrollView(this);
+        configureVerticalScroll(settingsScroll);
         settingsScroll.setVerticalScrollBarEnabled(false);
         settingsScroll.setFillViewport(true);
         settingsScroll.setBackgroundColor(Color.TRANSPARENT);
@@ -182,27 +185,32 @@ public class MainActivity extends ComponentActivity {
         settings.setOrientation(LinearLayout.VERTICAL);
         settingsScroll.addView(settings, new FrameLayout.LayoutParams(-1, -2));
         themeScroll = new ScrollView(this);
+        configureVerticalScroll(themeScroll);
         themeScroll.setVerticalScrollBarEnabled(false);
         themeScroll.setClipToPadding(true);
         aboutScroll = new ScrollView(this);
+        configureVerticalScroll(aboutScroll);
         aboutScroll.setVerticalScrollBarEnabled(false);
         aboutScroll.setClipToPadding(true);
         about = new LinearLayout(this);
         about.setOrientation(LinearLayout.VERTICAL);
         aboutScroll.addView(about, new FrameLayout.LayoutParams(-1, -2));
         recycleScroll = new ScrollView(this);
+        configureVerticalScroll(recycleScroll);
         recycleScroll.setVerticalScrollBarEnabled(false);
         recycleScroll.setClipToPadding(true);
         recycle = new LinearLayout(this);
         recycle.setOrientation(LinearLayout.VERTICAL);
         recycleScroll.addView(recycle, new FrameLayout.LayoutParams(-1, -2));
         vaultScroll = new ScrollView(this);
+        configureVerticalScroll(vaultScroll);
         vaultScroll.setVerticalScrollBarEnabled(false);
         vaultScroll.setClipToPadding(true);
         vault = new LinearLayout(this);
         vault.setOrientation(LinearLayout.VERTICAL);
         vaultScroll.addView(vault, new FrameLayout.LayoutParams(-1, -2));
         dupScroll = new ScrollView(this);
+        configureVerticalScroll(dupScroll);
         dupScroll.setVerticalScrollBarEnabled(false);
         dupScroll.setClipToPadding(true);
         dup = new LinearLayout(this);
@@ -271,6 +279,18 @@ public class MainActivity extends ComponentActivity {
             else requestLegacyPerms();
         } else startIndex();
         ui.postDelayed(() -> crashReports.maybeOfferCrashReport(), 2200);
+    }
+
+    private void configureVerticalScroll(ScrollView scroll) {
+        scroll.setFillViewport(true);
+        scroll.setSmoothScrollingEnabled(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        scroll.setClipToPadding(true);
+        scroll.setFocusable(true);
+        scroll.setFocusableInTouchMode(true);
+        scroll.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+        scroll.setNestedScrollingEnabled(false);
     }
 
     void applyInsets() {

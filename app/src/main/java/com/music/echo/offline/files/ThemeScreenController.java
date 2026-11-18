@@ -17,7 +17,12 @@ final class ThemeScreenController {
         if (activity == null) throw new IllegalArgumentException("activity must not be null");
         this.activity = activity;
     }
-    void open() { build(); activity.showOverlay(activity.themeScroll); }
+    void open() {
+        build();
+        activity.themeScroll.scrollTo(0, 0);
+        activity.showOverlay(activity.themeScroll);
+        activity.themeScroll.post(() -> activity.themeScroll.scrollTo(0, 0));
+    }
 
     private static int themePoster(int index) {
         switch (ToxiThemeSystem.normalize(index)) {
