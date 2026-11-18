@@ -184,9 +184,13 @@ for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
         raise SystemExit(f"Section wallpaper or scroll-safe layout is missing: {token}")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
               "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloaded apps · Other files",
-              "artwork.setImageResource(themeArtwork())", "ImageView.ScaleType.CENTER_CROP", "dp(a, 104)"]:
+              "R.drawable.home_category_images", "R.drawable.home_category_videos", "R.drawable.home_category_audio",
+              "R.drawable.home_category_documents", "artwork.setImageResource(artworkResource)",
+              "ImageView.ScaleType.CENTER_CROP", "05 CHANNELS", "\"Audio\"", "dp(a, 104)"]:
     if token not in home:
         raise SystemExit(f"Reference homepage composition is missing: {token}")
+if "a.openCategory(index)" not in home or "addStorage(a, host)" not in home:
+    raise SystemExit("Home category actions and live storage overview must remain wired")
 if "ToxiThemeIdentityView.create(a, 248" in home:
     raise SystemExit("Home must not reserve a separate anime identity banner")
 if "ToxiThemeIdentityView.create(a, 196" in home or '"Tools", 24' not in home:
