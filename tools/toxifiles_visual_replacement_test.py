@@ -163,14 +163,18 @@ if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
 if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
     raise SystemExit("Home must use full-page active-theme artwork and theme-adaptive premium glass cards")
-for token in ["homeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0))",
-              "filesView.setBackground(NebulaHomeView.sectionWallpaper(this, 1))",
-              "toolsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2))",
-              "settingsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 3))"]:
-    if token not in main_activity:
-        raise SystemExit(f"A primary screen is missing its distinct fixed character wallpaper: {token}")
+# All destinations must use the active theme artwork; section IDs cannot hard-code a franchise.
+if "return new ThemeWallpaperDrawable(activity, themeArtwork());" not in home:
+    raise SystemExit("Every section wallpaper must resolve from the currently selected theme")
+if "switch (section)" in home[home.index("static Drawable sectionWallpaper"):home.index("private static int themeArtwork")]:
+    raise SystemExit("Section wallpaper selection must not override the active theme")
+for token in ["NebulaHomeView.applyThemeWallpapers(this);", "homeScroll.setBackground(sectionWallpaper(activity, 0))",
+              "filesView.setBackground(sectionWallpaper(activity, 1))", "toolsScroll.setBackground(sectionWallpaper(activity, 2))",
+              "settingsScroll.setBackground(sectionWallpaper(activity, 3))", "themeScroll.setBackground(sectionWallpaper(activity, 4))"]:
+    if token not in (main_activity + home):
+        raise SystemExit(f"Theme change must refresh every destination wallpaper: {token}")
 if "activity.settings.setBackground(NebulaHomeView.wallpaper(activity))" in settings:
-    raise SystemExit("Settings must not replace its section-specific character wallpaper")
+    raise SystemExit("Settings must preserve the unified active-theme wallpaper")
 if "overlay.setBackgroundColor(Color.argb(alpha" in overlay_controller or "current.setBackgroundColor(Color.argb" in overlay_controller:
     raise SystemExit("Overlay manager must preserve section-specific character wallpapers")
 for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
