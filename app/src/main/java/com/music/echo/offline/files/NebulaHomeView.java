@@ -181,7 +181,9 @@ final class NebulaHomeView {
     private static LinearLayout categoryCard(MainActivity a, String name, String detail, String glyph, int accent, int artworkResource) {
         FrameLayout card = new FrameLayout(a);
         card.setBackground(categoryGlassSurface(accent));
-        card.setClipToOutline(true);
+        ToxiVisualSystem.clipRound(card, 22f);
+        card.setClipChildren(true);
+        card.setClipToPadding(true);
 
         ImageView artwork = new ImageView(a);
         artwork.setImageResource(artworkResource);
@@ -195,7 +197,7 @@ final class NebulaHomeView {
                 new int[]{Color.argb(202, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
                         Color.argb(118, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
                         Color.argb(24, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
-        shadeDrawable.setCornerRadius(dp(a, 22));
+        shadeDrawable.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
         shade.setBackground(shadeDrawable);
         card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 
@@ -253,7 +255,7 @@ final class NebulaHomeView {
                 new int[]{Color.argb(topAlpha, Color.red(base), Color.green(base), Color.blue(base)),
                         Color.argb(bottomAlpha, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL)),
                         Color.argb(ToxiVisualSystem.LIGHT_MODE ? 176 : 42, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
-        glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(22)));
+        glass.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
         int edge = Color.argb(ToxiThemeEngine.edgeAlpha(225), Color.red(accent), Color.green(accent), Color.blue(accent));
         glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1.1f))), edge);
         return glass;
@@ -273,7 +275,7 @@ final class NebulaHomeView {
         GradientDrawable overlay = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{Color.argb(118, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
                         Color.argb(210, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
-        overlay.setCornerRadius(dp(a, 20));
+        overlay.setCornerRadii(ToxiVisualSystem.profileCornerRadii(20f));
         shade.setBackground(overlay);
         card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 

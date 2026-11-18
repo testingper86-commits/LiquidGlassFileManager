@@ -92,7 +92,9 @@ final class ThemeScreenController {
             tile.setClipChildren(true);
             tile.setClipToPadding(true);
             tile.setBackground(ToxiVisualSystem.surface(22, true));
-            tile.setClipToOutline(true);
+            ToxiVisualSystem.clipRound(tile, 22f);
+            tile.setClipChildren(true);
+            tile.setClipToPadding(true);
 
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
@@ -107,6 +109,7 @@ final class ThemeScreenController {
                             android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                             new int[]{Color.argb(12, 0, 0, 0), Color.argb(78, 0, 0, 0),
                                     Color.argb(232, 0, 0, 0)});
+            shadeGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
             shade.setBackground(shadeGradient);
             tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 

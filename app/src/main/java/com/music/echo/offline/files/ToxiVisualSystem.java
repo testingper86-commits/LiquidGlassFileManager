@@ -417,7 +417,8 @@ final class ToxiVisualSystem {
             int rippleColor = Color.argb(48, Color.red(ACCENT), Color.green(ACCENT), Color.blue(ACCENT));
             GradientDrawable mask = new GradientDrawable();
             mask.setColor(Color.WHITE);
-            mask.setCornerRadius(dp(ToxiThemeEngine.radius(14)));
+            // Match the active theme silhouette so every ripple follows its button edge.
+            mask.setCornerRadii(profileCornerRadii(14));
             view.setForeground(new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask));
         }
         ToxiPowerTouchEngine.attach(view);
