@@ -166,6 +166,12 @@ final class ThemeScreenController {
         }
         panel.addView(cardsScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         activity.themeScroll.setFillViewport(true);
+        // The outer overlay is a fixed viewport. Only cardsScroll may move; otherwise
+        // Android can scroll the whole panel and push the title/header off-screen.
+        activity.themeScroll.setOnScrollChangeListener((View v, int scrollX, int scrollY,
+                int oldScrollX, int oldScrollY) -> {
+            if (scrollY != 0) v.scrollTo(0, 0);
+        });
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -1));
         panel.setAlpha(1f);
