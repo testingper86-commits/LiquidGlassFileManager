@@ -11,9 +11,9 @@ final class FileKinds {
     private static final HashMap<String, Integer> M = new HashMap<>();
 
     static {
-        put(IMAGE, "jpg jpeg png webp gif bmp heic heif avif");
-        put(VIDEO, "mp4 mkv webm 3gp mov avi m4v ts flv wmv mpg mpeg");
-        put(AUDIO, "mp3 wav ogg m4a flac aac opus amr wma mid midi");
+        put(IMAGE, "jpg jpeg png webp gif bmp heic heif avif tif tiff jxl jfif raw dng cr2 cr3 nef arw rw2 orf pef");
+        put(VIDEO, "mp4 mkv webm 3gp mov avi m4v ts flv wmv mpg mpeg m2ts mts m2v mpeg2 vob ogv ogm divx xvid asf rm rmvb f4v mxf dv");
+        put(AUDIO, "mp3 wav ogg m4a flac aac opus amr wma mid midi aif aiff alac ape ac3 dts dsf dff m4b m4r mka caf 3ga au snd ra ram");
         put(PDF, "pdf");
         put(TEXT, "txt text md markdown rst adoc log csv tsv json jsonl ndjson xml xsd xsl xslt html htm xhtml xht shtml shtm css scss less js mjs cjs jsx ts tsx java kt kts py pyw rb go rs swift c h cc cpp cxx hpp hxx cs fs vb php phtml sql sh bash zsh fish bat cmd ps1 ini cfg conf config properties toml env yml yaml srt vtt ass ssa vcf ics diff patch gradle kts make mk cmake dockerfile gitignore editorconfig");
         put(ARCHIVE, "zip rar 7z tar gz tgz bz2 xz");
@@ -34,7 +34,9 @@ final class FileKinds {
 
     static int kindOfExt(String extension) {
         if (extension == null) return OTHER;
-        Integer kind = M.get(extension.trim().toLowerCase(java.util.Locale.ROOT));
+        String normalized = extension.trim().toLowerCase(java.util.Locale.ROOT);
+        if (normalized.startsWith(".")) normalized = normalized.substring(1);
+        Integer kind = M.get(normalized);
         return kind == null ? OTHER : kind;
     }
 

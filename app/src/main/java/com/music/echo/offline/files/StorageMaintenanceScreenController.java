@@ -54,19 +54,19 @@ final class StorageMaintenanceScreenController {
         activity.dup.removeAllViews();
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        header.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         header.addView(ToxiVisualSystem.text(activity, "Duplicate Files", 22, ToxiVisualSystem.TEXT_PRIMARY, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        header.setMinimumHeight(ToxiVisualSystem.dp(56));
+        header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56)));
         activity.dup.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
         if (groups.isEmpty()) {
             TextView empty = ToxiVisualSystem.text(activity, "No exact duplicates found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            empty.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
+            empty.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), 0, 0);
             activity.dup.addView(empty);
             return;
         }
@@ -75,15 +75,16 @@ final class StorageMaintenanceScreenController {
         TextView summary = ToxiVisualSystem.text(activity, groups.size() + " duplicate group"
                 + (groups.size() == 1 ? "" : "s") + " — up to " + ToxiVisualSystem.formatSize(reclaimable)
                 + " reclaimable", 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        summary.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
+        summary.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         activity.dup.addView(summary);
 
         TextView bulk = ToxiVisualSystem.text(activity, "Move all but the oldest copy to Recycle Bin", 14, ToxiVisualSystem.ACCENT, true);
         bulk.setBackground(ToxiVisualSystem.surface(18, false));
-        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
+        bulk.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         bulk.setGravity(Gravity.CENTER);
+        bulk.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
         ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Move duplicates to Recycle Bin?")
+        bulk.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Move duplicates to Recycle Bin?")
                 .setMessage("Keeps the oldest file in each group, moves the rest to Recycle Bin — they can still be restored from there.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Move", (dialog, which) -> {
@@ -104,14 +105,14 @@ final class StorageMaintenanceScreenController {
         for (DupFinder.Group group : groups) {
             TextView groupHeader = ToxiVisualSystem.text(activity, group.files.size() + " copies • "
                     + ToxiVisualSystem.formatSize(group.size) + " each", 12, ToxiVisualSystem.TEXT_SECONDARY, true);
-            groupHeader.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(10), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2));
+            groupHeader.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)));
             activity.dup.addView(groupHeader);
             for (File file : group.files) {
                 Entry entry = new Entry(file);
                 View row = ToxiFileRow.create(activity);
                 ToxiFileRow.Holder holder = (ToxiFileRow.Holder) row.getTag();
                 ToxiFileRow.bind(holder, entry, false, false, file.getParentFile() == null ? "" : file.getParentFile().getAbsolutePath());
-                View.OnClickListener action = view -> new AlertDialog.Builder(activity).setTitle("Move to Recycle Bin?")
+                View.OnClickListener action = view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Move to Recycle Bin?")
                         .setMessage(file.getAbsolutePath()).setNegativeButton("Cancel", null)
                         .setPositiveButton("Move", (dialog, which) -> RecycleBin.moveToBin(activity,
                                 java.util.Collections.singletonList(file), message -> {
@@ -160,33 +161,33 @@ final class StorageMaintenanceScreenController {
         activity.dup.removeAllViews();
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(ToxiVisualSystem.dp(8), 0, ToxiVisualSystem.dp(8), 0);
+        header.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)), 0);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back");
         back.setOnClickListener(view -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(48), ToxiVisualSystem.dp(48)));
+        header.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)), ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
         header.addView(ToxiVisualSystem.text(activity, "Empty Folders", 22, ToxiVisualSystem.TEXT_PRIMARY, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        header.setMinimumHeight(ToxiVisualSystem.dp(56));
+        header.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56)));
         activity.dup.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
         if (emptyFolders.isEmpty()) {
             TextView empty = ToxiVisualSystem.text(activity, "No empty folders found", 14, ToxiVisualSystem.TEXT_SECONDARY, false);
-            empty.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(20), 0, 0);
+            empty.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), 0, 0);
             activity.dup.addView(empty);
             return;
         }
         TextView summary = ToxiVisualSystem.text(activity, emptyFolders.size() + " empty folder"
                 + (emptyFolders.size() == 1 ? "" : "s"), 12, ToxiVisualSystem.TEXT_SECONDARY, false);
-        summary.setPadding(ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(2), ToxiVisualSystem.dp(20), ToxiVisualSystem.dp(6));
+        summary.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(20)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6)));
         activity.dup.addView(summary);
 
         TextView bulk = ToxiVisualSystem.text(activity, "Delete all empty folders", 14, ToxiVisualSystem.ACCENT, true);
         bulk.setBackground(ToxiVisualSystem.surface(18, false));
-        bulk.setPadding(ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12), ToxiVisualSystem.dp(16), ToxiVisualSystem.dp(12));
+        bulk.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         bulk.setGravity(Gravity.CENTER);
         ToxiVisualSystem.interactive(bulk);
-        bulk.setOnClickListener(view -> new AlertDialog.Builder(activity).setTitle("Delete " + emptyFolders.size() + " empty folders?")
+        bulk.setOnClickListener(view -> ToxiVisualSystem.dialogBuilder(activity).setTitle("Delete " + emptyFolders.size() + " empty folders?")
                 .setMessage("They contain nothing, so this goes straight to Recycle Bin, same as any other delete.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Delete", (dialog, which) -> RecycleBin.moveToBin(activity, emptyFolders, message -> {

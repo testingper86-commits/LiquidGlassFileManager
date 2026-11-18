@@ -24,9 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.InvalidPathException;
 import java.security.MessageDigest;
 import java.util.Locale;
 
@@ -38,6 +38,8 @@ public final class HtmlViewerActivity extends ComponentActivity {
     private WebView webView;
 
     @Override protected void onCreate(Bundle state) {
+        boolean lightAppearance = getSharedPreferences("lg_settings", MODE_PRIVATE).getBoolean("light", false);
+        setTheme(lightAppearance ? com.music.echo.offline.R.style.AppTheme_Light : com.music.echo.offline.R.style.AppTheme);
         super.onCreate(state);
         ToxiBackNavigation.bind(this, this::finish);
         ToxiVisualSystem.initialize(this);
@@ -60,10 +62,9 @@ public final class HtmlViewerActivity extends ComponentActivity {
 
         assetHost = "doc-" + documentOriginId(document) + ASSET_DOMAIN_SUFFIX;
 
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
-        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        root.setBackground(ToxiVisualSystem.auroraBackground());
         if (android.os.Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         else root.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
@@ -76,11 +77,11 @@ public final class HtmlViewerActivity extends ComponentActivity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackground(ToxiVisualSystem.surface(24, true));
         ToxiVisualSystem.revealChildren(bar);
-        bar.setPadding(ToxiVisualSystem.dp(5), 0, ToxiVisualSystem.dp(12), 0);
+        bar.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
         ImageView back = ToxiVisualSystem.iconButton(this, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
         back.setContentDescription("Back to file manager");
         back.setOnClickListener(v -> finish());
-        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(46), ToxiVisualSystem.dp(46)));
+        bar.addView(back, new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(46)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(46))));
         TextView title = ToxiVisualSystem.text(this, document.getName(), 14, ToxiVisualSystem.TEXT_PRIMARY, true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
@@ -88,10 +89,10 @@ public final class HtmlViewerActivity extends ComponentActivity {
         ImageView reload = ToxiVisualSystem.iconButton(this, ToxiIcons.REFRESH, ToxiVisualSystem.TEXT_PRIMARY);
         reload.setContentDescription("Reload HTML document");
         reload.setOnClickListener(v -> webView.reload());
-        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(44), ToxiVisualSystem.dp(44));
-        reloadLp.leftMargin = ToxiVisualSystem.dp(6);
+        LinearLayout.LayoutParams reloadLp = new LinearLayout.LayoutParams(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(44)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(44)));
+        reloadLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(6));
         bar.addView(reload, reloadLp);
-        column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(56)));
+        column.addView(bar, new LinearLayout.LayoutParams(-1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(56))));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
@@ -136,9 +137,13 @@ public final class HtmlViewerActivity extends ComponentActivity {
         });
         column.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(root);
-        DynamicIslandView island = new DynamicIslandView(this);
-        root.addView(island, new FrameLayout.LayoutParams(-1,-1));
         webView.loadUrl("https://" + assetHost + "/local/" + Uri.encode(document.getName()));
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        ToxiVisualSystem.refresh(this);
+        ToxiVisualSystem.applyWindowChrome(getWindow(), true);
     }
 
     private WebResourceResponse intercept(WebViewAssetLoader loader, Uri uri) {

@@ -21,7 +21,7 @@ final class CrashReportController {
         long crashTime = CrashLogger.reportTime(activity);
         if (crashTime <= CrashLogger.promptedTime(activity)) return;
         CrashLogger.markPrompted(activity, crashTime);
-        new android.app.AlertDialog.Builder(activity)
+        ToxiVisualSystem.dialogBuilder(activity)
                 .setTitle("App crash report available")
                 .setMessage("ToxiFiles saved a local diagnostic report from the last unexpected crash. You can share it to help identify the cause. The report stays on this device unless you choose to share it.")
                 .setPositiveButton("Share report", (dialog, which) -> shareCrashReport())
@@ -32,12 +32,12 @@ final class CrashReportController {
 
     void showCrashLogOptions() {
         if (!CrashLogger.hasReport(activity)) {
-            new android.app.AlertDialog.Builder(activity).setTitle("Crash logs")
+            ToxiVisualSystem.dialogBuilder(activity).setTitle("Crash logs")
                     .setMessage("No crash report has been captured yet. If the app closes unexpectedly, ToxiFiles will save diagnostic details locally and offer them the next time you open the app.")
                     .setPositiveButton("OK", null).show();
             return;
         }
-        new android.app.AlertDialog.Builder(activity).setTitle("Crash reports & diagnostics")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Crash reports & diagnostics")
                 .setMessage("A crash report is stored privately inside the app. It includes the exception stack trace, app version, Android version, device model, and crashing thread. Nothing is uploaded automatically.")
                 .setPositiveButton("Share report", (dialog, which) -> shareCrashReport())
                 .setNegativeButton("Close", null)

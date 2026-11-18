@@ -1,11 +1,10 @@
 package com.music.echo.offline.files;
 
-import android.content.res.Configuration;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.graphics.Typeface;
+import android.graphics.Color;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -19,6 +18,10 @@ import java.util.function.IntConsumer;
  */
 final class PrismNavigationDock {
     private static final int TAB_COUNT = 4;
+    private static final int DOCK_HEIGHT_DP = 88;
+    private static final int DOCK_SIDE_INSET_DP = 20;
+    private static final int DOCK_BOTTOM_GAP_DP = 16;
+    private static final String[] TAB_NAMES = {"Home", "Files", "Tools", "Settings"};
     private final MainActivity activity;
     private final FrameLayout root;
     private final IntConsumer onTabSelected;
@@ -33,6 +36,7 @@ final class PrismNavigationDock {
     private boolean rail;
     private boolean selectionPositioned;
     private boolean itemLayoutListenersBound;
+    private boolean imeVisible;
 
     PrismNavigationDock(MainActivity activity, FrameLayout root, IntConsumer onTabSelected) {
         if (activity == null || root == null || onTabSelected == null) {
@@ -49,45 +53,48 @@ final class PrismNavigationDock {
         if (built) return;
         built = true;
         surface.setBackground(NebulaHomeView.navigationSurface());
-        ToxiVisualSystem.clipRound(surface, 26);
-        surface.setForeground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(0x2279F2C0), null, null));
-        surface.setElevation(NebulaHomeView.dp(activity, 10));
+        ToxiVisualSystem.clipRound(surface, 28);
+        surface.setClipToPadding(false);
+        surface.setClipChildren(false);
+        surface.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        applySurfaceRipple();
+        surface.setElevation(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5)));
         selection.setBackground(NebulaHomeView.navigationHighlight());
         selection.setVisibility(View.INVISIBLE);
         surface.addView(selection);
         String[] symbols = {"house", "folder", "grid", "settings"};
-        String[] names = {"Home", "Files", "Tools", "Settings"};
         for (int i = 0; i < TAB_COUNT; i++) {
             final int index = i;
             LinearLayout item = new LinearLayout(activity);
             item.setGravity(Gravity.CENTER);
             item.setOrientation(LinearLayout.VERTICAL);
-            item.setMinimumWidth(NebulaHomeView.dp(activity, 52));
-            item.setMinimumHeight(NebulaHomeView.dp(activity, 52));
-            item.setPadding(NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 4),
-                    NebulaHomeView.dp(activity, 3), NebulaHomeView.dp(activity, 4));
+            item.setMinimumWidth(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+            item.setMinimumHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+            item.setPadding(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)),
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3)));
             glyphs[i] = new NebulaHomeView.Glyph(activity, symbols[i], NebulaHomeView.TEXT);
-            glyphs[i].setContentDescription(names[i]);
+            glyphs[i].setContentDescription(TAB_NAMES[i]);
             item.addView(glyphs[i], new LinearLayout.LayoutParams(
-                    NebulaHomeView.dp(activity, 22), NebulaHomeView.dp(activity, 22)));
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(23)), NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(23))));
             labels[i] = new TextView(activity);
-            labels[i].setText(names[i]);
-            labels[i].setTextSize(10);
+            labels[i].setText(TAB_NAMES[i]);
+            labels[i].setTextSize(10f);
+            labels[i].setIncludeFontPadding(false);
             labels[i].setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), Typeface.BOLD));
-            labels[i].setTextColor(NebulaHomeView.MUTED);
+            labels[i].setTextColor(ToxiVisualSystem.TEXT_SECONDARY);
             LinearLayout.LayoutParams label = new LinearLayout.LayoutParams(-2, -2);
-            label.topMargin = NebulaHomeView.dp(activity, 3);
+            label.topMargin = NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(3));
             item.addView(labels[i], label);
-            item.setContentDescription(names[i]);
+            item.setContentDescription(TAB_NAMES[i]);
             item.setFocusable(true);
             item.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
                 if (!ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
                     v.animate().cancel();
-                    v.setScaleX(0.94f);
-                    v.setScaleY(0.94f);
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(190)
+                    float pressScale = 1f - (0.035f * ToxiThemeEngine.profile().motionScale);
+                    v.setScaleX(pressScale);
+                    v.setScaleY(pressScale);
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(ToxiThemeEngine.motionDuration(165L))
                             .setInterpolator(new android.view.animation.OvershootInterpolator(1.25f)).start();
                 }
                 onTabSelected.accept(index);
@@ -114,7 +121,7 @@ final class PrismNavigationDock {
         tabGroup.setOrientation(rail ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         tabGroup.setGravity(Gravity.CENTER);
         tabGroup.setBaselineAligned(false);
-        int inset = NebulaHomeView.dp(activity, 5);
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
         surface.setPadding(inset, inset, inset, inset);
         for (View item : items) {
             if (item == null) continue;
@@ -139,13 +146,13 @@ final class PrismNavigationDock {
         }
         FrameLayout.LayoutParams params;
         if (rail) {
-            params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, 82),
-                    NebulaHomeView.dp(activity, 340), Gravity.START | Gravity.CENTER_VERTICAL);
-            params.setMargins(NebulaHomeView.dp(activity, 14), 0, 0, 0);
+            params = new FrameLayout.LayoutParams(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(82)),
+                    NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(340)), Gravity.START | Gravity.CENTER_VERTICAL);
+            params.setMargins(NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(14)), 0, 0, 0);
         } else {
-            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, 72), Gravity.BOTTOM);
-            params.setMargins(NebulaHomeView.dp(activity, 22), 0,
-                    NebulaHomeView.dp(activity, 22), NebulaHomeView.dp(activity, 10));
+            params = new FrameLayout.LayoutParams(-1, NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(DOCK_HEIGHT_DP)), Gravity.BOTTOM);
+            int sideInset = NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(DOCK_SIDE_INSET_DP));
+            params.setMargins(sideInset, 0, sideInset, dockBottomMargin());
         }
         if (surface.getParent() == root) root.removeView(surface);
         root.addView(surface, params);
@@ -157,6 +164,7 @@ final class PrismNavigationDock {
         tabGroup.post(this::layoutSelection);
         tabGroup.postOnAnimation(this::layoutSelection);
         applySelectionColors();
+        if (imeVisible) setImeVisible(true);
     }
 
     private void layoutSelection() {
@@ -164,13 +172,16 @@ final class PrismNavigationDock {
         int index = Math.max(0, Math.min(TAB_COUNT - 1, selectedTab));
         View target = items[index];
         if (target == null || target.getWidth() == 0 || target.getHeight() == 0) return;
-        int x = Math.round(tabGroup.getX() + target.getX());
-        int y = Math.round(tabGroup.getY() + target.getY());
-        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(target.getWidth(), target.getHeight());
-        p.leftMargin = x;
-        p.topMargin = y;
+        int x = tabGroup.getLeft() + target.getLeft();
+        int y = tabGroup.getTop() + target.getTop();
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(
+                Math.max(0, target.getWidth() - inset * 2),
+                Math.max(0, target.getHeight() - inset * 2));
         selection.animate().cancel();
         selection.setLayoutParams(p);
+        selection.setTranslationX(x + inset);
+        selection.setTranslationY(y + inset);
         selection.setAlpha(1f);
         selection.setVisibility(View.VISIBLE);
         selectionPositioned = true;
@@ -180,11 +191,33 @@ final class PrismNavigationDock {
 
     void setVisible(boolean visible) { surface.setVisibility(visible ? View.VISIBLE : View.GONE); }
 
+    void setImeVisible(boolean visible) {
+        imeVisible = visible;
+        if (rail) return;
+        surface.animate().cancel();
+        boolean reduceMotion = ToxiVisualSystem.booleanPreference("reduce_motion", false);
+        float hiddenOffset = surface.getHeight() + NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(24));
+        surface.setImportantForAccessibility(visible ? View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                : View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        if (reduceMotion) {
+            surface.setTranslationY(visible ? hiddenOffset : 0f);
+            surface.setAlpha(visible ? 0f : 1f);
+        } else {
+            surface.animate().translationY(visible ? hiddenOffset : 0f).alpha(visible ? 0f : 1f)
+                    .setDuration(ToxiThemeEngine.motionDuration(180L))
+                    .setInterpolator(new DecelerateInterpolator(1.5f)).start();
+        }
+    }
+
+    private int dockBottomMargin() {
+        return Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(12)))
+                + NebulaHomeView.dp(activity, ToxiThemeEngine.spacing(DOCK_BOTTOM_GAP_DP));
+    }
+
     void applyBottomInset() {
         if (rail || surface.getParent() != root || surface.getLayoutParams() == null) return;
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surface.getLayoutParams();
-        params.bottomMargin = Math.max(ToxiVisualSystem.BOTTOM_INSET, NebulaHomeView.dp(activity, 24))
-                + NebulaHomeView.dp(activity, 10);
+        params.bottomMargin = dockBottomMargin();
         surface.setLayoutParams(params);
         surface.requestLayout();
         surface.postOnAnimation(this::layoutSelection);
@@ -193,38 +226,66 @@ final class PrismNavigationDock {
     void moveHighlight(int index) {
         selectedTab = Math.max(0, Math.min(TAB_COUNT - 1, index));
         if (!built) return;
-        View target = items[selectedTab];
-        if (target != null) {
-            selection.animate().cancel();
-            if (!selectionPositioned || ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-                selectionPositioned = false;
-                layoutSelection();
-            } else {
-                if (target.getWidth() == 0 || target.getHeight() == 0) {
-                    surface.postOnAnimation(() -> moveHighlight(selectedTab));
-                    return;
-                }
-                int left = Math.round(tabGroup.getX() + target.getX());
-                int top = Math.round(tabGroup.getY() + target.getY());
-                selection.animate().x(left).y(top).setDuration(210)
-                        .setInterpolator(new DecelerateInterpolator()).start();
-            }
-        }
         applySelectionColors();
+        // Re-read the target's bounds after tab/content transitions. This avoids a stale
+        // highlight coordinate when the dock is first laid out or the device is resized.
+        surface.postOnAnimation(() -> moveHighlightAfterLayout(selectedTab));
+    }
+
+    private void moveHighlightAfterLayout(int index) {
+        if (!built || surface.getParent() != root || surface.getVisibility() != View.VISIBLE) return;
+        int targetIndex = Math.max(0, Math.min(TAB_COUNT - 1, index));
+        View target = items[targetIndex];
+        if (target == null || tabGroup == null || surface.getWidth() == 0
+                || surface.getHeight() == 0 || target.getWidth() == 0 || target.getHeight() == 0) {
+            surface.postOnAnimation(() -> moveHighlightAfterLayout(selectedTab));
+            return;
+        }
+        int left = tabGroup.getLeft() + target.getLeft();
+        int top = tabGroup.getTop() + target.getTop();
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                Math.max(0, target.getWidth() - inset * 2),
+                Math.max(0, target.getHeight() - inset * 2));
+        selection.animate().cancel();
+        selection.setLayoutParams(params);
+        selection.setVisibility(View.VISIBLE);
+        selection.setAlpha(1f);
+        boolean animate = selectionPositioned
+                && !ToxiVisualSystem.booleanPreference("reduce_motion", false);
+        if (animate) {
+            selection.animate().translationX(left + inset).translationY(top + inset)
+                    .setDuration(ToxiThemeEngine.motionDuration(145L))
+                    .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        } else {
+            selection.setTranslationX(left + inset);
+            selection.setTranslationY(top + inset);
+        }
+        selectionPositioned = true;
+    }
+
+    private void applySurfaceRipple() {
+        int accent = ToxiVisualSystem.ACCENT;
+        surface.setForeground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(Color.argb(30, Color.red(accent),
+                        Color.green(accent), Color.blue(accent))), null, null));
     }
 
     private void applySelectionColors() {
         for (int i = 0; i < TAB_COUNT; i++) {
             if (labels[i] == null || glyphs[i] == null) continue;
-            int color = i == selectedTab ? NebulaHomeView.LIME : NebulaHomeView.MUTED;
+            int color = i == selectedTab ? ToxiVisualSystem.signalTextColor() : ToxiVisualSystem.TEXT_SECONDARY;
             labels[i].setTextColor(color);
             glyphs[i].setTint(color);
             items[i].setSelected(i == selectedTab);
+            items[i].setActivated(i == selectedTab);
+            items[i].setContentDescription(TAB_NAMES[i] + (i == selectedTab ? ", selected" : ""));
         }
     }
 
     void recolor(int selectedIndex) {
         surface.setBackground(NebulaHomeView.navigationSurface());
+        applySurfaceRipple();
         selection.setBackground(NebulaHomeView.navigationHighlight());
         moveHighlight(selectedIndex);
     }

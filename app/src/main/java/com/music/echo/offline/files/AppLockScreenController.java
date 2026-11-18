@@ -21,7 +21,7 @@ final class AppLockScreenController {
 
     void showSetPinDialog() {
         final EditText input = activity.pinField();
-        new AlertDialog.Builder(activity).setTitle(AppLock.hasPin(activity) ? "Change App Lock PIN" : "Set App Lock PIN")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle(AppLock.hasPin(activity) ? "Change App Lock PIN" : "Set App Lock PIN")
                 .setView(activity.wrapField(input)).setNegativeButton("Cancel", null)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String pin = input.getText().toString().trim();
@@ -41,11 +41,11 @@ final class AppLockScreenController {
         final Dialog dialog = new Dialog(activity, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setCancelable(false);
         FrameLayout root = new FrameLayout(activity);
-        root.setBackgroundColor(ToxiVisualSystem.CANVAS);
+        root.setBackground(ToxiVisualSystem.auroraBackground());
         LinearLayout column = new LinearLayout(activity);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setGravity(Gravity.CENTER);
-        column.setPadding(ToxiVisualSystem.dp(32), 0, ToxiVisualSystem.dp(32), 0);
+        column.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(32)), 0);
         column.addView(ToxiVisualSystem.text(activity, "ToxiFiles is locked", 18, ToxiVisualSystem.TEXT_PRIMARY, true),
                 activity.lpm(-2, -2, 0, 0, 0, 16));
         final EditText input = activity.pinField();
@@ -53,7 +53,8 @@ final class AppLockScreenController {
         TextView unlockButton = ToxiVisualSystem.text(activity, "Unlock", 16, ToxiVisualSystem.ACCENT, true);
         unlockButton.setGravity(Gravity.CENTER);
         unlockButton.setBackground(ToxiVisualSystem.surface(18, false));
-        unlockButton.setPadding(0, ToxiVisualSystem.dp(14), 0, ToxiVisualSystem.dp(14));
+        unlockButton.setMinHeight(ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)));
+        unlockButton.setPadding(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
         ToxiVisualSystem.interactive(unlockButton);
         unlockButton.setOnClickListener(view -> {
             if (AppLock.checkPin(activity, input.getText().toString().trim())) {
@@ -72,6 +73,18 @@ final class AppLockScreenController {
         dialog.setContentView(root);
         dialog.setOnKeyListener((ignored, keyCode, event) -> keyCode == android.view.KeyEvent.KEYCODE_BACK);
         dialog.show();
+        android.view.Window lockWindow = dialog.getWindow();
+        if (lockWindow != null) {
+            lockWindow.setStatusBarColor(ToxiVisualSystem.CANVAS);
+            lockWindow.setNavigationBarColor(ToxiVisualSystem.CANVAS);
+            if (Build.VERSION.SDK_INT >= 23) {
+                int flags = lockWindow.getDecorView().getSystemUiVisibility();
+                int lightFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (Build.VERSION.SDK_INT >= 26) lightFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                lockWindow.getDecorView().setSystemUiVisibility(ToxiVisualSystem.LIGHT_MODE
+                        ? flags | lightFlags : flags & ~lightFlags);
+            }
+        }
         if (Build.VERSION.SDK_INT >= 28) tryBiometric(dialog);
     }
 

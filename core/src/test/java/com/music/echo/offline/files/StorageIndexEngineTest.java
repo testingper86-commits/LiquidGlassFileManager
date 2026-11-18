@@ -62,6 +62,29 @@ public class StorageIndexEngineTest {
         assertEquals(visible.getCanonicalFile(), collected.entries.get(0).file.getCanonicalFile());
     }
 
+    @Test public void indexesSharedAndroidMediaButKeepsPrivateAndroidDataExcluded() throws Exception {
+        File root = temporary.newFolder("root");
+        File android = new File(root, "Android");
+        File media = new File(android, "media");
+        File appMedia = new File(media, "com.example.chat");
+        File music = new File(appMedia, "Music");
+        File data = new File(android, "data");
+        assertTrue(android.mkdir());
+        assertTrue(media.mkdir());
+        assertTrue(appMedia.mkdir());
+        assertTrue(music.mkdir());
+        assertTrue(data.mkdir());
+        File sharedSong = new File(music, "voice-note.mp3");
+        File privateFile = new File(data, "private.bin");
+        Files.write(sharedSong.toPath(), new byte[]{1, 2});
+        Files.write(privateFile.toPath(), new byte[]{3});
+
+        Collected collected = scan(root, 9, 100);
+        assertTrue(contains(collected, sharedSong));
+        assertFalse(contains(collected, privateFile));
+        assertFalse(collected.result.incomplete);
+    }
+
     @Test public void includesHiddenEntriesAndRootAndroidDirectoryWhenRequested() throws Exception {
         File root = temporary.newFolder("root"), hidden = new File(root, ".cache"), android = new File(root, "Android");
         assertTrue(hidden.mkdir()); assertTrue(android.mkdir());
@@ -117,6 +140,55 @@ public class StorageIndexEngineTest {
             try { scan(root, 9, 100); fail("Cancelled storage scan returned a result"); }
             catch (IOException expected) { assertEquals("Operation cancelled", expected.getMessage()); }
         } finally { cancellation.finish(token); }
+    }
+
+    @Test public void volumeSnapshotRejectsImpossibleCapacityAndReportsUsedBytes() {
+        StorageIndexEngine.VolumeSnapshot volume = new StorageIndexEngine.VolumeSnapshot("internal", "Internal", 1000L, 250L, true);
+        assertEquals(750L, volume.usedBytes);
+        assertEquals(250L, volume.availableBytes);
+        try {
+            new StorageIndexEngine.VolumeSnapshot("bad", "Bad", 100L, 101L, false);
+            fail("Available bytes above total must be rejected");
+        } catch (IllegalArgumentException expected) { }
+    }
+
+    @Test public void categoryTotalsKeepAccessibleBytesSeparateAndMarkPartialScans() throws Exception {
+        File root = temporary.newFolder("root");
+        Files.write(new File(root, "photo.jpg").toPath(), new byte[]{1, 2, 3, 4});
+        Files.write(new File(root, "report.pdf").toPath(), new byte[]{5, 6});
+        Collected collected = scan(root, 9, 100);
+        StorageIndexEngine.TotalsBuilder totals = new StorageIndexEngine.TotalsBuilder();
+        totals.add(0, 4L);
+        totals.add(3, 2L);
+        StorageIndexEngine.CategoryTotals result = totals.finish(collected.result);
+        assertEquals(6L, result.totalIndexedBytes);
+        assertEquals(2, result.totalIndexedFiles);
+        assertEquals(4L, result.bytes[0]);
+        assertEquals(2L, result.bytes[3]);
+        assertTrue(result.complete);
+        StorageIndexEngine.CategoryTotals incomplete = totals.finish(new StorageIndexEngine.Result(2, true, true));
+        assertFalse(incomplete.complete);
+    }
+
+    @Test public void categoryTotalsSaturateRatherThanOverflow() {
+        StorageIndexEngine.TotalsBuilder totals = new StorageIndexEngine.TotalsBuilder();
+        totals.add(0, Long.MAX_VALUE);
+        totals.add(0, 1L);
+        StorageIndexEngine.CategoryTotals result = totals.finish(new StorageIndexEngine.Result(2, false, false));
+        assertEquals(Long.MAX_VALUE, result.bytes[0]);
+        assertEquals(Long.MAX_VALUE, result.totalIndexedBytes);
+    }
+
+    @Test public void categoryTotalCompletenessRequiresAnActuallyCompleteScan() throws Exception {
+        File root = temporary.newFolder("root");
+        Collected collected = scan(root, 9, 100);
+        StorageIndexEngine.TotalsBuilder totals = new StorageIndexEngine.TotalsBuilder();
+        StorageIndexEngine.CategoryTotals complete = totals.finish(collected.result);
+        assertTrue(complete.complete);
+        assertEquals(0L, complete.totalIndexedBytes);
+        assertEquals(0, complete.totalIndexedFiles);
+        StorageIndexEngine.CategoryTotals unavailable = totals.finish(null);
+        assertFalse(unavailable.complete);
     }
 
     @Test public void rejectsInvalidScanLimits() throws Exception {

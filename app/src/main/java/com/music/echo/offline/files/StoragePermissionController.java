@@ -41,7 +41,7 @@ final class StoragePermissionController {
             requestLegacyPermissions();
             return;
         }
-        new AlertDialog.Builder(activity).setTitle("Allow access to all files")
+        ToxiVisualSystem.dialogBuilder(activity).setTitle("Allow access to all files")
                 .setMessage("A file manager needs \"All files access\" to show, open, copy, move and delete your files. Files never leave your device.")
                 .setNegativeButton("Not now", null)
                 .setPositiveButton("Open settings", (dialog, which) -> openStorageSettings())
