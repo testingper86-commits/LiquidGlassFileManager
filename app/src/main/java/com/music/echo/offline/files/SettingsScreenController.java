@@ -183,12 +183,12 @@ final class SettingsScreenController {
         final View vaultRowRef = vaultRow;
         final int retentionDays = ToxiVisualSystem.PREFERENCES.getInt("recyclebin_days", 30);
         activity.executeIo(() -> {
-            final int recycleCount = RecycleBin.count(activity);
+            final int binCount = RecycleBin.count(activity);
             final int vaultCount = Vault.list(activity).size();
             activity.runUiIfAlive(() -> {
                 if (recycleRowRef.getParent() == activity.settings) {
-                    updateSubtitle(recycleRowRef, recycleCount == 0 ? "Empty"
-                            : recycleCount + " item" + (recycleCount == 1 ? "" : "s")
+                    updateSubtitle(recycleRowRef, binCount == 0 ? "Empty"
+                            : binCount + " item" + (binCount == 1 ? "" : "s")
                                     + " • auto-removed after " + retentionDays + " days");
                 }
                 if (vaultRowRef.getParent() == activity.settings) {
