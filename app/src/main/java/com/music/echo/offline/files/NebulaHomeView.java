@@ -235,28 +235,45 @@ final class NebulaHomeView {
     }
 
     private static void addOtherQuickAccess(MainActivity a, LinearLayout host) {
+        FrameLayout card = new FrameLayout(a);
+        card.setBackground(categoryGlassSurface(ICE));
+        card.setClipToOutline(true);
+        ImageView artwork = new ImageView(a);
+        artwork.setImageResource(themeArtwork());
+        artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        artwork.setAlpha(0.46f);
+        artwork.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(artwork, new FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(a);
+        GradientDrawable overlay = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.argb(118, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND)),
+                        Color.argb(210, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
+        overlay.setCornerRadius(dp(a, 20));
+        shade.setBackground(overlay);
+        card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
         LinearLayout row = new LinearLayout(a);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(a, 15), dp(a, 12), dp(a, 15), dp(a, 12));
-        row.setBackground(homeGlassSurface(17, true));
         FrameLayout iconWell = new FrameLayout(a);
-        iconWell.setBackground(background(Color.argb(38, Color.red(ICE), Color.green(ICE), Color.blue(ICE)), BORDER, 13));
+        iconWell.setBackground(background(Color.argb(48, Color.red(ICE), Color.green(ICE), Color.blue(ICE)), BORDER, 13));
         Glyph icon = new Glyph(a, "grid", ICE);
         iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 23), dp(a, 23), Gravity.CENTER));
-        row.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
+        row.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 46), dp(a, 46)));
         LinearLayout copy = new LinearLayout(a);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setPadding(dp(a, 12), 0, 0, 0);
-        copy.addView(text(a, "Other sections", 14, TEXT, true));
-        copy.addView(text(a, "APK files, system apps and downloaded apps", 10.5f, MUTED, false),
-                margins(a, -1, -2, 0, 3, 0, 0));
+        copy.setPadding(dp(a, 13), 0, 0, 0);
+        copy.addView(text(a, "Other sections", 15, TEXT, true));
+        copy.addView(text(a, "APK files · System apps · Downloaded apps · Other files", 10.5f, MUTED, false),
+                margins(a, -1, -2, 0, 4, 0, 0));
         row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1f));
-        row.addView(text(a, "↗", 19, ICE, true));
-        row.setContentDescription("Other sections. APK files, system apps and downloaded apps.");
-        row.setFocusable(true);
-        row.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); a.showOtherSections(); });
-        ToxiVisualSystem.interactive(row);
-        host.addView(row, margins(a, -1, -2, 0, 2, 0, 4));
+        row.addView(text(a, "↗", 20, ICE, true));
+        card.addView(row, new FrameLayout.LayoutParams(-1, -1));
+        card.setContentDescription("Other sections. APK files, system apps, downloaded apps and other files.");
+        card.setFocusable(true);
+        card.setOnClickListener(v -> { ToxiVisualSystem.feedback(v); a.showOtherSections(); });
+        ToxiVisualSystem.interactive(card);
+        host.addView(card, margins(a, -1, dp(a, 78), 0, 3, 0, 4));
     }
 
     private static int gridColumns(MainActivity a) {
