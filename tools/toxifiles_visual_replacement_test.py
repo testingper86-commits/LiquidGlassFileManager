@@ -179,7 +179,7 @@ if "overlay.setBackgroundColor(Color.argb(alpha" in overlay_controller or "curre
     raise SystemExit("Overlay manager must preserve section-specific character wallpapers")
 for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
               "listView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
-              "int overlaySafeBottom =", "themeScroll.setPadding(0, 0, 0, overlaySafeBottom)"]:
+              "int overlaySafeBottom =", "themeScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16))"]:
     if token not in main_activity:
         raise SystemExit(f"Section wallpaper or scroll-safe layout is missing: {token}")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
