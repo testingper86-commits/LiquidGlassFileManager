@@ -76,17 +76,11 @@ final class ThemeScreenController {
         label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         panel.addView(label);
-        // Keep the title and section label fixed; only the poster list is scrollable.
-        ScrollView cardsScroll = new ScrollView(activity);
-        cardsScroll.setFillViewport(false);
-        cardsScroll.setVerticalScrollBarEnabled(false);
-        cardsScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
-        cardsScroll.setClipToPadding(true);
-        cardsScroll.setNestedScrollingEnabled(false);
+        // Use one vertical scrolling container. Nested ScrollViews competed for
+        // touch interception and prevented theme tiles from receiving drag/click input.
         LinearLayout cards = new LinearLayout(activity);
         cards.setOrientation(LinearLayout.VERTICAL);
         cards.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
-        cardsScroll.addView(cards, new ScrollView.LayoutParams(-1, -2));
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
             final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
@@ -164,16 +158,14 @@ final class ThemeScreenController {
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(164)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
         }
-        panel.addView(cardsScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        activity.themeScroll.setFillViewport(true);
-        // The outer overlay is a fixed viewport. Only cardsScroll may move; otherwise
-        // Android can scroll the whole panel and push the title/header off-screen.
+        panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
+        activity.themeScroll.setFillViewport(false);
         activity.themeScroll.setOnScrollChangeListener((View v, int scrollX, int scrollY,
-                int oldScrollX, int oldScrollY) -> {
-            if (scrollY != 0) v.scrollTo(0, 0);
-        });
-        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -1));
+                int oldScrollX, int oldScrollY) -> { });
+        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        // WRAP_CONTENT is essential: MATCH_PARENT constrained the panel to one
+        // viewport, clipping the remaining themes instead of extending scroll range.
+        activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
     }
 }
