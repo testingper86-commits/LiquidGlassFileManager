@@ -234,3 +234,11 @@ recolor_start = main_activity_theme_source.index("    void recolor() {")
 recolor_body = main_activity_theme_source[recolor_start:recolor_start + 900]
 if "ToxiVisualSystem.applyTheme(ToxiVisualSystem.THEME_INDEX, false);" not in recolor_body:
     raise SystemExit("Theme recolor must reactivate the selected palette before rebuilding views")
+
+# Theme Studio hides the floating dock, so it must not reserve dock-height padding.
+main_activity_theme_scroll = (JAVA / "MainActivity.java").read_text(encoding="utf-8")
+theme_screen_layout = (JAVA / "ThemeScreenController.java").read_text(encoding="utf-8")
+if "themeScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16))" not in main_activity_theme_scroll:
+    raise SystemExit("Theme Studio must reserve only system navigation and IME insets")
+if "ToxiThemeEngine.spacing(132)" in theme_screen_layout:
+    raise SystemExit("Theme Studio must not add a second oversized bottom spacer")
