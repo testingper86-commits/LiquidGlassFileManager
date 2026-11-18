@@ -296,7 +296,9 @@ public class MainActivity extends ComponentActivity {
         recycleScroll.setPadding(0, 0, 0, overlaySafeBottom);
         vaultScroll.setPadding(0, 0, 0, overlaySafeBottom);
         dupScroll.setPadding(0, 0, 0, overlaySafeBottom);
-        themeScroll.setPadding(0, 0, 0, overlaySafeBottom);
+        // Theme Studio hides the floating dock while open; reserve only system bars and IME.
+        themeScroll.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16))
+                + ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.IME_INSET);
         filesView.applyInsets(); favView.applyInsets(); listView.applyInsets();
     }
 
