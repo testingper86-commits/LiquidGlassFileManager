@@ -20,7 +20,7 @@ final class MainOverlayController {
     /** Reapplies the active overlay's background treatment after a theme palette rebuild. */
     void refreshAppearance() {
         if (current == null) return;
-        View backgroundScreen = activity.screenS[activity.tab];
+        View backgroundScreen = activity.screens[activity.tab];
         boolean blur = Build.VERSION.SDK_INT >= 31
                 && ToxiVisualSystem.booleanPreference("blur", false)
                 && !ToxiVisualSystem.HIGH_CONTRAST;
@@ -55,7 +55,7 @@ final class MainOverlayController {
             activity.screens[activity.tab].setRenderEffect(android.graphics.RenderEffect.createBlurEffect(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), android.graphics.Shader.TileMode.CLAMP));
             activity.screens[activity.tab].setVisibility(View.VISIBLE);
         } else {
-            activity.screns[activity.tab].setVisibility(View.INVISIBLE);
+            activity.screens[activity.tab].setVisibility(View.INVISIBLE);
         }
         overlay.setVisibility(View.VISIBLE);
         if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
@@ -85,7 +85,7 @@ final class MainOverlayController {
         current = null;
         if (wasVault) activity.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
         if (Build.VERSION.SDK_INT >= 31) activity.screens[activity.tab].setRenderEffect(null);
-        activity.screenS[activity.tab].setVisibility(View.VISIBLE);
+        activity.screens[activity.tab].setVisibility(View.VISIBLE);
         accessibility.restore();
         activity.syncNavigationVisibility(false);
         if (activity.tab == 0) activity.buildHome();

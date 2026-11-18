@@ -122,6 +122,11 @@ if "ToxiVisualSystem.applyWindowChrome(getWindow(), true);" not in main_activity
 if "getWindow().setStatusBarColor(Color.TRANSPARENT);" in main_activity or "getWindow().setNavigationBarColor(Color.TRANSPARENT);" in main_activity:
     raise SystemExit("MainActivity must route system bar setup through the shared window-chrome mechanism")
 overlay_controller = (JAVA / "MainOverlayController.java").read_text(encoding="utf-8")
+main_activity_for_overlay = (JAVA / "MainActivity.java").read_text(encoding="utf-8")
+if "View[] screens;" not in main_activity_for_overlay or "activity.screens[" not in overlay_controller:
+    raise SystemExit("Overlay controller must use MainActivity.screens")
+if "activity.screenS[" in overlay_controller or "activity.screns[" in overlay_controller:
+    raise SystemExit("Overlay controller contains an invalid screen-array reference")
 if "int selectedTab = tab;" not in main_activity or "overlayController.refreshAppearance();" not in main_activity:
     raise SystemExit("Theme refresh must preserve the active tab and delegate active overlay restoration")
 if "void refreshAppearance()" not in overlay_controller or "current.setVisibility(View.VISIBLE)" not in overlay_controller or "backgroundScreen.setVisibility(blur ? View.VISIBLE : View.INVISIBLE)" not in overlay_controller:
