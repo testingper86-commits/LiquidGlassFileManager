@@ -486,23 +486,37 @@ final class ToxiVisualSystem {
         }
     }
 
-    /** Staggered entrance for screen-level panels; follows both app and system motion settings. */
+    /** Fast, low-overdraw entrance for every tab and full-screen section. */
+    static void animateSection(View view) {
+        if (view == null || !motionAllowed(view.getContext()) || !view.isAttachedToWindow()) return;
+        view.animate().cancel();
+        view.setAlpha(0.94f);
+        view.setTranslationY(dp(4f));
+        view.setScaleX(0.995f);
+        view.setScaleY(0.995f);
+        view.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                .setDuration(ToxiThemeEngine.motionDuration(135L))
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+    }
+
+    /** Lightweight child reveal; capped work avoids long cascades and keeps scrolling responsive. */
     static void revealChildren(ViewGroup group) {
         if (group == null || !motionAllowed(group.getContext())) return;
         group.post(() -> {
             if (!group.isAttachedToWindow()) return;
-            int visibleIndex = 0;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                final View child = group.getChildAt(i);
+            int animated = 0;
+            for (int i = 0; i < group.getChildCount() && animated < 6; i++) {
+                View child = group.getChildAt(i);
                 if (child.getVisibility() != View.VISIBLE) continue;
-                final long delay = Math.min(visibleIndex++, 8) * ToxiThemeEngine.motionDuration(28L);
                 child.animate().cancel();
-                child.setAlpha(0f);
-                child.setTranslationY(dp(ToxiThemeEngine.motionDistance(9f)));
-                child.animate().alpha(1f).translationY(0f).setStartDelay(delay)
-                        .setDuration(ToxiThemeEngine.motionDuration(210L))
+                child.setAlpha(0.96f);
+                child.setTranslationY(dp(3f));
+                child.animate().alpha(1f).translationY(0f)
+                        .setDuration(ToxiThemeEngine.motionDuration(120L))
                         .setInterpolator(new android.view.animation.DecelerateInterpolator())
                         .start();
+                animated++;
             }
         });
     }
