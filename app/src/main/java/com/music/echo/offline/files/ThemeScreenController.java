@@ -20,7 +20,7 @@ final class ThemeScreenController {
     }
     void open() {
         build();
-        activity.themeScroll.setDescendantFocusability(View.FOCUS_BEFORE_DESCENDANTS);
+        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS);
         activity.themeScroll.requestFocus();
         activity.themeScroll.scrollTo(0, 0);
         activity.showOverlay(activity.themeScroll);
@@ -39,7 +39,7 @@ final class ThemeScreenController {
                 scroll.requestLayout();
             }
         });
-        scroll.postOnAnimation(() -> scroll.scrollTo(0, 0));
+        scroll.postOnAnimation(() -> { scroll.requestFocus(); scroll.scrollTo(0, 0); });
         scroll.postDelayed(() -> {
             if (scroll.getVisibility() == View.VISIBLE) scroll.scrollTo(0, 0);
         }, 80L);
@@ -149,7 +149,7 @@ final class ThemeScreenController {
             tile.addView(state, stateParams);
             tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". "
                     + ToxiVisualSystem.themeDescription(i) + (selected ? ". Active theme" : ". Double tap to apply"));
-            tile.setFocusable(true);
+            tile.setFocusable(false);
             tile.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
                 ToxiVisualSystem.applyTheme(themeIndex, true);
@@ -166,7 +166,8 @@ final class ThemeScreenController {
         }
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
-        panel.requestFocus();
+        panel.clearFocus();
+        activity.themeScroll.requestFocus();
         activity.themeScroll.scrollTo(0, 0);
     }
 }
