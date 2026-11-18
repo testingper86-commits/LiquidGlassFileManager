@@ -58,14 +58,8 @@ final class MainOverlayController {
             activity.screens[activity.tab].setVisibility(View.INVISIBLE);
         }
         overlay.setVisibility(View.VISIBLE);
-        if (ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-            overlay.setAlpha(1f);
-            overlay.setTranslationZ(0f);
-        } else {
-            overlay.setAlpha(0f);
-            overlay.setTranslationY(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
-            overlay.animate().alpha(1f).translationZ(0f).setDuration(180).setInterpolator(new DecelerateInterpolator()).start();
-        }
+        overlay.bringToFront();
+        ToxiVisualSystem.animateSection(overlay);
         activity.syncNavigationVisibility(false);
     }
 
