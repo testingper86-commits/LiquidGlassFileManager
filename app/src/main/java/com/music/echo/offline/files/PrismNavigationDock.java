@@ -226,25 +226,42 @@ final class PrismNavigationDock {
     void moveHighlight(int index) {
         selectedTab = Math.max(0, Math.min(TAB_COUNT - 1, index));
         if (!built) return;
-        View target = items[selectedTab];
-        if (target != null) {
-            selection.animate().cancel();
-            if (!selectionPositioned || ToxiVisualSystem.booleanPreference("reduce_motion", false)) {
-                selectionPositioned = false;
-                layoutSelection();
-            } else {
-                if (target.getWidth() == 0 || target.getHeight() == 0) {
-                    surface.postOnAnimation(() -> moveHighlight(selectedTab));
-                    return;
-                }
-                int left = tabGroup.getLeft() + target.getLeft();
-                int top = tabGroup.getTop() + target.getTop();
-                int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
-                selection.animate().translationX(left + inset).translationY(top + inset).setDuration(ToxiThemeEngine.motionDuration(145L))
-                        .setInterpolator(new DecelerateInterpolator(1.6f)).start();
-            }
-        }
         applySelectionColors();
+        // Re-read the target's bounds after tab/content transitions. This avoids a stale
+        // highlight coordinate when the dock is first laid out or the device is resized.
+        surface.postOnAnimation(() -> moveHighlightAfterLayout(selectedTab));
+    }
+
+    private void moveHighlightAfterLayout(int index) {
+        if (!built || surface.getParent() != root || surface.getVisibility() != View.VISIBLE) return;
+        int targetIndex = Math.max(0, Math.min(TAB_COUNT - 1, index));
+        View target = items[targetIndex];
+        if (target == null || tabGroup == null || surface.getWidth() == 0
+                || surface.getHeight() == 0 || target.getWidth() == 0 || target.getHeight() == 0) {
+            surface.postOnAnimation(() -> moveHighlightAfterLayout(selectedTab));
+            return;
+        }
+        int left = tabGroup.getLeft() + target.getLeft();
+        int top = tabGroup.getTop() + target.getTop();
+        int inset = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(5));
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                Math.max(0, target.getWidth() - inset * 2),
+                Math.max(0, target.getHeight() - inset * 2));
+        selection.animate().cancel();
+        selection.setLayoutParams(params);
+        selection.setVisibility(View.VISIBLE);
+        selection.setAlpha(1f);
+        boolean animate = selectionPositioned
+                && !ToxiVisualSystem.booleanPreference("reduce_motion", false);
+        if (animate) {
+            selection.animate().translationX(left + inset).translationY(top + inset)
+                    .setDuration(ToxiThemeEngine.motionDuration(145L))
+                    .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        } else {
+            selection.setTranslationX(left + inset);
+            selection.setTranslationY(top + inset);
+        }
+        selectionPositioned = true;
     }
 
     private void applySurfaceRipple() {

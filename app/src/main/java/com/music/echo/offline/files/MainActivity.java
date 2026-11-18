@@ -210,6 +210,7 @@ public class MainActivity extends ComponentActivity {
         dupScroll.addView(dup, new FrameLayout.LayoutParams(-1, -2));
 
         filesView = new BrowserView(this, false, false);
+        filesView.setBackground(NebulaHomeView.sectionWallpaper(this, 1));
         favView = new BrowserView(this, true, true);
         listView = new BrowserView(this, true, false);
         screens = new View[]{homeScroll, filesView, toolsScroll, settingsScroll};

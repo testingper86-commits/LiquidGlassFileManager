@@ -22,6 +22,7 @@ final class SettingsScreenController {
 
     void build() {
         activity.settings.removeAllViews();
+        activity.settings.setBackground(NebulaHomeView.sectionWallpaper(activity, 3));
         activity.settings.setBackground(NebulaHomeView.wallpaper(activity));
         LinearLayout settingsHeader = new LinearLayout(activity);
         settingsHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);

@@ -70,7 +70,7 @@ final class NebulaHomeView {
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
-        host.setBackground(new ThemeWallpaperDrawable(a));
+        host.setBackground(sectionWallpaper(a, 0));
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout identity = new LinearLayout(a);
@@ -314,7 +314,7 @@ final class NebulaHomeView {
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
         host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
-        host.setBackground(new ThemeWallpaperDrawable(a));
+        host.setBackground(sectionWallpaper(a, 2));
 
         LinearLayout toolsHeader = new LinearLayout(a);
         toolsHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -525,6 +525,19 @@ final class NebulaHomeView {
         return glass;
     }
 
+    static Drawable sectionWallpaper(MainActivity activity, int section) {
+        syncPalette();
+        int artwork;
+        switch (section) {
+            case 0: artwork = R.drawable.theme_poster_onepiece; break;
+            case 1: artwork = R.drawable.theme_poster_naruto; break;
+            case 2: artwork = R.drawable.theme_poster_demon; break;
+            case 3: artwork = R.drawable.theme_poster_dragonball; break;
+            default: artwork = R.drawable.theme_poster_aot; break;
+        }
+        return new ThemeWallpaperDrawable(activity, artwork);
+    }
+
     private static int themeArtwork() {
         switch (ToxiThemeSystem.normalize(ToxiVisualSystem.THEME_INDEX)) {
             case 0: return R.drawable.theme_poster_onepiece;
@@ -540,9 +553,12 @@ final class NebulaHomeView {
         private final Paint imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint shadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         ThemeWallpaperDrawable(MainActivity activity) {
+            this(activity, themeArtwork());
+        }
+        ThemeWallpaperDrawable(MainActivity activity, int artworkResource) {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            bitmap = BitmapFactory.decodeResource(activity.getResources(), themeArtwork(), options);
+            bitmap = BitmapFactory.decodeResource(activity.getResources(), artworkResource, options);
             int top = Color.argb(92, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
             int middle = Color.argb(112, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
             int lower = Color.argb(174, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
