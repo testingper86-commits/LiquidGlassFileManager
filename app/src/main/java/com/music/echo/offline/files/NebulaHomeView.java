@@ -38,6 +38,47 @@ final class NebulaHomeView {
     static int BORDER = ToxiVisualSystem.EDGE_STROKE;
     static int LIME = ToxiVisualSystem.ACCENT;
     static int ICE = ToxiThemeSystem.ACCENT_ENDS[0];
+
+    // The same themed wallpaper is used by multiple screens. Keep one immutable,
+    // screen-sized bitmap instead of decoding a full-resolution copy per screen.
+    private static Bitmap cachedWallpaperBitmap;
+    private static int cachedWallpaperResource = 0;
+
+    private static synchronized Bitmap loadThemeWallpaper(Resources resources, int resourceId) {
+        if (cachedWallpaperBitmap != null && !cachedWallpaperBitmap.isRecycled()
+                && cachedWallpaperResource == resourceId) {
+            return cachedWallpaperBitmap;
+        }
+
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(resources, resourceId, bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            cachedWallpaperBitmap = null;
+            cachedWallpaperResource = 0;
+            return null;
+        }
+
+        android.util.DisplayMetrics metrics = resources.getDisplayMetrics();
+        int targetWidth = Math.max(1, metrics.widthPixels);
+        int targetHeight = Math.max(1, metrics.heightPixels);
+        int sampleSize = 1;
+        while (bounds.outWidth / (sampleSize * 2) >= targetWidth
+                && bounds.outHeight / (sampleSize * 2) >= targetHeight) {
+            sampleSize *= 2;
+        }
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sampleSize;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        options.inDither = true;
+        Bitmap decoded = BitmapFactory.decodeResource(resources, resourceId, options);
+        if (decoded != null) {
+            cachedWallpaperBitmap = decoded;
+            cachedWallpaperResource = resourceId;
+        }
+        return decoded;
+    }
     static int VIOLET = ToxiIcons.mix(ToxiVisualSystem.ACCENT, ToxiVisualSystem.TEXT_PRIMARY, 0.28f);
     static int TEXT = ToxiVisualSystem.TEXT_PRIMARY;
     static int MUTED = ToxiVisualSystem.TEXT_SECONDARY;
@@ -522,244 +563,4 @@ final class NebulaHomeView {
                         Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base)),
                         Color.argb(Math.max(24, alpha - 12), Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND))});
         glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
-        int edge = Color.argb(ToxiThemeEngine.edgeAlpha(210), Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
-        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), edge);
-        return glass;
-    }
-
-    /** Every destination follows the one selected theme identity; section IDs never choose artwork. */
-    static Drawable sectionWallpaper(MainActivity activity, int section) {
-        syncPalette();
-        return new ThemeWallpaperDrawable(activity, themeArtwork());
-    }
-
-    /** Refresh all attached and lazily-created destinations from the same active theme profile. */
-    static void applyThemeWallpapers(MainActivity activity) {
-        if (activity == null) return;
-        if (activity.homeScroll != null) activity.homeScroll.setBackground(sectionWallpaper(activity, 0));
-        if (activity.filesView != null) activity.filesView.setBackground(sectionWallpaper(activity, 1));
-        if (activity.toolsScroll != null) activity.toolsScroll.setBackground(sectionWallpaper(activity, 2));
-        if (activity.settingsScroll != null) activity.settingsScroll.setBackground(sectionWallpaper(activity, 3));
-        if (activity.themeScroll != null) activity.themeScroll.setBackground(sectionWallpaper(activity, 4));
-        if (activity.aboutScroll != null) activity.aboutScroll.setBackground(sectionWallpaper(activity, 4));
-        if (activity.recycleScroll != null) activity.recycleScroll.setBackground(sectionWallpaper(activity, 0));
-        if (activity.vaultScroll != null) activity.vaultScroll.setBackground(sectionWallpaper(activity, 2));
-        if (activity.dupScroll != null) activity.dupScroll.setBackground(sectionWallpaper(activity, 1));
-        if (activity.favView != null) activity.favView.setBackground(sectionWallpaper(activity, 4));
-        if (activity.listView != null) activity.listView.setBackground(sectionWallpaper(activity, 4));
-    }
-
-    private static int themeArtwork() {
-        switch (ToxiThemeSystem.normalize(ToxiVisualSystem.THEME_INDEX)) {
-            case 0: return R.drawable.theme_poster_onepiece;
-            case 1: return R.drawable.theme_poster_naruto;
-            case 2: return R.drawable.theme_poster_demon;
-            case 3: return R.drawable.theme_poster_dragonball;
-            default: return R.drawable.theme_poster_aot;
-        }
-    }
-
-    static final class ThemeWallpaperDrawable extends Drawable {
-        private final Bitmap bitmap;
-        private final Paint imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final Paint shadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ThemeWallpaperDrawable(MainActivity activity) {
-            this(activity, themeArtwork());
-        }
-        ThemeWallpaperDrawable(MainActivity activity, int artworkResource) {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            bitmap = BitmapFactory.decodeResource(activity.getResources(), artworkResource, options);
-            int top = Color.argb(92, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
-            int middle = Color.argb(112, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
-            int lower = Color.argb(174, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
-            shadePaint.setShader(new android.graphics.LinearGradient(0f, 0f, 0f, 1f,
-                    new int[]{top, middle, lower}, new float[]{0f, 0.55f, 1f}, android.graphics.Shader.TileMode.CLAMP));
-        }
-        @Override public void draw(Canvas canvas) {
-            android.graphics.Rect bounds = getBounds();
-            if (bitmap != null && !bitmap.isRecycled() && bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
-                float scale = Math.max(bounds.width() / (float) bitmap.getWidth(), bounds.height() / (float) bitmap.getHeight());
-                float width = bitmap.getWidth() * scale, height = bitmap.getHeight() * scale;
-                float left = bounds.left + (bounds.width() - width) * 0.5f, top = bounds.top + (bounds.height() - height) * 0.5f;
-                canvas.drawBitmap(bitmap, null, new android.graphics.RectF(left, top, left + width, top + height), imagePaint);
-            } else canvas.drawColor(BACKGROUND);
-            canvas.save();
-            canvas.translate(bounds.left, bounds.top);
-            canvas.scale(1f, Math.max(1f, bounds.height()));
-            canvas.drawRect(0f, 0f, bounds.width(), 1f, shadePaint);
-            canvas.restore();
-        }
-        @Override public void setAlpha(int alpha) { imagePaint.setAlpha(alpha); shadePaint.setAlpha(alpha); invalidateSelf(); }
-        @Override public void setColorFilter(ColorFilter filter) { imagePaint.setColorFilter(filter); shadePaint.setColorFilter(filter); invalidateSelf(); }
-        @Override public int getOpacity() { return PixelFormat.OPAQUE; }
-    }
-
-    private static TextView text(MainActivity a, String value, float size, int color, boolean medium) {
-        TextView view = new TextView(a);
-        view.setText(value);
-        view.setTextSize(size);
-        view.setTextColor(color == LIME ? ToxiVisualSystem.signalTextColor() : color);
-        view.setTypeface(Typeface.create(ToxiVisualSystem.fontFamily(), medium ? Typeface.BOLD : Typeface.NORMAL));
-        view.setIncludeFontPadding(false);
-        return view;
-    }
-
-    private static TextView actionText(MainActivity a, String value, int color) {
-        return text(a, value, 12, color, true);
-    }
-
-    static GradientDrawable navigationSurface() {
-        syncPalette();
-        int top = Color.argb(246, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
-        int bottom = Color.argb(238, Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL));
-        int edge = Color.argb(185, Color.red(BORDER), Color.green(BORDER), Color.blue(BORDER));
-        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{top, bottom});
-        glass.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(25)));
-        glass.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), edge);
-        return glass;
-    }
-
-    static GradientDrawable navigationHighlight() {
-        syncPalette();
-        GradientDrawable active = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.argb(48, Color.red(LIME), Color.green(LIME), Color.blue(LIME)),
-                        Color.argb(22, Color.red(ICE), Color.green(ICE), Color.blue(ICE))});
-        active.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(18)));
-        active.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))),
-                Color.argb(190, Color.red(LIME), Color.green(LIME), Color.blue(LIME)));
-        return active;
-    }
-
-    static Drawable navigationItemSurface() { syncPalette(); return new RippleDrawable(ColorStateList.valueOf(Color.argb(32, Color.red(TEXT), Color.green(TEXT), Color.blue(TEXT))), null, null); }
-
-    private static GradientDrawable background(int color, int stroke, int radius) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(color);
-        d.setCornerRadius(ToxiVisualSystem.dp(ToxiThemeEngine.radius(radius)));
-        d.setStroke(Math.max(1, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(1f))), stroke);
-        return d;
-    }
-
-    private static LinearLayout.LayoutParams margins(MainActivity a, int width, int height, int left, int top, int right, int bottom) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(width, height);
-        lp.setMargins(dp(a, left), dp(a, top), dp(a, right), dp(a, bottom));
-        return lp;
-    }
-
-    static int dp(MainActivity a, float value) {
-        return Math.round(ToxiThemeEngine.spacing(value) * a.getResources().getDisplayMetrics().density);
-    }
-
-    private static String formatSize(long bytes) {
-        if (bytes < 1024L) return bytes + " B";
-        String[] units = {"KB", "MB", "GB", "TB"};
-        double value = bytes;
-        int unit = -1;
-        do { value /= 1024.0; unit++; } while (value >= 1024.0 && unit < units.length - 1);
-        return String.format(java.util.Locale.ROOT, value >= 10 ? "%.0f %s" : "%.1f %s", value, units[unit]);
-    }
-
-    /** Compact geometric outline icon set used only by the NEBULA surfaces. */
-    static final class Glyph extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final String name;
-        private int tint;
-        private final Path path = new Path();
-        private final RectF rect = new RectF();
-
-        Glyph(android.content.Context context, String name, int tint) {
-            super(context);
-            this.name = name;
-            this.tint = tint;
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-            setFocusable(false);
-        }
-
-        void setTint(int color) { tint = color; invalidate(); }
-
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            float scale = Math.min(getWidth(), getHeight()) / 24f;
-            if (scale <= 0f) return;
-            canvas.save();
-            canvas.translate((getWidth() - 24f * scale) / 2f, (getHeight() - 24f * scale) / 2f);
-            canvas.scale(scale, scale);
-            paint.setColor(tint);
-            paint.setStrokeWidth(1.7f);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setStyle(Paint.Style.STROKE);
-            switch (name) {
-                case "search":
-                case "file-search":
-                    if (name.equals("file-search")) {
-                        path.reset(); path.moveTo(4, 2.5f); path.lineTo(14, 2.5f); path.lineTo(18, 6.5f); path.lineTo(18, 11);
-                        path.moveTo(14, 2.5f); path.lineTo(14, 7); path.lineTo(18, 7); canvas.drawPath(path, paint);
-                        canvas.drawLine(4, 2.5f, 4, 20.5f, paint); canvas.drawLine(4, 20.5f, 11, 20.5f, paint);
-                    }
-                    canvas.drawCircle(name.equals("search") ? 10 : 13, name.equals("search") ? 10 : 13, 6.2f, paint);
-                    canvas.drawLine(name.equals("search") ? 14.5f : 17.5f, name.equals("search") ? 14.5f : 17.5f, 21.5f, 21.5f, paint);
-                    break;
-                case "folder": case "folder-open":
-                    path.reset(); path.moveTo(2.5f, 6); path.lineTo(9, 6); path.lineTo(11, 8.5f); path.lineTo(21.5f, 8.5f);
-                    path.lineTo(19.5f, 19.5f); path.lineTo(4, 19.5f); path.close(); canvas.drawPath(path, paint);
-                    if (name.equals("folder-open")) { canvas.drawLine(2.5f, 10, 21, 10, paint); canvas.drawLine(4, 19.5f, 7, 12.5f, paint); canvas.drawLine(7, 12.5f, 22, 12.5f, paint); }
-                    break;
-                case "images":
-                    rect.set(2.5f, 3, 21.5f, 21); canvas.drawRoundRect(rect, 3, 3, paint);
-                    canvas.drawCircle(15.5f, 8, 1.6f, paint);
-                    path.reset(); path.moveTo(4, 18); path.lineTo(9, 12.5f); path.lineTo(12, 15.5f); path.lineTo(15, 12); path.lineTo(20, 18); canvas.drawPath(path, paint); break;
-                case "clapperboard":
-                    rect.set(2.5f, 7, 21.5f, 21); canvas.drawRoundRect(rect, 2, 2, paint);
-                    path.reset(); path.moveTo(2.5f, 7); path.lineTo(20, 3); path.lineTo(22, 8); path.lineTo(3.5f, 12); path.close(); canvas.drawPath(path, paint);
-                    canvas.drawLine(8, 5.7f, 10, 10.5f, paint); canvas.drawLine(14, 4.3f, 16, 9.2f, paint); break;
-                case "audio-lines":
-                    float[] heights = {7, 13, 18, 10, 15, 7, 12};
-                    for (int i = 0; i < heights.length; i++) canvas.drawLine(3 + i * 3, 12 - heights[i] / 2, 3 + i * 3, 12 + heights[i] / 2, paint); break;
-                case "files":
-                    path.reset(); path.moveTo(5, 2.5f); path.lineTo(15, 2.5f); path.lineTo(20, 7.5f); path.lineTo(20, 21); path.lineTo(5, 21); path.close(); canvas.drawPath(path, paint);
-                    canvas.drawLine(15, 2.5f, 15, 7.5f, paint); canvas.drawLine(15, 7.5f, 20, 7.5f, paint);
-                    canvas.drawLine(8, 12, 17, 12, paint); canvas.drawLine(8, 16, 16, 16, paint); break;
-                case "download":
-                    canvas.drawLine(12, 2.5f, 12, 15, paint); path.reset(); path.moveTo(6.5f, 10); path.lineTo(12, 15.5f); path.lineTo(17.5f, 10); canvas.drawPath(path, paint);
-                    canvas.drawLine(4, 18, 4, 21, paint); canvas.drawLine(4, 21, 20, 21, paint); canvas.drawLine(20, 21, 20, 18, paint); break;
-                case "compare":
-                    canvas.drawLine(3, 7, 20, 7, paint); path.reset(); path.moveTo(16, 3); path.lineTo(20, 7); path.lineTo(16, 11); canvas.drawPath(path, paint);
-                    canvas.drawLine(21, 17, 4, 17, paint); path.reset(); path.moveTo(8, 13); path.lineTo(4, 17); path.lineTo(8, 21); canvas.drawPath(path, paint); break;
-                case "binary":
-                    paint.setStyle(Paint.Style.FILL); paint.setTypeface(Typeface.create("monospace", Typeface.BOLD)); paint.setTextSize(9); canvas.drawText("01", 2, 10, paint); canvas.drawText("10", 8, 20, paint); break;
-                case "shield-check":
-                    path.reset(); path.moveTo(12, 2.5f); path.lineTo(20, 5.5f); path.lineTo(19, 13); path.lineTo(16, 18); path.lineTo(12, 21.5f); path.lineTo(8, 18); path.lineTo(5, 13); path.lineTo(4, 5.5f); path.close(); canvas.drawPath(path, paint);
-                    path.reset(); path.moveTo(8, 12); path.lineTo(11, 15); path.lineTo(16.5f, 9); canvas.drawPath(path, paint); break;
-                case "archive":
-                    rect.set(3, 8, 21, 21); canvas.drawRoundRect(rect, 2, 2, paint); rect.set(2, 3, 22, 8); canvas.drawRoundRect(rect, 1.5f, 1.5f, paint);
-                    canvas.drawLine(9, 13, 15, 13, paint); canvas.drawLine(10, 16, 14, 16, paint); break;
-                case "code":
-                    path.reset(); path.moveTo(8.5f, 6); path.lineTo(3, 12); path.lineTo(8.5f, 18); canvas.drawPath(path, paint);
-                    path.reset(); path.moveTo(15.5f, 6); path.lineTo(21, 12); path.lineTo(15.5f, 18); canvas.drawPath(path, paint);
-                    canvas.drawLine(14, 4, 10, 20, paint); break;
-                case "columns-2":
-                    rect.set(2.5f, 3, 10.5f, 21); canvas.drawRoundRect(rect, 1.5f, 1.5f, paint);
-                    rect.set(13.5f, 3, 21.5f, 21); canvas.drawRoundRect(rect, 1.5f, 1.5f, paint);
-                    canvas.drawLine(12, 4, 12, 20, paint); break;
-                case "languages":
-                    canvas.drawCircle(12, 12, 9, paint);
-                    canvas.drawOval(8, 3, 16, 21, paint);
-                    canvas.drawLine(4, 9, 20, 9, paint);
-                    canvas.drawLine(4, 15, 20, 15, paint); break;
-                case "house":
-                    path.reset(); path.moveTo(2.5f, 11); path.lineTo(12, 3); path.lineTo(21.5f, 11); path.moveTo(5, 9.5f); path.lineTo(5, 21); path.lineTo(19, 21); path.lineTo(19, 9.5f); path.moveTo(9.5f, 21); path.lineTo(9.5f, 14); path.lineTo(14.5f, 14); path.lineTo(14.5f, 21); canvas.drawPath(path, paint); break;
-                case "grid":
-                    for (int y = 0; y < 2; y++) for (int x = 0; x < 2; x++) { rect.set(3 + x * 10, 3 + y * 10, 11 + x * 10, 11 + y * 10); canvas.drawRoundRect(rect, 1.8f, 1.8f, paint); } break;
-                case "settings":
-                    canvas.drawCircle(12, 12, 4, paint); canvas.drawCircle(12, 12, 8, paint);
-                    for (int i = 0; i < 8; i++) { double angle = Math.PI * i / 4; float x1 = 12 + (float)Math.cos(angle) * 9; float y1 = 12 + (float)Math.sin(angle) * 9; float x2 = 12 + (float)Math.cos(angle) * 11; float y2 = 12 + (float)Math.sin(angle) * 11; canvas.drawLine(x1, y1, x2, y2, paint); } break;
-                default:
-                    canvas.drawCircle(12, 12, 8, paint); canvas.drawCircle(12, 12, 2, paint); break;
-            }
-            canvas.restore();
-        }
-    }
-}
+        int edge = Color.argb(ToxiThemeEngin¢ëiºÛkºwµç_ºYhºÚn¶Æ¯yÛhþiíýø¥zÏÜ¢jh²*?¢ëiºßÞÅç)¢W¬µÚ.¶ÜmN‹â{ayû¥–‹­¦ëkºw(uê)zæžßßŠW¬ýÊ&¦‹"£ú.¶›­ýì^rš%zË]¢ëmÆÚÞiÓ«ºÇ‚8ÃÎHƒ!Ó8âÜjßæžßßŠW¬ýÊ&¦‹"£ú.¶›­ýì^rš%zË]¢ëmÆßáy§g×M?š{~)^³÷(šš,ŠèºÚn·÷±yÊh•ë-v‹­·µ¨¥Ÿ]4þiíýø¥zÏÜ¢jh²*?¢ëiºßÞÅç)¢W¬µÚ.¶Üm
