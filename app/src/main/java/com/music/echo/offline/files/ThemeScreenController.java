@@ -91,54 +91,41 @@ final class ThemeScreenController {
             tile.setBackground(ToxiVisualSystem.surface(22, true));
             ToxiVisualSystem.clipRound(tile, 22f);
 
-            // A full-card crop supplies cinematic atmosphere without sacrificing
-            // the complete poster: the crisp foreground poster remains contained.
-            ImageView backdrop = new ImageView(activity);
-            backdrop.setImageResource(themePoster(i));
-            backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            backdrop.setAlpha(selected ? 0.42f : 0.32f);
-            backdrop.setContentDescription(null);
-            tile.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
-
+            // Keep one crisp poster only. A duplicate full-card copy created
+            // a ghosted second character behind the contained poster.
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
             poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
             poster.setBackgroundColor(Color.TRANSPARENT);
-            poster.setAlpha(selected ? 1f : 0.94f);
+            poster.setAlpha(selected ? 1f : 0.96f);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " full cinematic poster artwork");
-            int posterWidth = ToxiVisualSystem.dp(116);
+            int posterWidth = ToxiVisualSystem.dp(148);
             FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
                     posterWidth, -1, Gravity.END | Gravity.CENTER_VERTICAL);
-            posterParams.rightMargin = ToxiVisualSystem.dp(8);
+            posterParams.rightMargin = ToxiVisualSystem.dp(5);
             tile.addView(poster, posterParams);
 
+            // Restrict the dark readability gradient to the text side; never
+            // wash out or duplicate the poster artwork.
             View shade = new View(activity);
             android.graphics.drawable.GradientDrawable shadeGradient =
                     new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                            new int[]{Color.argb(18, 5, 7, 12), Color.argb(36, 5, 7, 12),
-                                    Color.argb(238, 5, 7, 12)});
+                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                            new int[]{Color.argb(250, 5, 7, 12), Color.argb(238, 5, 7, 12),
+                                    Color.argb(196, 5, 7, 12), Color.argb(0, 5, 7, 12)});
             shadeGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
             shade.setBackground(shadeGradient);
-            tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
-
-            // Keep the copy zone calm while allowing the poster to remain visible.
-            View copyShade = new View(activity);
-            android.graphics.drawable.GradientDrawable copyGradient =
-                    new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                            new int[]{Color.argb(226, 5, 7, 12), Color.argb(184, 5, 7, 12),
-                                    Color.argb(48, 5, 7, 12), Color.argb(0, 5, 7, 12)});
-            copyGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
-            copyShade.setBackground(copyGradient);
-            tile.addView(copyShade, new FrameLayout.LayoutParams(-1, -1));
+            FrameLayout.LayoutParams shadeParams = new FrameLayout.LayoutParams(
+                    (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.72f),
+                    -1, Gravity.START);
+            tile.addView(shade, shadeParams);
 
             LinearLayout copy = new LinearLayout(activity);
             copy.setOrientation(LinearLayout.VERTICAL);
             copy.setGravity(Gravity.BOTTOM);
             copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(160)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
             TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
                     17, Color.WHITE, true);
@@ -148,7 +135,7 @@ final class ThemeScreenController {
             TextView description = ToxiVisualSystem.text(activity,
                     ToxiVisualSystem.themeDescription(i), 11,
                     Color.argb(235, 245, 248, 250), false);
-            description.setMaxLines(1);
+            description.setMaxLines(2);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(-1, -2);
             descriptionParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
@@ -182,7 +169,7 @@ final class ThemeScreenController {
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(156)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(180)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
             NebulaHomeView.animateHomeCard(activity, tile, i);
         }
