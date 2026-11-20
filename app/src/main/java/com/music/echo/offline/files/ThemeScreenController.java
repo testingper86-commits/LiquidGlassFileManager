@@ -45,7 +45,7 @@ final class ThemeScreenController {
         panel.setClipToPadding(false);
         panel.setFocusable(false);
         panel.setFocusableInTouchMode(false);
-        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(18)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
+        panel.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
@@ -159,8 +159,9 @@ final class ThemeScreenController {
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(164)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(156)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
+            NebulaHomeView.animateHomeCard(activity, tile, i);
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);

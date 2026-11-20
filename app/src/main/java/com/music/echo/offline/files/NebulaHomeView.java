@@ -151,8 +151,8 @@ final class NebulaHomeView {
                 gridRow.addView(item, cardLp);
                 animateHomeCard(a, item, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 104));
-            rowLp.bottomMargin = dp(a, 9);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 116));
+            rowLp.bottomMargin = dp(a, 12);
             host.addView(gridRow, rowLp);
         }
         addOtherQuickAccess(a, host);
@@ -338,27 +338,34 @@ final class NebulaHomeView {
         return 2;
     }
 
-    private static void animateHomeCard(MainActivity a, View card, int index) {
+    static void animateHomeCard(MainActivity a, View card, int index) {
         if (ToxiVisualSystem.booleanPreference("reduce_motion", false)
                 || (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled())) {
             card.setAlpha(1f);
             card.setTranslationY(0f);
+            card.setScaleX(1f);
+            card.setScaleY(1f);
             return;
         }
         card.setAlpha(0f);
-        card.setTranslationY(dp(a, 10));
+        card.setTranslationY(dp(a, 12));
+        card.setScaleX(0.985f);
+        card.setScaleY(0.985f);
         card.post(() -> {
             if (!card.isAttachedToWindow()) {
                 card.setAlpha(1f);
                 card.setTranslationY(0f);
+                card.setScaleX(1f);
+                card.setScaleY(1f);
                 return;
             }
             card.animate().cancel();
             card.animate()
                     .alpha(1f)
+                    .scaleX(1f).scaleY(1f)
                     .translationY(0f)
                     .setStartDelay(index * 35L)
-                    .setDuration(ToxiThemeEngine.motionDuration(220L))
+                    .setDuration(ToxiThemeEngine.motionDuration(260L))
                     .setInterpolator(new DecelerateInterpolator())
                     .start();
         });
@@ -368,7 +375,7 @@ final class NebulaHomeView {
         syncPalette();
         host.removeAllViews();
         host.setOrientation(LinearLayout.VERTICAL);
-        host.setPadding(dp(a, 18), dp(a, 22), dp(a, 18), dp(a, 12));
+        host.setPadding(dp(a, 16), dp(a, 18), dp(a, 16), dp(a, 12));
         a.toolsScroll.setBackground(sectionWallpaper(a, 2));
         host.setBackgroundColor(Color.TRANSPARENT);
 
@@ -378,8 +385,8 @@ final class NebulaHomeView {
         toolsHeader.setBackground(ToxiVisualSystem.surface(24, true));
         toolsHeader.addView(text(a, "Tools", 24, TEXT, true),
                 new LinearLayout.LayoutParams(0, -2, 1f));
-        host.addView(toolsHeader, margins(a, -1, -2, 0, 0, 0, 18));
-        host.addView(text(a, "Seven focused utilities. Each opens directly.", 13, MUTED, false), margins(a, -1, -2, 0, 0, 0, 22));
+        host.addView(toolsHeader, margins(a, -1, -2, 0, 0, 0, 14));
+        host.addView(text(a, "Seven focused utilities. Each opens directly.", 13, MUTED, false), margins(a, -1, -2, 0, 0, 0, 18));
         addSectionTitle(a, host, "OFFLINE UTILITIES", "7 TOOLS");
         String[] names = {"Dual-Pane Explorer", "Hex Editor", "Folder Comparator", "Encoding Converter", "ZIP Editor", "Integrity Studio", "Text Editor"};
         String[] glyphs = {"columns-2", "binary", "compare", "languages", "archive", "shield-check", "code"};
@@ -395,28 +402,30 @@ final class NebulaHomeView {
                 LinearLayout card = new LinearLayout(a);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setGravity(Gravity.CENTER_HORIZONTAL);
-                card.setPadding(dp(a, 8), dp(a, 15), dp(a, 8), dp(a, 11));
+                card.setPadding(dp(a, 10), dp(a, 12), dp(a, 10), dp(a, 10));
                 card.setBackground(toolCardSurface(ACCENTS[index]));
+                ToxiVisualSystem.clipRound(card, 22f);
+                card.setClipToOutline(true);
                 card.setElevation(dp(a, 2));
                 FrameLayout iconWell = new FrameLayout(a);
                 iconWell.setBackground(background(Color.argb(28, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), Color.argb(90, Color.red(ACCENTS[index]), Color.green(ACCENTS[index]), Color.blue(ACCENTS[index])), 14));
                 Glyph icon = new Glyph(a, glyphs[index], ACCENTS[index]);
                 iconWell.addView(icon, new FrameLayout.LayoutParams(dp(a, 29), dp(a, 29), Gravity.CENTER));
-                card.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 48), dp(a, 48)));
+                card.addView(iconWell, new LinearLayout.LayoutParams(dp(a, 44), dp(a, 44)));
                 TextView name = text(a, names[index], 12, TEXT, true);
                 name.setGravity(Gravity.CENTER);
                 name.setMaxLines(2);
-                card.addView(name, margins(a, -1, -2, 0, 10, 0, 0));
+                card.addView(name, margins(a, -1, -2, 0, 7, 0, 0));
                 TextView detail = text(a, details[index], 9, MUTED, false);
                 detail.setGravity(Gravity.CENTER);
                 detail.setMaxLines(2);
-                card.addView(detail, margins(a, -1, -2, 0, 4, 0, 0));
+                card.addView(detail, margins(a, -1, -2, 0, 2, 0, 0));
                 card.setContentDescription(names[index] + ". " + details[index]);
                 card.setFocusable(true);
                 card.setOnClickListener(v -> a.launchNebulaTool(index));
                 ToxiVisualSystem.interactive(card);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        rowItems == 1 ? -1 : 0, dp(a, 122), rowItems == 1 ? 0f : 1f);
+                        rowItems == 1 ? -1 : 0, dp(a, 132), rowItems == 1 ? 0f : 1f);
                 if (rowItems > 1) {
                     if (col == 0) lp.rightMargin = dp(a, 6);
                     else if (col == rowItems - 1) lp.leftMargin = dp(a, 6);
@@ -426,9 +435,10 @@ final class NebulaHomeView {
                     }
                 }
                 line.addView(card, lp);
+                animateHomeCard(a, card, index);
             }
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 122));
-            rowLp.bottomMargin = dp(a, 11);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, dp(a, 132));
+            rowLp.bottomMargin = dp(a, 12);
             host.addView(line, rowLp);
         }
         View footer = new View(a);
@@ -443,7 +453,7 @@ final class NebulaHomeView {
         int percent = total > 0 ? (int) Math.max(0L, Math.min(100L,
                 Math.round((double) used * 100.0d / (double) total))) : -1;
 
-        LinearLayout card = panel(a, 20);
+        LinearLayout card = panel(a, 22);
         LinearLayout top = new LinearLayout(a);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView storageMark = text(a, "▤", 23, LIME, true);
@@ -553,7 +563,7 @@ final class NebulaHomeView {
         // Keep utility cards on the same theme-owned liquid-glass material as Home,
         // Theme Studio, navigation and the file-management surfaces. The glyph remains
         // the per-tool signal; the card itself must never introduce a second palette.
-        return ToxiVisualSystem.surface(18, true);
+        return ToxiVisualSystem.surface(22, true);
     }
 
     private static int dpRadius(int value) {
