@@ -148,11 +148,22 @@ final class ThemeScreenController {
             // a ghosted second character behind the contained poster.
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
-            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);\n            poster.setAdjustViewBounds(true);\n            poster.setCropToPadding(false);
             poster.setBackgroundColor(Color.TRANSPARENT);
             poster.setAlpha(selected ? 1f : 0.96f);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " full cinematic poster artwork");
-            int posterWidth = ToxiVisualSystem.dp(148);
+            // Size the poster viewport from the source artwork's real aspect
+            // ratio. A fixed-width box can make different portrait posters look
+            // inconsistently zoomed or clipped on narrow and wide devices.
+            android.graphics.drawable.Drawable posterDrawable = poster.getDrawable();
+            int sourceWidth = posterDrawable == null ? 0 : posterDrawable.getIntrinsicWidth();
+            int sourceHeight = posterDrawable == null ? 0 : posterDrawable.getIntrinsicHeight();
+            float posterAspect = sourceWidth > 0 && sourceHeight > 0
+                    ? (float) sourceWidth / (float) sourceHeight : 0.68f;
+            int cardHeight = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(216));
+            int maxPosterWidth = ToxiVisualSystem.dp(156);
+            int posterWidth = Math.min(maxPosterWidth,
+                    Math.max(ToxiVisualSystem.dp(112), Math.round(cardHeight * posterAspect)));
             FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
                     posterWidth, -1, Gravity.END | Gravity.CENTER_VERTICAL);
             posterParams.rightMargin = ToxiVisualSystem.dp(5);
