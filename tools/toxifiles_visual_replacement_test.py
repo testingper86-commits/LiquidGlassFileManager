@@ -163,11 +163,23 @@ if "GradientDrawable.Orientation.TOP_BOTTOM" not in screen or "TAP TO APPLY" not
     raise SystemExit("Theme Studio must use cinematic full-bleed poster cards with an explicit active state")
 if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
     raise SystemExit("Home must use full-page active-theme artwork and theme-adaptive premium glass cards")
-# All destinations must use the active theme artwork; section IDs cannot hard-code a franchise.
-if "return new ThemeWallpaperDrawable(activity, themeArtwork());" not in home:
-    raise SystemExit("Every section wallpaper must resolve from the currently selected theme")
-if "switch (section)" in home[home.index("static Drawable sectionWallpaper"):home.index("private static int themeArtwork")]:
-    raise SystemExit("Section wallpaper selection must not override the active theme")
+# Each primary destination keeps its own franchise artwork while Theme Studio
+# continues to select the active profile for the shared identity surfaces.
+section_wallpaper = home[home.index("static Drawable sectionWallpaper"):home.index("private static int themeArtwork")]
+section_map = {
+    "case 0: artwork = R.drawable.theme_poster_onepiece": "Home",
+    "case 1: artwork = R.drawable.theme_poster_naruto": "Files",
+    "case 2: artwork = R.drawable.theme_poster_demon": "Tools",
+    "case 3: artwork = R.drawable.theme_poster_dragonball": "Settings",
+    "default: artwork = R.drawable.theme_poster_aot": "Theme/About",
+}
+for token, destination in section_map.items():
+    if token not in section_wallpaper:
+        raise SystemExit(f"{destination} is missing its dedicated anime wallpaper")
+if "return new ThemeWallpaperDrawable(activity, artwork);" not in section_wallpaper:
+    raise SystemExit("Section wallpaper must render its destination-specific anime poster")
+if "switch (ToxiThemeSystem.normalize(ToxiVisualSystem.THEME_INDEX))" not in home[home.index("private static int themeArtwork"):]:
+    raise SystemExit("Shared identity surfaces must still follow the selected Theme Studio profile")
 for token in ["NebulaHomeView.applyThemeWallpapers(this);", "homeScroll.setBackground(sectionWallpaper(activity, 0))",
               "filesView.setBackground(sectionWallpaper(activity, 1))", "toolsScroll.setBackground(sectionWallpaper(activity, 2))",
               "settingsScroll.setBackground(sectionWallpaper(activity, 3))", "themeScroll.setBackground(sectionWallpaper(activity, 4))"]:
