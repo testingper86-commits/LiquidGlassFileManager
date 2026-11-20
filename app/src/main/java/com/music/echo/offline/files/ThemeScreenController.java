@@ -33,6 +33,32 @@ final class ThemeScreenController {
             default: return R.drawable.theme_poster_aot;
         }
     }
+
+    private static int themeCategoryArtwork(int themeIndex, int categoryIndex) {
+        int theme = ToxiThemeSystem.normalize(themeIndex);
+        switch (theme) {
+            case 0:
+                return new int[]{R.drawable.home_category_onepiece_images,
+                        R.drawable.home_category_onepiece_videos, R.drawable.home_category_onepiece_audio,
+                        R.drawable.home_category_onepiece_documents}[categoryIndex];
+            case 1:
+                return new int[]{R.drawable.home_category_naruto_images,
+                        R.drawable.home_category_naruto_videos, R.drawable.home_category_naruto_audio,
+                        R.drawable.home_category_naruto_documents}[categoryIndex];
+            case 2:
+                return new int[]{R.drawable.home_category_demon_images,
+                        R.drawable.home_category_demon_videos, R.drawable.home_category_demon_audio,
+                        R.drawable.home_category_demon_documents}[categoryIndex];
+            case 3:
+                return new int[]{R.drawable.home_category_dragonball_images,
+                        R.drawable.home_category_dragonball_videos, R.drawable.home_category_dragonball_audio,
+                        R.drawable.home_category_dragonball_documents}[categoryIndex];
+            default:
+                return new int[]{R.drawable.home_category_aot_images,
+                        R.drawable.home_category_aot_videos, R.drawable.home_category_aot_audio,
+                        R.drawable.home_category_aot_documents}[categoryIndex];
+        }
+    }
     void build() {
         activity.themeScroll.setSaveEnabled(false);
         int restoreScrollY = Math.max(0, activity.themeScroll.getScrollY());
@@ -125,7 +151,7 @@ final class ThemeScreenController {
             copy.setGravity(Gravity.BOTTOM);
             copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(160)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(150)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
             TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
                     17, Color.WHITE, true);
@@ -140,6 +166,30 @@ final class ThemeScreenController {
             LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(-1, -2);
             descriptionParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
             copy.addView(description, descriptionParams);
+
+            // Four live category thumbnails make every theme's section artwork
+            // visible in Theme Studio, not only after that theme is activated.
+            LinearLayout previews = new LinearLayout(activity);
+            previews.setOrientation(LinearLayout.HORIZONTAL);
+            previews.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams previewsParams = new LinearLayout.LayoutParams(-1, -2);
+            previewsParams.topMargin = ToxiVisualSystem.dp(9);
+            String[] previewLabels = {"Images", "Videos", "Audio", "Documents"};
+            for (int category = 0; category < 4; category++) {
+                FrameLayout previewFrame = new FrameLayout(activity);
+                previewFrame.setBackground(ToxiVisualSystem.surface(7, false));
+                previewFrame.setClipToOutline(true);
+                ImageView preview = new ImageView(activity);
+                preview.setImageResource(themeCategoryArtwork(i, category));
+                preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                preview.setContentDescription(previewLabels[category] + " artwork");
+                previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
+                LinearLayout.LayoutParams previewLp = new LinearLayout.LayoutParams(
+                        ToxiVisualSystem.dp(29), ToxiVisualSystem.dp(29));
+                if (category > 0) previewLp.leftMargin = ToxiVisualSystem.dp(5);
+                previews.addView(previewFrame, previewLp);
+            }
+            copy.addView(previews, previewsParams);
             tile.addView(copy, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
 
             TextView state = ToxiVisualSystem.text(activity,
@@ -169,7 +219,7 @@ final class ThemeScreenController {
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(180)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(204)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
             NebulaHomeView.animateHomeCard(activity, tile, i);
         }
