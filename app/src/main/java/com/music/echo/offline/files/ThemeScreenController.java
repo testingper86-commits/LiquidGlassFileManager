@@ -19,16 +19,9 @@ final class ThemeScreenController {
     }
     void open() {
         activity.themeScroll.setSaveEnabled(false);
-        build();
         activity.themeScroll.scrollTo(0, 0);
+        build();
         activity.showOverlay(activity.themeScroll);
-        activity.themeScroll.post(() -> activity.themeScroll.scrollTo(0, 0));
-        activity.themeScroll.postDelayed(() -> {
-            if (activity.themeScroll.getVisibility() == View.VISIBLE) {
-                activity.themeScroll.scrollTo(0, 0);
-                activity.themeScroll.fullScroll(View.FOCUS_UP);
-            }
-        }, 250L);
     }
 
     private static int themePoster(int index) {
@@ -42,11 +35,10 @@ final class ThemeScreenController {
     }
     void build() {
         activity.themeScroll.setSaveEnabled(false);
+        int restoreScrollY = Math.max(0, activity.themeScroll.getScrollY());
         activity.themeScroll.setFocusable(true);
         activity.themeScroll.setFocusableInTouchMode(true);
-        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         activity.themeScroll.removeAllViews();
-        activity.themeScroll.scrollTo(0, 0);
         LinearLayout panel = new LinearLayout(activity);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setClipChildren(false);
@@ -57,12 +49,17 @@ final class ThemeScreenController {
         LinearLayout header = new LinearLayout(activity);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView back = ToxiVisualSystem.iconButton(activity, ToxiIcons.BACK, ToxiVisualSystem.TEXT_PRIMARY);
+        int backTarget = ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48));
         back.setContentDescription("Back");
-        back.setFocusable(false);
+        back.setScaleType(ImageView.ScaleType.CENTER);
+        back.setFocusable(true);
+        back.setClickable(true);
+        back.setMinimumWidth(backTarget);
+        back.setMinimumHeight(backTarget);
         back.setOnClickListener(v -> activity.closeOverlay());
-        header.addView(back, new LinearLayout.LayoutParams(
-                ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48)),
-                ToxiVisualSystem.dp(ToxiThemeEngine.touchTarget(48))));
+        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(backTarget, backTarget);
+        backParams.gravity = Gravity.CENTER_VERTICAL;
+        header.addView(back, backParams);
         TextView title = ToxiVisualSystem.text(activity, "Theme Studio", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
         titleLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));
@@ -167,15 +164,20 @@ final class ThemeScreenController {
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
-        // Keep the final poster fully drawable inside the reserved bottom inset.
-        // ScrollView's default clip-to-padding cut the card at the dock-safe boundary.
-        activity.themeScroll.setClipToPadding(false);
-        activity.themeScroll.setOnScrollChangeListener((View v, int scrollX, int scrollY,
-                int oldScrollX, int oldScrollY) -> { });
+        // Keep the dock/system-bar safe area inside the scroll range and clip cards
+        // at the viewport edge so the floating navigation never covers their content.
+        activity.themeScroll.setClipToPadding(true);
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
-        // WRAP_CONTENT is essential: MATCH_PARENT constrained the panel to one
-        // viewport, clipping the remaining themes instead of extending scroll range.
+        // WRAP_CONTENT is essential: MATCH_PARENT constrains the panel to one
+        // viewport and prevents the remaining theme cards from extending scroll range.
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
+        activity.themeScroll.post(() -> {
+            if (activity.themeScroll.getChildCount() > 0) {
+                int range = Math.max(0, activity.themeScroll.getChildAt(0).getHeight()
+                        - activity.themeScroll.getHeight() + activity.themeScroll.getPaddingBottom());
+                activity.themeScroll.scrollTo(0, Math.min(restoreScrollY, range));
+            }
+        });
     }
 }
