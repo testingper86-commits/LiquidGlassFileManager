@@ -163,7 +163,7 @@ final class ThemeScreenController {
 
             ImageView poster = new ImageView(activity);
             loadPosterAsync(poster, themePoster(i));
-            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " theme artwork");
             FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
                     ToxiVisualSystem.dp(154), -1, Gravity.END);

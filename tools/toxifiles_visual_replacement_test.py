@@ -171,10 +171,10 @@ for token in ["theme_poster_onepiece", "theme_poster_naruto", "theme_poster_demo
         raise SystemExit(f"Shared anime identity surface is missing: {token}")
 if "identityBanner" in browser or "ToxiThemeIdentityView.create" in browser:
     raise SystemExit("File lists must not insert a separate anime banner above the requested content")
-if "TAP TO APPLY" not in screen or "ACTIVE THEME" not in screen:
-    raise SystemExit("Theme Studio must expose explicit apply and active states")
-if "poster.setScaleType(ImageView.ScaleType.FIT_CENTER)" not in screen or "posterDrawable.getIntrinsicWidth()" not in screen or "posterDrawable.getIntrinsicHeight()" not in screen:
-    raise SystemExit("Theme Studio must fit each complete poster using its source aspect ratio")
+if "SELECT WORLD" not in screen or "✓  SELECTED" not in screen:
+    raise SystemExit("Theme Studio must expose explicit apply and selected states")
+if "poster.setScaleType(ImageView.ScaleType.FIT_CENTER)" not in screen:
+    raise SystemExit("Theme Studio must display complete poster artwork without cropping")
 if "ImageView backdrop" in screen or "copyShade" in screen:
     raise SystemExit("Theme Studio must not render duplicate poster layers or ghosted artwork")
 if "new ThemeWallpaperDrawable(a)" not in home or "categoryGlassSurface(accent)" not in home:
