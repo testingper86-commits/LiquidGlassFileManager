@@ -182,9 +182,13 @@ if "switch (section)" in home[home.index("static Drawable sectionWallpaper"):hom
     raise SystemExit("Section wallpaper selection must not override the active theme")
 for token in ["NebulaHomeView.applyThemeWallpapers(this);", "homeScroll.setBackground(sectionWallpaper(activity, 0))",
               "filesView.setBackground(sectionWallpaper(activity, 1))", "toolsScroll.setBackground(sectionWallpaper(activity, 2))",
-              "settingsScroll.setBackground(sectionWallpaper(activity, 3))", "themeScroll.setBackground(sectionWallpaper(activity, 4))"]:
+              "settingsScroll.setBackground(sectionWallpaper(activity, 3))"]:
     if token not in (main_activity + home):
-        raise SystemExit(f"Theme change must refresh every destination wallpaper: {token}")
+        raise SystemExit(f"Theme change must refresh every themed destination wallpaper: {token}")
+if "themeScroll.setBackgroundColor(Color.rgb(8, 12, 18))" not in (main_activity + home):
+    raise SystemExit("Theme Studio must keep its neutral backdrop to prevent layered poster duplication")
+if "poster.setScaleType(ImageView.ScaleType.FIT_CENTER)" not in screen:
+    raise SystemExit("Theme Studio posters must preserve the full artwork without center cropping")
 if "activity.settings.setBackground(NebulaHomeView.wallpaper(activity))" in settings:
     raise SystemExit("Settings must preserve the unified active-theme wallpaper")
 if "overlay.setBackgroundColor(Color.argb(alpha" in overlay_controller or "current.setBackgroundColor(Color.argb" in overlay_controller:
