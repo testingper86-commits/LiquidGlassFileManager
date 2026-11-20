@@ -21,6 +21,7 @@ final class ThemeScreenController {
     private final MainActivity activity;
     private FrameLayout[] themeTiles;
     private TextView[] themeStates;
+    private boolean themeChanged;
     private static final ExecutorService ARTWORK_EXECUTOR = Executors.newFixedThreadPool(2);
     private static final LruCache<Integer, Bitmap> POSTER_CACHE = new LruCache<Integer, Bitmap>(12 * 1024 * 1024) {
         @Override protected int sizeOf(Integer key, Bitmap value) { return value.getByteCount(); }
@@ -32,6 +33,7 @@ final class ThemeScreenController {
     void open() {
         activity.themeScroll.setSaveEnabled(false);
         activity.themeScroll.scrollTo(0, 0);
+        themeChanged = false;
         build();
         activity.showOverlay(activity.themeScroll);
     }
@@ -115,21 +117,24 @@ final class ThemeScreenController {
         back.setClickable(true);
         back.setMinimumWidth(backTarget);
         back.setMinimumHeight(backTarget);
-        back.setOnClickListener(v -> activity.closeOverlay());
+        back.setOnClickListener(v -> {
+            activity.closeOverlay();
+            if (themeChanged) activity.recolor();
+        });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(backTarget, backTarget);
         backParams.gravity = Gravity.CENTER_VERTICAL;
         header.addView(back, backParams);
-        TextView title = ToxiVisualSystem.text(activity, "Theme Studio", 23, ToxiVisualSystem.TEXT_PRIMARY, true);
+        TextView title = ToxiVisualSystem.text(activity, "Your worlds", 25, ToxiVisualSystem.TEXT_PRIMARY, true);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
         titleLp.leftMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8));
         header.addView(title, titleLp);
         panel.addView(header);
         title.setLetterSpacing(-0.025f);
-        TextView subtitle = ToxiVisualSystem.text(activity, "Five anime worlds. One unified, adaptive filespace.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
+        TextView subtitle = ToxiVisualSystem.text(activity, "Choose a world. Make it yours.", 13, ToxiVisualSystem.TEXT_SECONDARY, false);
         subtitle.setLineSpacing(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), 1.04f);
         subtitle.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         panel.addView(subtitle);
-        TextView label = ToxiVisualSystem.text(activity, "CHOOSE YOUR WORLD", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView label = ToxiVisualSystem.text(activity, "THEME COLLECTION  ·  05 WORLDS", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.14f);
         label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
@@ -152,87 +157,70 @@ final class ThemeScreenController {
             tile.setBackground(ToxiVisualSystem.surface(22, true));
             ToxiVisualSystem.clipRound(tile, 22f);
 
-            // Keep one crisp poster only. A duplicate full-card copy created
-            // a ghosted second character behind the contained poster.
+            // Editorial theme tile: immersive poster panel with a dedicated content rail.
+            tile.setBackground(ToxiVisualSystem.surface(24, true));
+            ToxiVisualSystem.clipRound(tile, 24f);
+
             ImageView poster = new ImageView(activity);
             loadPosterAsync(poster, themePoster(i));
-            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            poster.setAdjustViewBounds(true);
-            poster.setCropToPadding(false);
-            poster.setBackgroundColor(Color.TRANSPARENT);
-            poster.setAlpha(selected ? 1f : 0.96f);
-            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " full cinematic poster artwork");
-            // Size the poster viewport from the source artwork's real aspect
-            // ratio. A fixed-width box can make different portrait posters look
-            // inconsistently zoomed or clipped on narrow and wide devices.
-            android.graphics.drawable.Drawable posterDrawable = poster.getDrawable();
-            int sourceWidth = posterDrawable == null ? 0 : posterDrawable.getIntrinsicWidth();
-            int sourceHeight = posterDrawable == null ? 0 : posterDrawable.getIntrinsicHeight();
-            float posterAspect = sourceWidth > 0 && sourceHeight > 0
-                    ? (float) sourceWidth / (float) sourceHeight : 0.68f;
-            int cardHeight = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(176));
-            int maxPosterWidth = ToxiVisualSystem.dp(136);
-            int posterWidth = Math.min(maxPosterWidth,
-                    Math.max(ToxiVisualSystem.dp(112), Math.round(cardHeight * posterAspect)));
+            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " theme artwork");
             FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
-                    posterWidth, -1, Gravity.END | Gravity.CENTER_VERTICAL);
-            posterParams.rightMargin = ToxiVisualSystem.dp(5);
+                    ToxiVisualSystem.dp(154), -1, Gravity.END);
             tile.addView(poster, posterParams);
 
-            // Restrict the dark readability gradient to the text side; never
-            // wash out or duplicate the poster artwork.
-            View shade = new View(activity);
-            android.graphics.drawable.GradientDrawable shadeGradient =
+            View wash = new View(activity);
+            android.graphics.drawable.GradientDrawable washGradient =
                     new android.graphics.drawable.GradientDrawable(
                             android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                            new int[]{Color.argb(250, 5, 7, 12), Color.argb(238, 5, 7, 12),
-                                    Color.argb(196, 5, 7, 12), Color.argb(0, 5, 7, 12)});
-            shadeGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
-            shade.setBackground(shadeGradient);
-            FrameLayout.LayoutParams shadeParams = new FrameLayout.LayoutParams(
-                    (int) (activity.getResources().getDisplayMetrics().widthPixels * 0.72f),
-                    -1, Gravity.START);
-            tile.addView(shade, shadeParams);
+                            new int[]{Color.rgb(8, 12, 19), Color.rgb(8, 12, 19),
+                                    Color.argb(228, 8, 12, 19), Color.argb(0, 8, 12, 19)});
+            washGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(24f));
+            wash.setBackground(washGradient);
+            tile.addView(wash, new FrameLayout.LayoutParams(-1, -1));
 
-            LinearLayout copy = new LinearLayout(activity);
-            copy.setOrientation(LinearLayout.VERTICAL);
-            copy.setGravity(Gravity.BOTTOM);
-            copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(150)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
+            LinearLayout content = new LinearLayout(activity);
+            content.setOrientation(LinearLayout.VERTICAL);
+            content.setGravity(Gravity.CENTER_VERTICAL);
+            content.setPadding(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(14),
+                    ToxiVisualSystem.dp(150), ToxiVisualSystem.dp(14));
+
+            TextView ordinal = ToxiVisualSystem.text(activity, String.format(java.util.Locale.US, "WORLD  0%d", i + 1),
+                    9.5f, ToxiThemeSystem.ACCENT_ENDS[i], true);
+            ordinal.setLetterSpacing(0.16f);
+            content.addView(ordinal);
+
             TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
-                    17, Color.WHITE, true);
+                    19, Color.WHITE, true);
             themeName.setMaxLines(2);
             themeName.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            copy.addView(themeName);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
+            nameParams.topMargin = ToxiVisualSystem.dp(5);
+            content.addView(themeName, nameParams);
+
             TextView description = ToxiVisualSystem.text(activity,
-                    ToxiVisualSystem.themeDescription(i), 11,
-                    Color.argb(235, 245, 248, 250), false);
+                    ToxiVisualSystem.themeDescription(i), 11.5f,
+                    Color.argb(220, 238, 243, 248), false);
             description.setMaxLines(2);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(-1, -2);
-            descriptionParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
-            copy.addView(description, descriptionParams);
-
-            tile.addView(copy, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
+            LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(-1, -2);
+            descParams.topMargin = ToxiVisualSystem.dp(4);
+            content.addView(description, descParams);
 
             TextView state = ToxiVisualSystem.text(activity,
-                    selected ? "✓  ACTIVE THEME" : "TAP TO APPLY",
-                    9.5f, selected ? ToxiVisualSystem.accentForeground() : Color.WHITE, true);
-            state.setLetterSpacing(0.08f);
+                    selected ? "✓  SELECTED" : "SELECT WORLD",
+                    9.5f, selected ? ToxiThemeSystem.ACCENTS[i] : Color.WHITE, true);
+            state.setLetterSpacing(0.07f);
             state.setGravity(Gravity.CENTER);
-            state.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(11)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(7)));
+            state.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8),
+                    ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8));
             state.setBackground(selected ? ToxiVisualSystem.accentSurface(14)
                     : ToxiVisualSystem.surface(14, false));
-            FrameLayout.LayoutParams stateParams = new FrameLayout.LayoutParams(-2, -2,
-                    Gravity.TOP | Gravity.END);
-            stateParams.setMargins(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
-            tile.addView(state, stateParams);
+            LinearLayout.LayoutParams stateParams = new LinearLayout.LayoutParams(-2, -2);
+            stateParams.topMargin = ToxiVisualSystem.dp(10);
+            content.addView(state, stateParams);
+            tile.addView(content, new FrameLayout.LayoutParams(-1, -1));
+
             themeTiles[i] = tile;
             themeStates[i] = state;
             tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". "
@@ -243,13 +231,14 @@ final class ThemeScreenController {
                 if (themeIndex == ToxiVisualSystem.THEME_INDEX) return;
                 ToxiVisualSystem.applyTheme(themeIndex, true);
                 updateSelection(themeIndex);
-                activity.recolor();
+                themeChanged = true;
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(176)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(164), 0, 0, 0, 10);
             cards.addView(tile, tileParams);
-            NebulaHomeView.animateHomeCard(activity, tile, i);
+            tile.setAlpha(1f);
+            tile.setTranslationY(0f);
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
