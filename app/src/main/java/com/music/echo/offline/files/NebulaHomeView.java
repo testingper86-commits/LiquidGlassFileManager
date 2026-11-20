@@ -29,6 +29,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Independent NEBULA OS home and tools presentation. All actions delegate to existing app modules. */
 final class NebulaHomeView {
@@ -42,6 +44,8 @@ final class NebulaHomeView {
     static int TEXT = ToxiVisualSystem.TEXT_PRIMARY;
     static int MUTED = ToxiVisualSystem.TEXT_SECONDARY;
     private static final int[] ACCENTS = new int[7];
+    private static final Map<Integer, Bitmap> WALLPAPER_CACHE = new HashMap<>();
+    private static final int MAX_CACHED_WALLPAPERS = 2;
 
     private static void syncPalette() {
         BACKGROUND = ToxiVisualSystem.CANVAS;
@@ -90,10 +94,11 @@ final class NebulaHomeView {
         mast.addView(live);
         host.addView(mast, margins(a, -1, -2, 0, 0, 0, 0));
 
-        TextView headline = text(a, "Everything\nin its element.", 33, TEXT, true);
+        TextView headline = text(a, "Your files.\nClearly organised.", 33, TEXT, true);
         headline.setLineSpacing(dp(a, 1), 0.98f);
+        if (Build.VERSION.SDK_INT >= 28) headline.setAccessibilityHeading(true);
         host.addView(headline, margins(a, -1, -2, 0, 12, 0, 7));
-        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 13.5f, MUTED, false);
+        TextView descriptor = text(a, "A clear view of the content stored on this device.", 13.5f, MUTED, false);
         host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
         if (!a.hasAccess()) {
@@ -167,7 +172,7 @@ final class NebulaHomeView {
         card.setClipToOutline(true);
 
         ImageView artwork = new ImageView(a);
-        artwork.setImageResource(themeArtwork());
+        artwork.setImageBitmap(loadThemeWallpaper(a.getResources(), themeArtwork()));
         artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
         artwork.setAlpha(0.48f);
         artwork.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -559,6 +564,38 @@ final class NebulaHomeView {
         }
     }
 
+    /** Decode each active theme poster once, at display-appropriate resolution. */
+    private static Bitmap loadThemeWallpaper(Resources resources, int artworkResource) {
+        synchronized (WALLPAPER_CACHE) {
+            Bitmap cached = WALLPAPER_CACHE.get(artworkResource);
+            if (cached != null && !cached.isRecycled()) return cached;
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeResource(resources, artworkResource, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            android.util.DisplayMetrics metrics = resources.getDisplayMetrics();
+            int targetWidth = Math.max(1, Math.round(metrics.widthPixels * 1.5f));
+            int targetHeight = Math.max(1, Math.round(metrics.heightPixels * 1.5f));
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = 1;
+            while (bounds.outWidth / (options.inSampleSize * 2) >= targetWidth
+                    && bounds.outHeight / (options.inSampleSize * 2) >= targetHeight) {
+                options.inSampleSize *= 2;
+            }
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            options.inDither = true;
+            Bitmap decoded = BitmapFactory.decodeResource(resources, artworkResource, options);
+            if (decoded != null) {
+                if (WALLPAPER_CACHE.size() >= MAX_CACHED_WALLPAPERS) {
+                    Integer firstKey = WALLPAPER_CACHE.keySet().iterator().next();
+                    WALLPAPER_CACHE.remove(firstKey);
+                }
+                WALLPAPER_CACHE.put(artworkResource, decoded);
+            }
+            return decoded;
+        }
+    }
+
     static final class ThemeWallpaperDrawable extends Drawable {
         private final Bitmap bitmap;
         private final Paint imagePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -567,9 +604,7 @@ final class NebulaHomeView {
             this(activity, themeArtwork());
         }
         ThemeWallpaperDrawable(MainActivity activity, int artworkResource) {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            bitmap = BitmapFactory.decodeResource(activity.getResources(), artworkResource, options);
+            bitmap = loadThemeWallpaper(activity.getResources(), artworkResource);
             int top = Color.argb(92, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
             int middle = Color.argb(112, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
             int lower = Color.argb(174, Color.red(BACKGROUND), Color.green(BACKGROUND), Color.blue(BACKGROUND));
