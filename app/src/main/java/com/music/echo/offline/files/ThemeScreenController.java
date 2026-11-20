@@ -115,12 +115,23 @@ final class ThemeScreenController {
             View shade = new View(activity);
             android.graphics.drawable.GradientDrawable shadeGradient =
                     new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                            new int[]{Color.argb(248, 5, 7, 12), Color.argb(218, 5, 7, 12),
-                                    Color.argb(82, 5, 7, 12), Color.argb(12, 5, 7, 12)});
+                            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                            new int[]{Color.argb(18, 5, 7, 12), Color.argb(36, 5, 7, 12),
+                                    Color.argb(238, 5, 7, 12)});
             shadeGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
             shade.setBackground(shadeGradient);
             tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+            // Keep the copy zone calm while allowing the poster to remain visible.
+            View copyShade = new View(activity);
+            android.graphics.drawable.GradientDrawable copyGradient =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                            new int[]{Color.argb(226, 5, 7, 12), Color.argb(184, 5, 7, 12),
+                                    Color.argb(48, 5, 7, 12), Color.argb(0, 5, 7, 12)});
+            copyGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
+            copyShade.setBackground(copyGradient);
+            tile.addView(copyShade, new FrameLayout.LayoutParams(-1, -1));
 
             LinearLayout copy = new LinearLayout(activity);
             copy.setOrientation(LinearLayout.VERTICAL);
