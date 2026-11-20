@@ -221,7 +221,8 @@ public class MainActivity extends ComponentActivity {
         homeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0));
         toolsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2));
         settingsScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 3));
-        themeScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
+        // Theme Studio uses a neutral canvas so individual theme posters never appear duplicated behind one another.
+        themeScroll.setBackgroundColor(Color.rgb(8, 12, 18));
         aboutScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 4));
         recycleScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 0));
         vaultScroll.setBackground(NebulaHomeView.sectionWallpaper(this, 2));

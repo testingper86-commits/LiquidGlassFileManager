@@ -95,7 +95,8 @@ final class ThemeScreenController {
 
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
-            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            poster.setBackgroundColor(Color.rgb(8, 12, 18));
             poster.setAlpha(selected ? 1f : 0.88f);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " cinematic poster artwork");
             tile.addView(poster, new FrameLayout.LayoutParams(-1, -1));

@@ -604,7 +604,7 @@ final class NebulaHomeView {
         if (activity.filesView != null) activity.filesView.setBackground(sectionWallpaper(activity, 1));
         if (activity.toolsScroll != null) activity.toolsScroll.setBackground(sectionWallpaper(activity, 2));
         if (activity.settingsScroll != null) activity.settingsScroll.setBackground(sectionWallpaper(activity, 3));
-        if (activity.themeScroll != null) activity.themeScroll.setBackground(sectionWallpaper(activity, 4));
+        if (activity.themeScroll != null) activity.themeScroll.setBackgroundColor(Color.rgb(8, 12, 18));
         if (activity.aboutScroll != null) activity.aboutScroll.setBackground(sectionWallpaper(activity, 4));
         if (activity.recycleScroll != null) activity.recycleScroll.setBackground(sectionWallpaper(activity, 0));
         if (activity.vaultScroll != null) activity.vaultScroll.setBackground(sectionWallpaper(activity, 2));
