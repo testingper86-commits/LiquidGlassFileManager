@@ -178,6 +178,32 @@ final class NebulaHomeView {
         }
     }
 
+    /**
+     * Decodes large category artwork near its on-screen resolution. This keeps
+     * 8K source assets sharp on high-density displays without allocating a
+     * full 8K ARGB bitmap for every visible card.
+     */
+    private static void setCategoryArtwork(MainActivity a, ImageView target, int resourceId) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(a.getResources(), resourceId, bounds);
+        int largest = Math.max(bounds.outWidth, bounds.outHeight);
+        int sample = 1;
+        while (largest > 1440 && sample <= (Integer.MAX_VALUE / 2)
+                && largest / (sample * 2) >= 960) {
+            sample *= 2;
+        }
+        BitmapFactory.Options decode = new BitmapFactory.Options();
+        decode.inSampleSize = sample;
+        decode.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap bitmap = BitmapFactory.decodeResource(a.getResources(), resourceId, decode);
+        if (bitmap != null) {
+            target.setImageBitmap(bitmap);
+        } else {
+            target.setImageResource(resourceId);
+        }
+    }
+
     private static LinearLayout categoryCard(MainActivity a, String name, String detail, String glyph, int accent, int artworkResource) {
         FrameLayout card = new FrameLayout(a);
         card.setBackground(categoryGlassSurface(accent));
@@ -186,7 +212,7 @@ final class NebulaHomeView {
         card.setClipToPadding(true);
 
         ImageView artwork = new ImageView(a);
-        artwork.setImageResource(artworkResource);
+        setCategoryArtwork(a, artwork, artworkResource);
         artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
         artwork.setAlpha(ToxiVisualSystem.LIGHT_MODE ? 0.78f : 0.88f);
         artwork.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
