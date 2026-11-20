@@ -45,7 +45,7 @@ final class NebulaHomeView {
     static int MUTED = ToxiVisualSystem.TEXT_SECONDARY;
     private static final int[] ACCENTS = new int[7];
     private static final Map<Integer, Bitmap> WALLPAPER_CACHE = new HashMap<>();
-    private static final int MAX_CACHED_WALLPAPERS = 2;
+    private static final int MAX_CACHED_WALLPAPERS = 5;
 
     private static void syncPalette() {
         BACKGROUND = ToxiVisualSystem.CANVAS;
@@ -94,11 +94,11 @@ final class NebulaHomeView {
         mast.addView(live);
         host.addView(mast, margins(a, -1, -2, 0, 0, 0, 0));
 
-        TextView headline = text(a, "Your files.\nClearly organised.", 33, TEXT, true);
+        TextView headline = text(a, "Everything\nin its element.", 33, TEXT, true);
         headline.setLineSpacing(dp(a, 1), 0.98f);
         if (Build.VERSION.SDK_INT >= 28) headline.setAccessibilityHeading(true);
         host.addView(headline, margins(a, -1, -2, 0, 12, 0, 7));
-        TextView descriptor = text(a, "A clear view of the content stored on this device.", 13.5f, MUTED, false);
+        TextView descriptor = text(a, "A calm, precise view of the content on this device.", 13.5f, MUTED, false);
         host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
         if (!a.hasAccess()) {
@@ -532,10 +532,18 @@ final class NebulaHomeView {
         return glass;
     }
 
-    /** Every destination follows the one selected theme identity; section IDs never choose artwork. */
+    /** Each app destination keeps its own anime-series artwork identity. */
     static Drawable sectionWallpaper(MainActivity activity, int section) {
         syncPalette();
-        return new ThemeWallpaperDrawable(activity, themeArtwork());
+        final int artwork;
+        switch (section) {
+            case 0: artwork = R.drawable.theme_poster_onepiece; break;
+            case 1: artwork = R.drawable.theme_poster_naruto; break;
+            case 2: artwork = R.drawable.theme_poster_demon; break;
+            case 3: artwork = R.drawable.theme_poster_dragonball; break;
+            default: artwork = R.drawable.theme_poster_aot; break;
+        }
+        return new ThemeWallpaperDrawable(activity, artwork);
     }
 
     /** Refresh all attached and lazily-created destinations from the same active theme profile. */
