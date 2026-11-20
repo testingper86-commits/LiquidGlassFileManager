@@ -198,7 +198,7 @@ for token in ["categoryCard(a, names[index]", "Visual library", "Motion library"
               "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloaded apps · Other files",
               "themeCategoryArtworks(ToxiVisualSystem.THEME_INDEX)", "home_category_onepiece_images", "home_category_naruto_images",
               "home_category_demon_images", "home_category_dragonball_images", "home_category_aot_images",
-              "artwork.setImageResource(artworkResource)",
+              "setCategoryArtwork(a, artwork, artworkResource)", "BitmapFactory.Options bounds", "bounds.inJustDecodeBounds = true", "decode.inSampleSize = sample",
               "ImageView.ScaleType.CENTER_CROP", "05 CHANNELS", "\"Audio\"", "dp(a, 104)"]:
     if token not in home:
         raise SystemExit(f"Reference homepage composition is missing: {token}")
