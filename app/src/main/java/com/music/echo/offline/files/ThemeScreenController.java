@@ -164,9 +164,10 @@ final class ThemeScreenController {
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
-        // Keep the dock/system-bar safe area inside the scroll range and clip cards
-        // at the viewport edge so the floating navigation never covers their content.
-        activity.themeScroll.setClipToPadding(true);
+        // Draw scroll content through the reserved bottom inset. The inset remains
+        // part of the scroll range, so the final card can move fully above the dock
+        // instead of being clipped at the top edge of the padded viewport.
+        activity.themeScroll.setClipToPadding(false);
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
         // WRAP_CONTENT is essential: MATCH_PARENT constrains the panel to one
         // viewport and prevents the remaining theme cards from extending scroll range.
