@@ -148,7 +148,9 @@ final class ThemeScreenController {
             // a ghosted second character behind the contained poster.
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
-            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);\n            poster.setAdjustViewBounds(true);\n            poster.setCropToPadding(false);
+            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            poster.setAdjustViewBounds(true);
+            poster.setCropToPadding(false);
             poster.setBackgroundColor(Color.TRANSPARENT);
             poster.setAlpha(selected ? 1f : 0.96f);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " full cinematic poster artwork");
