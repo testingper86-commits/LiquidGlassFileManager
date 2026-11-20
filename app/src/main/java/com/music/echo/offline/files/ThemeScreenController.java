@@ -2,6 +2,9 @@ package com.music.echo.offline.files;
 
 import com.music.echo.offline.R;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -58,6 +61,30 @@ final class ThemeScreenController {
                         R.drawable.home_category_aot_videos, R.drawable.home_category_aot_audio,
                         R.drawable.home_category_aot_documents}[categoryIndex];
         }
+    }
+
+    private static void setPreviewArtwork(MainActivity activity, ImageView target, int resourceId) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeResource(activity.getResources(), resourceId, bounds);
+        int targetPixels = ToxiVisualSystem.dp(44);
+        int sample = 1;
+        int largest = Math.max(bounds.outWidth, bounds.outHeight);
+        while (largest / (sample * 2) >= targetPixels * 2) sample *= 2;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        options.inDither = true;
+        Bitmap bitmap = BitmapFactory.decodeResource(activity.getResources(), resourceId, options);
+        if (bitmap != null) {
+            BitmapDrawable drawable = new BitmapDrawable(activity.getResources(), bitmap);
+            drawable.setFilterBitmap(true);
+            drawable.setAntiAlias(true);
+            target.setImageDrawable(drawable);
+        } else {
+            target.setImageResource(resourceId);
+        }
+        target.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
     void build() {
         activity.themeScroll.setSaveEnabled(false);
@@ -173,20 +200,21 @@ final class ThemeScreenController {
             previews.setOrientation(LinearLayout.HORIZONTAL);
             previews.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams previewsParams = new LinearLayout.LayoutParams(-1, -2);
-            previewsParams.topMargin = ToxiVisualSystem.dp(9);
+            previewsParams.topMargin = ToxiVisualSystem.dp(10);
             String[] previewLabels = {"Images", "Videos", "Audio", "Documents"};
             for (int category = 0; category < 4; category++) {
                 FrameLayout previewFrame = new FrameLayout(activity);
                 previewFrame.setBackground(ToxiVisualSystem.surface(7, false));
                 previewFrame.setClipToOutline(true);
                 ImageView preview = new ImageView(activity);
-                preview.setImageResource(themeCategoryArtwork(i, category));
+                setPreviewArtwork(activity, preview, themeCategoryArtwork(i, category));
                 preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                preview.setAlpha(1f);
                 preview.setContentDescription(previewLabels[category] + " artwork");
                 previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
                 LinearLayout.LayoutParams previewLp = new LinearLayout.LayoutParams(
-                        ToxiVisualSystem.dp(29), ToxiVisualSystem.dp(29));
-                if (category > 0) previewLp.leftMargin = ToxiVisualSystem.dp(5);
+                        ToxiVisualSystem.dp(44), ToxiVisualSystem.dp(44));
+                if (category > 0) previewLp.leftMargin = ToxiVisualSystem.dp(6);
                 previews.addView(previewFrame, previewLp);
             }
             copy.addView(previews, previewsParams);
@@ -219,7 +247,7 @@ final class ThemeScreenController {
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(204)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(216)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
             NebulaHomeView.animateHomeCard(activity, tile, i);
         }
