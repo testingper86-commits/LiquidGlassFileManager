@@ -5,6 +5,9 @@ import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.util.LruCache;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -16,6 +19,12 @@ import android.widget.TextView;
 /** Five-theme Theme Studio with persistent live application. */
 final class ThemeScreenController {
     private final MainActivity activity;
+    private FrameLayout[] themeTiles;
+    private TextView[] themeStates;
+    private static final ExecutorService ARTWORK_EXECUTOR = Executors.newFixedThreadPool(2);
+    private static final LruCache<Integer, Bitmap> POSTER_CACHE = new LruCache<Integer, Bitmap>(12 * 1024 * 1024) {
+        @Override protected int sizeOf(Integer key, Bitmap value) { return value.getByteCount(); }
+    };
     ThemeScreenController(MainActivity activity) {
         if (activity == null) throw new IllegalArgumentException("activity must not be null");
         this.activity = activity;
@@ -37,55 +46,52 @@ final class ThemeScreenController {
         }
     }
 
-    private static int themeCategoryArtwork(int themeIndex, int categoryIndex) {
-        int theme = ToxiThemeSystem.normalize(themeIndex);
-        switch (theme) {
-            case 0:
-                return new int[]{R.drawable.home_category_onepiece_images,
-                        R.drawable.home_category_onepiece_videos, R.drawable.home_category_onepiece_audio,
-                        R.drawable.home_category_onepiece_documents}[categoryIndex];
-            case 1:
-                return new int[]{R.drawable.home_category_naruto_images,
-                        R.drawable.home_category_naruto_videos, R.drawable.home_category_naruto_audio,
-                        R.drawable.home_category_naruto_documents}[categoryIndex];
-            case 2:
-                return new int[]{R.drawable.home_category_demon_images,
-                        R.drawable.home_category_demon_videos, R.drawable.home_category_demon_audio,
-                        R.drawable.home_category_demon_documents}[categoryIndex];
-            case 3:
-                return new int[]{R.drawable.home_category_dragonball_images,
-                        R.drawable.home_category_dragonball_videos, R.drawable.home_category_dragonball_audio,
-                        R.drawable.home_category_dragonball_documents}[categoryIndex];
-            default:
-                return new int[]{R.drawable.home_category_aot_images,
-                        R.drawable.home_category_aot_videos, R.drawable.home_category_aot_audio,
-                        R.drawable.home_category_aot_documents}[categoryIndex];
+    private void loadPosterAsync(ImageView target, int resourceId) {
+        Bitmap cached = POSTER_CACHE.get(resourceId);
+        if (cached != null && !cached.isRecycled()) {
+            target.setImageBitmap(cached);
+            return;
+        }
+        target.setBackground(ToxiVisualSystem.surface(16, false));
+        target.setTag(resourceId);
+        ARTWORK_EXECUTOR.execute(() -> {
+            Bitmap bitmap = POSTER_CACHE.get(resourceId);
+            if (bitmap == null || bitmap.isRecycled()) {
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeResource(activity.getResources(), resourceId, bounds);
+                int targetPx = Math.max(320, ToxiVisualSystem.dp(220));
+                int sample = 1;
+                while (Math.max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= targetPx * 2) sample *= 2;
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = sample;
+                options.inPreferredConfig = Bitmap.Config.RGB_565;
+                bitmap = BitmapFactory.decodeResource(activity.getResources(), resourceId, options);
+                if (bitmap != null) POSTER_CACHE.put(resourceId, bitmap);
+            }
+            final Bitmap result = bitmap;
+            if (result != null) target.post(() -> {
+                if (target.getTag() != null && ((Integer) target.getTag()) == resourceId) {
+                    target.setImageBitmap(result);
+                    target.setTag(null);
+                }
+            });
+        });
+    }
+
+    private void updateSelection(int selectedIndex) {
+        if (themeTiles == null || themeStates == null) return;
+        for (int i = 0; i < themeTiles.length; i++) {
+            boolean active = i == selectedIndex;
+            themeStates[i].setText(active ? "✓  ACTIVE" : "APPLY THEME");
+            themeStates[i].setTextColor(active ? ToxiVisualSystem.accentForeground() : Color.WHITE);
+            themeStates[i].setBackground(active ? ToxiVisualSystem.accentSurface(14)
+                    : ToxiVisualSystem.surface(14, false));
+            themeTiles[i].setBackground(ToxiVisualSystem.surface(active ? 24 : 20, active));
+            themeTiles[i].setSelected(active);
         }
     }
 
-    private static void setPreviewArtwork(MainActivity activity, ImageView target, int resourceId) {
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeResource(activity.getResources(), resourceId, bounds);
-        int targetPixels = ToxiVisualSystem.dp(44);
-        int sample = 1;
-        int largest = Math.max(bounds.outWidth, bounds.outHeight);
-        while (largest / (sample * 2) >= targetPixels * 2) sample *= 2;
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        options.inDither = true;
-        Bitmap bitmap = BitmapFactory.decodeResource(activity.getResources(), resourceId, options);
-        if (bitmap != null) {
-            BitmapDrawable drawable = new BitmapDrawable(activity.getResources(), bitmap);
-            drawable.setFilterBitmap(true);
-            drawable.setAntiAlias(true);
-            target.setImageDrawable(drawable);
-        } else {
-            target.setImageResource(resourceId);
-        }
-        target.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-    }
     void build() {
         activity.themeScroll.setSaveEnabled(false);
         int restoreScrollY = Math.max(0, activity.themeScroll.getScrollY());
@@ -135,6 +141,8 @@ final class ThemeScreenController {
         cards.setClipChildren(false);
         cards.setClipToPadding(false);
         cards.setPadding(0, 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)));
+        themeTiles = new FrameLayout[ToxiVisualSystem.THEME_NAMES.length];
+        themeStates = new TextView[ToxiVisualSystem.THEME_NAMES.length];
         for (int i = 0; i < ToxiVisualSystem.THEME_NAMES.length; i++) {
             final int themeIndex = i;
             boolean selected = i == ToxiVisualSystem.THEME_INDEX;
@@ -147,7 +155,7 @@ final class ThemeScreenController {
             // Keep one crisp poster only. A duplicate full-card copy created
             // a ghosted second character behind the contained poster.
             ImageView poster = new ImageView(activity);
-            poster.setImageResource(themePoster(i));
+            loadPosterAsync(poster, themePoster(i));
             poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
             poster.setAdjustViewBounds(true);
             poster.setCropToPadding(false);
@@ -162,8 +170,8 @@ final class ThemeScreenController {
             int sourceHeight = posterDrawable == null ? 0 : posterDrawable.getIntrinsicHeight();
             float posterAspect = sourceWidth > 0 && sourceHeight > 0
                     ? (float) sourceWidth / (float) sourceHeight : 0.68f;
-            int cardHeight = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(216));
-            int maxPosterWidth = ToxiVisualSystem.dp(156);
+            int cardHeight = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(176));
+            int maxPosterWidth = ToxiVisualSystem.dp(136);
             int posterWidth = Math.min(maxPosterWidth,
                     Math.max(ToxiVisualSystem.dp(112), Math.round(cardHeight * posterAspect)));
             FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
@@ -207,30 +215,6 @@ final class ThemeScreenController {
             descriptionParams.topMargin = ToxiVisualSystem.dp(ToxiThemeEngine.spacing(4));
             copy.addView(description, descriptionParams);
 
-            // Four live category thumbnails make every theme's section artwork
-            // visible in Theme Studio, not only after that theme is activated.
-            LinearLayout previews = new LinearLayout(activity);
-            previews.setOrientation(LinearLayout.HORIZONTAL);
-            previews.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams previewsParams = new LinearLayout.LayoutParams(-1, -2);
-            previewsParams.topMargin = ToxiVisualSystem.dp(10);
-            String[] previewLabels = {"Images", "Videos", "Audio", "Documents"};
-            for (int category = 0; category < 4; category++) {
-                FrameLayout previewFrame = new FrameLayout(activity);
-                previewFrame.setBackground(ToxiVisualSystem.surface(7, false));
-                previewFrame.setClipToOutline(true);
-                ImageView preview = new ImageView(activity);
-                setPreviewArtwork(activity, preview, themeCategoryArtwork(i, category));
-                preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                preview.setAlpha(1f);
-                preview.setContentDescription(previewLabels[category] + " artwork");
-                previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
-                LinearLayout.LayoutParams previewLp = new LinearLayout.LayoutParams(
-                        ToxiVisualSystem.dp(44), ToxiVisualSystem.dp(44));
-                if (category > 0) previewLp.leftMargin = ToxiVisualSystem.dp(6);
-                previews.addView(previewFrame, previewLp);
-            }
-            copy.addView(previews, previewsParams);
             tile.addView(copy, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
 
             TextView state = ToxiVisualSystem.text(activity,
@@ -249,18 +233,21 @@ final class ThemeScreenController {
             stateParams.setMargins(0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)), 0);
             tile.addView(state, stateParams);
+            themeTiles[i] = tile;
+            themeStates[i] = state;
             tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". "
                     + ToxiVisualSystem.themeDescription(i) + (selected ? ". Active theme" : ". Double tap to apply"));
             tile.setFocusable(false);
             tile.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
+                if (themeIndex == ToxiVisualSystem.THEME_INDEX) return;
                 ToxiVisualSystem.applyTheme(themeIndex, true);
+                updateSelection(themeIndex);
                 activity.recolor();
-                activity.themeScroll.post(this::build);
             });
             ToxiVisualSystem.interactive(tile);
             LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(216)), 0, 0, 0, 12);
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(176)), 0, 0, 0, 12);
             cards.addView(tile, tileParams);
             NebulaHomeView.animateHomeCard(activity, tile, i);
         }
