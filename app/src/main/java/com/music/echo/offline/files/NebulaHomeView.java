@@ -69,30 +69,44 @@ final class NebulaHomeView {
         host.removeAllViews();
         a.homeScrollFooter = null;
         host.setOrientation(LinearLayout.VERTICAL);
-        host.setPadding(dp(a, 16), dp(a, 14), dp(a, 16), 0);
+        // Root content already consumes the Android status-bar and display-cutout inset.
+        // Add a deliberate gap and a glass surface so the identity stays legible over the artwork.
+        host.setPadding(dp(a, 16), dp(a, 22), dp(a, 16), 0);
         a.homeScroll.setBackground(sectionWallpaper(a, 0));
         host.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout mast = new LinearLayout(a);
         mast.setGravity(Gravity.CENTER_VERTICAL);
+        mast.setPadding(dp(a, 14), dp(a, 12), dp(a, 14), dp(a, 12));
+        int headerBase = PANEL_ALT;
+        GradientDrawable headerGlass = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.argb(ToxiVisualSystem.LIGHT_MODE ? 224 : 174,
+                                Color.red(headerBase), Color.green(headerBase), Color.blue(headerBase)),
+                        Color.argb(ToxiVisualSystem.LIGHT_MODE ? 202 : 142,
+                                Color.red(PANEL), Color.green(PANEL), Color.blue(PANEL))
+                });
+        headerGlass.setCornerRadii(ToxiVisualSystem.profileCornerRadii(20f));
+        headerGlass.setStroke(Math.max(1, ToxiVisualSystem.dp(1f)), BORDER);
+        mast.setBackground(headerGlass);
         LinearLayout identity = new LinearLayout(a);
         identity.setOrientation(LinearLayout.VERTICAL);
         TextView word = text(a, "TOXIFILES", 22, TEXT, true);
         word.setLetterSpacing(0.16f);
         identity.addView(word);
-        TextView edition = text(a, "PRISM  /  PERSONAL FILESPACE", 9.5f, MUTED, true);
-        edition.setLetterSpacing(0.13f);
-        identity.addView(edition, margins(a, -2, -2, 0, 4, 0, 0));
+        TextView edition = text(a, "PERSONAL FILESPACE", 9.5f, MUTED, true);
+        edition.setLetterSpacing(0.15f);
+        identity.addView(edition, margins(a, -2, -2, 0, 5, 0, 0));
         mast.addView(identity, new LinearLayout.LayoutParams(0, -2, 1f));
         TextView live = text(a, "●  LOCAL", 9, LIME, true);
         live.setLetterSpacing(0.08f);
         live.setBackground(background(PANEL_ALT, BORDER, 18));
-        live.setPadding(dp(a, 11), dp(a, 8), dp(a, 11), dp(a, 8));
+        live.setPadding(dp(a, 12), dp(a, 9), dp(a, 12), dp(a, 9));
         mast.addView(live);
-        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 0));
+        host.addView(mast, margins(a, -1, -2, 0, 0, 0, 15));
 
-        TextView headline = text(a, "Everything\nin its element.", 33, TEXT, true);
+        TextView headline = text(a, "Everything\\nin its element.", 33, TEXT, true);
         headline.setLineSpacing(dp(a, 1), 0.98f);
-        host.addView(headline, margins(a, -1, -2, 0, 12, 0, 7));
+        host.addView(headline, margins(a, -1, -2, 0, 0, 0, 7));
         TextView descriptor = text(a, "A calm, precise view of the content on this device.", 13.5f, MUTED, false);
         host.addView(descriptor, margins(a, -1, -2, 0, 0, 0, 16));
 
