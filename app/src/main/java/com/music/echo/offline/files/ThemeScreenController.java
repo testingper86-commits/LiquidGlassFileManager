@@ -75,7 +75,7 @@ final class ThemeScreenController {
         label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
                 ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         panel.addView(label);
-        // Use one vertical scrolling container. Nested ScrollViews competed for
+        // Use one vertical scrolling container. Nested ScrollViews competed with
         // touch interception and prevented theme tiles from receiving drag/click input.
         LinearLayout cards = new LinearLayout(activity);
         cards.setOrientation(LinearLayout.VERTICAL);
@@ -90,23 +90,34 @@ final class ThemeScreenController {
             tile.setClipToPadding(true);
             tile.setBackground(ToxiVisualSystem.surface(22, true));
             ToxiVisualSystem.clipRound(tile, 22f);
-            tile.setClipChildren(true);
-            tile.setClipToPadding(true);
+
+            // A full-card crop supplies cinematic atmosphere without sacrificing
+            // the complete poster: the crisp foreground poster remains contained.
+            ImageView backdrop = new ImageView(activity);
+            backdrop.setImageResource(themePoster(i));
+            backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            backdrop.setAlpha(selected ? 0.42f : 0.32f);
+            backdrop.setContentDescription(null);
+            tile.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
 
             ImageView poster = new ImageView(activity);
             poster.setImageResource(themePoster(i));
             poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            poster.setBackgroundColor(Color.rgb(8, 12, 18));
-            poster.setAlpha(selected ? 1f : 0.88f);
-            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " cinematic poster artwork");
-            tile.addView(poster, new FrameLayout.LayoutParams(-1, -1));
+            poster.setBackgroundColor(Color.TRANSPARENT);
+            poster.setAlpha(selected ? 1f : 0.94f);
+            poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " full cinematic poster artwork");
+            int posterWidth = ToxiVisualSystem.dp(116);
+            FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
+                    posterWidth, -1, Gravity.END | Gravity.CENTER_VERTICAL);
+            posterParams.rightMargin = ToxiVisualSystem.dp(8);
+            tile.addView(poster, posterParams);
 
             View shade = new View(activity);
             android.graphics.drawable.GradientDrawable shadeGradient =
                     new android.graphics.drawable.GradientDrawable(
-                            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                            new int[]{Color.argb(12, 0, 0, 0), Color.argb(78, 0, 0, 0),
-                                    Color.argb(232, 0, 0, 0)});
+                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                            new int[]{Color.argb(248, 5, 7, 12), Color.argb(218, 5, 7, 12),
+                                    Color.argb(82, 5, 7, 12), Color.argb(12, 5, 7, 12)});
             shadeGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
             shade.setBackground(shadeGradient);
             tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
@@ -116,7 +127,7 @@ final class ThemeScreenController {
             copy.setGravity(Gravity.BOTTOM);
             copy.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)),
-                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(16)),
+                    ToxiVisualSystem.dp(ToxiThemeEngine.spacing(132)),
                     ToxiVisualSystem.dp(ToxiThemeEngine.spacing(14)));
             TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
                     17, Color.WHITE, true);
@@ -125,7 +136,7 @@ final class ThemeScreenController {
             copy.addView(themeName);
             TextView description = ToxiVisualSystem.text(activity,
                     ToxiVisualSystem.themeDescription(i), 11,
-                    Color.argb(225, 245, 248, 250), false);
+                    Color.argb(235, 245, 248, 250), false);
             description.setMaxLines(1);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(-1, -2);
@@ -166,13 +177,9 @@ final class ThemeScreenController {
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
-        // Draw scroll content through the reserved bottom inset. The inset remains
-        // part of the scroll range, so the final card can move fully above the dock
-        // instead of being clipped at the top edge of the padded viewport.
+        // Keep the final card scrollable above the reserved bottom dock inset.
         activity.themeScroll.setClipToPadding(false);
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
-        // WRAP_CONTENT is essential: MATCH_PARENT constrains the panel to one
-        // viewport and prevents the remaining theme cards from extending scroll range.
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
         panel.setAlpha(1f);
         activity.themeScroll.post(() -> {
