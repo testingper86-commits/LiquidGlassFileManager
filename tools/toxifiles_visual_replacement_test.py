@@ -191,15 +191,15 @@ if "overlay.setBackgroundColor(Color.argb(alpha" in overlay_controller or "curre
     raise SystemExit("Overlay manager must preserve section-specific character wallpapers")
 for token in ["favView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
               "listView.setBackground(NebulaHomeView.sectionWallpaper(this, 4))",
-              "int overlaySafeBottom =", "themeScroll.setPadding(0, 0, 0, overlaySafeBottom)"]:
+              "int overlaySafeBottom =", "themeScroll.setPadding(0, 0, 0, ToxiVisualSystem.BOTTOM_INSET + ToxiVisualSystem.dp(ToxiThemeEngine.spacing(8)))"]:
     if token not in main_activity:
         raise SystemExit(f"Section wallpaper or scroll-safe layout is missing: {token}")
 for token in ["categoryCard(a, names[index]", "Visual library", "Motion library", "Sound library",
-              "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloaded apps · Other files",
+              "File library", "addOtherQuickAccess(a, host)", "Other sections", "APK files · System apps · Downloads · Other files",
               "themeCategoryArtworks(ToxiVisualSystem.THEME_INDEX)", "home_category_onepiece_images", "home_category_naruto_images",
               "home_category_demon_images", "home_category_dragonball_images", "home_category_aot_images",
               "setCategoryArtwork(a, artwork, artworkResource)", "BitmapFactory.Options bounds", "bounds.inJustDecodeBounds = true", "decode.inSampleSize = sample",
-              "ImageView.ScaleType.CENTER_CROP", "05 CHANNELS", "\"Audio\"", "dp(a, 104)"]:
+              "ImageView.ScaleType.CENTER_CROP", "05 CHANNELS", "\"Audio\"", "dp(a, 116)"]:
     if token not in home:
         raise SystemExit(f"Reference homepage composition is missing: {token}")
 if "a.openCategory(index)" not in home or "addStorage(a, host)" not in home:
