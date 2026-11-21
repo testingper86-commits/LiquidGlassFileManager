@@ -78,7 +78,7 @@ final class ThemeScreenController {
         if (themeTiles == null || themeStates == null) return;
         for (int i = 0; i < themeTiles.length; i++) {
             boolean active = i == selectedIndex;
-            themeStates[i].setText(active ? "✓  ACTIVE THEME" : "TAP TO APPLY");
+            themeStates[i].setText(active ? "✓  SELECTED" : "SELECT WORLD");
             themeStates[i].setTextColor(active ? ToxiVisualSystem.accentForeground() : Color.WHITE);
             themeStates[i].setBackground(active ? ToxiVisualSystem.accentSurface(14) : ToxiVisualSystem.surface(14, false));
             themeTiles[i].setBackground(ToxiVisualSystem.surface(active ? 24 : 20, active));
@@ -179,7 +179,7 @@ final class ThemeScreenController {
             LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(-1, -2);
             descParams.topMargin = ToxiVisualSystem.dp(4);
             content.addView(description, descParams);
-            TextView state = ToxiVisualSystem.text(activity, selected ? "✓  ACTIVE THEME" : "TAP TO APPLY",
+            TextView state = ToxiVisualSystem.text(activity, selected ? "✓  SELECTED" : "SELECT WORLD",
                     9.5f, selected ? ToxiThemeSystem.ACCENTS[i] : Color.WHITE, true);
             state.setLetterSpacing(0.07f);
             state.setGravity(Gravity.CENTER);
