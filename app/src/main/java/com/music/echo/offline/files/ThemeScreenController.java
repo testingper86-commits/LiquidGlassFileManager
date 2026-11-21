@@ -4,7 +4,6 @@ import com.music.echo.offline.R;
 import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import android.util.LruCache;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,7 +36,6 @@ final class ThemeScreenController {
         build();
         activity.showOverlay(activity.themeScroll);
     }
-
     private static int themePoster(int index) {
         switch (ToxiThemeSystem.normalize(index)) {
             case 0: return R.drawable.theme_poster_onepiece;
@@ -47,13 +45,9 @@ final class ThemeScreenController {
             default: return R.drawable.theme_poster_aot;
         }
     }
-
     private void loadPosterAsync(ImageView target, int resourceId) {
         Bitmap cached = POSTER_CACHE.get(resourceId);
-        if (cached != null && !cached.isRecycled()) {
-            target.setImageBitmap(cached);
-            return;
-        }
+        if (cached != null && !cached.isRecycled()) { target.setImageBitmap(cached); return; }
         target.setBackground(ToxiVisualSystem.surface(16, false));
         target.setTag(resourceId);
         ARTWORK_EXECUTOR.execute(() -> {
@@ -80,20 +74,19 @@ final class ThemeScreenController {
             });
         });
     }
-
     private void updateSelection(int selectedIndex) {
         if (themeTiles == null || themeStates == null) return;
         for (int i = 0; i < themeTiles.length; i++) {
             boolean active = i == selectedIndex;
-            themeStates[i].setText(active ? "✓  ACTIVE" : "APPLY THEME");
+            themeStates[i].setText(active ? "ACTIVE THEME" : "TAP TO APPLY");
             themeStates[i].setTextColor(active ? ToxiVisualSystem.accentForeground() : Color.WHITE);
-            themeStates[i].setBackground(active ? ToxiVisualSystem.accentSurface(14)
-                    : ToxiVisualSystem.surface(14, false));
+            themeStates[i].setBackground(active ? ToxiVisualSystem.accentSurface(14) : ToxiVisualSystem.surface(14, false));
             themeTiles[i].setBackground(ToxiVisualSystem.surface(active ? 24 : 20, active));
             themeTiles[i].setSelected(active);
+            themeTiles[i].setContentDescription(ToxiVisualSystem.THEME_NAMES[i]
+                    + (active ? ". Active theme" : ". Tap to apply theme"));
         }
     }
-
     void build() {
         activity.themeScroll.setSaveEnabled(false);
         int restoreScrollY = Math.max(0, activity.themeScroll.getScrollY());
@@ -119,7 +112,7 @@ final class ThemeScreenController {
         back.setMinimumHeight(backTarget);
         back.setOnClickListener(v -> {
             activity.closeOverlay();
-            if (themeChanged) activity.recolor();
+            if (themeChanged) { themeChanged = false; activity.recolor(); }
         });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(backTarget, backTarget);
         backParams.gravity = Gravity.CENTER_VERTICAL;
@@ -136,11 +129,8 @@ final class ThemeScreenController {
         panel.addView(subtitle);
         TextView label = ToxiVisualSystem.text(activity, "THEME COLLECTION  ·  05 WORLDS", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.14f);
-        label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0,
-                ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
+        label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         panel.addView(label);
-        // Use one vertical scrolling container. Nested ScrollViews competed with
-        // touch interception and prevented theme tiles from receiving drag/click input.
         LinearLayout cards = new LinearLayout(activity);
         cards.setOrientation(LinearLayout.VERTICAL);
         cards.setClipChildren(false);
@@ -154,21 +144,13 @@ final class ThemeScreenController {
             FrameLayout tile = new FrameLayout(activity);
             tile.setClipChildren(true);
             tile.setClipToPadding(true);
-            tile.setBackground(ToxiVisualSystem.surface(22, true));
-            ToxiVisualSystem.clipRound(tile, 22f);
-
-            // Editorial theme tile: immersive poster panel with a dedicated content rail.
             tile.setBackground(ToxiVisualSystem.surface(24, true));
             ToxiVisualSystem.clipRound(tile, 24f);
-
             ImageView poster = new ImageView(activity);
             loadPosterAsync(poster, themePoster(i));
             poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
             poster.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + " theme artwork");
-            FrameLayout.LayoutParams posterParams = new FrameLayout.LayoutParams(
-                    ToxiVisualSystem.dp(154), -1, Gravity.END);
-            tile.addView(poster, posterParams);
-
+            tile.addView(poster, new FrameLayout.LayoutParams(ToxiVisualSystem.dp(154), -1, Gravity.END));
             View wash = new View(activity);
             android.graphics.drawable.GradientDrawable washGradient =
                     new android.graphics.drawable.GradientDrawable(
@@ -178,53 +160,39 @@ final class ThemeScreenController {
             washGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(24f));
             wash.setBackground(washGradient);
             tile.addView(wash, new FrameLayout.LayoutParams(-1, -1));
-
             LinearLayout content = new LinearLayout(activity);
             content.setOrientation(LinearLayout.VERTICAL);
             content.setGravity(Gravity.CENTER_VERTICAL);
-            content.setPadding(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(14),
-                    ToxiVisualSystem.dp(150), ToxiVisualSystem.dp(14));
-
-            TextView ordinal = ToxiVisualSystem.text(activity, String.format(java.util.Locale.US, "WORLD  0%d", i + 1),
-                    9.5f, ToxiThemeSystem.ACCENT_ENDS[i], true);
+            content.setPadding(ToxiVisualSystem.dp(17), ToxiVisualSystem.dp(14), ToxiVisualSystem.dp(150), ToxiVisualSystem.dp(14));
+            TextView ordinal = ToxiVisualSystem.text(activity, String.format(java.util.Locale.US, "WORLD  0%d", i + 1), 9.5f, ToxiThemeSystem.ACCENT_ENDS[i], true);
             ordinal.setLetterSpacing(0.16f);
             content.addView(ordinal);
-
-            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i],
-                    19, Color.WHITE, true);
+            TextView themeName = ToxiVisualSystem.text(activity, ToxiVisualSystem.THEME_NAMES[i], 19, Color.WHITE, true);
             themeName.setMaxLines(2);
             themeName.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(-1, -2);
             nameParams.topMargin = ToxiVisualSystem.dp(5);
             content.addView(themeName, nameParams);
-
-            TextView description = ToxiVisualSystem.text(activity,
-                    ToxiVisualSystem.themeDescription(i), 11.5f,
-                    Color.argb(220, 238, 243, 248), false);
+            TextView description = ToxiVisualSystem.text(activity, ToxiVisualSystem.themeDescription(i), 11.5f, Color.argb(220, 238, 243, 248), false);
             description.setMaxLines(2);
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(-1, -2);
             descParams.topMargin = ToxiVisualSystem.dp(4);
             content.addView(description, descParams);
-
-            TextView state = ToxiVisualSystem.text(activity,
-                    selected ? "✓  SELECTED" : "SELECT WORLD",
+            TextView state = ToxiVisualSystem.text(activity, selected ? "ACTIVE THEME" : "TAP TO APPLY",
                     9.5f, selected ? ToxiThemeSystem.ACCENTS[i] : Color.WHITE, true);
             state.setLetterSpacing(0.07f);
             state.setGravity(Gravity.CENTER);
-            state.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8),
-                    ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8));
-            state.setBackground(selected ? ToxiVisualSystem.accentSurface(14)
-                    : ToxiVisualSystem.surface(14, false));
+            state.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8));
+            state.setBackground(selected ? ToxiVisualSystem.accentSurface(14) : ToxiVisualSystem.surface(14, false));
             LinearLayout.LayoutParams stateParams = new LinearLayout.LayoutParams(-2, -2);
             stateParams.topMargin = ToxiVisualSystem.dp(10);
             content.addView(state, stateParams);
             tile.addView(content, new FrameLayout.LayoutParams(-1, -1));
-
             themeTiles[i] = tile;
             themeStates[i] = state;
-            tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". "
-                    + ToxiVisualSystem.themeDescription(i) + (selected ? ". Active theme" : ". Double tap to apply"));
+            tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". " + ToxiVisualSystem.themeDescription(i)
+                    + (selected ? ". Active theme" : ". Tap to apply"));
             tile.setFocusable(false);
             tile.setOnClickListener(v -> {
                 ToxiVisualSystem.feedback(v);
@@ -234,15 +202,12 @@ final class ThemeScreenController {
                 themeChanged = true;
             });
             ToxiVisualSystem.interactive(tile);
-            LinearLayout.LayoutParams tileParams = activity.lpm(-1,
-                    ToxiVisualSystem.dp(164), 0, 0, 0, 10);
-            cards.addView(tile, tileParams);
+            cards.addView(tile, activity.lpm(-1, ToxiVisualSystem.dp(164), 0, 0, 0, 10));
             tile.setAlpha(1f);
             tile.setTranslationY(0f);
         }
         panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
         activity.themeScroll.setFillViewport(false);
-        // Keep the final card scrollable above the reserved bottom dock inset.
         activity.themeScroll.setClipToPadding(false);
         activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
         activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
