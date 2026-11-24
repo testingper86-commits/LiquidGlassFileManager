@@ -2,6 +2,7 @@ package com.music.echo.offline.files;
 
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.graphics.Typeface;
 import android.graphics.Color;
@@ -114,7 +115,16 @@ final class PrismNavigationDock {
     private void rebuildGeometry() {
         if (!built && surface.getParent() != null) return;
         rail = activity.getResources().getConfiguration().screenWidthDp >= 700;
+        // Removing tabGroup from surface does not detach its children. Explicitly detach
+        // each tab from its previous parent before adding it to the replacement group.
+        // Otherwise a configuration/size change reuses a View that still belongs to the
+        // old LinearLayout and Android throws "The specified child already has a parent".
         surface.removeAllViews();
+        for (View item : items) {
+            if (item == null) continue;
+            ViewGroup previousParent = (ViewGroup) item.getParent();
+            if (previousParent != null) previousParent.removeView(item);
+        }
         surface.setBackground(NebulaHomeView.navigationSurface());
         surface.addView(selection);
         tabGroup = new LinearLayout(activity);
