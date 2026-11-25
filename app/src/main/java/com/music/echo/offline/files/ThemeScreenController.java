@@ -75,17 +75,17 @@ final class ThemeScreenController {
             });
         });
     }
-    /** Local card glass: clean specular top edge and fine inset perimeter without global overdraw. */
+    /** Crisp glass perimeter with a restrained specular highlight and inset rim. */
     private static android.graphics.drawable.Drawable glassCardBackground() {
         android.graphics.drawable.Drawable material = ToxiVisualSystem.surface(24, true);
         GradientDrawable specular = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x48FFFFFF, 0x16FFFFFF, 0x04FFFFFF, 0x00FFFFFF});
+                new int[]{0x58FFFFFF, 0x20FFFFFF, 0x06FFFFFF, 0x00FFFFFF});
         specular.setCornerRadii(ToxiVisualSystem.profileCornerRadii(24f));
-        specular.setStroke(Math.max(1, ToxiVisualSystem.dp(0.8f)), 0x70FFFFFF);
+        specular.setStroke(Math.max(1, ToxiVisualSystem.dp(0.8f)), 0x88FFFFFF);
         GradientDrawable innerRim = new GradientDrawable();
         innerRim.setColor(Color.TRANSPARENT);
         innerRim.setCornerRadii(ToxiVisualSystem.profileCornerRadii(22f));
-        innerRim.setStroke(Math.max(1, ToxiVisualSystem.dp(0.55f)), 0x28FFFFFF);
+        innerRim.setStroke(Math.max(1, ToxiVisualSystem.dp(0.55f)), 0x35FFFFFF);
         android.graphics.drawable.LayerDrawable layers = new android.graphics.drawable.LayerDrawable(
                 new android.graphics.drawable.Drawable[]{material, specular, innerRim});
         int outerInset = Math.max(1, ToxiVisualSystem.dp(1));
@@ -167,14 +167,13 @@ final class ThemeScreenController {
             tile.setClipToPadding(true);
             tile.setBackground(glassCardBackground());
             ToxiVisualSystem.clipRound(tile, 24f);
-
-            // Reserve a responsive artwork lane; never let poster pixels cover the text column.
+            // Keep poster art in a dedicated responsive lane, separate from the text column.
             int cardWidth = activity.getResources().getDisplayMetrics().widthPixels
                     - ToxiVisualSystem.dp(32 + 32);
-            int posterWidth = Math.max(ToxiVisualSystem.dp(104),
-                    Math.min(ToxiVisualSystem.dp(140), Math.round(cardWidth * 0.37f)));
+            int posterWidth = Math.max(ToxiVisualSystem.dp(96),
+                    Math.min(ToxiVisualSystem.dp(136), Math.round(cardWidth * 0.34f)));
             ImageView poster = new ImageView(activity);
-            poster.setScaleType(ImageView.ScaleType.FIT_CENTE);
+            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
             poster.setAdjustViewBounds(false);
             poster.setPadding(ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(8),
                     ToxiVisualSystem.dp(4), ToxiVisualSystem.dp(8));
@@ -186,7 +185,7 @@ final class ThemeScreenController {
             View wash = new View(activity);
             android.graphics.drawable.GradientDrawable washGradient =
                     new android.graphics.drawable.GradientDrawable(
-                          android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                            android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
                             new int[]{Color.rgb(8, 12, 19), Color.rgb(8, 12, 19),
                                     Color.argb(228, 8, 12, 19), Color.argb(0, 8, 12, 19)});
             washGradient.setCornerRadii(ToxiVisualSystem.profileCornerRadii(24f));
@@ -212,42 +211,46 @@ final class ThemeScreenController {
             description.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(-1, -2);
             descParams.topMargin = ToxiVisualSystem.dp(4);
-            content.addView(Y\ØÜš\[Û‹\ØÔ\˜[\ÊNÂˆ^šY]ÈÝ]HHÞUš\ÝX[Þ\Ý[K^
-XÝ]š]KÙ[XÝYÈ¸§$ÈÑSPÕQˆˆ”ÑSPÕÓÔ“‹ˆKY‹Ù[XÝYÈÞU[YTÞ\Ý[KPÐÑS•ÖÚWHˆÛÛÜ‹•ÒUKYJNÂˆÝ]KœÙ]]\”ÜXÚ[™ÊŒÙŠNÂˆÝ]KœÙ]Ü˜]š]JÜ˜]š]KÑS•TŠNÂˆÝ]KœÙ]Y[™ÊÞUš\ÝX[Þ\Ý[K™
-LJKÞUš\ÝX[Þ\Ý[K™
-
-KÞUš\ÝX[Þ\Ý[K™
-LJKÞUš\ÝX[Þ\Ý[K™
-
-JNÂˆÝ]KœÙ]˜XÚÙÜ›Ý[™
-Ù[XÝYÈÞUš\ÝX[Þ\Ý[K˜XØÙ[Ý\™˜XÙJM
-HˆÞUš\ÝX[Þ\Ý[KœÝ\™˜XÙJM˜[ÙJJNÂˆ[™X\“^[Ý]“^[Ý]\˜[\ÈÝ]T\˜[\ÈH™]È[™X\“^[Ý]“^[Ý]\˜[\ÊL‹LŠNÂˆÝ]T\˜[\ËÜX\™Ú[ˆHÞUš\ÝX[Þ\Ý[K™
-L
-NÂˆÛÛ[˜YšY]ÊÝ]KÝ]T\˜[\ÊNÂˆ[K˜YšY]ÊÛÛ[™]Èœ˜[YS^[Ý]“^[Ý]\˜[\ÊLKLJJNÂˆ[YU[\ÖÚWHH[NÂˆ[YTÝ]\ÖÚWHHÝ]NÂˆ[KœÙ]ÛÛ[\ØÜš\[ÛŠÞUš\ÝX[Þ\Ý[K•SQWÓSQTÖÚWH
-È‹ˆˆ
-ÈÞUš\ÝX[Þ\Ý[K[YQ\ØÜš\[ÛŠJBˆ
-È
-Ù[XÝYÈ‹ˆXÝ]™H[YHˆˆ‹ˆ\È\HŠJNÂˆ[KœÙ]›ØÝ\ØX›J˜[ÙJNÂˆ[KœÙ]ÛÛXÚÓ\Ý[™\ŠˆOˆÂˆÞUš\ÝX[Þ\Ý[K™™YY˜XÚÊŠNÂˆYˆ
-[YR[™^OHÞUš\ÝX[Þ\Ý[K•SQWÒS‘V
-H™]\›ŽÂˆÞUš\ÝX[Þ\Ý[K˜\U[YJ[YR[™^YJNÂˆ\]TÙ[XÝ[ÛŠ[YR[™^
-NÂˆ[YPÚ[™ÙYHYNÂˆJNÂˆÞUš\ÝX[Þ\Ý[Kš[\˜XÝ]™J[JNÂˆØ\™Ë˜YšY]Ê[KXÝ]š]K›JLKÞUš\ÝX[Þ\Ý[K™
-M
-KL
-JNÂˆ[KœÙ][JYŠNÂˆ[KœÙ]˜[œÛ][Û–JŠNÂˆBˆ[™[˜YšY]ÊØ\™Ë™]È[™X\“^[Ý]“^[Ý]\˜[\ÊLKLŠJNÂˆXÝ]š]K[YTØÜ›ÛœÙ]š[šY]ÜÜ
-˜[ÙJNÂˆXÝ]š]K[YTØÜ›ÛœÙ]Û\ÔY[™Ê˜[ÙJNÂˆXÝ]š]K[YTØÜ›ÛœÙ]\ØÙ[™[›ØÝ\ØXš[]J[™›ÚYšY]Ë•šY]ÑÜ›Ý\‘“ÐÕT×ÐQ•T—ÑTÐÑS‘S•ÊNÂˆXÝ]š]K[YTØÜ›Û˜YšY]Ê[™[™]ÈØÜ›ÛšY]Ë“^[Ý]\˜[\ÊLKLŠJNÂˆ[™[œÙ][JYŠNÂˆXÝ]š]K[YTØÜ›ÛœÜÝ
-
-
-HOˆÂˆYˆ
-XÝ]š]K[YTØÜ›Û™Ù]Ú[ÛÝ[
-
-Hˆ
-HÂˆ[˜[™ÙHHX]›X^
-XÝ]š]K[YTØÜ›Û™Ù]Ú[]
-
-K™Ù]™ZYÚ
-
-BˆHXÝ]š]K[YTØÜ›Û™Ù]ZYÚ
-
-H
-ÈXÝ]š]K[YTØÜ›Û™Ù]Y[™Ð›ÝÛJ
-JNÂˆXÝ]š]K[YTØÜ›ÛœØÜ›ÛÊX]›Z[Š™\ÝÜ™TØÜ›ÛK˜[™ÙJJNÂˆBˆJNÂˆBŸ
+            content.addView(description, descParams);
+            TextView state = ToxiVisualSystem.text(activity, selected ? "âœ“  SELECTED" : "SELECT WORLD",
+                    9.5f, selected ? ToxiThemeSystem.ACCENTS[i] : Color.WHITE, true);
+            state.setLetterSpacing(0.07f);
+            state.setGravity(Gravity.CENTER);
+            state.setPadding(ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8), ToxiVisualSystem.dp(11), ToxiVisualSystem.dp(8));
+            state.setBackground(selected ? ToxiVisualSystem.accentSurface(14) : ToxiVisualSystem.surface(14, false));
+            LinearLayout.LayoutParams stateParams = new LinearLayout.LayoutParams(-2, -2);
+            stateParams.topMargin = ToxiVisualSystem.dp(10);
+            content.addView(state, stateParams);
+            tile.addView(content, new FrameLayout.LayoutParams(-1, -1));
+            themeTiles[i] = tile;
+            themeStates[i] = state;
+            tile.setContentDescription(ToxiVisualSystem.THEME_NAMES[i] + ". " + ToxiVisualSystem.themeDescription(i)
+                    + (selected ? ". Active theme" : ". Tap to apply"));
+            tile.setFocusable(false);
+            tile.setOnClickListener(v -> {
+                ToxiVisualSystem.feedback(v);
+                if (themeIndex == ToxiVisualSystem.THEME_INDEX) return;
+                ToxiVisualSystem.applyTheme(themeIndex, true);
+                updateSelection(themeIndex);
+                themeChanged = true;
+            });
+            ToxiVisualSystem.interactive(tile);
+            cards.addView(tile, activity.lpm(-1, ToxiVisualSystem.dp(164), 0, 0, 0, 10));
+            tile.setAlpha(1f);
+            tile.setTranslationY(0f);
+        }
+        panel.addView(cards, new LinearLayout.LayoutParams(-1, -2));
+        activity.themeScroll.setFillViewport(false);
+        activity.themeScroll.setClipToPadding(false);
+        activity.themeScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        activity.themeScroll.addView(panel, new ScrollView.LayoutParams(-1, -2));
+        panel.setAlpha(1f);
+        activity.themeScroll.post(() -> {
+            if (activity.themeScroll.getChildCount() > 0) {
+                int range = Math.max(0, activity.themeScroll.getChildAt(0).getHeight()
+                        - activity.themeScroll.getHeight() + activity.themeScroll.getPaddingBottom());
+                activity.themeScroll.scrollTo(0, Math.min(restoreScrollY, range));
+            }
+        });
+    }
+}
