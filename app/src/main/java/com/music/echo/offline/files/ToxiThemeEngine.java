@@ -49,11 +49,11 @@ final class ToxiThemeEngine {
         new Profile(6, "Cartoon Chaos", Geometry.CARTOON, Material.CARTOON_GLASS, Motif.PLAYFUL_SWIRL,
                 "sans-serif", 1.22f, 1.14f, 1.62f, .54f, .38f, 1.24f),
         new Profile(7, "Wild Earth", Geometry.WILDLIFE, Material.ORGANIC_TITANIUM, Motif.CLAW,
-                "sans-serif-medium", .98f, 1.10f, 1.78f, .66f, .26f, .96f),
+                "sans-serif-medium", .68f, 1.10f, 1.78f, .66f, .26f, .96f),
         new Profile(8, "Cybertron", Geometry.CYBERNETIC, Material.CYBER_FORGED, Motif.ENERGON_CIRCUIT,
                 "sans-serif-condensed", .86f, .92f, 2.08f, .78f, .30f, 1.16f),
         new Profile(9, "Beyond Earth", Geometry.EXTRATERRESTRIAL, Material.XENO_BIOLUMINESCENT, Motif.XENO_HIVE,
-                "sans-serif-light", .90f, .98f, 1.84f, .74f, .42f, 1.06f)
+                "sans-serif-light", 1.30f, .98f, 1.84f, .74f, .42f, 1.06f)
     };
 
     private static int activeIndex;
