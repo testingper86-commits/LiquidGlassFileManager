@@ -6,20 +6,25 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public final class ToxiThemeSystemTest {
-    @Test public void exposesExactlyFiveRequestedThemeIdentitiesInOrder() {
-        assertEquals(5, ToxiThemeSystem.NAMES.length);
+    @Test public void exposesAllTenRequestedThemeIdentitiesInOrder() {
+        assertEquals(10, ToxiThemeSystem.NAMES.length);
         assertEquals("One Piece · Grand Voyage", ToxiThemeSystem.NAMES[0]);
         assertEquals("Naruto · Shinobi Spirit", ToxiThemeSystem.NAMES[1]);
         assertEquals("Demon Slayer · Breathing Legends", ToxiThemeSystem.NAMES[2]);
         assertEquals("Dragon Ball · Ultra Instinct", ToxiThemeSystem.NAMES[3]);
         assertEquals("Attack on Titan · Titan Frontier", ToxiThemeSystem.NAMES[4]);
-        assertEquals(5, ToxiThemeSystem.DESCRIPTIONS.length);
-        assertEquals(5, new java.util.HashSet<>(java.util.Arrays.asList(ToxiThemeSystem.NAMES)).size());
+        assertEquals("Marvel Avengers · Earth's Mightiest", ToxiThemeSystem.NAMES[5]);
+        assertEquals("Oggy · Cartoon Chaos", ToxiThemeSystem.NAMES[6]);
+        assertEquals("Animal Kingdom · Wild Earth", ToxiThemeSystem.NAMES[7]);
+        assertEquals("Transformers · Cybertron", ToxiThemeSystem.NAMES[8]);
+        assertEquals("Alien Worlds · Beyond Earth", ToxiThemeSystem.NAMES[9]);
+        assertEquals(10, ToxiThemeSystem.DESCRIPTIONS.length);
+        assertEquals(10, new java.util.HashSet<>(java.util.Arrays.asList(ToxiThemeSystem.NAMES)).size());
     }
 
     @Test public void everyThemeHasDistinctDarkLightAndMetallicGlassTokens() {
         assertTrue(ToxiThemeSystem.hasIndependentTokens());
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             assertFalse(ToxiThemeSystem.CANVAS[i] == ToxiThemeSystem.SURFACES[i]);
             assertFalse(ToxiThemeSystem.SURFACES[i] == ToxiThemeSystem.RAISED[i]);
             assertFalse(ToxiThemeSystem.ACCENTS[i] == ToxiThemeSystem.ACCENT_ENDS[i]);
@@ -33,7 +38,7 @@ public final class ToxiThemeSystemTest {
         java.util.HashSet<ToxiThemeEngine.Material> materials = new java.util.HashSet<>();
         java.util.HashSet<ToxiThemeEngine.Motif> motifs = new java.util.HashSet<>();
         java.util.HashSet<String> typefaces = new java.util.HashSet<>();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             ToxiThemeEngine.activate(i);
             ToxiThemeEngine.Profile profile = ToxiThemeEngine.profile();
             assertEquals(i, profile.index);
@@ -54,9 +59,9 @@ public final class ToxiThemeSystemTest {
             assertTrue(ToxiThemeEngine.touchTarget(32) >= 48f);
             assertTrue(ToxiThemeEngine.touchTarget(56) >= 56f);
         }
-        assertEquals(5, geometries.size());
-        assertEquals(5, materials.size());
-        assertEquals("Each anime identity must own a distinct emblem motif", 5, motifs.size());
+        assertEquals(10, geometries.size());
+        assertEquals(10, materials.size());
+        assertEquals("Each theme identity must own a distinct emblem motif", 10, motifs.size());
         assertTrue(typefaces.size() >= 3);
         ToxiThemeEngine.activate(0);
     }
@@ -86,20 +91,20 @@ public final class ToxiThemeSystemTest {
             highlightOutputs.add(ToxiThemeEngine.highlightAlpha(120));
             durationOutputs.add(ToxiThemeEngine.motionDuration(200));
         }
-        assertEquals("Every theme must own a distinct corner scale", 5, corners.size());
-        assertEquals("Every theme must own a distinct spacing scale", 5, spacing.size());
+        assertEquals("Every theme must own a distinct corner scale", 10, corners.size());
+        assertEquals("Every theme must own a distinct spacing scale", 10, spacing.size());
         assertTrue("Theme icon strokes must remain within the supported optical range", strokes.size() >= 3);
-        assertEquals("Every theme must own a distinct edge strength", 5, edges.size());
-        assertEquals("Every theme must own a distinct highlight strength", 5, highlights.size());
-        assertEquals("Every theme must own a distinct motion scale", 5, motion.size());
-        assertEquals("Geometry tokens must produce distinct component radii", 5, radii.size());
-        assertEquals("Edge tokens must produce distinct rendered alpha values", 5, edgeOutputs.size());
-        assertEquals("Highlight tokens must produce distinct rendered alpha values", 5, highlightOutputs.size());
-        assertEquals("Motion tokens must produce distinct animation durations", 5, durationOutputs.size());
+        assertEquals("Every theme must own a distinct edge strength", 10, edges.size());
+        assertEquals("Every theme must own a distinct highlight strength", 10, highlights.size());
+        assertEquals("Every theme must own a distinct motion scale", 10, motion.size());
+        assertEquals("Geometry tokens must produce distinct component radii", 10, radii.size());
+        assertEquals("Edge tokens must produce distinct rendered alpha values", 10, edgeOutputs.size());
+        assertEquals("Highlight tokens must produce distinct rendered alpha values", 10, highlightOutputs.size());
+        assertEquals("Motion tokens must produce distinct animation durations", 10, durationOutputs.size());
         ToxiThemeEngine.activate(0);
     }
 
-    @Test public void allFiveThemesProduceDistinctClippingSilhouettes() {
+    @Test public void allTenThemesProduceDistinctClippingSilhouettes() {
         float previousDensity = ToxiVisualSystem.D;
         ToxiVisualSystem.D = 1f;
         java.util.Set<String> silhouettes = new java.util.HashSet<>();
@@ -110,7 +115,7 @@ public final class ToxiThemeSystemTest {
             for (float radius : radii) assertTrue(radius > 0f);
             silhouettes.add(java.util.Arrays.toString(radii));
         }
-        assertEquals("Each theme must clip views with its own silhouette", 5, silhouettes.size());
+        assertEquals("Each theme must clip views with its own silhouette", 10, silhouettes.size());
         ToxiThemeEngine.activate(0);
         ToxiVisualSystem.D = previousDensity;
     }
@@ -119,7 +124,7 @@ public final class ToxiThemeSystemTest {
         ToxiThemeEngine.activate(-10);
         assertEquals(0, ToxiThemeEngine.profile().index);
         ToxiThemeEngine.activate(100);
-        assertEquals(4, ToxiThemeEngine.profile().index);
+        assertEquals(9, ToxiThemeEngine.profile().index);
     }
 
     @Test public void activeProfileCanBeSwitchedAndRestoredWithoutStaleTokens() {
@@ -172,14 +177,14 @@ public final class ToxiThemeSystemTest {
 
     @Test public void eachThemeHasDistinctAccentAndChromeIdentity() {
         java.util.HashSet<Integer> pairs = new java.util.HashSet<>();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             assertFalse(ToxiThemeSystem.ACCENTS[i] == ToxiThemeSystem.CHROME[i]);
             assertFalse(ToxiThemeSystem.ACCENT_ENDS[i] == ToxiThemeSystem.CHROME[i]);
             assertTrue(ToxiThemeSystem.SOFT_ACCENTS[i] != ToxiThemeSystem.CANVAS[i]);
             assertTrue(ToxiThemeSystem.LIGHT_EDGES[i] != ToxiThemeSystem.LIGHT_CANVAS[i]);
             pairs.add(ToxiThemeSystem.ACCENTS[i] ^ ToxiThemeSystem.CHROME[i]);
         }
-        assertEquals(5, pairs.size());
+        assertEquals(10, pairs.size());
     }
 
     @Test public void approvedCanvaPaletteAnchorsAreAppliedToMatchingThemes() {
@@ -216,7 +221,7 @@ public final class ToxiThemeSystemTest {
         assertEquals(0, ToxiThemeSystem.normalize(-1));
         assertEquals(0, ToxiThemeSystem.normalize(0));
         assertEquals(4, ToxiThemeSystem.normalize(4));
-        assertEquals(4, ToxiThemeSystem.normalize(5));
-        assertEquals(4, ToxiThemeSystem.normalize(99));
+        assertEquals(5, ToxiThemeSystem.normalize(5));
+        assertEquals(9, ToxiThemeSystem.normalize(99));
     }
 }

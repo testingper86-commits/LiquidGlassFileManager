@@ -16,7 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-/** Five-theme Theme Studio with persistent live application. */
+/** Ten-theme Theme Studio with persistent live application. */
 final class ThemeScreenController {
     private final MainActivity activity;
     private FrameLayout[] themeTiles;
@@ -148,7 +148,7 @@ final class ThemeScreenController {
         subtitle.setLineSpacing(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(2)), 1.04f);
         subtitle.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), ToxiVisualSystem.dp(ToxiThemeEngine.spacing(12)));
         panel.addView(subtitle);
-        TextView label = ToxiVisualSystem.text(activity, "THEME COLLECTION  ·  05 WORLDS", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
+        TextView label = ToxiVisualSystem.text(activity, "THEME COLLECTION  ·  10 WORLDS", 10.5f, ToxiVisualSystem.TEXT_SECONDARY, true);
         label.setLetterSpacing(0.14f);
         label.setPadding(ToxiVisualSystem.dp(ToxiThemeEngine.spacing(3)), 0, 0, ToxiVisualSystem.dp(ToxiThemeEngine.spacing(10)));
         panel.addView(label);
